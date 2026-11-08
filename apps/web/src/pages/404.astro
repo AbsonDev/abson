@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script is:inline>
+      (function () {
+        var root = document.documentElement;
+        var stored = null;
+        try {
+          stored = window.localStorage.getItem("abson-theme");
+        } catch (error) {
+          stored = null;
+        }
+        var systemLight =
+          window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches;
+        root.setAttribute(
+          "data-theme",
+          stored === "light" || stored === "dark" ? stored : systemLight ? "light" : "dark",
+        );
+      })();
+    </script>
+    <title>Página não encontrada · Abson Developer</title>
+    <meta name="robots" content="noindex" />
+    <meta name="theme-color" content="#0b0b0c" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png" />
+    <link rel="stylesheet" href="/assets/styles.css" />
+    <style>
+      .not-found {
+        min-height: 100vh;
+        display: grid;
+        align-content: center;
+        gap: var(--space-6, 2rem);
+        padding: clamp(1.5rem, 8vw, 6rem) clamp(1.25rem, 5vw, 4rem);
+      }
+      .not-found-code {
+        font-family: var(--font-mono, monospace);
+        font-size: 12px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--fg-subtle, #9a9a9f);
+      }
+      .not-found-title {
+        font-family: var(--font-display, serif);
+        font-size: clamp(2.6rem, 8vw, 5rem);
+        line-height: 0.98;
+        letter-spacing: -0.03em;
+        margin: 0;
+        max-width: 14ch;
+      }
+      .not-found-title em {
+        font-style: italic;
+        color: var(--purple, #8b5cf6);
+      }
+      .not-found-text {
+        max-width: 46ch;
+        margin: 0;
+        color: var(--fg-muted, #c9c9ce);
+        line-height: 1.6;
+      }
+      .not-found-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-top: 0.5rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="not-found" id="conteudo">
+      <p class="not-found-code">Erro 404</p>
+      <h1 class="not-found-title">Esta página <em>não</em> existe.</h1>
+      <p class="not-found-text">
+        O endereço pode ter mudado ou sido digitado com um caractere a mais. O portfólio continua no ar,
+        com estudos de caso, experiência e formas de contato.
+      </p>
+      <div class="not-found-links">
+        <a class="btn btn-primary" href="/">Voltar ao início</a>
+        <a class="btn btn-ghost" href="/#projetos">Ver projetos</a>
+        <a class="btn btn-ghost" href="/#contato">Falar comigo</a>
+      </div>
+      <p class="not-found-code">Abson Developer · Aracaju, Sergipe</p>
+    </main>
+  </body>
+</html>

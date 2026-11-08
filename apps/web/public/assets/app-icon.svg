@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180">
+  <rect width="180" height="180" rx="36" fill="#0b0b0c" />
+  <rect x="18" y="18" width="144" height="144" rx="24" fill="none" stroke="#34343a" />
+  <text x="90" y="103" text-anchor="middle" font-family="Menlo, monospace" font-size="46" letter-spacing="2" fill="#f6f5f2">AD</text>
+  <rect x="64" y="118" width="52" height="3" fill="#2b5cf6" />
+</svg>

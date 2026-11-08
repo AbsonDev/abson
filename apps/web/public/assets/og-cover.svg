@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#0b0b0c" />
+  <rect x="72" y="62" width="64" height="64" rx="8" fill="none" stroke="#34343a" />
+  <text x="104" y="102" text-anchor="middle" font-family="Menlo, monospace" font-size="20" letter-spacing="1" fill="#f6f5f2">AD</text>
+  <text x="158" y="93" font-family="Georgia, 'Times New Roman', serif" font-size="30" fill="#f6f5f2">Abson Developer</text>
+  <text x="158" y="120" font-family="Menlo, monospace" font-size="13" letter-spacing="2" fill="#85858c">DESENVOLVEDOR MOBILE FULL-STACK</text>
+  <text x="1128" y="93" text-anchor="end" font-family="Menlo, monospace" font-size="13" letter-spacing="2" fill="#85858c">PORTFÓLIO · 2026</text>
+  <line x1="72" y1="188" x2="1128" y2="188" stroke="#242427" />
+  <text x="72" y="318" font-family="Georgia, 'Times New Roman', serif" font-size="86" fill="#f6f5f2">Sistemas que</text>
+  <text x="72" y="410" font-family="Georgia, 'Times New Roman', serif" font-size="86" fill="#f6f5f2"><tspan font-style="italic" fill="#8fa5ff">explicam</tspan> a si mesmos.</text>
+  <text x="72" y="482" font-family="Menlo, monospace" font-size="22" fill="#a6a6ac">.NET · Angular · React · Flutter · Android · iOS</text>
+  <line x1="72" y1="540" x2="1128" y2="540" stroke="#242427" />
+  <text x="72" y="582" font-family="Menlo, monospace" font-size="18" fill="#a6a6ac">absongalvao@gmail.com</text>
+  <text x="1128" y="582" text-anchor="end" font-family="Menlo, monospace" font-size="16" letter-spacing="1" fill="#85858c">ARACAJU · SERGIPE · REMOTO</text>
+</svg>
