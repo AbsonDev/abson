@@ -5,6 +5,11 @@ function txt(value: unknown): string {
   return typeof value === "string" ? value.trim() : String(value);
 }
 
+function raw(value: unknown): string {
+  if (value == null) return "";
+  return typeof value === "string" ? value : String(value);
+}
+
 function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (char) => ({
     "&": "&amp;",
@@ -66,7 +71,7 @@ export function buildCmsI18n(content: any): Dict {
   put(dict, "brand.role", profile.role);
   put(dict, "footer.role", profile.role);
 
-  put(dict, "hero.titleHtml", `${escapeHtml(txt(headline.before))}${txt(headline.emphasis) ? `<em>${escapeHtml(txt(headline.emphasis))}</em>` : ""}${escapeHtml(txt(headline.after))}`);
+  put(dict, "hero.titleHtml", `${escapeHtml(raw(headline.before))}${txt(headline.emphasis) ? `<em>${escapeHtml(txt(headline.emphasis))}</em>` : ""}${escapeHtml(raw(headline.after))}`);
   put(dict, "hero.lead", profile.lead);
   put(dict, "hero.metaCity", profile.location);
 
