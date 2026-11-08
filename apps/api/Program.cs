@@ -1,10 +1,35 @@
+using System.Net.Mail;
+using System.Threading.RateLimiting;
 using Abson.Api.Data;
 using Abson.Api.Models;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
+
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("contact", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+            }));
+});
 
 var connectionString =
     builder.Configuration.GetConnectionString("Default")
@@ -27,7 +52,9 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
+app.UseForwardedHeaders();
 app.UseCors();
+app.UseRateLimiter();
 
 app.MapGet("/health", () => Results.Ok(new
 {
@@ -57,6 +84,76 @@ app.MapGet("/api/hello", () => Results.Ok(new
     service = "abson-api",
     timestamp = DateTimeOffset.UtcNow
 }));
+
+app.MapPost("/api/contact", async (
+    ContactRequest input,
+    AppDbContext db,
+    ILogger<Program> logger,
+    CancellationToken ct) =>
+{
+    if (!string.IsNullOrWhiteSpace(input.Website))
+    {
+        return Results.Ok(new { message = "Mensagem recebida com sucesso." });
+    }
+
+    var errors = new Dictionary<string, string[]>();
+
+    var name = input.Name?.Trim() ?? string.Empty;
+    if (name.Length is < 2 or > 120)
+    {
+        errors["name"] = ["Informe um nome entre 2 e 120 caracteres."];
+    }
+
+    var email = input.Email?.Trim() ?? string.Empty;
+    if (!MailAddress.TryCreate(email, out _))
+    {
+        errors["email"] = ["Informe um e-mail válido."];
+    }
+
+    var subjectValue = input.Subject?.Trim() ?? string.Empty;
+    if (subjectValue.Length is 0 or > 120)
+    {
+        errors["subject"] = ["Escolha o tipo de conversa."];
+    }
+
+    var message = input.Message?.Trim() ?? string.Empty;
+    if (message.Length is < 20 or > 4000)
+    {
+        errors["message"] = ["A mensagem precisa ter entre 20 e 4000 caracteres."];
+    }
+
+    if (errors.Count > 0)
+    {
+        return Results.ValidationProblem(errors);
+    }
+
+    var subjectLabels = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["novo"] = "Novo sistema",
+        ["melhoria"] = "Melhoria em sistema existente",
+        ["integracao"] = "Integração entre sistemas",
+        ["consultoria"] = "Consultoria pontual",
+    };
+
+    var contact = new ContactMessage
+    {
+        Name = name,
+        Email = email,
+        Subject = subjectLabels.GetValueOrDefault(subjectValue, subjectValue),
+        Message = message,
+    };
+
+    db.ContactMessages.Add(contact);
+    await db.SaveChangesAsync(ct);
+
+    logger.LogInformation("Nova mensagem de contato {Id} de {Email}", contact.Id, contact.Email);
+
+    return Results.Created($"/api/contact/{contact.Id}", new
+    {
+        id = contact.Id,
+        message = "Mensagem recebida com sucesso."
+    });
+}).RequireRateLimiting("contact");
 
 app.MapGet("/api/todos", async (AppDbContext db, CancellationToken ct) =>
     Results.Ok(await db.Todos.OrderBy(todo => todo.Id).ToListAsync(ct)));
@@ -140,3 +237,10 @@ static async Task ApplyMigrationsAsync(WebApplication app)
 
     await db.Database.MigrateAsync();
 }
+
+public sealed record ContactRequest(
+    string? Name,
+    string? Email,
+    string? Subject,
+    string? Message,
+    string? Website);

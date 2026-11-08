@@ -462,6 +462,10 @@
 
           <div class="form-panel">
             <form id="contact-form" class="contact-form" novalidate>
+              <div style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;" aria-hidden="true">
+                <label for="campo-website">Website</label>
+                <input id="campo-website" name="website" type="text" tabindex="-1" autocomplete="off" />
+              </div>
               <div class="form-summary" id="resumo-erros" hidden>
                 <h3 class="summary-title" id="resumo-titulo" tabindex="-1">Revise os campos destacados</h3>
                 <ul class="summary-list" id="lista-erros"></ul>
@@ -497,14 +501,14 @@
                 <p class="field-error" id="erro-mensagem" hidden></p>
               </div>
 
-              <p class="form-note">Demonstração local: os campos validam, mas nenhuma mensagem é enviada a um servidor.</p>
+              <p class="form-note">Seus dados são enviados com segurança e usados apenas para responder ao contato.</p>
 
               <button class="btn btn-primary btn-block" type="submit">Enviar mensagem</button>
             </form>
 
             <div class="form-status" id="form-status" role="status" hidden>
-              <p class="status-title" id="status-title" tabindex="-1">Mensagem registrada nesta demonstração.</p>
-              <p class="status-text">Nada foi enviado a um servidor. Quando você conectar um endpoint, este formulário passa a entregar de verdade.</p>
+              <p class="status-title" id="status-title" tabindex="-1">Mensagem enviada com sucesso.</p>
+              <p class="status-text">Obrigado pelo contato. Responderei pelo e-mail informado em breve.</p>
               <button class="btn btn-ghost" type="button" id="reset-form">Escrever outra mensagem</button>
             </div>
           </div>

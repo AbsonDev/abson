@@ -207,6 +207,30 @@
   var status = document.getElementById("form-status");
   var statusTitle = document.getElementById("status-title");
   var resetButton = document.getElementById("reset-form");
+  var submitButton = form ? form.querySelector('button[type="submit"]') : null;
+  var submitLabel = submitButton ? submitButton.textContent : "Enviar mensagem";
+  var websiteField = document.getElementById("campo-website");
+  var API_BASE =
+    window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+      ? "http://localhost:8080"
+      : "https://api.abson.tech";
+
+  function setSending(sending) {
+    if (!submitButton) return;
+    submitButton.disabled = sending;
+    submitButton.textContent = sending ? "Enviando..." : submitLabel;
+  }
+
+  function showSendError() {
+    summaryList.textContent = "";
+    var item = document.createElement("li");
+    item.textContent =
+      "Não foi possível enviar agora. Tente novamente em instantes ou envie um e-mail para absongalvao@gmail.com.";
+    summaryList.appendChild(item);
+    summaryTitle.textContent = "Falha ao enviar";
+    summary.hidden = false;
+    summaryTitle.focus();
+  }
 
   var EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -302,13 +326,38 @@
     }
 
     summary.hidden = true;
-    form.reset();
-    controls.forEach(function (field) {
-      setFieldState(field, "");
-    });
-    form.hidden = true;
-    status.hidden = false;
-    statusTitle.focus();
+    setSending(true);
+
+    fetch(API_BASE + "/api/contact", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: document.getElementById("campo-nome").value.trim(),
+        email: document.getElementById("campo-email").value.trim(),
+        subject: document.getElementById("campo-assunto").value,
+        message: document.getElementById("campo-mensagem").value.trim(),
+        website: websiteField ? websiteField.value : ""
+      })
+    })
+      .then(function (response) {
+        if (!response.ok) {
+          throw new Error("HTTP " + response.status);
+        }
+        return response.json();
+      })
+      .then(function () {
+        form.reset();
+        controls.forEach(function (field) {
+          setFieldState(field, "");
+        });
+        form.hidden = true;
+        status.hidden = false;
+        statusTitle.focus();
+      })
+      .catch(showSendError)
+      .finally(function () {
+        setSending(false);
+      });
   });
 
   resetButton.addEventListener("click", function () {
