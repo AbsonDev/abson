@@ -1,0 +1,257 @@
+{
+  "seo": {
+    "title": "Abson Dutra Galvão · Desenvolvedor Mobile Full-Stack",
+    "description": "Portfólio de Abson Dutra Galvão (Abson Developer) — desenvolvedor mobile full-stack com .NET, Angular, React e Flutter para Android e iOS. Aracaju, Sergipe.",
+    "canonical": "https://abson.tech",
+    "ogImage": ""
+  },
+  "theme": {
+    "default": "dark"
+  },
+  "profile": {
+    "name": "Abson Dutra Galvão",
+    "brand": "Abson Developer",
+    "role": "Desenvolvedor mobile full-stack",
+    "headline": {
+      "before": "Sistemas que ",
+      "emphasis": "explicam",
+      "after": " a si mesmos."
+    },
+    "lead": "Desenvolvedor mobile full-stack. Trabalho do banco de dados à interface: APIs em .NET, web com Angular e React, mobile com Flutter e Dart. Menos improviso, mais rastreabilidade.",
+    "location": "Aracaju · Sergipe",
+    "availability": "Disponível para conversa",
+    "email": "absongalvao@gmail.com",
+    "linkedin": "https://www.linkedin.com/in/abson-dutra-galv%C3%A3o-86740a250",
+    "linkedinLabel": "abson-dutra-galvão",
+    "cvUrl": "/assets/cv-abson-dutra-galvao.pdf",
+    "footerNote": "© 2026 · Aracaju, SE",
+    "heroMeta": [
+      "Disponível para conversa",
+      "Aracaju · Sergipe",
+      "Atendimento remoto"
+    ]
+  },
+  "workCard": {
+    "title": "Ficha de trabalho",
+    "index": "01",
+    "rows": [
+      { "label": "Atuação", "value": "Desenvolvedor mobile full-stack", "note": "" },
+      { "label": "Foco", "value": ".NET, Angular, React e Flutter", "note": "" },
+      { "label": "Mobile", "value": "Android · iOS", "note": "— 5 anos" },
+      { "label": "Web", "value": ".NET · Angular · React", "note": "— 2 anos" },
+      { "label": "Base", "value": "Aracaju, Sergipe", "note": "" }
+    ],
+    "badge": "Disponível",
+    "caption": "Abson Developer · 2026"
+  },
+  "about": {
+    "number": "01",
+    "label": "Sobre",
+    "title": "Precisão antes de ferramenta.",
+    "lead": "Entender o processo, modelar os dados, construir a interface e deixar a operação previsível.",
+    "paragraphs": [
+      "Atuo em todo o ciclo de desenvolvimento: da otimização de bancos de dados e motores de lógica complexos à construção de interfaces e integrações com hardware. Minha âncora técnica é o ecossistema .NET (C#), com Clean Architecture, padrão BFF, mensageria com RabbitMQ e correção de gargalos como consultas N+1.",
+      "No frontend, modernizo interfaces em Angular — Signals e Standalone Components — e React, com atenção a performance de carregamento e experiência de uso. No mobile, desenvolvo em Flutter e Dart, incluindo quiosques de autoatendimento com comunicação USB e Bluetooth e resiliência offline.",
+      "Código de impacto exige resiliência: cobertura com xUnit, testes E2E com Playwright e pipelines de CI/CD. Documento processos e crio padrões para que o projeto continue legível depois da entrega."
+    ],
+    "principles": [
+      { "title": "Entender o processo", "description": "Banco, regra e exceção antes de escolher framework." },
+      { "title": "Construir em camadas", "description": "Clean Architecture, contratos claros e testes no mesmo fluxo." },
+      { "title": "Entregar para operar", "description": "Erro com causa, deploy previsível, documentação viva." }
+    ]
+  },
+  "skills": {
+    "number": "02",
+    "label": "Competências",
+    "title": "Da API ao aplicativo.",
+    "lead": "Backend .NET, frontend Angular e React, mobile Flutter e a qualidade que sustenta a entrega.",
+    "groups": [
+      {
+        "title": "Backend .NET",
+        "items": ["APIs em C# e .NET Core", "Clean Architecture e padrão BFF", "RabbitMQ, WebSockets e idempotência"]
+      },
+      {
+        "title": "Frontend web",
+        "items": ["Angular com Signals e Standalone Components", "React e TypeScript", "Tailwind CSS e performance de LCP"]
+      },
+      {
+        "title": "Mobile",
+        "items": ["Flutter e Dart para Android e iOS", "Comunicação USB e Bluetooth", "Modo offline e versões white label"]
+      },
+      {
+        "title": "Qualidade e operação",
+        "items": ["Testes unitários com xUnit", "E2E com Playwright", "CI/CD, padrões e documentação"]
+      }
+    ]
+  },
+  "experience": {
+    "number": "03",
+    "label": "Experiência",
+    "title": "Cinco anos de mobile, dois de web.",
+    "lead": "Do primeiro app em Flutter às APIs .NET em produção. Cada vínculo, período e entrega abaixo vem do currículo.",
+    "jobs": [
+      {
+        "company": "Filazero",
+        "role": "Desenvolvedor Full-Stack",
+        "location": "Aracaju, Sergipe",
+        "period": "jun 2024 — hoje",
+        "duration": "2 anos 6 meses",
+        "bullets": [
+          "APIs .NET de alta performance com BFF, RabbitMQ, WebSockets e integrações idempotentes, incluindo WhatsApp com rate limit e proteção contra spam.",
+          "Modernização do frontend Angular com Signals e Standalone Components, otimização de LCP e design system em Tailwind CSS.",
+          "Quiosques de autoatendimento em Flutter com impressão térmica via USB e Bluetooth, além de resiliência offline.",
+          "Testes unitários com xUnit, E2E com Playwright e manutenção de pipelines de CI/CD."
+        ]
+      },
+      {
+        "company": "Receba.digital",
+        "role": "Desenvolvedor Full-Stack",
+        "location": "Aracaju, Sergipe",
+        "period": "dez 2024 — dez 2025",
+        "duration": "1 ano 1 mês",
+        "bullets": ["Desenvolvimento de API em .NET e aplicações web."]
+      },
+      {
+        "company": "Perto Network",
+        "role": "Desenvolvedor Mobile Flutter",
+        "location": "Aracaju, Sergipe",
+        "period": "jul 2024 — ago 2024",
+        "duration": "2 meses",
+        "bullets": ["Desenvolvimento de um aplicativo em Flutter, por meio dos serviços da Inventione."]
+      },
+      {
+        "company": "Houseasy",
+        "role": "Desenvolvedor Mobile Flutter",
+        "location": "Curitiba, Paraná",
+        "period": "mar 2023 — jun 2024",
+        "duration": "1 ano 4 meses",
+        "bullets": [
+          "Arquitetura white label com Flavors em Flutter: uma base de código, múltiplas versões por cliente.",
+          "Firebase Remote Config, Firestore, Storage e Cloud Messaging para notificações push.",
+          "Google Analytics e Crashlytics para monitoramento e análise de performance."
+        ]
+      },
+      {
+        "company": "MTM Tecnologia",
+        "role": "Desenvolvedor Mobile Nativo (iOS e Android)",
+        "location": "Salvador, Bahia",
+        "period": "ago 2022 — fev 2023",
+        "duration": "7 meses",
+        "bullets": [
+          "Aplicativos nativos em Swift e Kotlin, com publicação na App Store e Google Play.",
+          "Geração de chaves, bundles, APKs e IPAs, além de testes internos e externos.",
+          "Suporte a múltiplas instâncias white label e diagnóstico de configurações nativas (info.plist, build.gradle, AndroidManifest.xml)."
+        ]
+      },
+      {
+        "company": "GrappeTechnology",
+        "role": "Desenvolvedor Mobile Flutter",
+        "location": "Itabuna, Bahia",
+        "period": "set 2021 — jul 2022",
+        "duration": "11 meses",
+        "bullets": [
+          "Ciclo completo de apps em Flutter e Dart: interface responsiva, CRUD, persistência e refatoração.",
+          "Participação no Paim, aplicativo jurídico para gestão de audiências e diligências."
+        ]
+      }
+    ]
+  },
+  "projects": {
+    "number": "04",
+    "label": "Projetos",
+    "title": "Três recortes do trabalho.",
+    "lead": "Fichas derivadas da experiência profissional: contexto, decisão técnica e resultado observável — sem métricas de vitrine.",
+    "note": "Fichas baseadas em experiências profissionais reais; descrevem abordagem e decisão, sem números de resultado.",
+    "cases": [
+      {
+        "slug": "quiosque",
+        "kicker": "Mobile · quiosque",
+        "title": "Quiosque de autoatendimento",
+        "summary": "Aplicativo Flutter para quiosques, com impressão térmica e operação mesmo quando a rede oscila.",
+        "tags": ["Flutter", "USB/Bluetooth", "Offline"],
+        "context": "O quiosque precisava imprimir comprovantes em impressoras térmicas conectadas por USB e Bluetooth, em um ambiente onde a conexão de rede oscila.",
+        "decision": "Implementei a comunicação nativa com o hardware e uma fila local de impressão. O estado offline passou a ser tratado como caminho normal: cada comprovante pendente é reconciliado quando a rede volta.",
+        "result": "O atendimento continua funcionando sem rede, com cada pendência reconciliada e rastreável, sem depender de intervenção manual.",
+        "stack": ["Flutter", "Dart", "USB/Bluetooth", "Offline"],
+        "note": "Ficha baseada em experiência profissional real — sem cliente identificado ou métrica de resultado."
+      },
+      {
+        "slug": "flavors",
+        "kicker": "Mobile · arquitetura",
+        "title": "Versões white label",
+        "summary": "Uma base Flutter para múltiplos clientes, cada um com marca, configuração e publicação próprias.",
+        "tags": ["Flutter", "Flavors", "Publicação"],
+        "context": "Cada cliente precisava de um aplicativo próprio. Duplicar o código a cada marca multiplicaria manutenção, correções e publicação.",
+        "decision": "Adotei Flavors no Flutter: um núcleo único de funcionalidades com configuração, tema e recursos isolados por cliente. A publicação passou a ser gerenciada por variante de build.",
+        "result": "Novos clientes entram como uma variante de build, sem fork do projeto e sem duplicar o núcleo de features.",
+        "stack": ["Flutter", "Flavors", "Firebase"],
+        "note": "Ficha baseada em experiência profissional real — sem cliente identificado ou métrica de resultado."
+      },
+      {
+        "slug": "api",
+        "kicker": "Backend · .NET",
+        "title": "API de alta performance",
+        "summary": "APIs .NET com BFF, mensageria e correção de consultas N+1 em fluxos concorrentes.",
+        "tags": [".NET", "BFF", "RabbitMQ"],
+        "context": "Checkout e dashboards dependiam de consultas repetidas e chamadas em cascata. O tempo de resposta crescia junto com o volume de acessos.",
+        "decision": "Apliquei o padrão BFF para reduzir round-trips, reescrevi consultas para eliminar o problema de N+1 e usei RabbitMQ e WebSockets para desacoplar efeitos. Integrações externas passaram a operar com idempotência.",
+        "result": "Fluxos concorrentes passaram a ter comportamento previsível, com retry seguro e erros rastreáveis, sem reprocessamento duplicado.",
+        "stack": [".NET", "BFF", "RabbitMQ", "WebSockets"],
+        "note": "Ficha baseada em experiência profissional real — sem cliente identificado ou métrica de resultado."
+      }
+    ]
+  },
+  "education": {
+    "number": "05",
+    "label": "Formação",
+    "title": "Base acadêmica e prática.",
+    "lead": "Formação em andamento e certificações em Flutter, dados e algoritmos.",
+    "degree": {
+      "label": "Formação acadêmica",
+      "institution": "UNINASSAU",
+      "degree": "CST em Análise e Desenvolvimento de Sistemas",
+      "period": "ago 2025 — ago 2027 · em curso"
+    },
+    "certificationsLabel": "Certificações",
+    "certifications": [
+      "Pixel Art: criando um avatar",
+      "Flutter: Widgets, Stateless, Stateful, Imagens e Animações",
+      "Criando Visualizações de Dados em Flutter",
+      "Aprenda o que são Estrutura de Dados e Algoritmos",
+      "Subindo o Seu Projeto Flutter no GitHub"
+    ]
+  },
+  "process": {
+    "number": "06",
+    "label": "Processo",
+    "title": "Do diagnóstico à operação.",
+    "lead": "Etapas curtas, cada uma com uma saída verificável. O próximo passo nunca depende de memória.",
+    "steps": [
+      { "title": "Diagnóstico", "description": "Mapa do processo atual, incluindo exceções e acordos informais.", "output": "Saída: requisitos priorizados e riscos nomeados." },
+      { "title": "Modelagem", "description": "Estados, entidades e contratos antes de qualquer código.", "output": "Saída: modelo de dados e especificação de fluxos." },
+      { "title": "Construção", "description": "Implementação em etapas pequenas, com testes unitários e E2E no mesmo repositório.", "output": "Saída: sistema funcionando, testado e documentado." },
+      { "title": "Operação", "description": "CI/CD, monitoramento e rotina de reprocessamento.", "output": "Saída: deploy previsível e manual de operação." }
+    ]
+  },
+  "contact": {
+    "number": "07",
+    "label": "Contato",
+    "title": "Vamos falar do seu sistema.",
+    "lead": "Conte o que existe hoje, o que precisa mudar e quem opera o sistema. Respondo com perguntas antes de propor solução.",
+    "formNote": "Seus dados são enviados com segurança e usados apenas para responder ao contato."
+  },
+  "navigation": [
+    { "label": "Sobre", "href": "#sobre" },
+    { "label": "Competências", "href": "#competencias" },
+    { "label": "Experiência", "href": "#experiencia" },
+    { "label": "Projetos", "href": "#projetos" },
+    { "label": "Contato", "href": "#contato" }
+  ],
+  "footerNavigation": [
+    { "label": "Sobre", "href": "#sobre" },
+    { "label": "Experiência", "href": "#experiencia" },
+    { "label": "Projetos", "href": "#projetos" },
+    { "label": "Formação", "href": "#formacao" },
+    { "label": "Contato", "href": "#contato" }
+  ]
+}

@@ -1,14 +1,50 @@
 using System.Net.Mail;
+using System.Text;
 using System.Threading.RateLimiting;
 using Abson.Api.Data;
+using Abson.Api.Endpoints;
 using Abson.Api.Models;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
+
+var jwtSecret = builder.Configuration["Jwt:Secret"];
+if (string.IsNullOrWhiteSpace(jwtSecret) || jwtSecret.Length < 32)
+{
+    if (EF.IsDesignTime)
+    {
+        jwtSecret = "design-time-only-secret-key-change-me-1234567890";
+    }
+    else
+    {
+        throw new InvalidOperationException("Jwt:Secret must be configured with at least 32 characters.");
+    }
+}
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "abson-api",
+            ValidateAudience = true,
+            ValidAudience = builder.Configuration["Jwt:Audience"] ?? "abson-admin",
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(2),
+        };
+    });
+builder.Services.AddAuthorization();
+builder.Services.AddScoped<IPasswordHasher<AdminUser>, PasswordHasher<AdminUser>>();
 
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
@@ -26,6 +62,15 @@ builder.Services.AddRateLimiter(options =>
             factory: _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+            }));
+    options.AddPolicy("login", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0,
             }));
@@ -55,6 +100,8 @@ if (app.Environment.IsDevelopment())
 app.UseForwardedHeaders();
 app.UseCors();
 app.UseRateLimiter();
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapGet("/health", () => Results.Ok(new
 {
@@ -76,6 +123,18 @@ app.MapGet("/ready", async (AppDbContext db, CancellationToken ct) =>
     {
         return Results.Json(new { status = "not-ready", database = "down" }, statusCode: 503);
     }
+});
+
+app.MapGet("/api/site", async (AppDbContext db, HttpResponse response) =>
+{
+    var content = await db.SiteContents.AsNoTracking().FirstOrDefaultAsync(item => item.Id == 1);
+    if (content is null)
+    {
+        return Results.NotFound();
+    }
+
+    response.Headers["Cache-Control"] = "public, max-age=30";
+    return Results.Content(content.ContentJson, "application/json");
 });
 
 app.MapGet("/api/hello", () => Results.Ok(new
@@ -205,9 +264,16 @@ app.MapDelete("/api/todos/{id:int}", async (int id, AppDbContext db, Cancellatio
     return Results.NoContent();
 });
 
+app.MapAdminEndpoints();
+
 if (!EF.IsDesignTime && app.Configuration.GetValue("Database:AutoMigrate", true))
 {
     await ApplyMigrationsAsync(app);
+}
+
+if (!EF.IsDesignTime)
+{
+    await SeedData.SeedAsync(app);
 }
 
 app.Run();
