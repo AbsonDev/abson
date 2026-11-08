@@ -137,6 +137,7 @@ window.ABSON_I18N = {
 
     "case.quiosque.kicker": "Mobile · quiosque",
     "case.quiosque.title": "Quiosque de autoatendimento",
+    "case.scrollHint": "Deslize o diagrama para o lado para ver o fluxo completo.",
     "case.quiosque.summary": "Aplicativo Flutter para quiosques, com impressão térmica e operação mesmo quando a rede oscila.",
     "case.quiosque.context": "O quiosque precisava imprimir comprovantes em impressoras térmicas conectadas por USB e Bluetooth, em um ambiente onde a conexão de rede oscila.",
     "case.quiosque.decision": "Implementei a comunicação nativa com o hardware e uma fila local de impressão. O estado offline passou a ser tratado como caminho normal: cada comprovante pendente é reconciliado quando a rede volta.",
@@ -397,6 +398,7 @@ window.ABSON_I18N = {
 
     "case.quiosque.kicker": "Mobile · kiosk",
     "case.quiosque.title": "Self-service kiosk",
+    "case.scrollHint": "Swipe the diagram sideways to see the full flow.",
     "case.quiosque.summary": "A Flutter app for kiosks, with thermal printing and operation even when the network drops.",
     "case.quiosque.context": "The kiosk had to print receipts on thermal printers connected over USB and Bluetooth, in an environment where the network connection fluctuates.",
     "case.quiosque.decision": "I implemented native communication with the hardware and a local print queue. Offline became a normal path: each pending receipt is reconciled when the network returns.",
@@ -657,6 +659,7 @@ window.ABSON_I18N = {
 
     "case.quiosque.kicker": "Mobile · kiosco",
     "case.quiosque.title": "Kiosco de autoservicio",
+    "case.scrollHint": "Desliza el diagrama hacia un lado para ver el flujo completo.",
     "case.quiosque.summary": "Aplicación Flutter para kioscos, con impresión térmica y operación incluso cuando la red falla.",
     "case.quiosque.context": "El kiosco debía imprimir comprobantes en impresoras térmicas conectadas por USB y Bluetooth, en un entorno donde la conexión de red fluctúa.",
     "case.quiosque.decision": "Implementé la comunicación nativa con el hardware y una cola local de impresión. El estado offline pasó a tratarse como un camino normal: cada comprobante pendiente se reconcilia cuando vuelve la red.",

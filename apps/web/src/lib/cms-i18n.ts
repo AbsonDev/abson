@@ -214,6 +214,7 @@ export function buildExtraI18n(content: any): Record<string, Dict> {
 
   const neutral: Dict = {
     "brand.nameHtml": brandMarkup(txt(profile.brand) || "Abson Developer"),
+    "brand.mark": txt(profile.brandMark) || "AD",
     "hero.eyebrow": txt(profile.name) || "Abson Dutra Galvão",
     "footer.meta": txt(profile.footerNote) || "© 2026 · Aracaju, SE",
     "card.caption": txt(workCard.caption) || "Abson Developer · 2026",

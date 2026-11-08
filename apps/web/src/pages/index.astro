@@ -24,7 +24,7 @@ const pageTitle = seo.title || "Abson Dutra Galvão · Desenvolvedor Mobile Full
 const pageDescription = seo.description || "Portfólio de Abson Dutra Galvão — desenvolvedor mobile full-stack.";
 const canonical = seo.canonical || "https://abson.tech";
 const canonicalBase = canonical.replace(/\/$/, "");
-const ogImage = seo.ogImage || "https://abson.tech/assets/og-cover.png";
+const ogImage = seo.ogImage || "/assets/og-cover.png";
 const cmsI18nJson = JSON.stringify(cmsI18n).replace(/</g, "\\u003c");
 const extraI18nJson = JSON.stringify(extraI18n).replace(/</g, "\\u003c");
 const jsonLd = {
@@ -34,7 +34,6 @@ const jsonLd = {
   alternateName: profile.brand,
   jobTitle: profile.role,
   description: pageDescription,
-  image: ogImage,
   email: profile.email ? "mailto:" + profile.email : undefined,
   sameAs: [profile.linkedin].filter(Boolean),
   address: {
@@ -85,7 +84,6 @@ const jsonLdJson = JSON.stringify(jsonLd).replace(/</g, "\\u003c");
   <meta property="og:type" content="profile" />
   <meta property="og:title" content={pageTitle} />
   <meta property="og:description" content={pageDescription} />
-  <meta property="og:url" content={canonical} />
   <meta property="og:locale" content="pt_BR" />
   <meta property="og:locale:alternate" content="en_US" />
   <meta property="og:locale:alternate" content="es_ES" />
@@ -128,6 +126,7 @@ const jsonLdJson = JSON.stringify(jsonLd).replace(/</g, "\\u003c");
     <header class="site-header">
       <div class="wrap header-inner">
         <a class="brand" href="#topo" aria-label="Abson Developer — início" data-i18n-aria="ui.homeLabel">
+          <span class="brand-mark" aria-hidden="true" data-i18n="brand.mark">AD</span>
           <span class="brand-text">
             <span class="brand-name" data-i18n-html="brand.nameHtml">Abson <em>Developer</em></span>
             <span class="brand-role" data-i18n="brand.role">Desenvolvedor mobile full-stack</span>
@@ -162,8 +161,8 @@ const jsonLdJson = JSON.stringify(jsonLd).replace(/</g, "\\u003c");
           </button>
           <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-principal">Menu</button>
         </div>
-        <div class="scroll-progress" aria-hidden="true"></div>
       </div>
+      <div class="scroll-progress" aria-hidden="true"></div>
     </header>
 
     <main id="conteudo">
@@ -448,7 +447,7 @@ const jsonLdJson = JSON.stringify(jsonLd).replace(/</g, "\\u003c");
                   <p class="case-kicker" data-i18n="proj.qKicker">Mobile · quiosque</p>
                   <h3 data-i18n="proj.qTitle">Quiosque de autoatendimento</h3>
                   <p class="case-summary" data-i18n="proj.qSummary">Aplicativo Flutter para quiosques, com impressão térmica e operação mesmo quando a rede oscila.</p>
-                  <span class="tag-list">{(projects.cases.find((item) => item.slug === 'quiosque')?.tags ?? []).map((tag) => <span class="tag">{tag}</span>)}</span>
+                  <span class="tag-list">{(projects.cases.find((item: any) => item.slug === 'quiosque')?.tags ?? []).map((tag: string) => <span class="tag">{tag}</span>)}</span>
                 </div>
                 <span class="case-action">
                   <span class="case-action-label" data-i18n="proj.open">Ver ficha</span>
@@ -471,10 +470,11 @@ const jsonLdJson = JSON.stringify(jsonLd).replace(/</g, "\\u003c");
                   </section>
                   <section class="case-section">
                     <h4 data-i18n="dialog.stack">Stack</h4>
-                    <ul class="tag-list">{(projects.cases.find((item) => item.slug === 'quiosque')?.stack ?? []).map((tag) => <li class="tag">{tag}</li>)}</ul>
+                    <ul class="tag-list">{(projects.cases.find((item: any) => item.slug === 'quiosque')?.stack ?? []).map((tag: string) => <li class="tag">{tag}</li>)}</ul>
                   </section>
                 </div>
                 <figure class="case-figure">
+                  <div class="case-diagram-scroll" tabindex="0">
                   <svg class="case-diagram" viewBox="0 0 640 230" role="img" aria-labelledby="diag-quiosque-title" aria-describedby="diag-quiosque-desc">
                     <title id="diag-quiosque-title" data-i18n="case.quiosque.diagramTitle">Fluxo do quiosque offline</title>
                     <desc id="diag-quiosque-desc" data-i18n="case.quiosque.diagramDesc">Aplicativo envia o comprovante para uma fila local, que imprime via USB ou Bluetooth e reconcilia com a rede quando ela volta.</desc>
@@ -500,6 +500,8 @@ const jsonLdJson = JSON.stringify(jsonLd).replace(/</g, "\\u003c");
                     <path d="M320 120V158" stroke="#68686f" stroke-width="1.5" stroke-dasharray="4 4" marker-end="url(#arr-q)" />
                     <text x="332" y="146" font-family="Menlo, monospace" font-size="10" fill="#85858c">RECONCILE · RETRY</text>
                   </svg>
+                  </div>
+                  <p class="figure-scroll-hint" data-i18n="case.scrollHint">Deslize o diagrama para o lado para ver o fluxo completo.</p>
                   <figcaption data-i18n="case.quiosque.diagram">O comprovante entra na fila local, imprime via USB ou Bluetooth e é reconciliado quando a rede volta.</figcaption>
                 </figure>
                 <p class="case-disclaimer" data-i18n="dialog.note">Ficha baseada em experiência profissional real — sem cliente identificado ou métrica de resultado.</p>
@@ -513,7 +515,7 @@ const jsonLdJson = JSON.stringify(jsonLd).replace(/</g, "\\u003c");
                   <p class="case-kicker" data-i18n="proj.fKicker">Mobile · arquitetura</p>
                   <h3 data-i18n="proj.fTitle">Versões white label</h3>
                   <p class="case-summary" data-i18n="proj.fSummary">Uma base Flutter para múltiplos clientes, cada um com marca, configuração e publicação próprias.</p>
-                  <span class="tag-list">{(projects.cases.find((item) => item.slug === 'flavors')?.tags ?? []).map((tag) => <span class="tag">{tag}</span>)}</span>
+                  <span class="tag-list">{(projects.cases.find((item: any) => item.slug === 'flavors')?.tags ?? []).map((tag: string) => <span class="tag">{tag}</span>)}</span>
                 </div>
                 <span class="case-action">
                   <span class="case-action-label" data-i18n="proj.open">Ver ficha</span>
@@ -536,10 +538,11 @@ const jsonLdJson = JSON.stringify(jsonLd).replace(/</g, "\\u003c");
                   </section>
                   <section class="case-section">
                     <h4 data-i18n="dialog.stack">Stack</h4>
-                    <ul class="tag-list">{(projects.cases.find((item) => item.slug === 'flavors')?.stack ?? []).map((tag) => <li class="tag">{tag}</li>)}</ul>
+                    <ul class="tag-list">{(projects.cases.find((item: any) => item.slug === 'flavors')?.stack ?? []).map((tag: string) => <li class="tag">{tag}</li>)}</ul>
                   </section>
                 </div>
                 <figure class="case-figure">
+                  <div class="case-diagram-scroll" tabindex="0">
                   <svg class="case-diagram" viewBox="0 0 640 230" role="img" aria-labelledby="diag-flavors-title" aria-describedby="diag-flavors-desc">
                     <title id="diag-flavors-title" data-i18n="case.flavors.diagramTitle">Arquitetura white label</title>
                     <desc id="diag-flavors-desc" data-i18n="case.flavors.diagramDesc">Um núcleo compartilhado gera variantes de build por cliente, cada uma com marca e configuração próprias.</desc>
@@ -568,6 +571,8 @@ const jsonLdJson = JSON.stringify(jsonLd).replace(/</g, "\\u003c");
                     <path d="M412 115H492" stroke="#68686f" stroke-width="1.5" marker-end="url(#arr-f)" />
                     <path d="M412 179L492 130" stroke="#68686f" stroke-width="1.5" marker-end="url(#arr-f)" />
                   </svg>
+                  </div>
+                  <p class="figure-scroll-hint" data-i18n="case.scrollHint">Deslize o diagrama para o lado para ver o fluxo completo.</p>
                   <figcaption data-i18n="case.flavors.diagram">Um núcleo de código, três variantes de build e uma publicação por cliente.</figcaption>
                 </figure>
                 <p class="case-disclaimer" data-i18n="dialog.note">Ficha baseada em experiência profissional real — sem cliente identificado ou métrica de resultado.</p>
@@ -581,7 +586,7 @@ const jsonLdJson = JSON.stringify(jsonLd).replace(/</g, "\\u003c");
                   <p class="case-kicker" data-i18n="proj.aKicker">Backend · .NET</p>
                   <h3 data-i18n="proj.aTitle">API de alta performance</h3>
                   <p class="case-summary" data-i18n="proj.aSummary">APIs .NET com BFF, mensageria e correção de consultas N+1 em fluxos concorrentes.</p>
-                  <span class="tag-list">{(projects.cases.find((item) => item.slug === 'api')?.tags ?? []).map((tag) => <span class="tag">{tag}</span>)}</span>
+                  <span class="tag-list">{(projects.cases.find((item: any) => item.slug === 'api')?.tags ?? []).map((tag: string) => <span class="tag">{tag}</span>)}</span>
                 </div>
                 <span class="case-action">
                   <span class="case-action-label" data-i18n="proj.open">Ver ficha</span>
@@ -604,10 +609,11 @@ const jsonLdJson = JSON.stringify(jsonLd).replace(/</g, "\\u003c");
                   </section>
                   <section class="case-section">
                     <h4 data-i18n="dialog.stack">Stack</h4>
-                    <ul class="tag-list">{(projects.cases.find((item) => item.slug === 'api')?.stack ?? []).map((tag) => <li class="tag">{tag}</li>)}</ul>
+                    <ul class="tag-list">{(projects.cases.find((item: any) => item.slug === 'api')?.stack ?? []).map((tag: string) => <li class="tag">{tag}</li>)}</ul>
                   </section>
                 </div>
                 <figure class="case-figure">
+                  <div class="case-diagram-scroll" tabindex="0">
                   <svg class="case-diagram" viewBox="0 0 640 230" role="img" aria-labelledby="diag-api-title" aria-describedby="diag-api-desc">
                     <title id="diag-api-title" data-i18n="case.api.diagramTitle">Fluxo da API com BFF e mensageria</title>
                     <desc id="diag-api-desc" data-i18n="case.api.diagramDesc">Cliente conversa com um BFF que agrega serviços, banco e mensageria, com retry seguro e sem consultas N+1.</desc>
@@ -636,6 +642,8 @@ const jsonLdJson = JSON.stringify(jsonLd).replace(/</g, "\\u003c");
                     <path d="M450 96V150" stroke="#68686f" stroke-width="1.5" stroke-dasharray="4 4" marker-end="url(#arr-a)" />
                     <text x="532" y="182" font-family="Menlo, monospace" font-size="10" fill="#85858c">RETRY · IDEMPOTENT</text>
                   </svg>
+                  </div>
+                  <p class="figure-scroll-hint" data-i18n="case.scrollHint">Deslize o diagrama para o lado para ver o fluxo completo.</p>
                   <figcaption data-i18n="case.api.diagram">Cliente, BFF, serviços e mensageria: menos round-trips, retry seguro e consultas sem N+1.</figcaption>
                 </figure>
                 <p class="case-disclaimer" data-i18n="dialog.note">Ficha baseada em experiência profissional real — sem cliente identificado ou métrica de resultado.</p>
