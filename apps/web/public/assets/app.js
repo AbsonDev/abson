@@ -1,0 +1,324 @@
+(function () {
+  "use strict";
+
+  var root = document.documentElement;
+
+  var themeToggle = document.querySelector(".theme-toggle");
+  var THEME_KEY = "abson-theme";
+
+  function storedTheme() {
+    try {
+      return window.localStorage.getItem(THEME_KEY);
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function applyTheme(theme) {
+    root.setAttribute("data-theme", theme);
+    var light = theme === "light";
+    themeToggle.setAttribute("aria-pressed", light ? "true" : "false");
+    themeToggle.setAttribute("aria-label", light ? "Ativar tema escuro" : "Ativar tema claro");
+  }
+
+  applyTheme(storedTheme() === "light" ? "light" : "dark");
+
+  themeToggle.addEventListener("click", function () {
+    var next = root.getAttribute("data-theme") === "light" ? "dark" : "light";
+    applyTheme(next);
+    try {
+      window.localStorage.setItem(THEME_KEY, next);
+    } catch (error) {
+      /* memory fallback is the applied theme in this session */
+    }
+  });
+
+  var nav = document.getElementById("nav-principal");
+  var navToggle = document.querySelector(".nav-toggle");
+  var mobile = window.matchMedia("(max-width: 860px)");
+
+  function setNavOpen(open) {
+    nav.hidden = !open;
+    navToggle.setAttribute("aria-expanded", open ? "true" : "false");
+    navToggle.textContent = open ? "Fechar" : "Menu";
+  }
+
+  function syncNav() {
+    if (mobile.matches) {
+      setNavOpen(false);
+    } else {
+      nav.hidden = false;
+      navToggle.setAttribute("aria-expanded", "false");
+      navToggle.textContent = "Menu";
+    }
+  }
+
+  syncNav();
+
+  if (typeof mobile.addEventListener === "function") {
+    mobile.addEventListener("change", syncNav);
+  } else if (typeof mobile.addListener === "function") {
+    mobile.addListener(syncNav);
+  }
+
+  navToggle.addEventListener("click", function () {
+    if (!mobile.matches) return;
+    setNavOpen(nav.hidden);
+  });
+
+  nav.addEventListener("click", function (event) {
+    var link = event.target.closest("a");
+    if (link && mobile.matches) setNavOpen(false);
+  });
+
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape" && mobile.matches && !nav.hidden) {
+      setNavOpen(false);
+      navToggle.focus();
+    }
+  });
+
+  var links = Array.prototype.slice.call(document.querySelectorAll('.nav a[href^="#"]'));
+  var targets = links
+    .map(function (link) {
+      return document.getElementById(link.getAttribute("href").slice(1));
+    })
+    .filter(Boolean);
+
+  if ("IntersectionObserver" in window && targets.length) {
+    var observer = new IntersectionObserver(
+      function (entries) {
+        entries.forEach(function (entry) {
+          if (!entry.isIntersecting) return;
+          var id = entry.target.id;
+          links.forEach(function (link) {
+            var active = link.getAttribute("href") === "#" + id;
+            link.classList.toggle("is-active", active);
+            if (active) {
+              link.setAttribute("aria-current", "location");
+            } else {
+              link.removeAttribute("aria-current");
+            }
+          });
+        });
+      },
+      { rootMargin: "-45% 0px -50% 0px", threshold: 0 }
+    );
+    targets.forEach(function (target) {
+      observer.observe(target);
+    });
+  }
+
+  var projects = {
+    quiosque: {
+      kicker: "Mobile · quiosque",
+      title: "Quiosque de autoatendimento",
+      context:
+        "O quiosque precisava imprimir comprovantes em impressoras térmicas conectadas por USB e Bluetooth, em um ambiente onde a conexão de rede oscila.",
+      decision:
+        "Implementei a comunicação nativa com o hardware e uma fila local de impressão. O estado offline passou a ser tratado como caminho normal: cada comprovante pendente é reconciliado quando a rede volta.",
+      result:
+        "O atendimento continua funcionando sem rede, com cada pendência reconciliada e rastreável, sem depender de intervenção manual.",
+      stack: ["Flutter", "Dart", "USB/Bluetooth", "Offline"]
+    },
+    flavors: {
+      kicker: "Mobile · arquitetura",
+      title: "Versões white label",
+      context:
+        "Cada cliente precisava de um aplicativo próprio. Duplicar o código a cada marca multiplicaria manutenção, correções e publicação.",
+      decision:
+        "Adotei Flavors no Flutter: um núcleo único de funcionalidades com configuração, tema e recursos isolados por cliente. A publicação passou a ser gerenciada por variante de build.",
+      result:
+        "Novos clientes entram como uma variante de build, sem fork do projeto e sem duplicar o núcleo de features.",
+      stack: ["Flutter", "Flavors", "Firebase"]
+    },
+    api: {
+      kicker: "Backend · .NET",
+      title: "API de alta performance",
+      context:
+        "Checkout e dashboards dependiam de consultas repetidas e chamadas em cascata. O tempo de resposta crescia junto com o volume de acessos.",
+      decision:
+        "Apliquei o padrão BFF para reduzir round-trips, reescrevi consultas para eliminar o problema de N+1 e usei RabbitMQ e WebSockets para desacoplar efeitos. Integrações externas passaram a operar com idempotência.",
+      result:
+        "Fluxos concorrentes passaram a ter comportamento previsível, com retry seguro e erros rastreáveis, sem reprocessamento duplicado.",
+      stack: [".NET", "BFF", "RabbitMQ", "WebSockets"]
+    }
+  };
+
+  var dialog = document.getElementById("case-dialog");
+  var closeButton = document.getElementById("case-close");
+  var caseFields = {
+    kicker: document.getElementById("case-kicker"),
+    title: document.getElementById("case-title"),
+    context: document.getElementById("case-context"),
+    decision: document.getElementById("case-decision"),
+    result: document.getElementById("case-result"),
+    stack: document.getElementById("case-stack")
+  };
+  var opener = null;
+
+  function openCase(id, trigger) {
+    var data = projects[id];
+    if (!data) return;
+    caseFields.kicker.textContent = data.kicker;
+    caseFields.title.textContent = data.title;
+    caseFields.context.textContent = data.context;
+    caseFields.decision.textContent = data.decision;
+    caseFields.result.textContent = data.result;
+    caseFields.stack.textContent = "";
+    data.stack.forEach(function (item) {
+      var chip = document.createElement("li");
+      chip.className = "tag";
+      chip.textContent = item;
+      caseFields.stack.appendChild(chip);
+    });
+    opener = trigger;
+    if (typeof dialog.showModal === "function") {
+      dialog.showModal();
+    }
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll("[data-case]"), function (button) {
+    button.addEventListener("click", function () {
+      openCase(button.getAttribute("data-case"), button);
+    });
+  });
+
+  closeButton.addEventListener("click", function () {
+    dialog.close();
+  });
+
+  dialog.addEventListener("close", function () {
+    if (opener && document.contains(opener)) {
+      opener.focus();
+    }
+  });
+
+  dialog.addEventListener("click", function (event) {
+    if (event.target === dialog) {
+      dialog.close();
+    }
+  });
+
+  var form = document.getElementById("contact-form");
+  var summary = document.getElementById("resumo-erros");
+  var summaryTitle = document.getElementById("resumo-titulo");
+  var summaryList = document.getElementById("lista-erros");
+  var status = document.getElementById("form-status");
+  var statusTitle = document.getElementById("status-title");
+  var resetButton = document.getElementById("reset-form");
+
+  var EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+  var controls = [
+    { name: "nome", input: document.getElementById("campo-nome"), error: document.getElementById("erro-nome") },
+    { name: "email", input: document.getElementById("campo-email"), error: document.getElementById("erro-email") },
+    { name: "assunto", input: document.getElementById("campo-assunto"), error: document.getElementById("erro-assunto") },
+    { name: "mensagem", input: document.getElementById("campo-mensagem"), error: document.getElementById("erro-mensagem") }
+  ];
+
+  function messageFor(name, value) {
+    var clean = value.trim();
+    if (name === "nome") {
+      if (!clean) return "Informe seu nome para eu saber com quem falo.";
+      if (clean.length < 2) return "O nome precisa de pelo menos 2 caracteres.";
+      return "";
+    }
+    if (name === "email") {
+      if (!clean) return "Informe um e-mail para eu poder responder.";
+      if (!EMAIL.test(clean)) return "Endereço incompleto — use o formato nome@dominio.com.";
+      return "";
+    }
+    if (name === "assunto") {
+      if (!clean) return "Escolha o tipo de conversa para eu preparar o retorno.";
+      return "";
+    }
+    if (name === "mensagem") {
+      if (!clean) return "Descreva brevemente o problema ou o processo atual.";
+      if (clean.length < 20) return "Conte um pouco mais: pelo menos 20 caracteres, com o contexto atual.";
+      return "";
+    }
+    return "";
+  }
+
+  function setFieldState(field, message) {
+    if (message) {
+      field.error.textContent = message;
+      field.error.hidden = false;
+      field.input.setAttribute("aria-invalid", "true");
+    } else {
+      field.error.textContent = "";
+      field.error.hidden = true;
+      field.input.removeAttribute("aria-invalid");
+    }
+  }
+
+  function validateField(field) {
+    var message = messageFor(field.name, field.input.value);
+    setFieldState(field, message);
+    return message;
+  }
+
+  controls.forEach(function (field) {
+    field.input.addEventListener("blur", function () {
+      validateField(field);
+    });
+    field.input.addEventListener("input", function () {
+      if (field.input.getAttribute("aria-invalid") === "true") {
+        validateField(field);
+      }
+    });
+  });
+
+  form.addEventListener("submit", function (event) {
+    event.preventDefault();
+    var invalid = controls
+      .map(function (field) {
+        return validateField(field) ? field : null;
+      })
+      .filter(Boolean);
+
+    if (invalid.length) {
+      summaryList.textContent = "";
+      invalid.forEach(function (field) {
+        var item = document.createElement("li");
+        var link = document.createElement("a");
+        link.href = "#" + field.input.id;
+        link.textContent = field.error.textContent;
+        link.addEventListener("click", function (clickEvent) {
+          clickEvent.preventDefault();
+          field.input.focus();
+        });
+        item.appendChild(link);
+        summaryList.appendChild(item);
+      });
+      summaryTitle.textContent =
+        invalid.length === 1
+          ? "Revise 1 campo antes de enviar"
+          : "Revise " + invalid.length + " campos antes de enviar";
+      summary.hidden = false;
+      summaryTitle.focus();
+      return;
+    }
+
+    summary.hidden = true;
+    form.reset();
+    controls.forEach(function (field) {
+      setFieldState(field, "");
+    });
+    form.hidden = true;
+    status.hidden = false;
+    statusTitle.focus();
+  });
+
+  resetButton.addEventListener("click", function () {
+    status.hidden = true;
+    form.hidden = false;
+    summary.hidden = true;
+    form.reset();
+    controls.forEach(function (field) {
+      setFieldState(field, "");
+    });
+    controls[0].input.focus();
+  });
+})();
