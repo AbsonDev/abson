@@ -109,41 +109,17 @@
     });
   }
 
-  var projects = {
-    quiosque: {
-      kicker: "Mobile · quiosque",
-      title: "Quiosque de autoatendimento",
-      context:
-        "O quiosque precisava imprimir comprovantes em impressoras térmicas conectadas por USB e Bluetooth, em um ambiente onde a conexão de rede oscila.",
-      decision:
-        "Implementei a comunicação nativa com o hardware e uma fila local de impressão. O estado offline passou a ser tratado como caminho normal: cada comprovante pendente é reconciliado quando a rede volta.",
-      result:
-        "O atendimento continua funcionando sem rede, com cada pendência reconciliada e rastreável, sem depender de intervenção manual.",
-      stack: ["Flutter", "Dart", "USB/Bluetooth", "Offline"]
-    },
-    flavors: {
-      kicker: "Mobile · arquitetura",
-      title: "Versões white label",
-      context:
-        "Cada cliente precisava de um aplicativo próprio. Duplicar o código a cada marca multiplicaria manutenção, correções e publicação.",
-      decision:
-        "Adotei Flavors no Flutter: um núcleo único de funcionalidades com configuração, tema e recursos isolados por cliente. A publicação passou a ser gerenciada por variante de build.",
-      result:
-        "Novos clientes entram como uma variante de build, sem fork do projeto e sem duplicar o núcleo de features.",
-      stack: ["Flutter", "Flavors", "Firebase"]
-    },
-    api: {
-      kicker: "Backend · .NET",
-      title: "API de alta performance",
-      context:
-        "Checkout e dashboards dependiam de consultas repetidas e chamadas em cascata. O tempo de resposta crescia junto com o volume de acessos.",
-      decision:
-        "Apliquei o padrão BFF para reduzir round-trips, reescrevi consultas para eliminar o problema de N+1 e usei RabbitMQ e WebSockets para desacoplar efeitos. Integrações externas passaram a operar com idempotência.",
-      result:
-        "Fluxos concorrentes passaram a ter comportamento previsível, com retry seguro e erros rastreáveis, sem reprocessamento duplicado.",
-      stack: [".NET", "BFF", "RabbitMQ", "WebSockets"]
+  var casesElement = document.getElementById("site-cases");
+  var projects = {};
+  if (casesElement) {
+    try {
+      JSON.parse(casesElement.textContent).forEach(function (item) {
+        if (item && item.slug) projects[item.slug] = item;
+      });
+    } catch (error) {
+      projects = {};
     }
-  };
+  }
 
   var dialog = document.getElementById("case-dialog");
   var closeButton = document.getElementById("case-close");
@@ -153,7 +129,8 @@
     context: document.getElementById("case-context"),
     decision: document.getElementById("case-decision"),
     result: document.getElementById("case-result"),
-    stack: document.getElementById("case-stack")
+    stack: document.getElementById("case-stack"),
+    note: document.getElementById("case-note")
   };
   var opener = null;
 
@@ -165,8 +142,13 @@
     caseFields.context.textContent = data.context;
     caseFields.decision.textContent = data.decision;
     caseFields.result.textContent = data.result;
+    if (caseFields.note) {
+      caseFields.note.textContent =
+        data.note ||
+        "Ficha baseada em experiência profissional real — sem cliente identificado ou métrica de resultado.";
+    }
     caseFields.stack.textContent = "";
-    data.stack.forEach(function (item) {
+    (data.stack || []).forEach(function (item) {
       var chip = document.createElement("li");
       chip.className = "tag";
       chip.textContent = item;

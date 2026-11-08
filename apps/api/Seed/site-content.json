@@ -11,6 +11,7 @@
   "profile": {
     "name": "Abson Dutra Galvão",
     "brand": "Abson Developer",
+    "brandMark": "AD",
     "role": "Desenvolvedor mobile full-stack",
     "headline": {
       "before": "Sistemas que ",
@@ -238,7 +239,15 @@
     "label": "Contato",
     "title": "Vamos falar do seu sistema.",
     "lead": "Conte o que existe hoje, o que precisa mudar e quem opera o sistema. Respondo com perguntas antes de propor solução.",
-    "formNote": "Seus dados são enviados com segurança e usados apenas para responder ao contato."
+    "formNote": "Seus dados são enviados com segurança e usados apenas para responder ao contato.",
+    "subjects": [
+      { "value": "novo", "label": "Novo sistema" },
+      { "value": "melhoria", "label": "Melhoria em sistema existente" },
+      { "value": "integracao", "label": "Integração entre sistemas" },
+      { "value": "consultoria", "label": "Consultoria pontual" }
+    ],
+    "successTitle": "Mensagem enviada com sucesso.",
+    "successText": "Obrigado pelo contato. Responderei pelo e-mail informado em breve."
   },
   "navigation": [
     { "label": "Sobre", "href": "#sobre" },

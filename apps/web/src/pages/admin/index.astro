@@ -1,0 +1,122 @@
+---
+const apiUrl = import.meta.env.API_URL ?? 'https://api.abson.tech';
+---
+
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Admin · abson.tech</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" />
+  <link rel="stylesheet" href="/admin/admin.css" />
+</head>
+<body data-api-base={apiUrl}>
+  <div class="admin-shell">
+    <section id="login-view" class="auth-card">
+      <div class="brand-line">
+        <span class="brand-mark">AD</span>
+        <div><strong>Painel Abson</strong><span>Conteúdo do site</span></div>
+      </div>
+      <h1>Entrar</h1>
+      <p class="muted">Acesse com o e-mail e a senha do administrador.</p>
+      <form id="login-form" class="stack">
+        <label>E-mail<input id="login-email" type="email" autocomplete="username" required /></label>
+        <label>Senha<input id="login-password" type="password" autocomplete="current-password" required /></label>
+        <p class="error" id="login-error" hidden></p>
+        <button class="btn primary" type="submit">Entrar</button>
+      </form>
+    </section>
+
+    <section id="dashboard-view" hidden>
+      <header class="topbar">
+        <div class="brand-line">
+          <span class="brand-mark">AD</span>
+          <div><strong>Painel Abson</strong><span>Conteúdo do site</span></div>
+        </div>
+        <div class="topbar-actions">
+          <a class="btn ghost" href="/" target="_blank" rel="noreferrer">Ver site</a>
+          <button class="btn ghost" type="button" id="logout">Sair</button>
+        </div>
+      </header>
+
+      <div class="stats">
+        <div class="stat"><span>Mensagens</span><strong id="stat-total">—</strong></div>
+        <div class="stat"><span>Não lidas</span><strong id="stat-unread">—</strong></div>
+        <div class="stat wide"><span>Conteúdo atualizado</span><strong id="stat-content">—</strong></div>
+      </div>
+
+      <nav class="tabs" aria-label="Seções do painel">
+        <button type="button" data-tab="content" class="tab active">Conteúdo do site</button>
+        <button type="button" data-tab="messages" class="tab">Mensagens</button>
+        <button type="button" data-tab="security" class="tab">Segurança</button>
+      </nav>
+
+      <section data-tab-panel="content">
+        <div class="toolbar">
+          <div>
+            <h2>Conteúdo do site</h2>
+            <p class="muted">Edite e salve. O site atualiza automaticamente na próxima visita.</p>
+          </div>
+          <div class="toolbar-actions">
+            <button class="btn ghost" type="button" id="reload-content">Recarregar</button>
+            <button class="btn primary" type="button" id="save-content">Salvar alterações</button>
+          </div>
+        </div>
+        <p class="status" id="content-status"></p>
+        <div id="content-editor" class="editor"></div>
+      </section>
+
+      <section data-tab-panel="messages" hidden>
+        <div class="toolbar">
+          <div>
+            <h2>Mensagens de contato</h2>
+            <p class="muted">Inbox do formulário do site.</p>
+          </div>
+          <div class="toolbar-actions">
+            <select id="message-filter" class="input">
+              <option value="">Todas</option>
+              <option value="new">Novas</option>
+              <option value="read">Lidas</option>
+              <option value="replied">Respondidas</option>
+              <option value="archived">Arquivadas</option>
+            </select>
+            <button class="btn ghost" type="button" id="refresh-messages">Atualizar</button>
+          </div>
+        </div>
+        <p class="status" id="messages-status"></p>
+        <div class="table-wrap">
+          <table class="messages-table">
+            <thead>
+              <tr><th>Status</th><th>Contato</th><th>Assunto</th><th>Mensagem</th><th>Data</th><th>Ações</th></tr>
+            </thead>
+            <tbody id="messages-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section data-tab-panel="security" hidden>
+        <div class="toolbar">
+          <div>
+            <h2>Segurança</h2>
+            <p class="muted">Altere a senha do administrador.</p>
+          </div>
+        </div>
+        <form id="change-password-form" class="stack narrow">
+          <label>Senha atual<input id="current-password" type="password" autocomplete="current-password" required /></label>
+          <label>Nova senha<input id="new-password" type="password" autocomplete="new-password" minlength="10" required /></label>
+          <label>Confirmar nova senha<input id="confirm-password" type="password" autocomplete="new-password" minlength="10" required /></label>
+          <p class="status" id="password-status"></p>
+          <button class="btn primary" type="submit">Alterar senha</button>
+        </form>
+      </section>
+    </section>
+  </div>
+
+  <script is:inline src="/admin/jsoneditor.js"></script>
+  <script is:inline src="/admin/admin.js" defer></script>
+</body>
+</html>

@@ -1,12 +1,52 @@
 ---
+import fallbackContent from '../data/site-content.json';
+
+const apiUrl = import.meta.env.API_URL ?? 'https://api.abson.tech';
+
+let content: any = fallbackContent;
+try {
+  const response = await fetch(`${apiUrl}/api/site`, {
+    headers: { Accept: 'application/json' },
+    signal: AbortSignal.timeout(3000),
+  });
+  if (response.ok) {
+    content = await response.json();
+  }
+} catch {
+  // mantém o fallback local
+}
+
+const seo = content.seo ?? {};
+const theme = content.theme ?? { default: 'dark' };
+const profile = content.profile ?? {};
+const workCard = content.workCard ?? { rows: [] };
+const about = content.about ?? { paragraphs: [], principles: [] };
+const skills = content.skills ?? { groups: [] };
+const experience = content.experience ?? { jobs: [] };
+const projects = content.projects ?? { cases: [] };
+const education = content.education ?? { certifications: [] };
+const processSection = content.process ?? { steps: [] };
+const contact = content.contact ?? { subjects: [] };
+const navigation = content.navigation ?? [];
+const footerNavigation = content.footerNavigation ?? [];
+const headline = profile.headline ?? { before: '', emphasis: '', after: '' };
+const heroMeta = profile.heroMeta ?? [];
+const casesJson = JSON.stringify(projects.cases ?? []).replace(/</g, '\\u003c');
 ---
-<!DOCTYPE html>
-<html lang="pt-BR" data-theme="dark">
+
+<!doctype html>
+<html lang="pt-BR" data-theme={theme.default ?? 'dark'}>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Abson Dutra Galvão · Desenvolvedor Mobile Full-Stack</title>
-  <meta name="description" content="Portfólio de Abson Dutra Galvão (Abson Developer) — desenvolvedor mobile full-stack com .NET, Angular, React e Flutter para Android e iOS. Aracaju, Sergipe." />
+  <title>{seo.title ?? 'Abson Dutra Galvão · Desenvolvedor Mobile Full-Stack'}</title>
+  <meta name="description" content={seo.description ?? ''} />
+  {seo.canonical ? <link rel="canonical" href={seo.canonical} /> : null}
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content={seo.title ?? 'Abson Developer'} />
+  <meta property="og:description" content={seo.description ?? ''} />
+  {seo.canonical ? <meta property="og:url" content={seo.canonical} /> : null}
+  {seo.ogImage ? <meta property="og:image" content={seo.ogImage} /> : null}
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230b0b0c'/%3E%3Ctext x='32' y='42' font-family='monospace' font-size='24' fill='%23f6f5f2' text-anchor='middle'%3EAD%3C/text%3E%3C/svg%3E" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -19,20 +59,16 @@
 
   <header class="site-header">
     <div class="wrap header-inner">
-      <a class="brand" href="#topo" aria-label="Abson Developer — início">
-        <span class="brand-mark" aria-hidden="true">AD</span>
+      <a class="brand" href="#topo" aria-label={`${profile.brand ?? 'Abson Developer'} — início`}>
+        <span class="brand-mark" aria-hidden="true">{profile.brandMark ?? 'AD'}</span>
         <span class="brand-text">
-          <span class="brand-name">Abson Developer</span>
-          <span class="brand-role">Desenvolvedor mobile full-stack</span>
+          <span class="brand-name">{profile.brand ?? 'Abson Developer'}</span>
+          <span class="brand-role">{profile.role ?? ''}</span>
         </span>
       </a>
 
       <nav class="nav" id="nav-principal" aria-label="Seções do portfólio">
-        <a href="#sobre">Sobre</a>
-        <a href="#competencias">Competências</a>
-        <a href="#experiencia">Experiência</a>
-        <a href="#projetos">Projetos</a>
-        <a href="#contato">Contato</a>
+        {navigation.map((item: any) => <a href={item.href}>{item.label}</a>)}
       </nav>
 
       <div class="header-actions">
@@ -49,9 +85,9 @@
     <section class="hero" id="topo">
       <div class="wrap hero-grid">
         <div class="hero-copy">
-          <p class="eyebrow">Abson Dutra Galvão</p>
-          <h1 class="hero-title">Sistemas que <em>explicam</em> a si mesmos.</h1>
-          <p class="hero-lead">Desenvolvedor mobile full-stack. Trabalho do banco de dados à interface: APIs em .NET, web com Angular e React, mobile com Flutter e Dart. Menos improviso, mais rastreabilidade.</p>
+          <p class="eyebrow">{profile.name ?? ''}</p>
+          <h1 class="hero-title">{headline.before}{headline.emphasis ? <em>{headline.emphasis}</em> : null}{headline.after}</h1>
+          <p class="hero-lead">{profile.lead ?? ''}</p>
 
           <div class="hero-actions">
             <a class="btn btn-primary" href="#experiencia">Ver experiência</a>
@@ -59,42 +95,28 @@
           </div>
 
           <ul class="hero-meta">
-            <li><span class="dot" aria-hidden="true"></span>Disponível para conversa</li>
-            <li>Aracaju · Sergipe</li>
-            <li>Atendimento remoto</li>
+            {heroMeta.map((item: string, index: number) => (
+              <li>{index === 0 ? <span class="dot" aria-hidden="true" /> : null}{item}</li>
+            ))}
           </ul>
         </div>
 
         <aside class="work-card" aria-labelledby="ficha-title">
           <div class="work-card-head">
-            <h2 class="card-title" id="ficha-title">Ficha de trabalho</h2>
-            <span class="card-index" aria-hidden="true">01</span>
+            <h2 class="card-title" id="ficha-title">{workCard.title ?? 'Ficha de trabalho'}</h2>
+            <span class="card-index" aria-hidden="true">{workCard.index ?? '01'}</span>
           </div>
           <dl class="work-list">
-            <div class="work-row">
-              <dt>Atuação</dt>
-              <dd>Desenvolvedor mobile full-stack</dd>
-            </div>
-            <div class="work-row">
-              <dt>Foco</dt>
-              <dd>.NET, Angular, React e Flutter</dd>
-            </div>
-            <div class="work-row">
-              <dt>Mobile</dt>
-              <dd>Android · iOS <span class="od-nowrap">— 5 anos</span></dd>
-            </div>
-            <div class="work-row">
-              <dt>Web</dt>
-              <dd>.NET · Angular · React <span class="od-nowrap">— 2 anos</span></dd>
-            </div>
-            <div class="work-row">
-              <dt>Base</dt>
-              <dd>Aracaju, Sergipe</dd>
-            </div>
+            {(workCard.rows ?? []).map((row: any) => (
+              <div class="work-row">
+                <dt>{row.label}</dt>
+                <dd>{row.value}{row.note ? <span class="od-nowrap">{row.note}</span> : null}</dd>
+              </div>
+            ))}
           </dl>
           <p class="work-foot">
-            <span class="badge"><span class="dot" aria-hidden="true"></span>Disponível</span>
-            <span class="work-cap">Abson Developer · 2026</span>
+            <span class="badge"><span class="dot" aria-hidden="true"></span>{workCard.badge ?? 'Disponível'}</span>
+            <span class="work-cap">{workCard.caption ?? ''}</span>
           </p>
         </aside>
       </div>
@@ -104,41 +126,27 @@
       <div class="wrap">
         <div class="section-head">
           <div>
-            <p class="section-label"><span class="num">01</span>Sobre</p>
-            <h2 class="section-title">Precisão antes de ferramenta.</h2>
+            <p class="section-label"><span class="num">{about.number ?? '01'}</span>{about.label ?? 'Sobre'}</p>
+            <h2 class="section-title">{about.title ?? ''}</h2>
           </div>
-          <p class="section-lead">Entender o processo, modelar os dados, construir a interface e deixar a operação previsível.</p>
+          <p class="section-lead">{about.lead ?? ''}</p>
         </div>
 
         <div class="about-grid">
           <div class="about-copy">
-            <p>Atuo em todo o ciclo de desenvolvimento: da otimização de bancos de dados e motores de lógica complexos à construção de interfaces e integrações com hardware. Minha âncora técnica é o ecossistema .NET (C#), com Clean Architecture, padrão BFF, mensageria com RabbitMQ e correção de gargalos como consultas N+1.</p>
-            <p>No frontend, modernizo interfaces em Angular — Signals e Standalone Components — e React, com atenção a performance de carregamento e experiência de uso. No mobile, desenvolvo em Flutter e Dart, incluindo quiosques de autoatendimento com comunicação USB e Bluetooth e resiliência offline.</p>
-            <p>Código de impacto exige resiliência: cobertura com xUnit, testes E2E com Playwright e pipelines de CI/CD. Documento processos e crio padrões para que o projeto continue legível depois da entrega.</p>
+            {(about.paragraphs ?? []).map((paragraph: string) => <p>{paragraph}</p>)}
           </div>
 
           <div class="principles">
-            <div class="principle">
-              <span class="principle-num" aria-hidden="true">01</span>
-              <div>
-                <h3>Entender o processo</h3>
-                <p>Banco, regra e exceção antes de escolher framework.</p>
+            {(about.principles ?? []).map((principle: any, index: number) => (
+              <div class="principle">
+                <span class="principle-num" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+                <div>
+                  <h3>{principle.title}</h3>
+                  <p>{principle.description}</p>
+                </div>
               </div>
-            </div>
-            <div class="principle">
-              <span class="principle-num" aria-hidden="true">02</span>
-              <div>
-                <h3>Construir em camadas</h3>
-                <p>Clean Architecture, contratos claros e testes no mesmo fluxo.</p>
-              </div>
-            </div>
-            <div class="principle">
-              <span class="principle-num" aria-hidden="true">03</span>
-              <div>
-                <h3>Entregar para operar</h3>
-                <p>Erro com causa, deploy previsível, documentação viva.</p>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </div>
@@ -148,49 +156,22 @@
       <div class="wrap">
         <div class="section-head">
           <div>
-            <p class="section-label"><span class="num">02</span>Competências</p>
-            <h2 class="section-title">Da API ao aplicativo.</h2>
+            <p class="section-label"><span class="num">{skills.number ?? '02'}</span>{skills.label ?? 'Competências'}</p>
+            <h2 class="section-title">{skills.title ?? ''}</h2>
           </div>
-          <p class="section-lead">Backend .NET, frontend Angular e React, mobile Flutter e a qualidade que sustenta a entrega.</p>
+          <p class="section-lead">{skills.lead ?? ''}</p>
         </div>
 
         <div class="cap-grid">
-          <div class="cap">
-            <span class="cap-num" aria-hidden="true">01</span>
-            <h3>Backend .NET</h3>
-            <ul>
-              <li>APIs em C# e .NET Core</li>
-              <li>Clean Architecture e padrão BFF</li>
-              <li>RabbitMQ, WebSockets e idempotência</li>
-            </ul>
-          </div>
-          <div class="cap">
-            <span class="cap-num" aria-hidden="true">02</span>
-            <h3>Frontend web</h3>
-            <ul>
-              <li>Angular com Signals e Standalone Components</li>
-              <li>React e TypeScript</li>
-              <li>Tailwind CSS e performance de LCP</li>
-            </ul>
-          </div>
-          <div class="cap">
-            <span class="cap-num" aria-hidden="true">03</span>
-            <h3>Mobile</h3>
-            <ul>
-              <li>Flutter e Dart para Android e iOS</li>
-              <li>Comunicação USB e Bluetooth</li>
-              <li>Modo offline e versões white label</li>
-            </ul>
-          </div>
-          <div class="cap">
-            <span class="cap-num" aria-hidden="true">04</span>
-            <h3>Qualidade e operação</h3>
-            <ul>
-              <li>Testes unitários com xUnit</li>
-              <li>E2E com Playwright</li>
-              <li>CI/CD, padrões e documentação</li>
-            </ul>
-          </div>
+          {(skills.groups ?? []).map((group: any, index: number) => (
+            <div class="cap">
+              <span class="cap-num" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+              <h3>{group.title}</h3>
+              <ul>
+                {(group.items ?? []).map((item: string) => <li>{item}</li>)}
+              </ul>
+            </div>
+          ))}
         </div>
       </div>
     </section>
@@ -199,86 +180,25 @@
       <div class="wrap">
         <div class="section-head">
           <div>
-            <p class="section-label"><span class="num">03</span>Experiência</p>
-            <h2 class="section-title">Cinco anos de mobile, dois de web.</h2>
+            <p class="section-label"><span class="num">{experience.number ?? '03'}</span>{experience.label ?? 'Experiência'}</p>
+            <h2 class="section-title">{experience.title ?? ''}</h2>
           </div>
-          <p class="section-lead">Do primeiro app em Flutter às APIs .NET em produção. Cada vínculo, período e entrega abaixo vem do currículo.</p>
+          <p class="section-lead">{experience.lead ?? ''}</p>
         </div>
 
         <div class="jobs">
-          <article class="job">
-            <p class="job-period">jun 2024 — hoje<br />2 anos 6 meses</p>
-            <div class="job-body">
-              <h3>Filazero</h3>
-              <p class="job-role">Desenvolvedor Full-Stack · Aracaju, Sergipe</p>
-              <ul class="job-points">
-                <li>APIs .NET de alta performance com BFF, RabbitMQ, WebSockets e integrações idempotentes, incluindo WhatsApp com rate limit e proteção contra spam.</li>
-                <li>Modernização do frontend Angular com Signals e Standalone Components, otimização de LCP e design system em Tailwind CSS.</li>
-                <li>Quiosques de autoatendimento em Flutter com impressão térmica via USB e Bluetooth, além de resiliência offline.</li>
-                <li>Testes unitários com xUnit, E2E com Playwright e manutenção de pipelines de CI/CD.</li>
-              </ul>
-            </div>
-          </article>
-
-          <article class="job">
-            <p class="job-period">dez 2024 — dez 2025<br />1 ano 1 mês</p>
-            <div class="job-body">
-              <h3>Receba.digital</h3>
-              <p class="job-role">Desenvolvedor Full-Stack · Aracaju, Sergipe</p>
-              <ul class="job-points">
-                <li>Desenvolvimento de API em .NET e aplicações web.</li>
-              </ul>
-            </div>
-          </article>
-
-          <article class="job">
-            <p class="job-period">jul 2024 — ago 2024<br />2 meses</p>
-            <div class="job-body">
-              <h3>Perto Network</h3>
-              <p class="job-role">Desenvolvedor Mobile Flutter · Aracaju, Sergipe</p>
-              <ul class="job-points">
-                <li>Desenvolvimento de um aplicativo em Flutter, por meio dos serviços da Inventione.</li>
-              </ul>
-            </div>
-          </article>
-
-          <article class="job">
-            <p class="job-period">mar 2023 — jun 2024<br />1 ano 4 meses</p>
-            <div class="job-body">
-              <h3>Houseasy</h3>
-              <p class="job-role">Desenvolvedor Mobile Flutter · Curitiba, Paraná</p>
-              <ul class="job-points">
-                <li>Arquitetura white label com Flavors em Flutter: uma base de código, múltiplas versões por cliente.</li>
-                <li>Firebase Remote Config, Firestore, Storage e Cloud Messaging para notificações push.</li>
-                <li>Google Analytics e Crashlytics para monitoramento e análise de performance.</li>
-              </ul>
-            </div>
-          </article>
-
-          <article class="job">
-            <p class="job-period">ago 2022 — fev 2023<br />7 meses</p>
-            <div class="job-body">
-              <h3>MTM Tecnologia</h3>
-              <p class="job-role">Desenvolvedor Mobile Nativo (iOS e Android) · Salvador, Bahia</p>
-              <ul class="job-points">
-                <li>Aplicativos nativos em Swift e Kotlin, com publicação na App Store e Google Play.</li>
-                <li>Geração de chaves, bundles, APKs e IPAs, além de testes internos e externos.</li>
-                <li>Suporte a múltiplas instâncias white label e diagnóstico de configurações nativas (info.plist, build.gradle, AndroidManifest.xml).</li>
-              </ul>
-            </div>
-          </article>
-
-          <article class="job">
-            <p class="job-period">set 2021 — jul 2022<br />11 meses</p>
-            <div class="job-body">
-              <h3>GrappeTechnology</h3>
-              <p class="job-role">Desenvolvedor Mobile Flutter · Itabuna, Bahia</p>
-              <ul class="job-points">
-                <li>Ciclo completo de apps em Flutter e Dart: interface responsiva, CRUD, persistência e refatoração.</li>
-                <li>Participação no Paim, aplicativo jurídico para gestão de audiências e diligências.</li>
-              </ul>
-            </div>
-          </article>
+          {(experience.jobs ?? []).map((job: any) => (
+            <article class="job">
+              <p class="job-period">{job.period}{job.duration ? <><br />{job.duration}</> : null}</p>
+              <div class="job-body">
+                <h3>{job.company}</h3>
+                <p class="job-role">{job.role}{job.location ? ` · ${job.location}` : ''}</p>
+                <ul class="job-points">
+                  {(job.bullets ?? []).map((bullet: string) => <li>{bullet}</li>)}
+                </ul>
+              </div>
+            </article>
+          ))}
         </div>
       </div>
     </section>
@@ -287,75 +207,35 @@
       <div class="wrap">
         <div class="section-head">
           <div>
-            <p class="section-label"><span class="num">04</span>Projetos</p>
-            <h2 class="section-title">Três recortes do trabalho.</h2>
+            <p class="section-label"><span class="num">{projects.number ?? '04'}</span>{projects.label ?? 'Projetos'}</p>
+            <h2 class="section-title">{projects.title ?? ''}</h2>
           </div>
-          <p class="section-lead">Fichas derivadas da experiência profissional: contexto, decisão técnica e resultado observável — sem métricas de vitrine.</p>
+          <p class="section-lead">{projects.lead ?? ''}</p>
         </div>
 
         <div class="cases">
-          <article class="case">
-            <span class="case-index" aria-hidden="true">01</span>
-            <div class="case-body">
-              <p class="case-kicker">Mobile · quiosque</p>
-              <h3>Quiosque de autoatendimento</h3>
-              <p class="case-summary">Aplicativo Flutter para quiosques, com impressão térmica e operação mesmo quando a rede oscila.</p>
-              <ul class="tag-list">
-                <li class="tag">Flutter</li>
-                <li class="tag">USB/Bluetooth</li>
-                <li class="tag">Offline</li>
-              </ul>
-            </div>
-            <div class="case-action">
-              <button class="btn btn-ghost btn-sm" type="button" data-case="quiosque">
-                Abrir ficha
-                <svg class="od-icon icon-stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-              </button>
-            </div>
-          </article>
-
-          <article class="case">
-            <span class="case-index" aria-hidden="true">02</span>
-            <div class="case-body">
-              <p class="case-kicker">Mobile · arquitetura</p>
-              <h3>Versões white label</h3>
-              <p class="case-summary">Uma base Flutter para múltiplos clientes, cada um com marca, configuração e publicação próprias.</p>
-              <ul class="tag-list">
-                <li class="tag">Flutter</li>
-                <li class="tag">Flavors</li>
-                <li class="tag">Publicação</li>
-              </ul>
-            </div>
-            <div class="case-action">
-              <button class="btn btn-ghost btn-sm" type="button" data-case="flavors">
-                Abrir ficha
-                <svg class="od-icon icon-stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-              </button>
-            </div>
-          </article>
-
-          <article class="case">
-            <span class="case-index" aria-hidden="true">03</span>
-            <div class="case-body">
-              <p class="case-kicker">Backend · .NET</p>
-              <h3>API de alta performance</h3>
-              <p class="case-summary">APIs .NET com BFF, mensageria e correção de consultas N+1 em fluxos concorrentes.</p>
-              <ul class="tag-list">
-                <li class="tag">.NET</li>
-                <li class="tag">BFF</li>
-                <li class="tag">RabbitMQ</li>
-              </ul>
-            </div>
-            <div class="case-action">
-              <button class="btn btn-ghost btn-sm" type="button" data-case="api">
-                Abrir ficha
-                <svg class="od-icon icon-stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-              </button>
-            </div>
-          </article>
+          {(projects.cases ?? []).map((item: any, index: number) => (
+            <article class="case">
+              <span class="case-index" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+              <div class="case-body">
+                <p class="case-kicker">{item.kicker}</p>
+                <h3>{item.title}</h3>
+                <p class="case-summary">{item.summary}</p>
+                <ul class="tag-list">
+                  {(item.tags ?? []).map((tag: string) => <li class="tag">{tag}</li>)}
+                </ul>
+              </div>
+              <div class="case-action">
+                <button class="btn btn-ghost btn-sm" type="button" data-case={item.slug}>
+                  Abrir ficha
+                  <svg class="od-icon icon-stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                </button>
+              </div>
+            </article>
+          ))}
         </div>
 
-        <p class="case-note">Fichas baseadas em experiências profissionais reais; descrevem abordagem e decisão, sem números de resultado.</p>
+        <p class="case-note">{projects.note ?? ''}</p>
       </div>
     </section>
 
@@ -363,27 +243,23 @@
       <div class="wrap">
         <div class="section-head">
           <div>
-            <p class="section-label"><span class="num">05</span>Formação</p>
-            <h2 class="section-title">Base acadêmica e prática.</h2>
+            <p class="section-label"><span class="num">{education.number ?? '05'}</span>{education.label ?? 'Formação'}</p>
+            <h2 class="section-title">{education.title ?? ''}</h2>
           </div>
-          <p class="section-lead">Formação em andamento e certificações em Flutter, dados e algoritmos.</p>
+          <p class="section-lead">{education.lead ?? ''}</p>
         </div>
 
         <div class="edu-grid">
           <div class="edu-block">
-            <p class="edu-label">Formação acadêmica</p>
-            <h3 class="edu-school">UNINASSAU</h3>
-            <p class="edu-degree">CST em Análise e Desenvolvimento de Sistemas</p>
-            <p class="edu-period">ago 2025 — ago 2027 · em curso</p>
+            <p class="edu-label">{education.degree?.label ?? 'Formação acadêmica'}</p>
+            <h3 class="edu-school">{education.degree?.institution ?? ''}</h3>
+            <p class="edu-degree">{education.degree?.degree ?? ''}</p>
+            <p class="edu-period">{education.degree?.period ?? ''}</p>
           </div>
           <div class="cert-block">
-            <p class="edu-label">Certificações</p>
+            <p class="edu-label">{education.certificationsLabel ?? 'Certificações'}</p>
             <ul class="cert-list">
-              <li>Pixel Art: criando um avatar</li>
-              <li>Flutter: Widgets, Stateless, Stateful, Imagens e Animações</li>
-              <li>Criando Visualizações de Dados em Flutter</li>
-              <li>Aprenda o que são Estrutura de Dados e Algoritmos</li>
-              <li>Subindo o Seu Projeto Flutter no GitHub</li>
+              {(education.certifications ?? []).map((certification: string) => <li>{certification}</li>)}
             </ul>
           </div>
         </div>
@@ -394,37 +270,21 @@
       <div class="wrap">
         <div class="section-head">
           <div>
-            <p class="section-label"><span class="num">06</span>Processo</p>
-            <h2 class="section-title">Do diagnóstico à operação.</h2>
+            <p class="section-label"><span class="num">{processSection.number ?? '06'}</span>{processSection.label ?? 'Processo'}</p>
+            <h2 class="section-title">{processSection.title ?? ''}</h2>
           </div>
-          <p class="section-lead">Etapas curtas, cada uma com uma saída verificável. O próximo passo nunca depende de memória.</p>
+          <p class="section-lead">{processSection.lead ?? ''}</p>
         </div>
 
         <div class="steps">
-          <div class="step">
-            <span class="step-num" aria-hidden="true">01</span>
-            <h3>Diagnóstico</h3>
-            <p>Mapa do processo atual, incluindo exceções e acordos informais.</p>
-            <p class="step-out">Saída: requisitos priorizados e riscos nomeados.</p>
-          </div>
-          <div class="step">
-            <span class="step-num" aria-hidden="true">02</span>
-            <h3>Modelagem</h3>
-            <p>Estados, entidades e contratos antes de qualquer código.</p>
-            <p class="step-out">Saída: modelo de dados e especificação de fluxos.</p>
-          </div>
-          <div class="step">
-            <span class="step-num" aria-hidden="true">03</span>
-            <h3>Construção</h3>
-            <p>Implementação em etapas pequenas, com testes unitários e E2E no mesmo repositório.</p>
-            <p class="step-out">Saída: sistema funcionando, testado e documentado.</p>
-          </div>
-          <div class="step">
-            <span class="step-num" aria-hidden="true">04</span>
-            <h3>Operação</h3>
-            <p>CI/CD, monitoramento e rotina de reprocessamento.</p>
-            <p class="step-out">Saída: deploy previsível e manual de operação.</p>
-          </div>
+          {(processSection.steps ?? []).map((step: any, index: number) => (
+            <div class="step">
+              <span class="step-num" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+              <h3>{step.title}</h3>
+              <p>{step.description}</p>
+              <p class="step-out">{step.output}</p>
+            </div>
+          ))}
         </div>
       </div>
     </section>
@@ -433,31 +293,31 @@
       <div class="wrap">
         <div class="section-head">
           <div>
-            <p class="section-label"><span class="num">07</span>Contato</p>
-            <h2 class="section-title">Vamos falar do seu sistema.</h2>
+            <p class="section-label"><span class="num">{contact.number ?? '07'}</span>{contact.label ?? 'Contato'}</p>
+            <h2 class="section-title">{contact.title ?? ''}</h2>
           </div>
-          <p class="section-lead">Conte o que existe hoje, o que precisa mudar e quem opera o sistema. Respondo com perguntas antes de propor solução.</p>
+          <p class="section-lead">{contact.lead ?? ''}</p>
         </div>
 
         <div class="contact-grid">
           <div class="contact-info">
             <p class="contact-label">E-mail</p>
-            <a class="contact-email" href="mailto:absongalvao@gmail.com">absongalvao@gmail.com</a>
+            <a class="contact-email" href={`mailto:${profile.email ?? ''}`}>{profile.email ?? ''}</a>
 
             <p class="contact-label">LinkedIn</p>
-            <a class="contact-link" href="https://www.linkedin.com/in/abson-dutra-galv%C3%A3o-86740a250" target="_blank" rel="noopener">abson-dutra-galvão</a>
+            <a class="contact-link" href={profile.linkedin ?? '#'} target="_blank" rel="noopener">{profile.linkedinLabel ?? ''}</a>
 
             <p class="contact-label">Base</p>
-            <p class="contact-text">Aracaju, Sergipe · atendimento remoto</p>
+            <p class="contact-text">{profile.location ?? ''} · atendimento remoto</p>
 
             <p class="contact-label">Currículo</p>
-            <a class="btn btn-ghost btn-download" href="/assets/cv-abson-dutra-galvao.pdf" download="CV-Abson-Dutra-Galvao.pdf">
+            <a class="btn btn-ghost btn-download" href={profile.cvUrl ?? '/assets/cv-abson-dutra-galvao.pdf'} download="CV-Abson-Dutra-Galvao.pdf">
               Baixar currículo em PDF
               <svg class="od-icon icon-stroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v12M7 11l5 5 5-5M5 20h14" /></svg>
             </a>
 
             <p class="contact-label contact-label-spaced">Estado</p>
-            <p class="contact-text"><span class="badge"><span class="dot" aria-hidden="true"></span>Disponível para conversa</span></p>
+            <p class="contact-text"><span class="badge"><span class="dot" aria-hidden="true"></span>{profile.availability ?? 'Disponível para conversa'}</span></p>
           </div>
 
           <div class="form-panel">
@@ -487,10 +347,9 @@
                 <label for="campo-assunto">Tipo de conversa <span class="req" aria-hidden="true">*</span></label>
                 <select id="campo-assunto" name="assunto" required aria-required="true" aria-describedby="erro-assunto">
                   <option value="">Selecione…</option>
-                  <option value="novo">Novo sistema</option>
-                  <option value="melhoria">Melhoria em sistema existente</option>
-                  <option value="integracao">Integração entre sistemas</option>
-                  <option value="consultoria">Consultoria pontual</option>
+                  {(contact.subjects ?? []).map((subject: any) => (
+                    <option value={subject.value}>{subject.label}</option>
+                  ))}
                 </select>
                 <p class="field-error" id="erro-assunto" hidden></p>
               </div>
@@ -501,14 +360,14 @@
                 <p class="field-error" id="erro-mensagem" hidden></p>
               </div>
 
-              <p class="form-note">Seus dados são enviados com segurança e usados apenas para responder ao contato.</p>
+              <p class="form-note">{contact.formNote ?? 'Seus dados são enviados com segurança e usados apenas para responder ao contato.'}</p>
 
               <button class="btn btn-primary btn-block" type="submit">Enviar mensagem</button>
             </form>
 
             <div class="form-status" id="form-status" role="status" hidden>
-              <p class="status-title" id="status-title" tabindex="-1">Mensagem enviada com sucesso.</p>
-              <p class="status-text">Obrigado pelo contato. Responderei pelo e-mail informado em breve.</p>
+              <p class="status-title" id="status-title" tabindex="-1">{contact.successTitle ?? 'Mensagem enviada com sucesso.'}</p>
+              <p class="status-text">{contact.successText ?? 'Obrigado pelo contato. Responderei pelo e-mail informado em breve.'}</p>
               <button class="btn btn-ghost" type="button" id="reset-form">Escrever outra mensagem</button>
             </div>
           </div>
@@ -520,20 +379,16 @@
   <footer class="site-footer">
     <div class="wrap footer-grid">
       <div class="footer-brand">
-        <span class="brand-mark" aria-hidden="true">AD</span>
+        <span class="brand-mark" aria-hidden="true">{profile.brandMark ?? 'AD'}</span>
         <div>
-          <p class="footer-name">Abson Developer</p>
-          <p class="footer-role">Desenvolvedor mobile full-stack</p>
+          <p class="footer-name">{profile.brand ?? 'Abson Developer'}</p>
+          <p class="footer-role">{profile.role ?? ''}</p>
         </div>
       </div>
       <nav class="footer-nav" aria-label="Navegação do rodapé">
-        <a href="#sobre">Sobre</a>
-        <a href="#experiencia">Experiência</a>
-        <a href="#projetos">Projetos</a>
-        <a href="#formacao">Formação</a>
-        <a href="#contato">Contato</a>
+        {footerNavigation.map((item: any) => <a href={item.href}>{item.label}</a>)}
       </nav>
-      <p class="footer-meta">© 2026 · Aracaju, SE</p>
+      <p class="footer-meta">{profile.footerNote ?? ''}</p>
     </div>
   </footer>
 
@@ -564,8 +419,10 @@
         <h3 class="dialog-label">Stack</h3>
         <ul class="tag-list" id="case-stack"></ul>
       </section>
-      <p class="dialog-note" id="case-note">Ficha baseada em experiência profissional real — sem cliente identificado ou métrica de resultado.</p>
+      <p class="dialog-note" id="case-note">{projects.note ?? 'Ficha baseada em experiência profissional real — sem cliente identificado ou métrica de resultado.'}</p>
     </div>
   </dialog>
+
+  <script type="application/json" id="site-cases" set:html={casesJson}></script>
 </body>
 </html>
