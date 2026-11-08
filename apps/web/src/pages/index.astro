@@ -1,0 +1,37 @@
+---
+import ApiStatus from '../components/ApiStatus';
+import '../styles/global.css';
+
+const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'https://api.abson.tech';
+---
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="abson.tech — Astro + React, .NET 10 e PostgreSQL." />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>abson.tech</title>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="card">
+        <p class="eyebrow">abson.tech</p>
+        <h1>Frontend <span>Astro + React</span></h1>
+        <p class="lede">
+          Deploy no Coolify com API em <strong>.NET 10</strong> e banco
+          <strong>PostgreSQL</strong>.
+        </p>
+
+        <ApiStatus client:load />
+
+        <nav class="links">
+          <a href={`${apiUrl}/api/hello`} target="_blank" rel="noreferrer">API /api/hello</a>
+          <a href={`${apiUrl}/health`} target="_blank" rel="noreferrer">API /health</a>
+        </nav>
+      </section>
+
+      <footer>Astro · React · .NET · PostgreSQL · Coolify</footer>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,24 @@
+@Abson.Api_HostAddress = http://localhost:8080
+
+GET {{Abson.Api_HostAddress}}/health
+Accept: application/json
+
+###
+
+GET {{Abson.Api_HostAddress}}/api/hello
+Accept: application/json
+
+###
+
+GET {{Abson.Api_HostAddress}}/api/todos
+Accept: application/json
+
+###
+
+POST {{Abson.Api_HostAddress}}/api/todos
+Content-Type: application/json
+
+{
+  "title": "Primeira tarefa",
+  "isDone": false
+}
