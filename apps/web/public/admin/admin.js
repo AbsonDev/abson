@@ -1,572 +1,1093 @@
 (function () {
   "use strict";
 
-  var API_BASE = (document.body.getAttribute("data-api-base") || "https://api.abson.tech").replace(/\/$/, "");
-  var TOKEN_KEY = "abson_admin_token";
-  var token = sessionStorage.getItem(TOKEN_KEY) || "";
+  const $ = (selector, root) => (root || document).querySelector(selector);
+  const $$ = (selector, root) => Array.from((root || document).querySelectorAll(selector));
+  const clone = (value) => JSON.parse(JSON.stringify(value));
+  const esc = (value) =>
+    String(value == null ? "" : value).replace(/[&<>"']/g, (char) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    }[char]));
+  const plural = (count, one, many) => count + " " + (count === 1 ? one : many);
+  const norm = (value) =>
+    String(value).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
-  var loginView = document.getElementById("login-view");
-  var dashboardView = document.getElementById("dashboard-view");
-  var loginForm = document.getElementById("login-form");
-  var loginError = document.getElementById("login-error");
-  var logoutButton = document.getElementById("logout");
+  const ICONS = {
+    check: '<path d="M20 6L9 17l-5-5"/>',
+    checkCircle: '<circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.2 2.2 4.8-4.8"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    trash: '<path d="M4 7h16"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/><path d="M6 7l1 13h10l1-13"/><path d="M10 11v5M14 11v5"/>',
+    arrowRight: '<path d="M5 12h14"/><path d="M13 6l6 6-6 6"/>',
+    mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
+    archive: '<rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9"/><path d="M10 13h4"/>',
+    rotate: '<path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/>',
+    send: '<path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/>',
+  };
 
-  var editorContainer = document.getElementById("content-editor");
-  var contentStatus = document.getElementById("content-status");
-  var saveButton = document.getElementById("save-content");
-  var reloadButton = document.getElementById("reload-content");
-
-  var statTotal = document.getElementById("stat-total");
-  var statUnread = document.getElementById("stat-unread");
-  var statContent = document.getElementById("stat-content");
-
-  var messagesBody = document.getElementById("messages-body");
-  var messagesStatus = document.getElementById("messages-status");
-  var messageFilter = document.getElementById("message-filter");
-  var refreshMessages = document.getElementById("refresh-messages");
-
-  var changePasswordForm = document.getElementById("change-password-form");
-  var passwordStatus = document.getElementById("password-status");
-
-  var editor = null;
-
-  function field(title) {
-    return { type: "string", title: title };
+  function icon(name, size) {
+    const style = size ? ' style="--od-icon-size:' + size + 'px"' : "";
+    return (
+      '<svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"' +
+      style +
+      ">" +
+      (ICONS[name] || "") +
+      "</svg>"
+    );
   }
 
-  function textarea(title) {
-    return { type: "string", title: title, format: "textarea" };
-  }
+  const API_BASE = (document.body.getAttribute("data-api-base") || "https://api.abson.tech").replace(/\/$/, "");
+  const TOKEN_KEY = "abson_admin_token";
+  const STATUS_KEY = { new: "nova", read: "lida", replied: "respondida", archived: "arquivada" };
+  const STATUS_LABEL = { nova: "Nova", lida: "Lida", respondida: "Respondida", arquivada: "Arquivada" };
+  const TONES = ["purple", "cyan", "neutral", "warn"];
 
-  function object(title, properties) {
-    return { type: "object", title: title, properties: properties };
-  }
+  const sections = [
+    { id: "seo", path: "seo", num: "01", initial: "SE", name: "SEO", hint: "Título, descrição, canonical e imagem de compartilhamento." },
+    { id: "perfil", path: "profile", num: "02", initial: "PE", name: "Perfil", hint: "Nome, marca, headline, apresentação e contato." },
+    { id: "ficha", path: "workCard", num: "03", initial: "FC", name: "Ficha de trabalho", hint: "Título, índice, linhas e rodapé da ficha lateral." },
+    { id: "sobre", path: "about", num: "04", initial: "SO", name: "Sobre", hint: "Texto de apresentação e princípios publicados." },
+    { id: "competencias", path: "skills", num: "05", initial: "CP", name: "Competências", hint: "Grupos de competências e itens exibidos na grade." },
+    { id: "experiencia", path: "experience", num: "06", initial: "EX", name: "Experiência", hint: "Vagas, períodos, locais e atividades." },
+    { id: "projetos", path: "projects", num: "07", initial: "PR", name: "Projetos", hint: "Cases, tags, contexto, decisão e resultado." },
+    { id: "formacao", path: "education", num: "08", initial: "FO", name: "Formação", hint: "Graduação e certificações." },
+    { id: "processo", path: "process", num: "09", initial: "PS", name: "Processo", hint: "Etapas, descrições e saídas." },
+    { id: "contato", path: "contact", num: "10", initial: "CT", name: "Contato", hint: "Textos do formulário, assuntos e mensagens de sucesso." },
+  ];
 
-  function array(title, items) {
-    return { type: "array", title: title, items: items };
-  }
+  const login = $("#login");
+  const app = $("#app");
+  const sidebar = $("#sidebar");
+  const scrim = $("#scrim");
+  const menuButton = $("#menu-btn");
+  const mainArea = $("#main-content");
+  const toasts = $("#toasts");
+  const dialog = $("#confirm-dialog");
+  const editorContainer = $("#content-editor");
 
-  var schema = object("Conteúdo do site", {
-    seo: object("SEO", {
-      title: field("Título da página"),
-      description: textarea("Descrição (meta)"),
-      canonical: field("URL canônica"),
-      ogImage: field("Imagem Open Graph (URL)")
-    }),
-    theme: object("Tema", {
-      default: { type: "string", title: "Tema padrão", enum: ["dark", "light"] }
-    }),
-    profile: object("Perfil", {
-      name: field("Nome"),
-      brand: field("Marca"),
-      brandMark: field("Iniciais"),
-      role: field("Cargo"),
-      headline: object("Título principal", {
-        before: field("Antes do destaque"),
-        emphasis: field("Palavra em destaque"),
-        after: field("Depois do destaque")
-      }),
-      lead: textarea("Texto de apresentação"),
-      location: field("Localização"),
-      availability: field("Disponibilidade"),
-      email: field("E-mail"),
-      linkedin: field("LinkedIn (URL)"),
-      linkedinLabel: field("LinkedIn (texto)"),
-      cvUrl: field("Currículo (URL)"),
-      footerNote: field("Rodapé"),
-      heroMeta: array("Itens do hero", { type: "string" })
-    }),
-    workCard: object("Ficha de trabalho", {
-      title: field("Título"),
-      index: field("Número"),
-      rows: array(
-        "Linhas",
-        object("Linha", {
-          label: field("Rótulo"),
-          value: field("Valor"),
-          note: field("Observação")
-        })
-      ),
-      badge: field("Badge"),
-      caption: field("Legenda")
-    }),
-    about: object("Sobre", {
-      number: field("Número"),
-      label: field("Rótulo"),
-      title: field("Título"),
-      lead: textarea("Lead"),
-      paragraphs: array("Parágrafos", textarea("Parágrafo")),
-      principles: array(
-        "Princípios",
-        object("Princípio", {
-          title: field("Título"),
-          description: textarea("Descrição")
-        })
-      )
-    }),
-    skills: object("Competências", {
-      number: field("Número"),
-      label: field("Rótulo"),
-      title: field("Título"),
-      lead: textarea("Lead"),
-      groups: array(
-        "Grupos",
-        object("Grupo", {
-          title: field("Título"),
-          items: array("Itens", { type: "string" })
-        })
-      )
-    }),
-    experience: object("Experiência", {
-      number: field("Número"),
-      label: field("Rótulo"),
-      title: field("Título"),
-      lead: textarea("Lead"),
-      jobs: array(
-        "Vagas",
-        object("Vaga", {
-          company: field("Empresa"),
-          role: field("Cargo"),
-          location: field("Local"),
-          period: field("Período"),
-          duration: field("Duração"),
-          bullets: array("Atividades", textarea("Atividade"))
-        })
-      )
-    }),
-    projects: object("Projetos", {
-      number: field("Número"),
-      label: field("Rótulo"),
-      title: field("Título"),
-      lead: textarea("Lead"),
-      note: textarea("Nota"),
-      cases: array(
-        "Cases",
-        object("Case", {
-          slug: field("Slug"),
-          kicker: field("Categoria"),
-          title: field("Título"),
-          summary: textarea("Resumo"),
-          tags: array("Tags visíveis", { type: "string" }),
-          context: textarea("Contexto"),
-          decision: textarea("Decisão"),
-          result: textarea("Resultado"),
-          stack: array("Stack", { type: "string" }),
-          note: textarea("Nota da ficha")
-        })
-      )
-    }),
-    education: object("Formação", {
-      number: field("Número"),
-      label: field("Rótulo"),
-      title: field("Título"),
-      lead: textarea("Lead"),
-      degree: object("Grau", {
-        label: field("Rótulo"),
-        institution: field("Instituição"),
-        degree: field("Curso"),
-        period: field("Período")
-      }),
-      certificationsLabel: field("Rótulo das certificações"),
-      certifications: array("Certificações", { type: "string" })
-    }),
-    process: object("Processo", {
-      number: field("Número"),
-      label: field("Rótulo"),
-      title: field("Título"),
-      lead: textarea("Lead"),
-      steps: array(
-        "Etapas",
-        object("Etapa", {
-          title: field("Título"),
-          description: textarea("Descrição"),
-          output: textarea("Saída")
-        })
-      )
-    }),
-    contact: object("Contato", {
-      number: field("Número"),
-      label: field("Rótulo"),
-      title: field("Título"),
-      lead: textarea("Lead"),
-      formNote: textarea("Nota do formulário"),
-      subjects: array(
-        "Tipos de conversa",
-        object("Tipo", {
-          value: field("Valor"),
-          label: field("Rótulo")
-        })
-      ),
-      successTitle: field("Título de sucesso"),
-      successText: textarea("Texto de sucesso")
-    }),
-    navigation: array(
-      "Navegação do topo",
-      object("Link", {
-        label: field("Rótulo"),
-        href: field("URL")
-      })
-    ),
-    footerNavigation: array(
-      "Navegação do rodapé",
-      object("Link", {
-        label: field("Rótulo"),
-        href: field("URL")
-      })
-    )
-  });
+  let token = sessionStorage.getItem(TOKEN_KEY) || "";
+  let editor = null;
+  let pendingConfirm = null;
+  let currentUser = null;
+
+  const state = {
+    view: "overview",
+    activeSection: "seo",
+    content: null,
+    savedContent: null,
+    contentUpdatedAt: null,
+    messages: [],
+    selectedMessageId: null,
+    filter: "todas",
+    query: "",
+    stats: { messages: { total: 0, unread: 0 }, contentUpdatedAt: null },
+  };
 
   function headers(extra) {
-    var result = { Accept: "application/json" };
+    const result = { Accept: "application/json" };
     if (token) result.Authorization = "Bearer " + token;
-    if (extra) {
-      Object.keys(extra).forEach(function (key) {
-        result[key] = extra[key];
-      });
-    }
+    if (extra) Object.assign(result, extra);
     return result;
   }
 
   async function api(path, options) {
     options = options || {};
-    var response = await fetch(API_BASE + path, {
+    const response = await fetch(API_BASE + path, {
       method: options.method || "GET",
       headers: headers(options.body ? { "Content-Type": "application/json" } : undefined),
-      body: options.body
+      body: options.body,
     });
     if (response.status === 401) {
-      showLogin("Sessão expirada. Entre novamente.");
+      signOut("Sua sessão expirou. Entre novamente.");
       throw new Error("unauthorized");
     }
     return response;
   }
 
-  function showLogin(message) {
-    token = "";
-    sessionStorage.removeItem(TOKEN_KEY);
-    loginView.hidden = false;
-    dashboardView.hidden = true;
-    if (message) {
-      loginError.textContent = message;
-      loginError.hidden = false;
+  function setLoginLoading(loading) {
+    const button = $("#login-button");
+    const label = $("#login-button-label");
+    const spinner = $("#login-spinner");
+    if (button) button.disabled = loading;
+    if (label) label.textContent = loading ? "Entrando…" : "Entrar";
+    if (spinner) spinner.hidden = !loading;
+  }
+
+  function showError(id, message) {
+    const error = document.getElementById(id + "-error");
+    const input = document.getElementById(id);
+    if (error) {
+      error.textContent = message;
+      error.hidden = false;
     }
+    if (input) input.setAttribute("aria-invalid", "true");
   }
 
-  function showDashboard() {
-    loginError.hidden = true;
-    loginView.hidden = true;
-    dashboardView.hidden = false;
-    loadStats();
-    loadContent();
-    loadMessages();
+  function clearError(id) {
+    const error = document.getElementById(id + "-error");
+    const input = document.getElementById(id);
+    if (error) {
+      error.textContent = "";
+      error.hidden = true;
+    }
+    if (input) input.removeAttribute("aria-invalid");
   }
 
-  loginForm.addEventListener("submit", async function (event) {
+  function toast(message, variant) {
+    const node = document.createElement("div");
+    node.className = "toast" + (variant === "success" ? " is-success" : "");
+    node.innerHTML =
+      icon(variant === "success" ? "checkCircle" : "check", 16) + "<span>" + esc(message) + "</span>";
+    toasts.append(node);
+    requestAnimationFrame(() => requestAnimationFrame(() => node.classList.add("is-in")));
+    setTimeout(() => {
+      node.classList.remove("is-in");
+      setTimeout(() => node.remove(), 280);
+    }, 3400);
+  }
+
+  function openConfirm(config) {
+    $("#dlg-title").textContent = config.title;
+    $("#dlg-text").textContent = config.text;
+    const confirm = $("#dlg-confirm");
+    confirm.textContent = config.confirmLabel || "Confirmar";
+    confirm.className = "btn " + (config.danger === false ? "btn-primary" : "btn-danger");
+    pendingConfirm = config.onConfirm;
+    dialog.showModal();
+    $("#dlg-cancel").focus();
+  }
+
+  function initials(name) {
+    const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return "?";
+    return ((parts[0][0] || "") + (parts[parts.length - 1][0] || "")).toUpperCase();
+  }
+
+  function toneFor(id) {
+    const number = Math.abs(Number(id) || 0);
+    return TONES[number % TONES.length];
+  }
+
+  function formatShortDate(value) {
+    if (!value) return "";
+    return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" })
+      .format(new Date(value))
+      .replace(".", "");
+  }
+
+  function formatDateTime(value) {
+    if (!value) return "—";
+    return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
+  }
+
+  function relativeTime(value) {
+    if (!value) return "sem informação";
+    const diff = Date.now() - new Date(value).getTime();
+    const minutes = Math.floor(diff / 60000);
+    if (minutes < 1) return "agora";
+    if (minutes < 60) return "há " + minutes + " min";
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return "há " + hours + " h";
+    const days = Math.floor(hours / 24);
+    if (days < 30) return "há " + days + (days === 1 ? " dia" : " dias");
+    return formatShortDate(value);
+  }
+
+  function completionOf(value) {
+    if (value == null) return 0;
+    if (typeof value === "string") return value.trim() ? 100 : 0;
+    if (typeof value === "number" || typeof value === "boolean") return 100;
+    if (Array.isArray(value)) {
+      if (!value.length) return 0;
+      return Math.round(value.reduce((total, item) => total + completionOf(item), 0) / value.length);
+    }
+    if (typeof value === "object") {
+      const keys = Object.keys(value);
+      if (!keys.length) return 0;
+      return Math.round(keys.reduce((total, key) => total + completionOf(value[key]), 0) / keys.length);
+    }
+    return 0;
+  }
+
+  function averageCompletion(content) {
+    if (!content) return 0;
+    const values = sections.map((section) => completionOf(content[section.path]));
+    return Math.round(values.reduce((total, value) => total + value, 0) / values.length);
+  }
+
+  function updateTodayLabel() {
+    const formatted = new Intl.DateTimeFormat("pt-BR", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }).format(new Date());
+    const label = $("#today-label");
+    if (label) label.textContent = formatted.charAt(0).toUpperCase() + formatted.slice(1);
+  }
+
+  async function handleLogin(event) {
     event.preventDefault();
-    loginError.hidden = true;
-    var email = document.getElementById("login-email").value.trim();
-    var password = document.getElementById("login-password").value;
+    clearError("login-email");
+    clearError("login-password");
+    const email = $("#login-email").value.trim();
+    const password = $("#login-password").value;
 
-    var response = await fetch(API_BASE + "/api/admin/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({ email: email, password: password })
-    });
-
-    if (!response.ok) {
-      loginError.textContent =
-        response.status === 429
-          ? "Muitas tentativas. Aguarde um minuto e tente novamente."
-          : "E-mail ou senha inválidos.";
-      loginError.hidden = false;
+    if (!email) {
+      showError("login-email", "Informe seu e-mail para continuar.");
+      return;
+    }
+    if (!password) {
+      showError("login-password", "Informe sua senha para continuar.");
       return;
     }
 
-    var data = await response.json();
-    token = data.token;
-    sessionStorage.setItem(TOKEN_KEY, token);
-    loginForm.reset();
-    showDashboard();
-  });
-
-  logoutButton.addEventListener("click", function () {
-    showLogin("");
-    loginError.hidden = true;
-  });
-
-  var tabButtons = Array.prototype.slice.call(document.querySelectorAll("[data-tab]"));
-  var tabPanels = Array.prototype.slice.call(document.querySelectorAll("[data-tab-panel]"));
-
-  function selectTab(name) {
-    tabButtons.forEach(function (button) {
-      button.classList.toggle("active", button.getAttribute("data-tab") === name);
-    });
-    tabPanels.forEach(function (panel) {
-      panel.hidden = panel.getAttribute("data-tab-panel") !== name;
-    });
-    if (name === "messages") loadMessages();
-    if (name === "content") loadStats();
+    setLoginLoading(true);
+    try {
+      const response = await fetch(API_BASE + "/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ email: email, password: password }),
+      });
+      if (!response.ok) {
+        showError(
+          "login-password",
+          response.status === 429
+            ? "Muitas tentativas. Aguarde um minuto e tente novamente."
+            : "E-mail ou senha inválidos.",
+        );
+        return;
+      }
+      const data = await response.json();
+      token = data.token;
+      sessionStorage.setItem(TOKEN_KEY, token);
+      currentUser = data.user;
+      $("#login-form").reset();
+      await enterApp();
+    } catch (error) {
+      showError("login-password", "Não foi possível conectar ao servidor. Tente novamente.");
+    } finally {
+      setLoginLoading(false);
+    }
   }
 
-  tabButtons.forEach(function (button) {
-    button.addEventListener("click", function () {
-      selectTab(button.getAttribute("data-tab"));
+  async function enterApp() {
+    login.hidden = true;
+    app.hidden = false;
+    document.body.classList.add("is-authed");
+    go("overview");
+    loadStats();
+    loadMessages();
+    loadContent();
+    $("#session-detail").textContent = currentUser?.lastLoginAt
+      ? "Última entrada em " + formatDateTime(currentUser.lastLoginAt)
+      : "Sessão iniciada agora";
+  }
+
+  function signOut(message) {
+    token = "";
+    sessionStorage.removeItem(TOKEN_KEY);
+    currentUser = null;
+    editor = null;
+    state.content = null;
+    state.savedContent = null;
+    state.messages = [];
+    state.selectedMessageId = null;
+    state.stats = { messages: { total: 0, unread: 0 }, contentUpdatedAt: null };
+    app.hidden = true;
+    login.hidden = false;
+    document.body.classList.remove("is-authed");
+    closeSidebar();
+    if (editorContainer) editorContainer.innerHTML = '<p class="editor-loading">Carregando conteúdo…</p>';
+    $("#login-form").reset();
+    $("#msg-list").innerHTML = "";
+    $("#msg-detail").innerHTML = "";
+    $("#recent-list").innerHTML = "";
+    $("#health-list").innerHTML = "";
+    $("#sec-nav").innerHTML = "";
+    if (message) showError("login-password", message);
+  }
+
+  function go(view) {
+    state.view = view;
+    $$(".view").forEach((node) => {
+      node.hidden = node.id !== "view-" + view;
     });
-  });
+    $$(".nav-item").forEach((button) => {
+      const active = button.dataset.view === view;
+      button.classList.toggle("is-active", active);
+      if (active) button.setAttribute("aria-current", "page");
+      else button.removeAttribute("aria-current");
+    });
+    closeSidebar();
+    mainArea.scrollTop = 0;
+    if (view === "overview") loadStats();
+    if (view === "messages") loadMessages();
+    if (view === "content" && !state.content) loadContent();
+    const heading = $("#view-" + view + " h1");
+    if (heading) heading.focus({ preventScroll: true });
+  }
+
+  function openSidebar() {
+    if (!window.matchMedia("(max-width: 900px)").matches) return;
+    sidebar.classList.add("is-open");
+    scrim.hidden = false;
+    menuButton.setAttribute("aria-expanded", "true");
+    document.body.style.overflow = "hidden";
+    setTimeout(() => $("#side-close").focus(), 60);
+  }
+
+  function closeSidebar() {
+    sidebar.classList.remove("is-open");
+    scrim.hidden = true;
+    menuButton.setAttribute("aria-expanded", "false");
+    document.body.style.overflow = "";
+  }
 
   async function loadStats() {
     try {
-      var response = await api("/api/admin/stats");
+      const response = await api("/api/admin/stats");
       if (!response.ok) return;
-      var data = await response.json();
-      statTotal.textContent = data.messages ? data.messages.total : "—";
-      statUnread.textContent = data.messages ? data.messages.unread : "—";
-      statContent.textContent = data.contentUpdatedAt
-        ? new Date(data.contentUpdatedAt).toLocaleString("pt-BR")
-        : "—";
+      state.stats = await response.json();
+      refreshOverview();
     } catch (error) {
       /* sessão expirada já tratada */
     }
   }
 
-  async function loadContent() {
-    contentStatus.textContent = "Carregando conteúdo...";
-    try {
-      var response = await api("/api/admin/content");
-      if (!response.ok) {
-        contentStatus.textContent = "Não foi possível carregar o conteúdo.";
-        return;
-      }
-      var data = await response.json();
+  function refreshOverview() {
+    const unread = state.stats.messages?.unread ?? 0;
+    $("#stat-total").textContent = state.stats.messages?.total ?? 0;
+    $("#stat-unread").textContent = unread;
+    $("#stat-completeness").innerHTML = averageCompletion(state.content) + "<small>%</small>";
+    $("#stat-updated-foot").textContent =
+      "revisão " + relativeTime(state.stats.contentUpdatedAt || state.contentUpdatedAt);
+    const badge = $("#nav-unread");
+    if (unread > 0) {
+      badge.hidden = false;
+      badge.textContent = unread;
+      badge.setAttribute("aria-label", plural(unread, "não lida", "não lidas"));
+    } else {
+      badge.hidden = true;
+    }
+    $("#quick-unread").textContent =
+      unread === 0 ? "nenhuma não lida" : plural(unread, "não lida", "não lidas");
 
-      if (!window.JSONEditor) {
-        contentStatus.textContent = "Editor de conteúdo não carregou. Recarregue a página.";
-        return;
-      }
+    const recent = state.messages.slice(0, 4);
+    $("#recent-list").innerHTML = recent.length
+      ? recent.map(recentRowHTML).join("")
+      : '<p class="recent-empty">Nenhuma mensagem na caixa de entrada.</p>';
 
-      if (!editor) {
-        editor = new window.JSONEditor(editorContainer, {
-          schema: schema,
-          theme: "html",
-          disable_collapse: false,
-          disable_edit_json: true,
-          disable_properties: true,
-          disable_array_reorder: false,
-          required_by_default: false,
-          show_errors: "always"
-        });
-        await editor.promise;
-      }
+    renderHealth();
+    if (state.content) renderSectionNav();
+  }
 
-      editor.setValue(data.content);
-      contentStatus.textContent =
-        "Última atualização: " +
-        (data.updatedAt ? new Date(data.updatedAt).toLocaleString("pt-BR") : "—");
-    } catch (error) {
-      contentStatus.textContent = "Falha ao carregar o conteúdo.";
+  function recentRowHTML(message) {
+    const key = STATUS_KEY[message.status] || "nova";
+    return (
+      '<button type="button" class="recent-row" data-open-message="' +
+      message.id +
+      '">' +
+      '<span class="avatar tone-' +
+      toneFor(message.id) +
+      '" aria-hidden="true">' +
+      esc(initials(message.name)) +
+      "</span>" +
+      '<span class="recent-main"><span class="recent-name"><span>' +
+      esc(message.name) +
+      '</span><span class="date">' +
+      esc(formatShortDate(message.createdAt)) +
+      '</span></span><span class="recent-subject">' +
+      esc(message.subject) +
+      "</span></span>" +
+      '<span class="pill status-' +
+      key +
+      '">' +
+      STATUS_LABEL[key] +
+      "</span>" +
+      "</button>"
+    );
+  }
+
+  function renderHealth() {
+    const ids = ["seo", "perfil", "experiencia", "projetos"];
+    $("#health-list").innerHTML = ids
+      .map((id) => {
+        const section = sections.find((item) => item.id === id);
+        const percent = state.content ? completionOf(state.content[section.path]) : 0;
+        return (
+          "<li>" +
+          '<div class="health-top"><span class="health-name">' +
+          esc(section.name) +
+          '</span><span class="health-pct">' +
+          percent +
+          "%</span></div>" +
+          '<div class="bar" role="progressbar" aria-label="' +
+          esc(section.name) +
+          '" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' +
+          percent +
+          '"><i style="width:' +
+          percent +
+          '%"></i></div>' +
+          '<p class="health-update">Atualizado ' +
+          esc(relativeTime(state.stats.contentUpdatedAt || state.contentUpdatedAt)) +
+          "</p></li>"
+        );
+      })
+      .join("");
+  }
+
+  function renderSectionNav() {
+    if (!state.content) return;
+    $("#sec-nav").innerHTML = sections
+      .map((section) => {
+        const percent = completionOf(state.content[section.path]);
+        const dotClass = percent >= 100 ? "done" : percent >= 60 ? "part" : "low";
+        const active = section.id === state.activeSection;
+        return (
+          '<button type="button" class="sec-link' +
+          (active ? " is-active" : "") +
+          '" data-section="' +
+          section.id +
+          '"' +
+          (active ? ' aria-current="true"' : "") +
+          ">" +
+          '<span class="sec-initial" aria-hidden="true">' +
+          section.initial +
+          "</span>" +
+          '<span class="sec-name">' +
+          esc(section.name) +
+          "</span>" +
+          '<span class="sec-pct">' +
+          percent +
+          "%</span>" +
+          '<span class="dot ' +
+          dotClass +
+          '" aria-hidden="true"></span>' +
+          "</button>"
+        );
+      })
+      .join("");
+  }
+
+  function selectSection(id, scroll) {
+    const section = sections.find((item) => item.id === id) || sections[0];
+    state.activeSection = section.id;
+    renderSectionNav();
+    $("#editor-num").textContent = "Seção " + section.num;
+    $("#editor-title").textContent = section.name;
+    $("#editor-hint").textContent = section.hint;
+    const percent = state.content ? completionOf(state.content[section.path]) : 0;
+    $("#editor-pct").textContent = percent + "% completo";
+    $("#editor-dot").className = "dot " + (percent >= 100 ? "done" : percent >= 60 ? "part" : "low");
+    if (scroll !== false && editor) {
+      const target = editor.getEditor("root." + section.path);
+      if (target && target.container) target.container.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }
 
-  saveButton.addEventListener("click", async function () {
-    if (!editor) return;
-    saveButton.disabled = true;
-    contentStatus.textContent = "Salvando...";
+  async function loadContent() {
+    if (!editorContainer) return;
+    if (!state.content) editorContainer.innerHTML = '<p class="editor-loading">Carregando conteúdo…</p>';
     try {
-      var response = await api("/api/admin/content", {
-        method: "PUT",
-        body: JSON.stringify({ content: editor.getValue() })
-      });
+      const response = await api("/api/admin/content");
       if (!response.ok) {
-        var error = await response.json().catch(function () { return {}; });
-        contentStatus.textContent = "Erro: " + (error.error || response.status);
+        editorContainer.innerHTML = '<p class="editor-loading">Não foi possível carregar o conteúdo.</p>';
         return;
       }
-      var data = await response.json();
-      contentStatus.textContent =
-        "Salvo com sucesso em " + new Date(data.updatedAt).toLocaleString("pt-BR");
-      loadStats();
+      const data = await response.json();
+      state.content = data.content;
+      state.savedContent = clone(data.content);
+      state.contentUpdatedAt = data.updatedAt;
+      $("#editor-updated").textContent = formatDateTime(data.updatedAt);
+      await initEditor();
+      renderSectionNav();
+      selectSection(state.activeSection, false);
+      refreshOverview();
+      updateDirtyState();
     } catch (error) {
-      contentStatus.textContent = "Falha ao salvar. Tente novamente.";
-    } finally {
-      saveButton.disabled = false;
+      editorContainer.innerHTML = '<p class="editor-loading">Falha ao carregar o conteúdo.</p>';
     }
-  });
+  }
 
-  reloadButton.addEventListener("click", loadContent);
+  async function initEditor() {
+    if (!window.JSONEditor || !window.ABSON_ADMIN_SCHEMA) {
+      editorContainer.innerHTML = '<p class="editor-loading">Editor de conteúdo não carregou. Recarregue a página.</p>';
+      return;
+    }
+    if (!editor) {
+      editorContainer.innerHTML = "";
+      editor = new window.JSONEditor(editorContainer, {
+        schema: window.ABSON_ADMIN_SCHEMA,
+        theme: "html",
+        disable_collapse: false,
+        disable_edit_json: true,
+        disable_properties: true,
+        disable_array_reorder: false,
+        required_by_default: false,
+        show_errors: "always",
+      });
+      await editor.promise;
+      editor.on("change", updateDirtyState);
+    }
+    editor.setValue(state.content);
+    state.savedContent = clone(editor.getValue());
+    updateDirtyState();
+  }
 
-  var STATUS_LABELS = {
-    new: "Nova",
-    read: "Lida",
-    replied: "Respondida",
-    archived: "Arquivada"
-  };
+  function updateDirtyState() {
+    if (!editor || !state.savedContent) return;
+    const dirty = JSON.stringify(editor.getValue()) !== JSON.stringify(state.savedContent);
+    $("#dirty-flag").hidden = !dirty;
+    $("#save-btn").disabled = !dirty;
+  }
 
-  async function updateMessage(id, status) {
-    var response = await api("/api/admin/messages/" + id, {
+  async function saveContent() {
+    if (!editor) return;
+    const value = editor.getValue();
+    $("#save-btn").disabled = true;
+    try {
+      const response = await api("/api/admin/content", {
+        method: "PUT",
+        body: JSON.stringify({ content: value }),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        toast(error.error || "Não foi possível salvar o conteúdo.");
+        return;
+      }
+      const data = await response.json();
+      state.content = value;
+      state.savedContent = clone(value);
+      state.contentUpdatedAt = data.updatedAt;
+      $("#editor-updated").textContent = formatDateTime(data.updatedAt);
+      updateDirtyState();
+      renderSectionNav();
+      selectSection(state.activeSection, false);
+      loadStats();
+      toast("Conteúdo salvo com sucesso.", "success");
+    } catch (error) {
+      toast("Falha ao salvar. Tente novamente.");
+    } finally {
+      updateDirtyState();
+    }
+  }
+
+  function reloadContent() {
+    if (!editor || !state.savedContent) return;
+    editor.setValue(state.savedContent);
+    updateDirtyState();
+    toast("Conteúdo recarregado do servidor.");
+  }
+
+  async function loadMessages() {
+    try {
+      const response = await api("/api/admin/messages?page=1&pageSize=100");
+      if (!response.ok) return;
+      const data = await response.json();
+      state.messages = data.items;
+      if (!state.messages.some((message) => message.id === state.selectedMessageId)) {
+        state.selectedMessageId = state.messages[0]?.id ?? null;
+      }
+      renderMessages();
+      refreshOverview();
+    } catch (error) {
+      /* sessão expirada já tratada */
+    }
+  }
+
+  function filteredMessages() {
+    const query = norm(state.query.trim());
+    return state.messages.filter((message) => {
+      const key = STATUS_KEY[message.status] || "nova";
+      if (state.filter !== "todas" && key !== state.filter) return false;
+      if (!query) return true;
+      return norm([message.name, message.email, message.subject, message.message].join(" ")).includes(query);
+    });
+  }
+
+  function updateFilterCounts() {
+    const counts = { todas: state.messages.length, nova: 0, lida: 0, respondida: 0, arquivada: 0 };
+    state.messages.forEach((message) => {
+      const key = STATUS_KEY[message.status] || "nova";
+      counts[key] += 1;
+    });
+    $$("#filter-row [data-count]").forEach((node) => {
+      node.textContent = counts[node.dataset.count] || 0;
+    });
+  }
+
+  function messageRowHTML(message) {
+    const key = STATUS_KEY[message.status] || "nova";
+    const active = message.id === state.selectedMessageId;
+    const preview = String(message.message || "").replace(/\s+/g, " ").slice(0, 110);
+    return (
+      '<button type="button" class="msg-row' +
+      (active ? " is-active" : "") +
+      (message.status === "new" ? " is-unread" : "") +
+      '" data-message="' +
+      message.id +
+      '"' +
+      (active ? ' aria-current="true"' : "") +
+      ">" +
+      '<span class="avatar tone-' +
+      toneFor(message.id) +
+      '" aria-hidden="true">' +
+      esc(initials(message.name)) +
+      "</span>" +
+      '<span class="msg-main"><span class="msg-top"><span class="msg-name">' +
+      esc(message.name) +
+      '</span><span class="msg-date">' +
+      esc(formatShortDate(message.createdAt)) +
+      '</span></span><span class="msg-subject">' +
+      esc(message.subject) +
+      '</span><span class="msg-preview">' +
+      esc(preview) +
+      "</span></span>" +
+      '<span class="pill status-' +
+      key +
+      '">' +
+      STATUS_LABEL[key] +
+      "</span></button>"
+    );
+  }
+
+  function renderMessages() {
+    const list = filteredMessages();
+    const unread = state.stats.messages?.unread ?? state.messages.filter((m) => m.status === "new").length;
+    $("#messages-meta").textContent =
+      plural(state.messages.length, "mensagem", "mensagens") + " · " + plural(unread, "não lida", "não lidas");
+    $$("#filter-row .chip").forEach((chip) => {
+      chip.classList.toggle("is-active", chip.dataset.filter === state.filter);
+    });
+    updateFilterCounts();
+
+    const listNode = $("#msg-list");
+    const emptyNode = $("#msg-empty");
+    if (!list.length) {
+      listNode.innerHTML = "";
+      listNode.hidden = true;
+      emptyNode.hidden = false;
+      state.selectedMessageId = null;
+      renderDetail(null);
+      return;
+    }
+    listNode.hidden = false;
+    emptyNode.hidden = true;
+    if (!list.some((message) => message.id === state.selectedMessageId)) {
+      state.selectedMessageId = list[0].id;
+    }
+    listNode.innerHTML = list.map(messageRowHTML).join("");
+    renderDetail(state.messages.find((message) => message.id === state.selectedMessageId) || null);
+  }
+
+  function detailHTML(message) {
+    if (!message) {
+      return '<div class="detail-empty">' + icon("mail", 28) + "<p>Selecione uma mensagem para ler.</p></div>";
+    }
+    const key = STATUS_KEY[message.status] || "nova";
+    const readLabel = message.status === "new" ? "Marcar como lida" : "Marcar como nova";
+    const readIcon = message.status === "new" ? "checkCircle" : "mail";
+    const archived = message.status === "archived";
+    const answered = message.status === "replied";
+    const paragraphs = String(message.message || "")
+      .split(/\n+/)
+      .filter((paragraph) => paragraph.trim())
+      .map((paragraph) => "<p>" + esc(paragraph).replace(/\n/g, "<br>") + "</p>")
+      .join("");
+    const replySubject = encodeURIComponent("Re: " + message.subject);
+
+    return (
+      '<div class="detail-top"><div class="detail-from">' +
+      '<span class="avatar tone-' +
+      toneFor(message.id) +
+      '" aria-hidden="true">' +
+      esc(initials(message.name)) +
+      "</span>" +
+      '<div><p class="detail-name">' +
+      esc(message.name) +
+      '</p><p class="detail-email mono">' +
+      esc(message.email) +
+      "</p></div></div>" +
+      '<span class="pill status-' +
+      key +
+      '">' +
+      STATUS_LABEL[key] +
+      "</span></div>" +
+      '<h2 class="detail-subject" tabindex="-1">' +
+      esc(message.subject) +
+      "</h2>" +
+      '<div class="detail-body">' +
+      paragraphs +
+      "</div>" +
+      '<dl class="detail-meta"><div><dt>Origem</dt><dd>Formulário do site</dd></div><div><dt>Assunto</dt><dd>' +
+      esc(message.subject) +
+      "</dd></div><div><dt>Recebida</dt><dd>" +
+      esc(formatDateTime(message.createdAt)) +
+      "</dd></div></dl>" +
+      '<div class="detail-actions">' +
+      '<button class="btn btn-ghost" type="button" data-action="toggle-read">' +
+      icon(readIcon, 15) +
+      " " +
+      readLabel +
+      "</button>" +
+      '<button class="btn btn-ghost" type="button" data-action="answered"' +
+      (answered ? " disabled" : "") +
+      ">" +
+      icon("checkCircle", 15) +
+      " Marcar respondida</button>" +
+      '<button class="btn btn-ghost" type="button" data-action="archive">' +
+      icon("archive", 15) +
+      " " +
+      (archived ? "Desarquivar" : "Arquivar") +
+      "</button>" +
+      '<button class="btn btn-ghost danger" type="button" data-action="delete">' +
+      icon("trash", 15) +
+      " Excluir</button></div>" +
+      '<div class="reply"><label>Responder por e-mail</label>' +
+      '<p class="help">Abrir seu cliente de e-mail para responder a ' +
+      esc(message.name) +
+      ".</p>" +
+      '<div class="reply-foot"><a class="btn btn-primary" href="mailto:' +
+      esc(message.email) +
+      "?subject=" +
+      replySubject +
+      '">' +
+      icon("send", 15) +
+      " Abrir e-mail</a></div></div>"
+    );
+  }
+
+  function renderDetail(message) {
+    $("#msg-detail").innerHTML = detailHTML(message);
+  }
+
+  function selectMessage(id) {
+    state.selectedMessageId = Number(id);
+    renderMessages();
+    if (window.matchMedia("(max-width: 900px)").matches) {
+      $("#inbox").classList.add("is-detail");
+      const heading = $(".detail-subject");
+      if (heading) {
+        heading.setAttribute("tabindex", "-1");
+        heading.focus({ preventScroll: true });
+      }
+    }
+  }
+
+  async function setMessageStatus(id, status, successMessage) {
+    const response = await api("/api/admin/messages/" + id, {
       method: "PATCH",
-      body: JSON.stringify({ status: status })
+      body: JSON.stringify({ status: status }),
     });
     if (response.ok) {
-      loadMessages();
-      loadStats();
+      await loadMessages();
+      await loadStats();
+      toast(successMessage, "success");
     }
   }
 
   async function deleteMessage(id) {
-    if (!window.confirm("Excluir esta mensagem? Esta ação não pode ser desfeita.")) return;
-    var response = await api("/api/admin/messages/" + id, { method: "DELETE" });
+    const response = await api("/api/admin/messages/" + id, { method: "DELETE" });
     if (response.ok) {
-      loadMessages();
-      loadStats();
+      state.selectedMessageId = null;
+      await loadMessages();
+      await loadStats();
+      toast("Mensagem excluída.", "success");
     }
   }
 
-  async function loadMessages() {
-    messagesStatus.textContent = "Carregando mensagens...";
-    try {
-      var status = messageFilter.value;
-      var response = await api(
-        "/api/admin/messages?page=1&pageSize=50" +
-          (status ? "&status=" + encodeURIComponent(status) : "")
-      );
-      if (!response.ok) {
-        messagesStatus.textContent = "Não foi possível carregar as mensagens.";
-        return;
-      }
-      var data = await response.json();
-      messagesStatus.textContent = data.total + " mensagem(ns)";
-      messagesBody.textContent = "";
+  const passwordForm = $("#pw-form");
+  const passwordCurrent = $("#pw-current");
+  const passwordNew = $("#pw-new");
+  const passwordConfirm = $("#pw-confirm");
+  const touched = { current: false, next: false, confirm: false };
 
-      if (!data.items.length) {
-        var emptyRow = document.createElement("tr");
-        var emptyCell = document.createElement("td");
-        emptyCell.colSpan = 6;
-        emptyCell.className = "empty";
-        emptyCell.textContent = "Nenhuma mensagem.";
-        emptyRow.appendChild(emptyCell);
-        messagesBody.appendChild(emptyRow);
-        return;
-      }
-
-      data.items.forEach(function (message) {
-        var row = document.createElement("tr");
-
-        var statusCell = document.createElement("td");
-        var badge = document.createElement("span");
-        badge.className = "badge " + message.status;
-        badge.textContent = STATUS_LABELS[message.status] || message.status;
-        statusCell.appendChild(badge);
-        row.appendChild(statusCell);
-
-        var contactCell = document.createElement("td");
-        var name = document.createElement("strong");
-        name.textContent = message.name;
-        var email = document.createElement("div");
-        email.className = "muted";
-        email.textContent = message.email;
-        contactCell.appendChild(name);
-        contactCell.appendChild(email);
-        row.appendChild(contactCell);
-
-        var subjectCell = document.createElement("td");
-        subjectCell.textContent = message.subject;
-        row.appendChild(subjectCell);
-
-        var messageCell = document.createElement("td");
-        var details = document.createElement("details");
-        var summary = document.createElement("summary");
-        summary.textContent = "Ver mensagem";
-        var body = document.createElement("p");
-        body.textContent = message.message;
-        details.appendChild(summary);
-        details.appendChild(body);
-        messageCell.appendChild(details);
-        row.appendChild(messageCell);
-
-        var dateCell = document.createElement("td");
-        dateCell.textContent = new Date(message.createdAt).toLocaleString("pt-BR");
-        row.appendChild(dateCell);
-
-        var actionsCell = document.createElement("td");
-        var actions = document.createElement("div");
-        actions.className = "row-actions";
-
-        function addAction(label, nextStatus) {
-          var button = document.createElement("button");
-          button.type = "button";
-          button.className = "btn ghost";
-          button.textContent = label;
-          button.addEventListener("click", function () {
-            updateMessage(message.id, nextStatus);
-          });
-          actions.appendChild(button);
-        }
-
-        if (message.status !== "read") addAction("Marcar lida", "read");
-        if (message.status !== "replied") addAction("Respondida", "replied");
-        if (message.status !== "archived") addAction("Arquivar", "archived");
-
-        var deleteButton = document.createElement("button");
-        deleteButton.type = "button";
-        deleteButton.className = "btn ghost";
-        deleteButton.textContent = "Excluir";
-        deleteButton.addEventListener("click", function () {
-          deleteMessage(message.id);
-        });
-        actions.appendChild(deleteButton);
-        actionsCell.appendChild(actions);
-        row.appendChild(actionsCell);
-
-        messagesBody.appendChild(row);
-      });
-    } catch (error) {
-      messagesStatus.textContent = "Falha ao carregar as mensagens.";
-    }
+  function passwordRules(value) {
+    return {
+      length: value.length >= 10,
+      letter: /[A-Za-zÀ-ÿ]/.test(value),
+      number: /\d/.test(value),
+      symbol: /[^A-Za-zÀ-ÿ0-9\s]/.test(value),
+    };
   }
 
-  messageFilter.addEventListener("change", loadMessages);
-  refreshMessages.addEventListener("click", loadMessages);
+  function passwordIsValid() {
+    const rules = passwordRules(passwordNew.value);
+    return (
+      Object.values(rules).every(Boolean) &&
+      passwordCurrent.value.length > 0 &&
+      passwordConfirm.value.length > 0 &&
+      passwordConfirm.value === passwordNew.value &&
+      passwordNew.value !== passwordCurrent.value
+    );
+  }
 
-  changePasswordForm.addEventListener("submit", async function (event) {
+  function validatePasswordField(field, force) {
+    if (field === "current") {
+      if (!passwordCurrent.value) {
+        if (force || touched.current) showError("pw-current", "Informe sua senha atual para continuar.");
+        return false;
+      }
+      clearError("pw-current");
+      return true;
+    }
+    if (field === "next") {
+      const value = passwordNew.value;
+      const rules = passwordRules(value);
+      if (!value) {
+        if (force || touched.next) showError("pw-new", "Crie uma nova senha com pelo menos 10 caracteres.");
+        return false;
+      }
+      if (!Object.values(rules).every(Boolean)) {
+        if (force || touched.next) showError("pw-new", "Use pelo menos 10 caracteres, uma letra, um número e um símbolo.");
+        return false;
+      }
+      if (value === passwordCurrent.value) {
+        if (force || touched.next) showError("pw-new", "A nova senha precisa ser diferente da senha atual.");
+        return false;
+      }
+      clearError("pw-new");
+      return true;
+    }
+    if (!passwordConfirm.value) {
+      if (force || touched.confirm) showError("pw-confirm", "Repita a nova senha para confirmar.");
+      return false;
+    }
+    if (passwordConfirm.value !== passwordNew.value) {
+      if (force || touched.confirm) showError("pw-confirm", "As senhas não coincidem. Revise os dois campos.");
+      return false;
+    }
+    clearError("pw-confirm");
+    return true;
+  }
+
+  function updatePasswordUI() {
+    const rules = passwordRules(passwordNew.value);
+    let score = 0;
+    Object.keys(rules).forEach((rule) => {
+      const item = $('#pw-hints [data-rule="' + rule + '"]');
+      if (item) item.classList.toggle("is-ok", rules[rule]);
+      if (rules[rule]) score += 1;
+    });
+    const strength = $("#strength");
+    if (strength) strength.dataset.score = String(score);
+    const labels = ["Força da senha", "Muito fraca", "Fraca", "Razoável", "Boa", "Forte"];
+    const label = $("#strength-label");
+    if (label) label.textContent = labels[score];
+    const submit = $("#pw-submit");
+    if (submit) submit.disabled = !passwordIsValid();
+  }
+
+  async function changePassword(event) {
     event.preventDefault();
-    passwordStatus.style.color = "var(--muted)";
-    var current = document.getElementById("current-password").value;
-    var next = document.getElementById("new-password").value;
-    var confirm = document.getElementById("confirm-password").value;
-
-    if (next !== confirm) {
-      passwordStatus.textContent = "A confirmação da nova senha não confere.";
-      passwordStatus.style.color = "var(--danger)";
+    const okCurrent = validatePasswordField("current", true);
+    const okNext = validatePasswordField("next", true);
+    const okConfirm = validatePasswordField("confirm", true);
+    if (!okCurrent || !okNext || !okConfirm) {
+      const invalid = $('[aria-invalid="true"]', passwordForm);
+      if (invalid) invalid.focus();
       return;
     }
 
-    var response = await api("/api/admin/change-password", {
-      method: "POST",
-      body: JSON.stringify({ currentPassword: current, newPassword: next })
+    const submit = $("#pw-submit");
+    submit.disabled = true;
+    submit.textContent = "Alterando…";
+    try {
+      const response = await api("/api/admin/change-password", {
+        method: "POST",
+        body: JSON.stringify({
+          currentPassword: passwordCurrent.value,
+          newPassword: passwordNew.value,
+        }),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        showError("pw-current", error.error || "Não foi possível alterar a senha.");
+        submit.textContent = "Alterar senha";
+        submit.disabled = false;
+        return;
+      }
+      passwordForm.reset();
+      touched.current = false;
+      touched.next = false;
+      touched.confirm = false;
+      clearError("pw-current");
+      clearError("pw-new");
+      clearError("pw-confirm");
+      updatePasswordUI();
+      const status = $("#pw-status");
+      if (status) status.hidden = false;
+      $("#pw-status-text").textContent = "Senha alterada agora. Use a nova senha no próximo acesso.";
+      toast("Senha alterada com sucesso.", "success");
+      $("#pw-current").focus();
+    } catch (error) {
+      showError("pw-current", "Falha ao alterar a senha. Tente novamente.");
+    } finally {
+      submit.textContent = "Alterar senha";
+      updatePasswordUI();
+    }
+  }
+
+  function bindEvents() {
+    updateTodayLabel();
+    $("#login-form").addEventListener("submit", handleLogin);
+    $("#logout").addEventListener("click", () => signOut(""));
+    $("#menu-btn").addEventListener("click", openSidebar);
+    $("#side-close").addEventListener("click", closeSidebar);
+    $("#scrim").addEventListener("click", closeSidebar);
+
+    document.addEventListener("click", (event) => {
+      const goButton = event.target.closest("[data-go]");
+      if (goButton) {
+        go(goButton.dataset.go);
+        return;
+      }
+      const navButton = event.target.closest(".nav-item[data-view]");
+      if (navButton) {
+        go(navButton.dataset.view);
+        return;
+      }
+      const recent = event.target.closest("[data-open-message]");
+      if (recent) {
+        selectMessage(recent.dataset.openMessage);
+        go("messages");
+        return;
+      }
+      const sectionButton = event.target.closest("[data-section]");
+      if (sectionButton) {
+        selectSection(sectionButton.dataset.section, true);
+        return;
+      }
+      const filter = event.target.closest("[data-filter]");
+      if (filter) {
+        state.filter = filter.dataset.filter;
+        renderMessages();
+        return;
+      }
+      const messageRow = event.target.closest("[data-message]");
+      if (messageRow) {
+        selectMessage(messageRow.dataset.message);
+        return;
+      }
+      const action = event.target.closest("[data-action]");
+      if (action) {
+        const message = state.messages.find((item) => item.id === state.selectedMessageId);
+        if (!message) return;
+        if (action.dataset.action === "toggle-read") {
+          setMessageStatus(
+            message.id,
+            message.status === "new" ? "read" : "new",
+            message.status === "new" ? "Mensagem marcada como lida." : "Mensagem marcada como nova.",
+          );
+        } else if (action.dataset.action === "answered") {
+          setMessageStatus(message.id, "replied", "Mensagem marcada como respondida.");
+        } else if (action.dataset.action === "archive") {
+          setMessageStatus(
+            message.id,
+            message.status === "archived" ? "read" : "archived",
+            message.status === "archived" ? "Mensagem desarquivada." : "Mensagem arquivada.",
+          );
+        } else if (action.dataset.action === "delete") {
+          openConfirm({
+            title: "Excluir mensagem?",
+            text: "Esta ação não pode ser desfeita.",
+            confirmLabel: "Excluir",
+            danger: true,
+            onConfirm: () => deleteMessage(message.id),
+          });
+        }
+      }
     });
 
-    var data = await response.json().catch(function () { return {}; });
+    $("#msg-search").addEventListener("input", (event) => {
+      state.query = event.target.value;
+      renderMessages();
+    });
+    $("#clear-filters").addEventListener("click", () => {
+      state.filter = "todas";
+      state.query = "";
+      $("#msg-search").value = "";
+      renderMessages();
+    });
+    $("#msg-back").addEventListener("click", () => $("#inbox").classList.remove("is-detail"));
 
-    if (response.ok) {
-      passwordStatus.textContent = "Senha alterada com sucesso.";
-      passwordStatus.style.color = "var(--ok)";
-      changePasswordForm.reset();
-    } else {
-      passwordStatus.textContent = data.error || "Não foi possível alterar a senha.";
-      passwordStatus.style.color = "var(--danger)";
-    }
-  });
+    $("#save-btn").addEventListener("click", saveContent);
+    $("#reload-btn").addEventListener("click", reloadContent);
 
-  if (token) {
-    api("/api/admin/me")
-      .then(function (response) {
-        if (response.ok) showDashboard();
-        else showLogin("");
-      })
-      .catch(function () {
-        showLogin("");
-      });
-  } else {
-    showLogin("");
+    passwordCurrent.addEventListener("input", () => {
+      touched.current = true;
+      validatePasswordField("current");
+      if (touched.next) validatePasswordField("next");
+      updatePasswordUI();
+    });
+    passwordNew.addEventListener("input", () => {
+      touched.next = true;
+      validatePasswordField("next");
+      if (touched.confirm) validatePasswordField("confirm");
+      updatePasswordUI();
+    });
+    passwordConfirm.addEventListener("input", () => {
+      touched.confirm = true;
+      validatePasswordField("confirm");
+      updatePasswordUI();
+    });
+    passwordCurrent.addEventListener("blur", () => {
+      touched.current = true;
+      validatePasswordField("current", true);
+    });
+    passwordNew.addEventListener("blur", () => {
+      touched.next = true;
+      validatePasswordField("next", true);
+    });
+    passwordConfirm.addEventListener("blur", () => {
+      touched.confirm = true;
+      validatePasswordField("confirm", true);
+    });
+    passwordForm.addEventListener("submit", changePassword);
+
+    $("#dlg-cancel").addEventListener("click", () => dialog.close());
+    $("#dlg-confirm").addEventListener("click", async () => {
+      const action = pendingConfirm;
+      pendingConfirm = null;
+      dialog.close();
+      if (action) await action();
+    });
+    dialog.addEventListener("close", () => {
+      pendingConfirm = null;
+    });
+    dialog.addEventListener("click", (event) => {
+      if (event.target === dialog) dialog.close();
+    });
+
+    window.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && sidebar.classList.contains("is-open")) closeSidebar();
+    });
+    window.addEventListener("resize", () => {
+      if (window.matchMedia("(min-width: 901px)").matches && sidebar.classList.contains("is-open")) closeSidebar();
+    });
   }
+
+  async function init() {
+    bindEvents();
+    updatePasswordUI();
+    if (token) {
+      try {
+        const response = await api("/api/admin/me");
+        if (response.ok) {
+          currentUser = await response.json();
+          await enterApp();
+          return;
+        }
+      } catch (error) {
+        /* cai no login */
+      }
+    }
+    signOut("");
+  }
+
+  init();
 })();
