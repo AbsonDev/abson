@@ -71,7 +71,13 @@ export function buildCmsI18n(content: any): Dict {
   put(dict, "brand.role", profile.role);
   put(dict, "footer.role", profile.role);
 
-  put(dict, "hero.titleHtml", `${escapeHtml(raw(headline.before))}${txt(headline.emphasis) ? `<em>${escapeHtml(txt(headline.emphasis))}</em>` : ""}${escapeHtml(raw(headline.after))}`);
+  const headlineBefore = raw(headline.before).replace(/\s+$/, "");
+  const headlineEmphasis = txt(headline.emphasis);
+  const headlineAfter = raw(headline.after).replace(/^\s+/, "");
+  const headlineHtml = headlineEmphasis
+    ? `${escapeHtml(headlineBefore)}${headlineBefore ? " " : ""}<em>${escapeHtml(headlineEmphasis)}</em>${headlineAfter ? " " : ""}${escapeHtml(headlineAfter)}`
+    : `${escapeHtml(headlineBefore)}${headlineBefore && headlineAfter ? " " : ""}${escapeHtml(headlineAfter)}`;
+  put(dict, "hero.titleHtml", headlineHtml);
   put(dict, "hero.lead", profile.lead);
   put(dict, "hero.metaCity", profile.location);
 
