@@ -84,6 +84,11 @@ const apiUrl = import.meta.env.API_URL ?? 'https://api.abson.tech';
         <svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
         <span>Visão geral</span>
       </button>
+      <button class="nav-item" data-view="career">
+        <svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 12h18"/></svg>
+        <span>Carreira</span>
+        <span class="count" id="nav-career-pending" hidden>0</span>
+      </button>
       <button class="nav-item" data-view="content">
         <svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg>
         <span>Conteúdo do site</span>
@@ -224,6 +229,145 @@ const apiUrl = import.meta.env.API_URL ?? 'https://api.abson.tech';
               <p class="health-foot">Completude estimada a partir dos campos preenchidos do conteúdo.</p>
             </section>
           </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-career" aria-labelledby="heading-career" hidden>
+        <div class="view-head">
+          <div>
+            <p class="eyebrow">Carreira <span class="sep">/</span> career-ops</p>
+            <h1 id="heading-career" tabindex="-1">Carreira</h1>
+            <p class="lede">O estado da sua busca, sincronizado do Mac. Ações feitas aqui entram na fila e são aplicadas no próximo sync.</p>
+          </div>
+          <div class="head-actions">
+            <span class="pill" id="career-sync-pill"><span class="dot warn" id="career-sync-dot" aria-hidden="true"></span> <span id="career-sync-label">Aguardando sync</span></span>
+            <button class="btn btn-ghost" id="career-refresh" type="button">
+              <svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>
+              Atualizar
+            </button>
+          </div>
+        </div>
+
+        <div class="stats career-stats">
+          <article class="stat">
+            <p class="stat-label">Candidaturas</p>
+            <p class="stat-num" id="career-stat-apps">—</p>
+            <p class="stat-foot"><span class="dot purple" aria-hidden="true"></span> no tracker</p>
+          </article>
+          <article class="stat">
+            <p class="stat-label">Em processo</p>
+            <p class="stat-num is-cyan" id="career-stat-active">—</p>
+            <p class="stat-foot"><span class="dot cyan" aria-hidden="true"></span> aplicadas, testes e entrevistas</p>
+          </article>
+          <article class="stat">
+            <p class="stat-label">Ofertas</p>
+            <p class="stat-num is-purple" id="career-stat-offers">—</p>
+            <p class="stat-foot"><span class="dot purple" aria-hidden="true"></span> oferta ou contratação</p>
+          </article>
+          <article class="stat">
+            <p class="stat-label">Score médio</p>
+            <p class="stat-num" id="career-stat-score">—</p>
+            <p class="stat-foot"><span class="dot ok" aria-hidden="true"></span> das avaliações</p>
+          </article>
+        </div>
+
+        <div class="career-grid">
+          <section class="panel" aria-labelledby="career-funnel-title">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Funil</p>
+                <h2 id="career-funnel-title">Status das candidaturas</h2>
+              </div>
+            </div>
+            <div class="career-funnel" id="career-funnel"></div>
+          </section>
+
+          <section class="panel" aria-labelledby="career-add-title">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Adicionar</p>
+                <h2 id="career-add-title">Nova vaga no pipeline</h2>
+              </div>
+            </div>
+            <form id="career-add-form" class="career-form" novalidate>
+              <div class="field">
+                <label for="career-url">URL da vaga <span class="req">obrigatório</span></label>
+                <input class="input" id="career-url" type="url" placeholder="https://..." required>
+              </div>
+              <div class="career-form-row">
+                <div class="field">
+                  <label for="career-company">Empresa</label>
+                  <input class="input" id="career-company" type="text" placeholder="opcional">
+                </div>
+                <div class="field">
+                  <label for="career-role">Cargo</label>
+                  <input class="input" id="career-role" type="text" placeholder="opcional">
+                </div>
+              </div>
+              <p class="career-hint">A URL entra em <span class="mono">data/pipeline.md</span> no próximo sync.</p>
+              <button class="btn btn-primary" type="submit" id="career-add-submit">Adicionar à fila</button>
+            </form>
+          </section>
+        </div>
+
+        <section class="panel career-panel" aria-labelledby="career-apps-title">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Candidaturas</p>
+              <h2 id="career-apps-title">Tracker</h2>
+            </div>
+            <div class="career-tools">
+              <div class="search career-search">
+                <svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                <input class="input" id="career-search" type="search" placeholder="Buscar empresa ou cargo" autocomplete="off">
+              </div>
+              <select class="input" id="career-filter" aria-label="Filtrar por status">
+                <option value="">Todos os status</option>
+              </select>
+            </div>
+          </div>
+          <div class="career-table-wrap">
+            <table class="career-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Empresa</th>
+                  <th>Cargo</th>
+                  <th>Score</th>
+                  <th>Status</th>
+                  <th>Data</th>
+                  <th>Ação</th>
+                </tr>
+              </thead>
+              <tbody id="career-table-body">
+                <tr><td colspan="7" class="career-empty">Aguardando o primeiro sync…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <div class="career-grid">
+          <section class="panel" aria-labelledby="career-pipeline-title">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Pipeline</p>
+                <h2 id="career-pipeline-title">Vagas pendentes</h2>
+              </div>
+              <span class="pill" id="career-pipeline-count">0</span>
+            </div>
+            <div class="career-list" id="career-pipeline"></div>
+          </section>
+
+          <section class="panel" aria-labelledby="career-actions-title">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Fila</p>
+                <h2 id="career-actions-title">Ações recentes</h2>
+              </div>
+              <span class="pill" id="career-pending-count">sem pendências</span>
+            </div>
+            <div class="career-list" id="career-actions"></div>
+          </section>
         </div>
       </section>
 

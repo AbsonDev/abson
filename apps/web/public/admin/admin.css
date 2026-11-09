@@ -575,3 +575,59 @@ dialog::backdrop{background:rgba(4,4,8,.74)}
 .content-editor .je-modal{background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:10px}
 .content-editor .form-checkbox,.content-editor .form-radio{width:auto;min-width:0}
 .content-editor .je-switcher{background:transparent;color:var(--fg-muted)}
+
+/* ---- Career ops (aba Carreira) ---- */
+.stats.career-stats{grid-template-columns:repeat(4,minmax(0,1fr))}
+.career-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(300px,1fr);gap:24px;align-items:start;margin-bottom:24px}
+.career-grid + .career-grid{margin-top:24px}
+.career-panel{margin-bottom:24px}
+.career-funnel{padding:18px 24px 24px;display:grid;gap:10px}
+.career-funnel-row{display:grid;grid-template-columns:140px minmax(0,1fr) 36px;gap:12px;align-items:center}
+.career-funnel-label{font-size:13px;color:var(--fg-muted)}
+.career-funnel-bar{height:8px;border-radius:999px;background:var(--surface-3);overflow:hidden}
+.career-funnel-bar i{display:block;height:100%;border-radius:999px;background:var(--purple);min-width:0}
+.career-funnel-bar i.is-applied{background:var(--cyan)}
+.career-funnel-bar i.is-responded,.career-funnel-bar i.is-interview{background:var(--purple-soft)}
+.career-funnel-bar i.is-assessment{background:var(--warn)}
+.career-funnel-bar i.is-offer,.career-funnel-bar i.is-hired{background:var(--ok)}
+.career-funnel-bar i.is-rejected{background:var(--danger)}
+.career-funnel-bar i.is-evaluated,.career-funnel-bar i.is-discarded,.career-funnel-bar i.is-skip{background:#4a4856}
+.career-funnel-row strong{text-align:right;font-size:12px;color:var(--fg-muted)}
+.career-form{padding:18px 24px 24px;display:grid;gap:14px}
+.career-form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.career-hint{font-size:12px;color:var(--fg-subtle);line-height:1.5}
+.career-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.career-search{min-width:220px;flex:1 1 240px;position:relative}
+.career-search .input{padding-left:38px}
+.career-search .od-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--fg-subtle);--od-icon-size:16px;pointer-events:none}
+.career-tools select{min-width:170px;width:auto}
+.career-table-wrap{overflow-x:auto}
+.career-table{width:100%;border-collapse:collapse;font-size:13.5px}
+.career-table th{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--fg-subtle);text-align:left;padding:12px 14px;border-bottom:1px solid var(--line);white-space:nowrap}
+.career-table td{padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:middle}
+.career-table tr:last-child td{border-bottom:0}
+.career-table td strong{font-weight:500}
+.career-table .mono{font-size:12px;color:var(--fg-muted)}
+.career-row-action{display:flex;gap:8px;align-items:center;min-width:220px}
+.career-status-select{min-height:36px;padding:6px 30px 6px 9px;font-size:12px;width:auto;min-width:110px;background-position:calc(100% - 14px) 15px,calc(100% - 9px) 15px}
+.career-link{display:inline-block;margin-left:6px;font-family:var(--font-mono);font-size:10px;letter-spacing:.04em;color:var(--purple-soft);text-decoration:none;border-bottom:1px solid rgba(139,92,246,.35)}
+.career-link:hover{color:#fff;border-color:#fff}
+.career-list{padding:6px 0}
+.career-item{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:12px 24px;border-bottom:1px solid var(--line)}
+.career-item:last-child{border-bottom:0}
+.career-item-copy{display:grid;gap:2px;min-width:0}
+.career-item-copy strong{font-weight:500;font-size:13.5px}
+.career-item-copy span{font-size:12px;color:var(--fg-subtle);line-height:1.5}
+.career-empty{padding:24px;color:var(--fg-subtle);font-size:13px;line-height:1.6}
+.career-status.is-evaluated{color:var(--fg-muted)}
+.career-status.is-applied{color:var(--cyan-soft);border-color:rgba(34,211,238,.34);background:rgba(34,211,238,.07)}
+.career-status.is-responded{color:var(--purple-soft);border-color:rgba(139,92,246,.42);background:rgba(139,92,246,.09)}
+.career-status.is-assessment{color:var(--warn);border-color:rgba(251,191,36,.3);background:rgba(251,191,36,.06)}
+.career-status.is-interview{color:var(--purple-soft);border-color:rgba(139,92,246,.5);background:rgba(139,92,246,.14)}
+.career-status.is-offer,.career-status.is-hired{color:var(--ok);border-color:rgba(52,211,153,.32);background:rgba(52,211,153,.06)}
+.career-status.is-rejected{color:var(--danger);border-color:rgba(248,113,113,.32);background:rgba(248,113,113,.06)}
+.career-status.is-discarded,.career-status.is-skip{color:var(--fg-subtle);border-color:var(--line)}
+.pill.tone-danger{color:var(--danger);border-color:rgba(248,113,113,.32);background:rgba(248,113,113,.06)}
+@media (max-width:1100px){.stats.career-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:900px){.career-grid{grid-template-columns:1fr}.career-tools{width:100%}.career-search{flex:1 1 100%}}
+@media (max-width:720px){.stats.career-stats{grid-template-columns:1fr}.career-form-row{grid-template-columns:1fr}.career-row-action{min-width:190px}.career-funnel-row{grid-template-columns:110px minmax(0,1fr) 30px}}

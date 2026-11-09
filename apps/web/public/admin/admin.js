@@ -45,6 +45,36 @@
   const STATUS_LABEL = { nova: "Nova", lida: "Lida", respondida: "Respondida", arquivada: "Arquivada" };
   const TONES = ["purple", "cyan", "neutral", "warn"];
 
+  const CAREER_STATUSES = [
+    "Evaluated",
+    "Applied",
+    "Responded",
+    "Assessment",
+    "Interview",
+    "Offer",
+    "Hired",
+    "Rejected",
+    "Discarded",
+    "SKIP",
+  ];
+  const CAREER_STATUS_LABELS = {
+    Evaluated: "Avaliada",
+    Applied: "Aplicada",
+    Responded: "Respondida",
+    Assessment: "Teste",
+    Interview: "Entrevista",
+    Offer: "Oferta",
+    Hired: "Contratado",
+    Rejected: "Rejeitada",
+    Discarded: "Descartada",
+    SKIP: "SKIP",
+  };
+  const CAREER_ACTION_LABELS = {
+    set_status: "Mudar status",
+    add_note: "Adicionar nota",
+    add_pipeline_url: "Adicionar vaga",
+  };
+
   const sections = [
     { id: "seo", path: "seo", num: "01", initial: "SE", name: "SEO", hint: "Título, descrição, canonical e imagem de compartilhamento." },
     { id: "perfil", path: "profile", num: "02", initial: "PE", name: "Perfil", hint: "Nome, marca, headline, apresentação e contato." },
@@ -84,6 +114,9 @@
     filter: "todas",
     query: "",
     stats: { messages: { total: 0, unread: 0 }, contentUpdatedAt: null },
+    career: null,
+    careerQuery: "",
+    careerStatusFilter: "",
   };
 
   function headers(extra) {
@@ -280,6 +313,7 @@
     document.body.classList.add("is-authed");
     go("overview");
     loadStats();
+    loadCareerOps();
     loadMessages();
     loadContent();
     $("#session-detail").textContent = currentUser?.lastLoginAt
@@ -296,6 +330,7 @@
     state.savedContent = null;
     state.messages = [];
     state.selectedMessageId = null;
+    state.career = null;
     state.stats = { messages: { total: 0, unread: 0 }, contentUpdatedAt: null };
     app.hidden = true;
     login.hidden = false;
@@ -325,6 +360,7 @@
     closeSidebar();
     mainArea.scrollTop = 0;
     if (view === "overview") loadStats();
+    if (view === "career") loadCareerOps();
     if (view === "messages") loadMessages();
     if (view === "content" && !state.content) loadContent();
     const heading = $("#view-" + view + " h1");
@@ -932,6 +968,272 @@
     }
   }
 
+  async function loadCareerOps() {
+    try {
+      const response = await api("/api/admin/career-ops");
+      if (!response.ok) return;
+      state.career = await response.json();
+      renderCareerOps();
+    } catch (error) {
+      /* sessão expirada já tratada */
+    }
+  }
+
+  function careerStatusPill(status) {
+    const key = String(status || "neutral").toLowerCase();
+    const label = CAREER_STATUS_LABELS[status] || status || "—";
+    return '<span class="pill career-status is-' + esc(key) + '">' + esc(label) + "</span>";
+  }
+
+  function careerStatusOptions(selected) {
+    return CAREER_STATUSES.map((status) => {
+      const isSelected = String(status) === String(selected || "");
+      return (
+        '<option value="' + esc(status) + '"' + (isSelected ? " selected" : "") + ">" +
+        esc(CAREER_STATUS_LABELS[status] || status) +
+        "</option>"
+      );
+    }).join("");
+  }
+
+  function shortUrl(value) {
+    try {
+      const parsed = new URL(value);
+      return parsed.hostname.replace(/^www\./, "") + (parsed.pathname !== "/" ? parsed.pathname.slice(0, 28) : "");
+    } catch (error) {
+      return String(value || "");
+    }
+  }
+
+  function renderCareerOps() {
+    const data = state.career || {};
+    const snapshot = data.snapshot || null;
+    const totals = snapshot?.totals || {};
+    const byStatus = totals.byStatus || {};
+    const applications = Array.isArray(snapshot?.applications) ? snapshot.applications : [];
+    const pipeline = Array.isArray(snapshot?.pipeline) ? snapshot.pipeline : [];
+    const actions = Array.isArray(data.actions) ? data.actions : [];
+
+    const updatedAt = data.updatedAt || null;
+    const ageMinutes = updatedAt ? Math.max(0, Math.round((Date.now() - new Date(updatedAt).getTime()) / 60000)) : null;
+    const stale = !updatedAt || ageMinutes > 20;
+    const syncDot = $("#career-sync-dot");
+    if (syncDot) syncDot.className = "dot " + (stale ? "warn" : "ok");
+    $("#career-sync-label").textContent = updatedAt ? "Sincronizado " + relativeTime(updatedAt) : "Aguardando sync";
+
+    const pending = data.pendingActions ?? actions.filter((action) => action.status === "pending").length;
+    const navBadge = $("#nav-career-pending");
+    if (navBadge) {
+      navBadge.hidden = pending <= 0;
+      navBadge.textContent = pending;
+      navBadge.setAttribute("aria-label", plural(pending, "ação pendente", "ações pendentes"));
+    }
+    $("#career-pending-count").textContent = pending ? plural(pending, "pendente", "pendentes") : "sem pendências";
+
+    const activeStatuses = ["Applied", "Responded", "Assessment", "Interview"];
+    const active = activeStatuses.reduce((total, status) => total + (byStatus[status] || 0), 0);
+    const offers = (byStatus.Offer || 0) + (byStatus.Hired || 0);
+
+    $("#career-stat-apps").textContent = totals.applications ?? applications.length;
+    $("#career-stat-active").textContent = active;
+    $("#career-stat-offers").textContent = offers;
+    $("#career-stat-score").innerHTML =
+      totals.averageScore == null ? "—" : Number(totals.averageScore).toFixed(1) + "<small>/5</small>";
+
+    renderCareerFunnel(byStatus);
+    renderCareerTable(applications);
+    renderCareerPipeline(pipeline);
+    renderCareerActions(actions);
+  }
+
+  function renderCareerFunnel(byStatus) {
+    const container = $("#career-funnel");
+    if (!container) return;
+    const total = CAREER_STATUSES.reduce((sum, status) => sum + (byStatus[status] || 0), 0);
+    if (!total) {
+      container.innerHTML = '<p class="career-empty">Nenhuma candidatura no tracker ainda.</p>';
+      return;
+    }
+    const max = Math.max(1, ...CAREER_STATUSES.map((status) => byStatus[status] || 0));
+    container.innerHTML = CAREER_STATUSES.map((status) => {
+      const count = byStatus[status] || 0;
+      const width = Math.round((count / max) * 100);
+      return (
+        '<div class="career-funnel-row">' +
+        '<span class="career-funnel-label">' + esc(CAREER_STATUS_LABELS[status] || status) + "</span>" +
+        '<div class="career-funnel-bar"><i class="is-' + esc(status.toLowerCase()) + '" style="width:' + width + '%"></i></div>' +
+        '<strong class="mono">' + count + "</strong>" +
+        "</div>"
+      );
+    }).join("");
+  }
+
+  function filteredCareerApplications(applications) {
+    const query = norm(state.careerQuery || "");
+    return applications.filter((app) => {
+      if (state.careerStatusFilter && app.status !== state.careerStatusFilter) return false;
+      if (!query) return true;
+      return norm((app.company || "") + " " + (app.role || "")).includes(query);
+    });
+  }
+
+  function renderCareerTable(applications) {
+    const body = $("#career-table-body");
+    if (!body) return;
+
+    const filter = $("#career-filter");
+    if (filter && filter.options.length === 1) {
+      filter.insertAdjacentHTML(
+        "beforeend",
+        CAREER_STATUSES.map(
+          (status) => '<option value="' + esc(status) + '">' + esc(CAREER_STATUS_LABELS[status] || status) + "</option>",
+        ).join(""),
+      );
+    }
+
+    const rows = filteredCareerApplications(applications);
+    if (!rows.length) {
+      body.innerHTML =
+        '<tr><td colspan="7" class="career-empty">' +
+        (applications.length ? "Nenhuma candidatura corresponde ao filtro." : "Nenhuma candidatura no tracker ainda.") +
+        "</td></tr>";
+      return;
+    }
+
+    body.innerHTML = rows.map((app) => {
+      const num = app.num == null ? "" : String(app.num);
+      const company = app.company || "—";
+      const role = app.role || "—";
+      const score = app.score == null ? "—" : Number(app.score).toFixed(1) + "/5";
+      return (
+        "<tr>" +
+        '<td class="mono">' + esc(num || "—") + "</td>" +
+        "<td><strong>" + esc(company) + "</strong>" +
+        (app.url ? ' <a class="career-link" href="' + esc(app.url) + '" target="_blank" rel="noopener">abrir</a>' : "") +
+        "</td>" +
+        "<td>" + esc(role) + "</td>" +
+        '<td class="mono">' + esc(score) + "</td>" +
+        "<td>" + careerStatusPill(app.status) + "</td>" +
+        '<td class="mono">' + esc(app.date || "—") + "</td>" +
+        '<td class="career-row-action">' +
+        '<select class="input career-status-select" data-career-status="' + esc(num) + '" aria-label="Novo status">' +
+        careerStatusOptions(app.status) +
+        "</select>" +
+        '<button class="btn btn-ghost btn-sm" type="button" data-career-save="' + esc(num) +
+        '" data-company="' + esc(company) + '">Aplicar</button>' +
+        "</td>" +
+        "</tr>"
+      );
+    }).join("");
+  }
+
+  function renderCareerPipeline(pipeline) {
+    const container = $("#career-pipeline");
+    if (!container) return;
+    $("#career-pipeline-count").textContent = pipeline.length;
+    if (!pipeline.length) {
+      container.innerHTML = '<p class="career-empty">Nenhuma vaga pendente no pipeline.</p>';
+      return;
+    }
+    container.innerHTML = pipeline.slice(0, 20).map((item) => {
+      return (
+        '<div class="career-item">' +
+        '<div class="career-item-copy"><strong>' + esc(item.company || "Vaga") + "</strong>" +
+        (item.role ? "<span>" + esc(item.role) + "</span>" : "") +
+        "</div>" +
+        '<a class="career-link" href="' + esc(item.url) + '" target="_blank" rel="noopener">' +
+        esc(shortUrl(item.url)) +
+        "</a>" +
+        "</div>"
+      );
+    }).join("");
+  }
+
+  function renderCareerActions(actions) {
+    const container = $("#career-actions");
+    if (!container) return;
+    if (!actions.length) {
+      container.innerHTML = '<p class="career-empty">Nenhuma ação ainda.</p>';
+      return;
+    }
+    container.innerHTML = actions.slice(0, 12).map((action) => {
+      const tone = action.status === "applied" ? "tone-ok" : action.status === "failed" ? "tone-danger" : "tone-warn";
+      const label = CAREER_ACTION_LABELS[action.type] || action.type;
+      const detail = action.result || (action.status === "pending" ? "aguardando o Mac" : "");
+      return (
+        '<div class="career-item">' +
+        '<div class="career-item-copy"><strong>' + esc(label) + "</strong>" +
+        (detail ? "<span>" + esc(detail) + "</span>" : "") +
+        '<span class="mono">' + esc(formatDateTime(action.createdAt)) + "</span>" +
+        "</div>" +
+        '<span class="pill ' + tone + '">' + esc(action.status) + "</span>" +
+        "</div>"
+      );
+    }).join("");
+  }
+
+  async function createCareerAction(type, payload) {
+    try {
+      const response = await api("/api/admin/career-ops/actions", {
+        method: "POST",
+        body: JSON.stringify({ type, payload }),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        toast(error.error || "Não foi possível enfileirar a ação.");
+        return false;
+      }
+      toast("Ação enfileirada. O Mac aplica no próximo sync.", "success");
+      await loadCareerOps();
+      return true;
+    } catch (error) {
+      toast("Falha de conexão com a API.");
+      return false;
+    }
+  }
+
+  async function handleCareerAdd(event) {
+    event.preventDefault();
+    const urlInput = $("#career-url");
+    const url = urlInput.value.trim();
+    if (!url) {
+      toast("Informe a URL da vaga.");
+      urlInput.focus();
+      return;
+    }
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") throw new Error("invalid");
+    } catch (error) {
+      toast("Informe uma URL http(s) válida.");
+      urlInput.focus();
+      return;
+    }
+
+    const button = $("#career-add-submit");
+    button.disabled = true;
+    const ok = await createCareerAction("add_pipeline_url", {
+      url,
+      company: $("#career-company").value.trim() || null,
+      role: $("#career-role").value.trim() || null,
+    });
+    button.disabled = false;
+    if (ok) $("#career-add-form").reset();
+  }
+
+  async function saveCareerStatus(button) {
+    const num = button.dataset.careerSave || "";
+    const select = document.querySelector('[data-career-status="' + (window.CSS && CSS.escape ? CSS.escape(num) : num) + '"]');
+    if (!select) return;
+    button.disabled = true;
+    await createCareerAction("set_status", {
+      report: num,
+      company: button.dataset.company || "",
+      status: select.value,
+    });
+    button.disabled = false;
+  }
+
   function bindEvents() {
     updateTodayLabel();
     $("#login-form").addEventListener("submit", handleLogin);
@@ -971,6 +1273,11 @@
       const messageRow = event.target.closest("[data-message]");
       if (messageRow) {
         selectMessage(messageRow.dataset.message);
+        return;
+      }
+      const careerSave = event.target.closest("[data-career-save]");
+      if (careerSave) {
+        saveCareerStatus(careerSave);
         return;
       }
       const action = event.target.closest("[data-action]");
@@ -1014,6 +1321,17 @@
       renderMessages();
     });
     $("#msg-back").addEventListener("click", () => $("#inbox").classList.remove("is-detail"));
+
+    $("#career-refresh").addEventListener("click", loadCareerOps);
+    $("#career-add-form").addEventListener("submit", handleCareerAdd);
+    $("#career-search").addEventListener("input", (event) => {
+      state.careerQuery = event.target.value;
+      renderCareerTable(state.career?.snapshot?.applications || []);
+    });
+    $("#career-filter").addEventListener("change", (event) => {
+      state.careerStatusFilter = event.target.value;
+      renderCareerTable(state.career?.snapshot?.applications || []);
+    });
 
     $("#save-btn").addEventListener("click", saveContent);
     $("#reload-btn").addEventListener("click", reloadContent);

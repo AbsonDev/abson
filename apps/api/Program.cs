@@ -74,6 +74,15 @@ builder.Services.AddRateLimiter(options =>
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0,
             }));
+    options.AddPolicy("career-ops-sync", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 120,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+            }));
 });
 
 var connectionString =
@@ -265,6 +274,7 @@ app.MapDelete("/api/todos/{id:int}", async (int id, AppDbContext db, Cancellatio
 });
 
 app.MapAdminEndpoints();
+app.MapCareerOpsEndpoints();
 
 if (!EF.IsDesignTime && app.Configuration.GetValue("Database:AutoMigrate", true))
 {
