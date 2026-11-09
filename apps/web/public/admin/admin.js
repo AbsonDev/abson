@@ -74,6 +74,11 @@
     add_note: "Adicionar nota",
     add_pipeline_url: "Adicionar vaga",
   };
+  const CAREER_ACTION_STATUS_LABELS = {
+    pending: "pendente",
+    applied: "aplicada",
+    failed: "falhou",
+  };
 
   const sections = [
     { id: "seo", path: "seo", num: "01", initial: "SE", name: "SEO", hint: "Título, descrição, canonical e imagem de compartilhamento." },
@@ -1166,7 +1171,7 @@
         (detail ? "<span>" + esc(detail) + "</span>" : "") +
         '<span class="mono">' + esc(formatDateTime(action.createdAt)) + "</span>" +
         "</div>" +
-        '<span class="pill ' + tone + '">' + esc(action.status) + "</span>" +
+        '<span class="pill ' + tone + '">' + esc(CAREER_ACTION_STATUS_LABELS[action.status] || action.status) + "</span>" +
         "</div>"
       );
     }).join("");
