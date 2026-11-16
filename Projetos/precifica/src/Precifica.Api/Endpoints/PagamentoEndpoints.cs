@@ -17,11 +17,15 @@ public static class PagamentoEndpoints
             .RequireRateLimiting("leitura");
 
         app.MapGet("/api/planos", (IOptions<MonetizacaoOptions> monetizacao) =>
-                Results.Ok(new PlanosResponse(
-                    CatalogoDePlanos.PdfAvulso.Reais,
-                    CatalogoDePlanos.ProMensal.Reais,
+            {
+                var gratuito = !monetizacao.Value.Ativa;
+
+                return Results.Ok(new PlanosResponse(
+                    gratuito ? 0 : CatalogoDePlanos.PdfAvulso.Reais,
+                    gratuito ? 0 : CatalogoDePlanos.ProMensal.Reais,
                     CatalogoDePlanos.NomeDoPlanoPro,
-                    !monetizacao.Value.Ativa)))
+                    gratuito));
+            })
             .RequireRateLimiting("leitura");
 
         app.MapPost("/api/calculos/{shareToken}/comprar", async (

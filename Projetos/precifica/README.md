@@ -10,6 +10,9 @@ gera um **PDF compartilhável** com a conta aberta, que funciona como material d
 > liberados para todos durante o período de validação. O código de cobrança (R$ 29 avulso / R$ 9/mês)
 > continua no projeto, mas fica desligado pela flag `Monetizacao:Ativa=false`.
 
+**No ar:** [precifica.abson.tech](https://precifica.abson.tech) · API em
+[api.precifica.abson.tech](https://api.precifica.abson.tech/health).
+
 ## O que já está implementado
 
 - Cálculo completo com margem sobre o preço final, impostos, taxa do cartão, taxa fixa, perda de
