@@ -1,0 +1,101 @@
+---
+import Logo from '../components/Logo.astro';
+import '../styles/global.css';
+
+interface Props {
+  titulo?: string;
+  descricao?: string;
+  bodyClass?: string;
+}
+
+const {
+  titulo = 'Precifica — cobre o que seu trabalho vale',
+  descricao = 'Calculadora de precificação para confeiteiros, artesãos, impressão 3D e esteticistas. Descubra seu preço, veja o lucro real e gere um PDF pronto para enviar.',
+  bodyClass = ''
+} = Astro.props;
+
+const site = (import.meta.env.PUBLIC_SITE_URL ?? Astro.url.origin).replace(/\/$/, '');
+const canonical = new URL(Astro.url.pathname, site).toString();
+const api = (import.meta.env.PUBLIC_API_URL ?? 'http://localhost:5180').replace(/\/$/, '');
+---
+
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{titulo}</title>
+    <meta name="description" content={descricao} />
+    <link rel="canonical" href={canonical} />
+    <meta name="theme-color" content="#FAF6EF" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:title" content={titulo} />
+    <meta property="og:description" content={descricao} />
+    <meta property="og:url" content={canonical} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body class={bodyClass} data-api={api}>
+    <a class="pular-conteudo" href="#conteudo">Pular para o conteúdo</a>
+
+    <header class="topo">
+      <div class="container topo-interno">
+        <Logo />
+        <nav class="nav-principal" aria-label="Navegação principal">
+          <a href="/#como-funciona">Como funciona</a>
+          <a href="/precos">É grátis</a>
+          <a href="/calculadora" class="btn btn--pequeno btn--primario">Calcular meu preço</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="conteudo">
+      <slot />
+    </main>
+
+    <footer class="rodape">
+      <div class="container rodape-grade">
+        <div class="rodape-marca">
+          <Logo compacto />
+          <p>Precificação que respeita seu trabalho.<br />Feito no Brasil para quem faz com as mãos.</p>
+        </div>
+        <div class="rodape-colunas">
+          <div>
+            <span class="rodape-titulo">Produto</span>
+            <a href="/calculadora">Calculadora</a>
+            <a href="/precos">É grátis</a>
+            <a href="/#como-funciona">Como funciona</a>
+          </div>
+          <div>
+            <span class="rodape-titulo">Nichos</span>
+            <a href="/calculadora?nicho=Confeitaria">Confeitaria</a>
+            <a href="/calculadora?nicho=Artesanato">Artesanato</a>
+            <a href="/calculadora?nicho=Impressao3D">Impressão 3D</a>
+            <a href="/calculadora?nicho=Estetica">Estética</a>
+          </div>
+        </div>
+      </div>
+      <div class="container rodape-base">
+        <span>© {new Date().getFullYear()} Precifica</span>
+        <span>Os cálculos são estimativas. Você conhece seu negócio melhor do que qualquer planilha.</span>
+      </div>
+    </footer>
+
+    <script>
+  // @ts-nocheck
+      const menu = document.querySelector('.nav-principal');
+      if (menu && window.matchMedia('(max-width: 640px)').matches) {
+        menu.querySelectorAll('a').forEach((link) => {
+          link.addEventListener('click', () => menu.classList.remove('aberto'));
+        });
+      }
+    </script>
+  </body>
+</html>

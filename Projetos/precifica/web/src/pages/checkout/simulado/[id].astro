@@ -1,0 +1,96 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+const { id } = Astro.params;
+---
+
+<Layout titulo="Checkout simulado — Precifica" descricao="Confirmação de pagamento em ambiente de desenvolvimento.">
+  <section class="checkout">
+    <div class="container">
+      <div class="checkout-cartao" id="checkout">
+        <span class="eyebrow">Ambiente de desenvolvimento</span>
+        <h1>Checkout <em>simulado.</em></h1>
+        <p class="checkout-aviso">
+          Este é um pagamento de teste. Nenhum valor real será cobrado. Em produção, esta etapa
+          acontece dentro do Mercado Pago.
+        </p>
+
+        <div class="checkout-resumo" id="resumo">
+          <div><span>Tipo</span><strong id="tipo">Carregando…</strong></div>
+          <div><span>E-mail</span><strong id="email">—</strong></div>
+          <div><span>Status</span><strong><span class="status-pill" id="status">—</span></strong></div>
+          <div class="checkout-total"><span>Total</span><strong id="valor">—</strong></div>
+        </div>
+
+        <div class="acoes-calculo" style="margin-top: 24px;">
+          <button class="btn btn--primario btn--largo" type="button" id="confirmar">
+            Simular pagamento aprovado
+          </button>
+          <a class="btn btn--contorno btn--largo" href="/">Voltar para o início</a>
+        </div>
+
+        <p class="erro-caixa" id="erro" role="alert"></p>
+        <p class="aviso">
+          No modo real, o Mercado Pago envia um webhook para a API, que confirma o pagamento e
+          libera o PDF sem marca d'água.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <script define:vars={{ id }}>
+  // @ts-nocheck
+    const API = (document.body.dataset.api || 'http://localhost:5180').replace(/\/$/, '');
+    const erro = document.getElementById('erro');
+    const confirmar = document.getElementById('confirmar');
+    const status = document.getElementById('status');
+    const reais = (valor) =>
+      new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(valor || 0));
+
+    async function carregar() {
+      try {
+        const resposta = await fetch(`${API}/api/dev/checkout/${id}`);
+        if (!resposta.ok) {
+          throw new Error('Simulação indisponível. Rode a API em ambiente de desenvolvimento com Pagamentos:Modo=Simulado.');
+        }
+
+        const dados = await resposta.json();
+        document.getElementById('tipo').textContent = dados.tipo === 'pedido' ? 'PDF avulso' : 'Assinatura Pro';
+        document.getElementById('email').textContent = dados.email;
+        document.getElementById('valor').textContent = reais(dados.valor);
+        status.textContent = dados.status;
+        status.classList.toggle('status-pill--pago', dados.status === 'Pago' || dados.status === 'Ativa');
+
+        if (dados.status === 'Pago' || dados.status === 'Ativa') {
+          confirmar.textContent = 'Pagamento já confirmado';
+          confirmar.disabled = true;
+        }
+      } catch (falha) {
+        erro.textContent = falha instanceof Error ? falha.message : 'Não foi possível carregar a simulação.';
+        erro.classList.add('visivel');
+        confirmar.disabled = true;
+      }
+    }
+
+    confirmar.addEventListener('click', async () => {
+      erro.classList.remove('visivel');
+      confirmar.disabled = true;
+      confirmar.textContent = 'Confirmando...';
+
+      try {
+        const resposta = await fetch(`${API}/api/dev/checkout/${id}/confirmar`, { method: 'POST' });
+        const dados = await resposta.json().catch(() => ({}));
+        if (!resposta.ok) {
+          throw new Error(dados.detalhe || 'Não foi possível confirmar o pagamento simulado.');
+        }
+        window.location.href = dados.urlRetorno;
+      } catch (falha) {
+        erro.textContent = falha instanceof Error ? falha.message : 'Não foi possível confirmar o pagamento simulado.';
+        erro.classList.add('visivel');
+        confirmar.disabled = false;
+        confirmar.textContent = 'Simular pagamento aprovado';
+      }
+    });
+
+    carregar();
+  </script>
+</Layout>

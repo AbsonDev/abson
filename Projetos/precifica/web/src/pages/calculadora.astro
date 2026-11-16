@@ -1,0 +1,861 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { obterNichos } from '../lib/api';
+
+const nichos = await obterNichos();
+const nichoQuery = Astro.url.searchParams.get('nicho');
+const nichoInicial = nichos.find((nicho) => nicho.nicho === nichoQuery) ?? nichos[0];
+const nichosJson = JSON.stringify(nichos).replace(/</g, '\\u003c');
+---
+
+<Layout
+  titulo="Calculadora de precificação — Precifica"
+  descricao="Calcule o preço do seu produto ou serviço com material, tempo, custos fixos, impostos, taxas e margem. Veja o lucro real e gere um PDF."
+>
+  <section class="calc-topo">
+    <div class="container">
+      <span class="eyebrow">Calculadora de precificação</span>
+      <h1>Quanto cobrar por <em>esse</em> trabalho?</h1>
+      <p>
+        Preencha os custos do seu jeito. O preço, o lucro e a margem aparecem na hora — e você sai
+        com um PDF pronto para apresentar.
+      </p>
+    </div>
+  </section>
+
+  <section class="container calc-layout">
+    {nichos.length === 0 && (
+      <div class="erro-caixa visivel" style="margin-bottom: 16px;">
+        Não foi possível carregar os exemplos dos nichos agora. Você ainda pode preencher os campos
+        e calcular, mas os valores de exemplo podem não aparecer.
+      </div>
+    )}
+
+    <form id="calc-form" class="calc-form" novalidate>
+      <div id="erro-form" class="erro-caixa" role="alert"></div>
+
+      <section class="painel" aria-labelledby="titulo-nicho">
+        <div class="painel-cabecalho">
+          <span class="passo-etiqueta">01</span>
+          <div>
+            <h2 id="titulo-nicho">Qual é o seu nicho?</h2>
+            <p>Isso define os exemplos e a dica que aparecem no seu PDF.</p>
+          </div>
+        </div>
+
+        {nichos.length > 0 ? (
+          <div class="nicho-opcoes" role="radiogroup" aria-label="Nicho do negócio">
+            {nichos.map((nicho) => (
+              <label class="nicho-opcao">
+                <input
+                  type="radio"
+                  name="nicho"
+                  value={nicho.nicho}
+                  checked={nicho.nicho === (nichoInicial?.nicho ?? 'Confeitaria')}
+                />
+                <span class="nicho-opcao-emoji" aria-hidden="true">{nicho.emoji}</span>
+                <span>
+                  <strong>{nicho.nome}</strong>
+                  <small>{nicho.descricao}</small>
+                </span>
+              </label>
+            ))}
+          </div>
+        ) : (
+          <input type="hidden" name="nicho" value="Confeitaria" />
+        )}
+
+        <button type="button" class="botao-exemplo" id="aplicar-exemplo">
+          Preencher com um exemplo de {nichoInicial?.nome ?? 'Confeitaria'}
+        </button>
+      </section>
+
+      <section class="painel" aria-labelledby="titulo-projeto">
+        <div class="painel-cabecalho">
+          <span class="passo-etiqueta">02</span>
+          <div>
+            <h2 id="titulo-projeto">O que você está precificando?</h2>
+            <p>Um nome simples ajuda o cliente a entender o orçamento.</p>
+          </div>
+        </div>
+
+        <div class="campo">
+          <label for="titulo">Nome do produto ou serviço</label>
+          <input
+            id="titulo"
+            name="titulo"
+            type="text"
+            maxlength="140"
+            placeholder="Ex.: bolo de chocolate com ganache"
+            autocomplete="off"
+          />
+        </div>
+
+        <div class="campo-duplo">
+          <div class="campo">
+            <label for="quantidade">Quantidade produzida</label>
+            <input id="quantidade" name="quantidade" type="number" min="1" max="100000" step="1" value="1" />
+            <small>Se o cálculo é de um lote, informe quantas unidades ele rende.</small>
+          </div>
+          <div class="campo">
+            <label for="arredondamento">Arredondar o preço para</label>
+            <select id="arredondamento" name="arredondamento">
+              <option value="Nenhum">Nenhum (centavos exatos)</option>
+              <option value="CinquentaCentavos">R$ 0,50</option>
+              <option value="Real" selected>R$ 1,00</option>
+              <option value="CincoReais">R$ 5,00</option>
+            </select>
+            <small>Sempre para cima, para não comer sua margem.</small>
+          </div>
+        </div>
+      </section>
+
+      <section class="painel" aria-labelledby="titulo-materiais">
+        <div class="painel-cabecalho">
+          <span class="passo-etiqueta">03</span>
+          <div>
+            <h2 id="titulo-materiais">Materiais</h2>
+            <p>Informe quanto usou e quanto custa a unidade de medida.</p>
+          </div>
+        </div>
+
+        <div class="linha-material-cabecalho" aria-hidden="true">
+          <span>Material</span>
+          <span>Qtd.</span>
+          <span>Un.</span>
+          <span>Custo unit.</span>
+          <span>Subtotal</span>
+          <span></span>
+        </div>
+        <div class="linhas-materiais" id="lista-materiais"></div>
+        <button type="button" class="botao-adicionar" id="adicionar-material">Adicionar material</button>
+
+        <div class="campo-duplo" style="margin-top: 17px;">
+          <div class="campo">
+            <label for="perda-material">Perda / desperdício</label>
+            <div class="campo-sufixo">
+              <input id="perda-material" inputmode="decimal" value="5" />
+              <span>%</span>
+            </div>
+            <small>Forno, corte, falha de impressão, produto que não rendeu.</small>
+          </div>
+          <div class="dica" style="margin-top: 22px;">
+            Use o custo da quantidade que você realmente usou. Se comprou 1 kg e usou 300 g, informe
+            0,3 kg.
+          </div>
+        </div>
+      </section>
+
+      <section class="painel" aria-labelledby="titulo-tempo">
+        <div class="painel-cabecalho">
+          <span class="passo-etiqueta">04</span>
+          <div>
+            <h2 id="titulo-tempo">Seu tempo</h2>
+            <p>Mão de obra é custo. O tempo de forno também conta.</p>
+          </div>
+        </div>
+
+        <div class="campo-triplo">
+          <div class="campo">
+            <label for="horas-trabalho">Horas</label>
+            <div class="campo-sufixo">
+              <input id="horas-trabalho" inputmode="numeric" value="2" />
+              <span>h</span>
+            </div>
+          </div>
+          <div class="campo">
+            <label for="minutos-trabalho">Minutos</label>
+            <div class="campo-sufixo">
+              <input id="minutos-trabalho" inputmode="numeric" value="0" />
+              <span>min</span>
+            </div>
+          </div>
+          <div class="campo">
+            <label for="valor-hora">Quanto vale sua hora?</label>
+            <div class="campo-sufixo">
+              <input id="valor-hora" inputmode="decimal" value="35,00" />
+              <span>R$</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="dica">
+          Não sabe seu valor/hora? Comece pelo que você precisa tirar por mês, divida pelas horas
+          reais de trabalho e ajuste com o tempo.
+        </div>
+      </section>
+
+      <section class="painel" aria-labelledby="titulo-fixos">
+        <div class="painel-cabecalho">
+          <span class="passo-etiqueta">05</span>
+          <div>
+            <h2 id="titulo-fixos">Custos fixos</h2>
+            <p>Aluguel, internet, energia, depreciação de equipamento. Eles existem mesmo quando você não vende.</p>
+          </div>
+        </div>
+
+        <div class="campo-duplo">
+          <div class="campo">
+            <label for="custos-fixos">Custos fixos por mês</label>
+            <div class="campo-sufixo">
+              <input id="custos-fixos" inputmode="decimal" value="800,00" />
+              <span>R$</span>
+            </div>
+          </div>
+          <div class="campo">
+            <label for="horas-produtivas">Horas produtivas por mês</label>
+            <div class="campo-sufixo">
+              <input id="horas-produtivas" inputmode="numeric" value="120" />
+              <span>h</span>
+            </div>
+            <small>Horas em que você realmente produz e atende.</small>
+          </div>
+        </div>
+
+        <div class="aviso">
+          O rateio usa apenas o tempo informado acima. Se você produz 120 h por mês e este trabalho
+          leva 2 h, ele recebe 2/120 dos custos fixos.
+        </div>
+      </section>
+
+      <section class="painel" aria-labelledby="titulo-taxas">
+        <div class="painel-cabecalho">
+          <span class="passo-etiqueta">06</span>
+          <div>
+            <h2 id="titulo-taxas">Impostos, taxas e extras</h2>
+            <p>Esses percentuais incidem sobre o preço final — e mudam bastante a conta.</p>
+          </div>
+        </div>
+
+        <div class="campo-triplo">
+          <div class="campo">
+            <label for="imposto">Imposto</label>
+            <div class="campo-sufixo">
+              <input id="imposto" inputmode="decimal" value="6" />
+              <span>%</span>
+            </div>
+          </div>
+          <div class="campo">
+            <label for="taxa-cartao">Taxa do cartão</label>
+            <div class="campo-sufixo">
+              <input id="taxa-cartao" inputmode="decimal" value="4,99" />
+              <span>%</span>
+            </div>
+          </div>
+          <div class="campo">
+            <label for="taxa-fixa">Taxa fixa por venda</label>
+            <div class="campo-sufixo">
+              <input id="taxa-fixa" inputmode="decimal" value="0,00" />
+              <span>R$</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="campo" style="margin-top: 18px;">
+          <span class="campo-rotulo">Custos extras</span>
+          <small>Embalagem, entrega, aluguel de equipamento, comissão etc.</small>
+        </div>
+        <div class="linhas-extras" id="lista-extras" style="margin-top: 8px;"></div>
+        <button type="button" class="botao-adicionar" id="adicionar-extra">Adicionar custo extra</button>
+      </section>
+
+      <section class="painel" aria-labelledby="titulo-margem">
+        <div class="painel-cabecalho">
+          <span class="passo-etiqueta">07</span>
+          <div>
+            <h2 id="titulo-margem">Sua margem de lucro</h2>
+            <p>É o que sobra para você depois de todos os custos, impostos e taxas. Calculamos sobre o preço final.</p>
+          </div>
+        </div>
+
+        <div class="campo">
+          <div class="margem-topo">
+            <label for="margem-range">Margem desejada</label>
+            <span class="margem-valor" id="margem-valor">40%</span>
+          </div>
+          <input
+            class="faixa-margem"
+            id="margem-range"
+            type="range"
+            min="0"
+            max="80"
+            step="1"
+            value="40"
+            aria-label="Margem desejada em porcentagem"
+          />
+          <div class="margem-escala"><span>0%</span><span>40%</span><span>80%</span></div>
+        </div>
+
+        <div class="campo" style="max-width: 160px;">
+          <label for="margem">Ou digite o percentual</label>
+          <div class="campo-sufixo">
+            <input id="margem" inputmode="decimal" value="40" />
+            <span>%</span>
+          </div>
+        </div>
+
+        <div class="aviso">
+          Margem não é markup. 40% de margem significa que 40% do preço final é lucro — não que você
+          multiplicou o custo por 1,4.
+        </div>
+      </section>
+    </form>
+
+    <aside class="resultado-painel" id="resultado-painel" aria-label="Resultado do cálculo" aria-live="polite">
+      <div class="resultado-vazio" id="resultado-vazio">
+        <span class="resultado-vazio-icone">R$</span>
+        <h3>Seu preço aparece aqui</h3>
+        <p id="mensagem-preview">Preencha os custos e o tempo para ver o preço sugerido, o lucro e a margem.</p>
+      </div>
+
+      <div class="resultado-conteudo oculto" id="resultado-conteudo">
+        <div class="resultado-rotulo">
+          <span>Preço sugerido</span>
+          <span class="nicho-selo" id="res-nicho">—</span>
+        </div>
+        <p class="preco-grande" id="res-preco">R$ 0,00</p>
+        <p class="preco-por-unidade" id="res-unidade"></p>
+
+        <div class="resultado-resumo">
+          <div class="resumo-item">
+            <span>Custo total</span>
+            <strong id="res-custo">R$ 0,00</strong>
+          </div>
+          <div class="resumo-item">
+            <span>Lucro líquido</span>
+            <strong id="res-lucro">R$ 0,00</strong>
+          </div>
+          <div class="resumo-item">
+            <span>Margem real</span>
+            <strong id="res-margem">0%</strong>
+          </div>
+        </div>
+
+        <div class="resultado-lista" id="res-lista"></div>
+
+        <div class="resultado-rodape">
+          <p>
+            Preço mínimo para não perder dinheiro: <strong id="res-minimo">R$ 0,00</strong>.
+            Abaixo disso, você paga para trabalhar.
+          </p>
+        </div>
+
+        <p class="erro-caixa" id="erro-resultado" role="alert"></p>
+
+        <div class="resultado-acoes">
+          <button class="btn btn--primario" type="submit" form="calc-form" id="btn-salvar">
+            Salvar e gerar PDF
+          </button>
+          <small>PDF sem marca d'água, pronto para compartilhar.</small>
+        </div>
+      </div>
+    </aside>
+  </section>
+
+  <div class="barra-resultado-movel" id="barra-resultado-movel" hidden>
+    <div>
+      <span>Preço sugerido</span>
+      <strong id="barra-preco">R$ 0,00</strong>
+    </div>
+    <a class="btn btn--pequeno btn--primario" href="#resultado-painel">Ver detalhes</a>
+  </div>
+
+  <script type="application/json" id="nichos-dados" set:html={nichosJson}></script>
+
+  <script>
+  // @ts-nocheck
+    const API = (document.body.dataset.api || 'http://localhost:5180').replace(/\/$/, '');
+    const nichos = JSON.parse(document.getElementById('nichos-dados')?.textContent || '[]');
+    const formulario = document.getElementById('calc-form');
+    const listaMateriais = document.getElementById('lista-materiais');
+    const listaExtras = document.getElementById('lista-extras');
+    const resultadoVazio = document.getElementById('resultado-vazio');
+    const resultadoConteudo = document.getElementById('resultado-conteudo');
+    const mensagemPreview = document.getElementById('mensagem-preview');
+    const erroResultado = document.getElementById('erro-resultado');
+    const erroFormulario = document.getElementById('erro-form');
+    const botaoSalvar = document.getElementById('btn-salvar');
+    const barraMovel = document.getElementById('barra-resultado-movel');
+    const barraPreco = document.getElementById('barra-preco');
+    const botaoExemplo = document.getElementById('aplicar-exemplo');
+    const margem = document.getElementById('margem');
+    const margemRange = document.getElementById('margem-range');
+    const margemValor = document.getElementById('margem-valor');
+    const arredondamento = document.getElementById('arredondamento');
+    const chaveRascunho = 'precifica:rascunho:v1';
+    const chaveCalculo = (token) => `precifica:calculo:${token}`;
+    const unidades = ['un', 'g', 'kg', 'ml', 'l', 'm', 'h'];
+    let ultimoResultado = null;
+    let usandoExemplo = false;
+    let estadoEdicao = null;
+    let temporizador = 0;
+    let sequencia = 0;
+
+    const reais = (valor) =>
+      new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(valor || 0));
+
+    const percentual = (valor) =>
+      `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(Number(valor || 0))}%`;
+
+    const textoNumero = (valor) => {
+      const convertido = Number(valor);
+      return Number.isFinite(convertido)
+        ? convertido.toLocaleString('pt-BR', { maximumFractionDigits: 3, useGrouping: false })
+        : '';
+    };
+
+    function numero(valor) {
+      if (typeof valor === 'number') return Number.isFinite(valor) ? valor : 0;
+      if (valor === null || valor === undefined) return 0;
+      let texto = String(valor).replace(/[^\d,.-]/g, '').trim();
+      if (texto.includes(',') && texto.includes('.')) {
+        texto = texto.replace(/\./g, '').replace(',', '.');
+      } else if (texto.includes(',')) {
+        texto = texto.replace(',', '.');
+      }
+      const convertido = Number(texto);
+      return Number.isFinite(convertido) ? convertido : 0;
+    }
+
+    function valor(id) {
+      return document.getElementById(id)?.value ?? '';
+    }
+
+    function nichoSelecionado() {
+      return formulario.querySelector('input[name="nicho"]:checked')?.value
+        || nichos[0]?.nicho
+        || 'Confeitaria';
+    }
+
+    function modeloDoNicho(nicho) {
+      return nichos.find((item) => item.nicho === nicho) ?? nichos[0] ?? null;
+    }
+
+    function opcoesUnidade(selecionada) {
+      return unidades
+        .map((unidade) => `<option value="${unidade}"${unidade === selecionada ? ' selected' : ''}>${unidade}</option>`)
+        .join('');
+    }
+
+    function criarLinhaMaterial(dados = {}) {
+      const linha = document.createElement('div');
+      linha.className = 'linha-material';
+      linha.innerHTML = `
+        <input class="material-desc" type="text" placeholder="Ex.: chocolate meio amargo" autocomplete="off" aria-label="Material" />
+        <input class="material-qtd" inputmode="decimal" value="1" aria-label="Quantidade" />
+        <select class="material-un" aria-label="Unidade">${opcoesUnidade(dados.unidade || 'un')}</select>
+        <input class="material-custo" inputmode="decimal" placeholder="R$ 0,00" aria-label="Custo unitário" />
+        <span class="subtotal">R$ 0,00</span>
+        <button class="botao-icone remover" type="button" aria-label="Remover material">×</button>
+      `;
+
+      linha.querySelector('.material-desc').value = dados.descricao || '';
+      linha.querySelector('.material-qtd').value = textoNumero(dados.quantidade ?? 1);
+      linha.querySelector('.material-custo').value = textoNumero(dados.custoUnitario ?? '');
+
+      const atualizar = () => {
+        const subtotal = numero(linha.querySelector('.material-qtd').value)
+          * numero(linha.querySelector('.material-custo').value);
+        linha.querySelector('.subtotal').textContent = reais(subtotal);
+      };
+
+      linha.addEventListener('input', () => {
+        atualizar();
+        agendarPreview();
+      });
+      linha.querySelector('.remover').addEventListener('click', () => {
+        usandoExemplo = false;
+        linha.remove();
+        agendarPreview();
+      });
+      atualizar();
+      listaMateriais.appendChild(linha);
+    }
+
+    function criarLinhaExtra(dados = {}) {
+      const linha = document.createElement('div');
+      linha.className = 'linha-extra';
+      linha.innerHTML = `
+        <input class="extra-desc" type="text" placeholder="Ex.: embalagem e etiqueta" autocomplete="off" aria-label="Descrição do custo extra" />
+        <input class="extra-valor" inputmode="decimal" placeholder="R$ 0,00" aria-label="Valor do custo extra" />
+        <button class="botao-icone remover" type="button" aria-label="Remover custo extra">×</button>
+      `;
+      linha.querySelector('.extra-desc').value = dados.descricao || '';
+      linha.querySelector('.extra-valor').value = textoNumero(dados.valor ?? '');
+      linha.querySelector('.remover').addEventListener('click', () => {
+        usandoExemplo = false;
+        linha.remove();
+        agendarPreview();
+      });
+      listaExtras.appendChild(linha);
+    }
+
+    function coletar() {
+      const materiais = [...listaMateriais.querySelectorAll('.linha-material')]
+        .map((linha) => ({
+          descricao: linha.querySelector('.material-desc').value.trim(),
+          quantidade: numero(linha.querySelector('.material-qtd').value),
+          unidade: linha.querySelector('.material-un').value,
+          custoUnitario: numero(linha.querySelector('.material-custo').value)
+        }))
+        .filter((material) => material.descricao || material.quantidade || material.custoUnitario);
+
+      const custosExtras = [...listaExtras.querySelectorAll('.linha-extra')]
+        .map((linha) => ({
+          descricao: linha.querySelector('.extra-desc').value.trim(),
+          valor: numero(linha.querySelector('.extra-valor').value)
+        }))
+        .filter((extra) => extra.descricao || extra.valor);
+
+      return {
+        nicho: nichoSelecionado(),
+        titulo: valor('titulo').trim(),
+        quantidadeProduzida: Math.max(1, Math.round(numero(valor('quantidade')) || 1)),
+        materiais,
+        custosExtras,
+        perdaDeMaterialPercentual: numero(valor('perda-material')),
+        minutosDeTrabalho: Math.max(
+          0,
+          Math.round(numero(valor('horas-trabalho')) * 60 + numero(valor('minutos-trabalho')))
+        ),
+        valorHora: numero(valor('valor-hora')),
+        custosFixosMensais: numero(valor('custos-fixos')),
+        horasProdutivasPorMes: Math.max(0, Math.round(numero(valor('horas-produtivas')))),
+        impostoPercentual: numero(valor('imposto')),
+        taxaCartaoPercentual: numero(valor('taxa-cartao')),
+        taxaFixaPorVenda: numero(valor('taxa-fixa')),
+        margemDesejadaPercentual: numero(valor('margem')),
+        arredondamento: arredondamento.value
+      };
+    }
+
+    function preencher(entrada) {
+      if (!entrada) return;
+
+      const radio = formulario.querySelector(`input[name="nicho"][value="${entrada.nicho}"]`);
+      if (radio) radio.checked = true;
+
+      document.getElementById('titulo').value = entrada.titulo || '';
+      document.getElementById('quantidade').value = entrada.quantidadeProduzida ?? 1;
+      document.getElementById('perda-material').value = textoNumero(entrada.perdaDeMaterialPercentual ?? 0);
+      document.getElementById('horas-trabalho').value = textoNumero(Math.floor((entrada.minutosDeTrabalho ?? 0) / 60));
+      document.getElementById('minutos-trabalho').value = textoNumero((entrada.minutosDeTrabalho ?? 0) % 60);
+      document.getElementById('valor-hora').value = textoNumero(entrada.valorHora ?? 0);
+      document.getElementById('custos-fixos').value = textoNumero(entrada.custosFixosMensais ?? 0);
+      document.getElementById('horas-produtivas').value = textoNumero(entrada.horasProdutivasPorMes ?? 160);
+      document.getElementById('imposto').value = textoNumero(entrada.impostoPercentual ?? 0);
+      document.getElementById('taxa-cartao').value = textoNumero(entrada.taxaCartaoPercentual ?? 0);
+      document.getElementById('taxa-fixa').value = textoNumero(entrada.taxaFixaPorVenda ?? 0);
+      document.getElementById('margem').value = textoNumero(entrada.margemDesejadaPercentual ?? 40);
+      margemRange.value = Math.min(80, Math.max(0, numero(entrada.margemDesejadaPercentual ?? 40)));
+      margemValor.textContent = percentual(entrada.margemDesejadaPercentual ?? 40);
+      arredondamento.value = entrada.arredondamento || 'Real';
+
+      listaMateriais.innerHTML = '';
+      (entrada.materiais || []).forEach((material) => criarLinhaMaterial(material));
+      if (!entrada.materiais || entrada.materiais.length === 0) criarLinhaMaterial();
+
+      listaExtras.innerHTML = '';
+      (entrada.custosExtras || []).forEach((extra) => criarLinhaExtra(extra));
+
+      atualizarRotuloExemplo();
+      agendarPreview();
+    }
+
+    function aplicarExemplo(mostrarAviso = false) {
+      const modelo = modeloDoNicho(nichoSelecionado());
+      if (!modelo) return;
+
+      preencher({
+        nicho: modelo.nicho,
+        titulo: modelo.tituloExemplo,
+        quantidadeProduzida: modelo.quantidadeExemplo,
+        materiais: modelo.materiais.map((material) => ({
+          descricao: material.descricao,
+          quantidade: material.quantidade,
+          unidade: material.unidade,
+          custoUnitario: material.custoUnitario
+        })),
+        custosExtras: modelo.custosExtras.map((extra) => ({
+          descricao: extra.descricao,
+          valor: extra.valor
+        })),
+        perdaDeMaterialPercentual: modelo.perdaDeMaterialPercentual,
+        minutosDeTrabalho: modelo.minutosDeTrabalho,
+        valorHora: modelo.valorHoraSugerido,
+        custosFixosMensais: modelo.custosFixosMensaisSugeridos,
+        horasProdutivasPorMes: modelo.horasProdutivasPorMes,
+        impostoPercentual: modelo.impostoPercentual,
+        taxaCartaoPercentual: modelo.taxaCartaoPercentual,
+        taxaFixaPorVenda: 0,
+        margemDesejadaPercentual: modelo.margemSugerida,
+        arredondamento: 'Real'
+      });
+      usandoExemplo = true;
+      if (mostrarAviso) {
+        mostrarErroFormulario('');
+        resultadoVazio.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+
+    function atualizarRotuloExemplo() {
+      if (!botaoExemplo) return;
+      const modelo = modeloDoNicho(nichoSelecionado());
+      botaoExemplo.textContent = `Preencher com um exemplo de ${modelo?.nome ?? 'Confeitaria'}`;
+    }
+
+    function agendarPreview() {
+      window.clearTimeout(temporizador);
+      temporizador = window.setTimeout(executarPreview, 380);
+    }
+
+    async function executarPreview() {
+      const entrada = coletar();
+      salvarRascunho(entrada);
+
+      if (!entrada.titulo) {
+        ultimoResultado = null;
+        resultadoConteudo.classList.add('oculto');
+        resultadoVazio.classList.remove('oculto');
+        if (barraMovel) barraMovel.hidden = true;
+        mensagemPreview.textContent = 'Dê um nome ao produto ou serviço para começar.';
+        return;
+      }
+
+      const minhaSequencia = ++sequencia;
+
+      try {
+        const resposta = await fetch(`${API}/api/calculos/preview`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(entrada)
+        });
+
+        if (minhaSequencia !== sequencia) return;
+
+        if (!resposta.ok) {
+          const erro = await resposta.json().catch(() => ({}));
+          ultimoResultado = null;
+          resultadoConteudo.classList.add('oculto');
+          resultadoVazio.classList.remove('oculto');
+          if (barraMovel) barraMovel.hidden = true;
+          mensagemPreview.textContent = erro.detalhe || 'Confira os valores e tente novamente.';
+          return;
+        }
+
+        const resultado = await resposta.json();
+        ultimoResultado = resultado;
+        renderizar(resultado, entrada);
+      } catch {
+        if (minhaSequencia !== sequencia) return;
+        ultimoResultado = null;
+        resultadoConteudo.classList.add('oculto');
+        resultadoVazio.classList.remove('oculto');
+        if (barraMovel) barraMovel.hidden = true;
+        mensagemPreview.textContent = 'Não conseguimos falar com o servidor agora. Verifique sua conexão.';
+      }
+    }
+
+    function renderizar(resultado, entrada) {
+      resultadoVazio.classList.add('oculto');
+      resultadoConteudo.classList.remove('oculto');
+      erroResultado.classList.remove('visivel');
+      botaoSalvar.disabled = false;
+
+      document.getElementById('res-preco').textContent = reais(resultado.precoSugerido);
+      if (barraMovel && barraPreco) {
+        barraMovel.hidden = false;
+        barraPreco.textContent = reais(resultado.precoSugerido);
+      }
+      document.getElementById('res-nicho').textContent = modeloDoNicho(entrada.nicho)?.nome ?? entrada.nicho;
+      document.getElementById('res-custo').textContent = reais(resultado.custoTotal);
+      document.getElementById('res-lucro').textContent = reais(resultado.lucroLiquido);
+      document.getElementById('res-margem').textContent = percentual(resultado.margemEfetivaPercentual);
+      document.getElementById('res-minimo').textContent = reais(resultado.precoMinimo);
+
+      const unidade = document.getElementById('res-unidade');
+      unidade.textContent = resultado.quantidadeProduzida > 1
+        ? `${reais(resultado.precoSugeridoPorUnidade)} por unidade · ${resultado.quantidadeProduzida} unidades`
+        : '';
+
+      const total = Math.max(1, resultado.custoTotal);
+      const linhas = [
+        ['Materiais', resultado.custoDeMateriais],
+        ['Mão de obra', resultado.custoDeMaoDeObra],
+        ['Custos fixos', resultado.custoFixoRateado],
+        ['Extras', resultado.custosExtras]
+      ];
+
+      document.getElementById('res-lista').innerHTML = linhas
+        .filter(([, valor]) => valor > 0)
+        .map(([rotulo, valor]) => {
+          const largura = Math.min(100, Math.max(2, (valor / total) * 100));
+          return `
+            <div class="resultado-linha">
+              <div class="resultado-linha-topo"><span>${rotulo}</span><strong>${reais(valor)}</strong></div>
+              <div class="barra"><span style="width:${largura.toFixed(1)}%"></span></div>
+            </div>
+          `;
+        })
+        .join('');
+    }
+
+    function salvarRascunho(entrada) {
+      try {
+        localStorage.setItem(chaveRascunho, JSON.stringify({ entrada, atualizadoEm: new Date().toISOString() }));
+      } catch {
+        // Sem localStorage (modo privado): o cálculo continua funcionando.
+      }
+    }
+
+    function restaurarRascunho() {
+      try {
+        const bruto = localStorage.getItem(chaveRascunho);
+        return bruto ? JSON.parse(bruto)?.entrada : null;
+      } catch {
+        return null;
+      }
+    }
+
+    function mostrarErroFormulario(mensagem) {
+      erroFormulario.textContent = mensagem;
+      erroFormulario.classList.toggle('visivel', Boolean(mensagem));
+    }
+
+    function iniciarEdicao() {
+      const parametros = new URLSearchParams(window.location.search);
+      const token = parametros.get('editar');
+      if (!token) return false;
+
+      try {
+        const registro = JSON.parse(localStorage.getItem(chaveCalculo(token)) || 'null');
+        if (!registro?.entrada || !registro.editToken) return false;
+        estadoEdicao = registro;
+        preencher(registro.entrada);
+        botaoSalvar.textContent = 'Salvar alterações';
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    if (botaoExemplo) {
+      botaoExemplo.addEventListener('click', () => aplicarExemplo(true));
+    }
+
+    document.getElementById('adicionar-material').addEventListener('click', () => {
+      usandoExemplo = false;
+      criarLinhaMaterial();
+      listaMateriais.lastElementChild?.querySelector('.material-desc')?.focus();
+    });
+
+    document.getElementById('adicionar-extra').addEventListener('click', () => {
+      usandoExemplo = false;
+      criarLinhaExtra();
+      listaExtras.lastElementChild?.querySelector('.extra-desc')?.focus();
+    });
+
+    formulario.addEventListener('input', (evento) => {
+      if (evento.target === margemRange) {
+        margem.value = margemRange.value;
+        margemValor.textContent = percentual(margemRange.value);
+      } else if (evento.target === margem) {
+        const valorMargem = Math.min(99.99, Math.max(0, numero(margem.value)));
+        margemRange.value = Math.min(80, valorMargem);
+        margemValor.textContent = percentual(valorMargem);
+      }
+      if (!evento.target.matches('.material-desc, .material-qtd, .material-custo, .material-un, .extra-desc, .extra-valor')) {
+        usandoExemplo = false;
+      }
+      agendarPreview();
+    });
+
+    formulario.addEventListener('change', (evento) => {
+      if (evento.target.name === 'nicho') {
+        if (usandoExemplo) {
+          aplicarExemplo(false);
+        } else {
+          atualizarRotuloExemplo();
+          agendarPreview();
+        }
+      }
+    });
+
+    formulario.addEventListener('submit', async (evento) => {
+      evento.preventDefault();
+
+      if (!ultimoResultado) {
+        mostrarErroFormulario('Preencha os dados e espere o preço aparecer antes de salvar.');
+        return;
+      }
+
+      const entrada = coletar();
+      const textoOriginal = botaoSalvar.textContent;
+      botaoSalvar.disabled = true;
+      botaoSalvar.textContent = 'Salvando...';
+      mostrarErroFormulario('');
+
+      try {
+        const editando = Boolean(estadoEdicao);
+        const url = editando
+          ? `${API}/api/calculos/${estadoEdicao.id}`
+          : `${API}/api/calculos`;
+        const resposta = await fetch(url, {
+          method: editando ? 'PUT' : 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(editando ? { 'X-Edit-Token': estadoEdicao.editToken } : {})
+          },
+          body: JSON.stringify(entrada)
+        });
+
+        const dados = await resposta.json().catch(() => ({}));
+        if (!resposta.ok) {
+          throw new Error(dados.detalhe || 'Não foi possível salvar o cálculo.');
+        }
+
+        const shareToken = editando ? estadoEdicao.shareToken : dados.shareToken;
+        const editToken = editando ? estadoEdicao.editToken : dados.editToken;
+        const id = editando ? estadoEdicao.id : dados.id;
+
+        try {
+          localStorage.setItem(chaveCalculo(shareToken), JSON.stringify({
+            id,
+            editToken,
+            shareToken,
+            entrada,
+            salvoEm: new Date().toISOString()
+          }));
+        } catch {
+          // O cálculo já foi salvo no servidor; o token de edição é um extra.
+        }
+
+        window.location.href = `/c/${shareToken}?${editando ? 'atualizado' : 'novo'}=1`;
+      } catch (erro) {
+        mostrarErroFormulario(erro instanceof Error ? erro.message : 'Não foi possível salvar o cálculo.');
+        botaoSalvar.disabled = false;
+        botaoSalvar.textContent = textoOriginal;
+      }
+    });
+
+    (function iniciar() {
+      const editou = iniciarEdicao();
+      if (editou) return;
+
+      const rascunho = restaurarRascunho();
+      if (rascunho) {
+        preencher(rascunho);
+        return;
+      }
+
+      const parametros = new URLSearchParams(window.location.search);
+      const nichoDaUrl = parametros.get('nicho');
+      if (nichoDaUrl) {
+        const radio = formulario.querySelector(`input[name="nicho"][value="${nichoDaUrl}"]`);
+        if (radio) radio.checked = true;
+      }
+
+      aplicarExemplo(false);
+    })();
+  </script>
+</Layout>

@@ -1,0 +1,131 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  titulo="Precifica é grátis por enquanto"
+  descricao="Calculadora de precificação, PDF sem marca d'água e link compartilhável. Tudo gratuito durante o período de validação."
+>
+  <section class="precos-hero">
+    <div class="container">
+      <span class="eyebrow">Grátis por enquanto</span>
+      <h1>Tudo liberado. <em>Sem cobrança.</em></h1>
+      <p>
+        Estamos validando o Precifica com quem faz com as mãos. Neste período, a calculadora, o PDF
+        sem marca d'água e o link compartilhável são gratuitos — sem cartão, assinatura ou pegadinha.
+      </p>
+    </div>
+  </section>
+
+  <section class="container">
+    <div class="planos" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
+      <article class="plano">
+        <span class="eyebrow">Calculadora</span>
+        <h2>Quantas vezes quiser</h2>
+        <p class="plano-descricao">Material, tempo, custos fixos, impostos, taxas e margem no mesmo lugar.</p>
+        <p class="plano-preco">R$ 0 <small>por enquanto</small></p>
+        <ul class="lista-check">
+          <li>Cálculo em tempo real</li>
+          <li>Preço sugerido e preço mínimo</li>
+          <li>Quatro nichos com exemplos</li>
+        </ul>
+        <a class="btn btn--contorno" href="/calculadora">Calcular agora</a>
+      </article>
+
+      <article class="plano plano--destaque">
+        <span class="plano-selo">Incluído</span>
+        <span class="eyebrow">PDF</span>
+        <h2>Sem marca d'água</h2>
+        <p class="plano-descricao">O arquivo completo, com a conta aberta e a dica do seu nicho, pronto para enviar.</p>
+        <p class="plano-preco">R$ 0 <small>por enquanto</small></p>
+        <ul class="lista-check">
+          <li>PDF ilimitado e limpo</li>
+          <li>QR Code e link no rodapé</li>
+          <li>Compartilhável no WhatsApp</li>
+        </ul>
+        <a class="btn btn--primario" href="/calculadora">Gerar meu PDF</a>
+      </article>
+
+      <article class="plano">
+        <span class="eyebrow">Conta</span>
+        <h2>Sem cadastro</h2>
+        <p class="plano-descricao">Você não precisa criar senha nem informar e-mail para começar a calcular.</p>
+        <p class="plano-preco">R$ 0 <small>por enquanto</small></p>
+        <ul class="lista-check">
+          <li>Link público com token</li>
+          <li>Edição pelo próprio navegador</li>
+          <li>Sem cobrança recorrente</li>
+        </ul>
+        <a class="btn btn--contorno" href="/calculadora">Começar sem conta</a>
+      </article>
+    </div>
+
+    <p class="planos-nota">
+      O Precifica está em validação. Se um dia houver cobrança, avisaremos com antecedência e nada
+      será cobrado sem sua autorização. Hoje, o produto é 100% gratuito.
+    </p>
+  </section>
+
+  <section class="secao">
+    <div class="container">
+      <div class="cabecalho-secao">
+        <div>
+          <span class="eyebrow">Dúvidas comuns</span>
+          <h2>Sem letras miúdas.</h2>
+        </div>
+      </div>
+
+      <div class="faq">
+        <details class="pergunta">
+          <summary>Por que está tudo grátis?</summary>
+          <p>
+            Porque estamos validando o produto com o nicho antes de definir qualquer plano. Queremos
+            que você use, veja o PDF e nos diga o que faz sentido.
+          </p>
+        </details>
+        <details class="pergunta">
+          <summary>Vou precisar pagar depois?</summary>
+          <p>
+            Se o produto passar a ter planos, avisaremos com antecedência. Nada é cobrado
+            automaticamente e não pedimos cartão agora.
+          </p>
+        </details>
+        <details class="pergunta">
+          <summary>Preciso criar conta ou senha?</summary>
+          <p>
+            Não. O cálculo fica acessível por um link com token. O token de edição fica só no seu
+            navegador. Para gerar e baixar o PDF, também não pedimos cadastro.
+          </p>
+        </details>
+        <details class="pergunta">
+          <summary>O PDF sai com marca d'água?</summary>
+          <p>
+            Não. Durante o período gratuito, todos os PDFs saem sem marca d'água, com link e QR Code
+            para compartilhar.
+          </p>
+        </details>
+        <details class="pergunta">
+          <summary>Meus dados ficam públicos?</summary>
+          <p>
+            O cálculo fica acessível por um link com token aleatório, que você escolhe com quem
+            compartilhar. Não pedimos e-mail nem senha para calcular.
+          </p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section class="secao secao--apertada">
+    <div class="container">
+      <div class="faixa-cta">
+        <div class="faixa-cta-grade">
+          <div>
+            <h2>Sem preço para pensar. Só o seu preço para descobrir.</h2>
+            <p>Leva menos de dois minutos. O PDF sai pronto para mostrar ao cliente.</p>
+          </div>
+          <a class="btn" href="/calculadora">Calcular meu preço</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</Layout>

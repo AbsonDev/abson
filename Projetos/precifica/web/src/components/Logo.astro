@@ -1,0 +1,7 @@
+---
+const { compacto = false } = Astro.props;
+---
+<a href="/" class:list={["logo", { "logo--compacto": compacto }]} aria-label="Precifica — página inicial">
+  <span class="logo-marca" aria-hidden="true">R$</span>
+  <span class="logo-texto">precifica</span>
+</a>

@@ -1,0 +1,444 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { obterApi } from '../../lib/api';
+import { brl, percentual, dataCurta, horas } from '../../lib/formato';
+import type { Acesso, CalculoDetalhado } from '../../lib/tipos';
+
+const { token } = Astro.params;
+
+if (!token) {
+  return Astro.redirect('/calculadora');
+}
+
+const calculo = await obterApi<CalculoDetalhado>(`/api/calculos/${token}`);
+const acesso = calculo ? await obterApi<Acesso>(`/api/calculos/${token}/acesso`) : null;
+
+if (!calculo) {
+  Astro.response.status = 404;
+}
+
+const pagamentoSucesso = Astro.url.searchParams.get('pagamento') === 'sucesso';
+const site = (import.meta.env.PUBLIC_SITE_URL ?? Astro.url.origin).replace(/\/$/, '');
+const linkCompartilhavel = `${site}/c/${token}`;
+const mensagemWhatsapp = calculo
+  ? encodeURIComponent(
+      `Olha o preço que fechei para "${calculo.titulo}": ${brl(calculo.resultado.precoSugerido)}. ` +
+      `A conta completa está aqui: ${linkCompartilhavel}`
+    )
+  : '';
+
+const entra = calculo?.entrada;
+const resultado = calculo?.resultado;
+const apiPublica = (import.meta.env.PUBLIC_API_URL ?? 'http://localhost:5180').replace(/\/$/, '');
+const urlPdf = `${apiPublica}/api/calculos/${token}/pdf`;
+const urlPdfSemMarca = `${apiPublica}/api/calculos/${token}/pdf/premium`;
+---
+
+<Layout
+  titulo={calculo ? `${calculo.titulo} — ${brl(calculo.resultado.precoSugerido)} | Precifica` : 'Cálculo não encontrado | Precifica'}
+  descricao={calculo ? `Preço sugerido de ${brl(calculo.resultado.precoSugerido)} para ${calculo.titulo}, com custo, impostos e margem abertos.` : 'Cálculo não encontrado.'}
+>
+  {!calculo || !resultado || !entra ? (
+    <section class="erro-pagina">
+      <div class="container">
+        <span class="eyebrow">Link não encontrado</span>
+        <h1>Esse cálculo <em>não existe</em> mais.</h1>
+        <p>O link pode ter sido digitado errado ou o cálculo foi removido. Você pode criar um novo em menos de dois minutos.</p>
+        <a class="btn btn--primario" href="/calculadora" style="margin-top: 22px;">Criar novo cálculo</a>
+      </div>
+    </section>
+  ) : (
+    <section class="pagina-calculo">
+      <div class="container">
+        {pagamentoSucesso && (
+          <div class="aviso-pagamento" id="aviso-pagamento">
+            {acesso?.premium
+              ? 'Pagamento confirmado. Seu PDF sem marca d\'água está liberado abaixo.'
+              : 'Recebemos seu retorno do pagamento. A confirmação pode levar alguns segundos — esta página se atualiza sozinha.'}
+          </div>
+        )}
+
+        <div class="calculo-topo">
+          <div>
+            <a class="link-seta" href="/calculadora" style="font-size: 0.78rem;">Novo cálculo</a>
+            <h1>{calculo.titulo}</h1>
+            <div class="calculo-meta">
+              <span>{calculo.nichoNome}</span>
+              <span>{calculo.quantidadeProduzida} {calculo.quantidadeProduzida === 1 ? 'unidade' : 'unidades'}</span>
+              <span>{horas(entra.minutosDeTrabalho)} de trabalho</span>
+              <span>Criado em {dataCurta(calculo.criadoEm)}</span>
+            </div>
+          </div>
+          <div class="acoes-calculo" style="min-width: 210px; margin-top: 0;">
+            <a class="btn btn--contorno btn--pequeno" href={acesso?.premium ? urlPdfSemMarca : urlPdf}>
+              Baixar PDF
+            </a>
+            <div id="editar-container" class="oculto">
+              <a class="btn btn--contorno btn--pequeno btn--largo" id="btn-editar" href={`/calculadora?editar=${token}`}>
+                Editar este cálculo
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div class="calculo-grid">
+          <div class="cartao-pilha">
+            <section class="cartao-preco">
+              <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px;">
+                <span class="rotulo">Preço sugerido</span>
+                <span class:list={['selo', acesso?.premium ? 'selo--terracota' : 'selo--neutro']}>
+                  {acesso?.premium ? 'PDF liberado' : 'PDF com marca d\'água'}
+                </span>
+              </div>
+              <p class="preco-destaque">{brl(resultado.precoSugerido)}</p>
+              {resultado.quantidadeProduzida > 1 && (
+                <p class="por-unidade">{brl(resultado.precoSugeridoPorUnidade)} por unidade</p>
+              )}
+              <div class="preco-estatisticas">
+                <div>
+                  <span>Lucro líquido</span>
+                  <strong>{brl(resultado.lucroLiquido)}</strong>
+                </div>
+                <div>
+                  <span>Margem real</span>
+                  <strong>{percentual(resultado.margemEfetivaPercentual)}</strong>
+                </div>
+                <div>
+                  <span>Custo total</span>
+                  <strong>{brl(resultado.custoTotal)}</strong>
+                </div>
+              </div>
+            </section>
+
+            <section class="cartao">
+              <h2>Como chegamos nesse preço</h2>
+              <p>A conta fica aberta para você conferir e mostrar ao cliente.</p>
+
+              <div class="tabela">
+                <div class="tabela-linha">
+                  <span>Materiais {resultado.perdaDeMaterial > 0 ? '(com perda)' : ''}</span>
+                  <strong>{brl(resultado.custoDeMateriais)}</strong>
+                </div>
+                {resultado.perdaDeMaterial > 0 && (
+                  <div class="tabela-linha" style="font-size: 0.72rem;">
+                    <span>↳ incluso de perda/desperdício</span>
+                    <strong>{brl(resultado.perdaDeMaterial)}</strong>
+                  </div>
+                )}
+                <div class="tabela-linha">
+                  <span>Mão de obra ({horas(entra.minutosDeTrabalho)})</span>
+                  <strong>{brl(resultado.custoDeMaoDeObra)}</strong>
+                </div>
+                <div class="tabela-linha">
+                  <span>Custos fixos rateados</span>
+                  <strong>{brl(resultado.custoFixoRateado)}</strong>
+                </div>
+                <div class="tabela-linha">
+                  <span>Custos extras</span>
+                  <strong>{brl(resultado.custosExtras)}</strong>
+                </div>
+                <div class="tabela-linha tabela-linha--total">
+                  <span>Custo total</span>
+                  <strong>{brl(resultado.custoTotal)}</strong>
+                </div>
+                <div class="tabela-linha">
+                  <span>Imposto ({percentual(entra.impostoPercentual)})</span>
+                  <strong>{brl(resultado.impostos)}</strong>
+                </div>
+                <div class="tabela-linha">
+                  <span>Taxa do cartão ({percentual(entra.taxaCartaoPercentual)})</span>
+                  <strong>{brl(resultado.taxaDoCartao)}</strong>
+                </div>
+                {resultado.taxaFixa > 0 && (
+                  <div class="tabela-linha">
+                    <span>Taxa fixa por venda</span>
+                    <strong>{brl(resultado.taxaFixa)}</strong>
+                  </div>
+                )}
+                <div class="tabela-linha tabela-linha--lucro">
+                  <span>Lucro líquido</span>
+                  <strong>{brl(resultado.lucroLiquido)}</strong>
+                </div>
+              </div>
+
+              <div class="aviso" style="margin-top: 16px;">
+                Preço mínimo para não perder dinheiro: <strong>{brl(resultado.precoMinimo)}</strong>.
+                A margem é calculada sobre o preço final, não sobre o custo.
+              </div>
+            </section>
+
+            <div class="grade-2">
+              <section class="cartao">
+                <h2>O que está no cálculo</h2>
+                <div class="mini-tabela">
+                  <div><span>Seu valor/hora</span><strong>{brl(entra.valorHora)}</strong></div>
+                  <div><span>Tempo de trabalho</span><strong>{horas(entra.minutosDeTrabalho)}</strong></div>
+                  <div><span>Custos fixos mensais</span><strong>{brl(entra.custosFixosMensais)}</strong></div>
+                  <div><span>Horas produtivas/mês</span><strong>{entra.horasProdutivasPorMes} h</strong></div>
+                  <div><span>Perda de material</span><strong>{percentual(entra.perdaDeMaterialPercentual)}</strong></div>
+                  <div><span>Margem desejada</span><strong>{percentual(entra.margemDesejadaPercentual)}</strong></div>
+                </div>
+              </section>
+
+              <section class="cartao">
+                <h2>Materiais</h2>
+                {entra.materiais.length > 0 ? (
+                  <div class="lista-materiais">
+                    {entra.materiais.map((material) => (
+                      <div>
+                        <span>{material.descricao} — {material.quantidade} {material.unidade}</span>
+                        <strong>{brl(material.quantidade * material.custoUnitario)}</strong>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p style="margin-top: 12px; color: var(--tinta-suave); font-size: 0.78rem;">
+                    Este cálculo não tem materiais — só tempo e/ou custos extras.
+                  </p>
+                )}
+              </section>
+            </div>
+
+            <section class="cartao">
+              <h2>Compartilhe este cálculo</h2>
+              <p>Quem abrir o link vê a mesma conta, sem acessar seus dados de edição.</p>
+              <div class="compartilhar">
+                <a
+                  class="btn btn--pequeno btn--contorno"
+                  href={`https://wa.me/?text=${mensagemWhatsapp}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Enviar no WhatsApp
+                </a>
+                <button class="btn btn--pequeno btn--contorno" type="button" data-copiar-link={linkCompartilhavel}>
+                  Copiar link
+                </button>
+              </div>
+              <div class="campo" style="margin-top: 14px;">
+                <input readonly value={linkCompartilhavel} aria-label="Link compartilhável do cálculo" />
+              </div>
+            </section>
+          </div>
+
+          <aside class="cartao-pilha">
+            <section class="cartao">
+              <h2>Leve o PDF com você</h2>
+              <p>
+                {acesso?.premium
+                  ? 'Seu PDF está liberado sem marca d\'água, com a conta completa e o link para compartilhar.'
+                  : 'A versão com marca d\'água é gratuita. A versão limpa é ótima para enviar ao cliente.'}
+              </p>
+              <div class="acoes-calculo">
+                {acesso?.premium ? (
+                  <a class="btn btn--primario" href={urlPdfSemMarca}>
+                    Baixar PDF sem marca
+                  </a>
+                ) : (
+                  <>
+                    <a class="btn btn--primario" href={urlPdf}>
+                      Baixar PDF gratuito
+                    </a>
+                    <button class="btn btn--escuro" type="button" id="abrir-compra">
+                      Remover marca d'água — R$ 29
+                    </button>
+                  </>
+                )}
+              </div>
+              {!acesso?.premium && (
+                <p class="aviso" style="margin-top: 13px;">
+                  O PDF avulso vale só para este cálculo. Se você precifica sempre, o Pro sai por R$ 9/mês.
+                </p>
+              )}
+            </section>
+
+            {!acesso?.premium && (
+              <section class="cartao" style="background: var(--creme);">
+                <span class="selo selo--terracota">Precifica Pro</span>
+                <h2 style="margin-top: 12px;">PDFs ilimitados sem marca d'água</h2>
+                <p>R$ 9 por mês. Cancele quando quiser. Sem senha: o acesso é pelo seu e-mail.</p>
+                <div class="acoes-calculo">
+                  <a class="btn btn--contorno" href="/precos">Conhecer o Pro</a>
+                </div>
+              </section>
+            )}
+
+            {!acesso?.premium && (
+              <section class="cartao">
+                <h2>Já tem uma assinatura?</h2>
+                <p>Informe o e-mail usado na compra para baixar a versão limpa.</p>
+                <form id="form-assinante" class="campo" style="margin-top: 12px;">
+                  <label for="email-assinante">E-mail da assinatura</label>
+                  <input id="email-assinante" type="email" placeholder="voce@exemplo.com" autocomplete="email" />
+                  <button class="btn btn--contorno btn--largo" type="submit" style="margin-top: 8px;">
+                    Baixar com meu e-mail
+                  </button>
+                  <p class="erro-caixa" id="erro-assinante" role="alert"></p>
+                </form>
+              </section>
+            )}
+          </aside>
+        </div>
+      </div>
+    </section>
+
+      <dialog class="dialogo" id="dialogo-compra">
+        <div class="dialogo-conteudo">
+          <button class="dialogo-fechar" type="button" id="fechar-dialogo" aria-label="Fechar">×</button>
+          <span class="eyebrow">PDF sem marca d'água</span>
+          <h2>Um PDF, R$ 29, sem assinatura.</h2>
+          <p>
+            Você recebe o acesso a este cálculo específico. O link compartilhável continua funcionando
+            e o pagamento é processado pelo Mercado Pago.
+          </p>
+          <form id="form-compra">
+            <div class="campo">
+              <label for="email-compra">Seu e-mail</label>
+              <input id="email-compra" type="email" placeholder="voce@exemplo.com" autocomplete="email" required />
+              <small>Usamos o e-mail apenas para vincular o pagamento e liberar o PDF.</small>
+            </div>
+            <button class="btn btn--primario btn--largo" type="submit">Ir para o pagamento</button>
+            <p class="erro-caixa" id="erro-compra" role="alert"></p>
+          </form>
+        </div>
+      </dialog>
+
+    <script>
+  // @ts-nocheck
+      const API = (document.body.dataset.api || 'http://localhost:5180').replace(/\/$/, '');
+      const TOKEN = document.querySelector('[data-copiar-link]')?.getAttribute('data-copiar-link')?.split('/c/')[1] || '';
+      const dialogo = document.getElementById('dialogo-compra');
+      const erroCompra = document.getElementById('erro-compra');
+      const erroAssinante = document.getElementById('erro-assinante');
+
+      function abrirDialogo() {
+        if (dialogo instanceof HTMLDialogElement) dialogo.showModal();
+      }
+
+      document.getElementById('abrir-compra')?.addEventListener('click', abrirDialogo);
+      document.getElementById('fechar-dialogo')?.addEventListener('click', () => {
+        if (dialogo instanceof HTMLDialogElement) dialogo.close();
+      });
+
+      dialogo?.addEventListener('click', (evento) => {
+        if (evento.target === dialogo && dialogo instanceof HTMLDialogElement) {
+          dialogo.close();
+        }
+      });
+
+      document.querySelectorAll('[data-copiar-link]').forEach((botao) => {
+        botao.addEventListener('click', async () => {
+          const link = botao.getAttribute('data-copiar-link') || '';
+          const textoOriginal = botao.textContent;
+          try {
+            await navigator.clipboard.writeText(link);
+            botao.textContent = 'Link copiado!';
+          } catch {
+            window.prompt('Copie o link:', link);
+          }
+          window.setTimeout(() => {
+            botao.textContent = textoOriginal;
+          }, 2200);
+        });
+      });
+
+      document.getElementById('form-compra')?.addEventListener('submit', async (evento) => {
+        evento.preventDefault();
+        const email = document.getElementById('email-compra').value.trim();
+        const botao = evento.currentTarget.querySelector('button[type="submit"]');
+        erroCompra.classList.remove('visivel');
+        botao.disabled = true;
+        botao.textContent = 'Abrindo pagamento...';
+
+        try {
+          const resposta = await fetch(`${API}/api/calculos/${TOKEN}/comprar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+          });
+          const dados = await resposta.json().catch(() => ({}));
+          if (!resposta.ok) {
+            throw new Error(dados.detalhe || 'Não foi possível iniciar o pagamento.');
+          }
+          window.location.href = dados.url;
+        } catch (erro) {
+          erroCompra.textContent = erro instanceof Error ? erro.message : 'Não foi possível iniciar o pagamento.';
+          erroCompra.classList.add('visivel');
+          botao.disabled = false;
+          botao.textContent = 'Ir para o pagamento';
+        }
+      });
+
+      async function baixarComEmail(email, destinoErro) {
+        destinoErro.classList.remove('visivel');
+        const url = `${API}/api/calculos/${TOKEN}/pdf/premium?email=${encodeURIComponent(email)}`;
+
+        try {
+          const resposta = await fetch(url);
+          if (!resposta.ok) {
+            const dados = await resposta.json().catch(() => ({}));
+            throw new Error(dados.detalhe || 'Não encontramos uma assinatura ativa para este e-mail.');
+          }
+
+          const blob = await resposta.blob();
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = 'precifica-calculo.pdf';
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          URL.revokeObjectURL(link.href);
+        } catch (erro) {
+          destinoErro.textContent = erro instanceof Error ? erro.message : 'Não foi possível baixar o PDF.';
+          destinoErro.classList.add('visivel');
+        }
+      }
+
+      document.getElementById('form-assinante')?.addEventListener('submit', async (evento) => {
+        evento.preventDefault();
+        const email = document.getElementById('email-assinante').value.trim();
+        const botao = evento.currentTarget.querySelector('button[type="submit"]');
+        botao.disabled = true;
+        botao.textContent = 'Verificando...';
+        await baixarComEmail(email, erroAssinante);
+        botao.disabled = false;
+        botao.textContent = 'Baixar com meu e-mail';
+      });
+
+      // Mostra "Editar" apenas se este navegador guardou o token de edição.
+      try {
+        const registro = localStorage.getItem(`precifica:calculo:${TOKEN}`);
+        if (registro) {
+          document.getElementById('editar-container')?.classList.remove('oculto');
+        }
+      } catch {
+        // Sem localStorage: o cálculo continua acessível para leitura.
+      }
+
+      // Se o usuário voltou do pagamento, o webhook pode levar alguns segundos.
+      const avisoPagamento = document.getElementById('aviso-pagamento');
+      if (avisoPagamento && avisoPagamento.textContent?.includes('pode levar alguns segundos')) {
+        let tentativas = 0;
+        const intervalo = window.setInterval(async () => {
+          tentativas += 1;
+          try {
+            const resposta = await fetch(`${API}/api/calculos/${TOKEN}/acesso`);
+            if (resposta.ok) {
+              const acesso = await resposta.json();
+              if (acesso.premium) {
+                window.clearInterval(intervalo);
+                window.location.reload();
+              }
+            }
+          } catch {
+            // Continua tentando até o limite abaixo.
+          }
+
+          if (tentativas >= 15) {
+            window.clearInterval(intervalo);
+          }
+        }, 3000);
+      }
+    </script>
+  )}
+</Layout>

@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Precifica.Api/Precifica.Api.csproj" />
+    <Project Path="src/Precifica.Application/Precifica.Application.csproj" />
+    <Project Path="src/Precifica.Domain/Precifica.Domain.csproj" />
+    <Project Path="src/Precifica.Infrastructure/Precifica.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Precifica.Application.Tests/Precifica.Application.Tests.csproj" />
+    <Project Path="tests/Precifica.Domain.Tests/Precifica.Domain.Tests.csproj" />
+    <Project Path="tests/Precifica.Infrastructure.Tests/Precifica.Infrastructure.Tests.csproj" />
+  </Folder>
+</Solution>

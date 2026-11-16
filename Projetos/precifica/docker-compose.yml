@@ -1,0 +1,56 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: precifica-postgres
+    environment:
+      POSTGRES_USER: precifica
+      POSTGRES_PASSWORD: precifica
+      POSTGRES_DB: precifica
+    ports:
+      - "5433:5432"
+    volumes:
+      - precifica_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U precifica -d precifica"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: src/Precifica.Api/Dockerfile
+    container_name: precifica-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Database__Provider: Postgres
+      Database__ConnectionString: Host=postgres;Port=5432;Database=precifica;Username=precifica;Password=precifica
+      Cors__AllowedOrigins: http://localhost:3000,http://127.0.0.1:3000
+      Web__Url: http://localhost:3000
+      Api__PublicUrl: http://localhost:5180
+      Monetizacao__Ativa: "false"
+      Pagamentos__Modo: Simulado
+    ports:
+      - "5180:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./web
+      args:
+        PUBLIC_API_URL: http://localhost:5180
+        PUBLIC_SITE_URL: http://localhost:3000
+    container_name: precifica-web
+    environment:
+      API_URL: http://api:8080
+      PUBLIC_API_URL: http://localhost:5180
+      PORT: 4321
+    ports:
+      - "3000:4321"
+    depends_on:
+      - api
+
+volumes:
+  precifica_pgdata:

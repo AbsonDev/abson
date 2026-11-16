@@ -1,0 +1,297 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout>
+  <section class="hero">
+    <div class="container hero-grade">
+      <div class="hero-texto">
+        <span class="eyebrow">Para quem faz com as mãos</span>
+        <h1>Cobre o que seu trabalho <em>vale.</em></h1>
+        <p class="hero-lead">
+          Material, tempo, custos fixos, taxas e o lucro que você merece. O Precifica faz a conta
+          completa e entrega um preço que dá para defender — com um PDF pronto para mandar no WhatsApp.
+        </p>
+        <div class="hero-acoes">
+          <a class="btn btn--primario" href="/calculadora">Calcular meu preço</a>
+          <a class="btn btn--contorno" href="#como-funciona">Ver como funciona</a>
+        </div>
+        <div class="hero-prova">
+          <span>100% grátis por enquanto</span>
+          <span>PDF para compartilhar</span>
+          <span>Feito para o seu nicho</span>
+        </div>
+      </div>
+
+      <div class="hero-visual" aria-hidden="true">
+        <div class="cartao-exemplo">
+          <div class="cartao-exemplo-topo">
+            <span>Cálculo · Confeitaria</span>
+            <span class="selo selo--terracota">Lucro real</span>
+          </div>
+          <h3>Bolo de chocolate com ganache</h3>
+          <p class="rotulo">Preço sugerido</p>
+          <p class="preco">R$ 237,00</p>
+          <div class="cartao-exemplo-linhas">
+            <div><span>Custo total</span><strong>R$ 115,97</strong></div>
+            <div><span>Impostos + taxa do cartão</span><strong>R$ 26,05</strong></div>
+            <div><span>Lucro líquido</span><strong>R$ 94,98</strong></div>
+            <div><span>Margem real</span><strong>40,1%</strong></div>
+          </div>
+        </div>
+        <div class="selo-pdf">
+          <span class="selo-pdf-icone">PDF</span>
+          <span>
+            <strong>Pronto para enviar</strong>
+            <small>Com a conta aberta, do jeito que o cliente entende.</small>
+          </span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="faixa-nichos">
+    <div class="container nichos">
+      <a class="nicho-mini" href="/calculadora?nicho=Confeitaria">
+        <span aria-hidden="true">🧁</span>
+        <span><strong>Confeitaria</strong><small>Bolos, doces e sobremesas</small></span>
+      </a>
+      <a class="nicho-mini" href="/calculadora?nicho=Artesanato">
+        <span aria-hidden="true">🧶</span>
+        <span><strong>Artesanato</strong><small>Crochê, costura e peças manuais</small></span>
+      </a>
+      <a class="nicho-mini" href="/calculadora?nicho=Impressao3D">
+        <span aria-hidden="true">🖨️</span>
+        <span><strong>Impressão 3D</strong><small>Peças sob demanda e protótipos</small></span>
+      </a>
+      <a class="nicho-mini" href="/calculadora?nicho=Estetica">
+        <span aria-hidden="true">✨</span>
+        <span><strong>Estética</strong><small>Procedimentos e atendimentos</small></span>
+      </a>
+    </div>
+  </section>
+
+  <section class="secao">
+    <div class="container">
+      <div class="cabecalho-secao">
+        <div>
+          <span class="eyebrow">O problema não é o preço</span>
+          <h2>É a conta que ninguém te ensinou a fazer.</h2>
+        </div>
+        <p>
+          Cobrar “custo + alguma coisa” deixa de fora o que mais pesa: seu tempo, as taxas e o
+          dinheiro que precisa sobrar para o negócio continuar.
+        </p>
+      </div>
+
+      <div class="grade-3">
+        <article class="argumento">
+          <span class="argumento-numero">01</span>
+          <h3>Seu tempo tem valor</h3>
+          <p>
+            Duas horas de forno, uma tarde de crochê ou a cadeira ocupada por um atendimento. Se
+            você não cobra por isso, está pagando para trabalhar.
+          </p>
+        </article>
+        <article class="argumento">
+          <span class="argumento-numero">02</span>
+          <h3>As taxas comem a margem</h3>
+          <p>
+            Imposto, maquininha e plataforma incidem sobre o preço final. Calcular tudo sobre o
+            custo é o caminho mais rápido para vender no prejuízo.
+          </p>
+        </article>
+        <article class="argumento">
+          <span class="argumento-numero">03</span>
+          <h3>Lucro não é gorjeta</h3>
+          <p>
+            Margem é o que permite comprar material novo, investir em equipamento e atravessar um
+            mês fraco sem entrar em pânico.
+          </p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="secao secao--apertada" id="como-funciona">
+    <div class="container">
+      <div class="cabecalho-secao">
+        <div>
+          <span class="eyebrow">Simples de verdade</span>
+          <h2>Três passos. Nenhuma planilha.</h2>
+        </div>
+        <a class="link-seta" href="/calculadora">Começar agora</a>
+      </div>
+
+      <div class="passos">
+        <article class="passo">
+          <span class="numero-passo">1</span>
+          <h3>Coloque seus custos</h3>
+          <p>
+            Materiais, tempo de trabalho, custos fixos e extras. O formulário já vem com um exemplo
+            do seu nicho para não travar.
+          </p>
+        </article>
+        <article class="passo">
+          <span class="numero-passo">2</span>
+          <h3>Escolha sua margem</h3>
+          <p>
+            Veja o preço mudar na hora e confira o lucro que realmente sobra depois de impostos e
+            taxas.
+          </p>
+        </article>
+        <article class="passo">
+          <span class="numero-passo">3</span>
+          <h3>Envie o PDF</h3>
+          <p>
+            Um resumo claro da conta, com preço sugerido, preço mínimo e margem. Compartilhe o link
+            ou mande o arquivo.
+          </p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="secao secao-pdf">
+    <div class="container pdf-grade">
+      <div class="pdf-texto">
+        <span class="eyebrow">O PDF também é marketing</span>
+        <h2>Quem mostra a conta, <em>defende o preço.</em></h2>
+        <p>
+          Em vez de responder “é R$ 237” e esperar um “achei caro”, você mostra de onde veio cada
+          centavo. O cliente entende o valor. E o seu link pode virar o próximo cálculo de outra
+          pessoa do nicho.
+        </p>
+        <ul class="lista-check">
+          <li>Resumo visual com custo, impostos, taxas e lucro</li>
+          <li>Preço mínimo para nunca vender no prejuízo</li>
+          <li>Link compartilhável e QR Code no rodapé</li>
+          <li>Dica específica do seu nicho</li>
+        </ul>
+        <div class="hero-acoes">
+          <a class="btn btn--primario" href="/calculadora">Criar meu primeiro cálculo</a>
+        </div>
+      </div>
+
+      <div class="pdf-mock" aria-hidden="true">
+        <div class="pdf-mock-marca">
+          <strong>precifica</strong>
+          <span>Confeitaria · 15/11/2026</span>
+        </div>
+        <h3>Bolo de chocolate com ganache</h3>
+        <div class="pdf-preco">R$ 237,00</div>
+        <div class="pdf-linhas">
+          <div class="pdf-linha"><span>Materiais</span><strong>R$ 28,14</strong></div>
+          <div class="pdf-linha"><span>Mão de obra</span><strong>R$ 70,00</strong></div>
+          <div class="pdf-linha"><span>Custos fixos</span><strong>R$ 13,33</strong></div>
+          <div class="pdf-linha"><span>Impostos + cartão</span><strong>R$ 26,05</strong></div>
+          <div class="pdf-linha"><span>Lucro líquido</span><strong>R$ 94,98</strong></div>
+        </div>
+        <div class="pdf-rodape">
+          <span>Compartilhe: precifica.app/c/…<br />Feito gratuitamente no Precifica.</span>
+          <span class="pdf-qr"></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="secao">
+    <div class="container">
+      <div class="cabecalho-secao">
+        <div>
+          <span class="eyebrow">Grátis por enquanto</span>
+          <h2>Estamos validando. Então é <em>tudo grátis.</em></h2>
+        </div>
+        <a class="link-seta" href="/precos">Entender</a>
+      </div>
+
+      <div class="grade-3">
+        <article class="argumento">
+          <span class="argumento-numero">01</span>
+          <h3>Calculadora sem limite</h3>
+          <p>Quantos cálculos quiser, com todos os custos, impostos, taxas e margem.</p>
+        </article>
+        <article class="argumento">
+          <span class="argumento-numero">02</span>
+          <h3>PDF sem marca d'água</h3>
+          <p>O arquivo sai limpo, com a conta aberta e pronto para enviar ao cliente.</p>
+        </article>
+        <article class="argumento">
+          <span class="argumento-numero">03</span>
+          <h3>Link e QR de brinde</h3>
+          <p>Compartilhe o cálculo por WhatsApp ou deixe o cliente abrir pelo QR Code.</p>
+        </article>
+      </div>
+
+      <div class="hero-acoes" style="margin-top: 28px;">
+        <a class="btn btn--primario" href="/calculadora">Começar de graça</a>
+        <a class="btn btn--contorno" href="/precos">Ver o que está incluído</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="secao secao--apertada">
+    <div class="container">
+      <div class="cabecalho-secao">
+        <div>
+          <span class="eyebrow">Dúvidas comuns</span>
+          <h2>Antes de colocar a mão na massa.</h2>
+        </div>
+      </div>
+
+      <div class="faq">
+        <details class="pergunta">
+          <summary>O cálculo é realmente gratuito?</summary>
+          <p>
+            Sim. Neste período de validação, tudo é gratuito: cálculos ilimitados, PDF sem marca
+            d'água e link compartilhável. Não pedimos cartão e não há cobrança.
+          </p>
+        </details>
+        <details class="pergunta">
+          <summary>Como o preço sugerido é calculado?</summary>
+          <p>
+            Somamos materiais (com perda), seu tempo, custos fixos rateados e extras. Depois
+            aplicamos impostos e taxas sobre o preço final para chegar em um valor que preserva a
+            margem que você escolheu. A margem é sobre o preço, não sobre o custo.
+          </p>
+        </details>
+        <details class="pergunta">
+          <summary>Preciso entender de contabilidade?</summary>
+          <p>
+            Não. O formulário já vem com valores de exemplo do seu nicho. Você ajusta o que sabe e
+            o Precifica mostra o impacto de cada mudança no preço e no lucro.
+          </p>
+        </details>
+        <details class="pergunta">
+          <summary>Meus dados ficam públicos?</summary>
+          <p>
+            O cálculo fica acessível por um link com token aleatório, que você escolhe com quem
+            compartilhar. O token de edição fica só no seu navegador. Não pedimos senha para
+            calcular.
+          </p>
+        </details>
+        <details class="pergunta">
+          <summary>Serve para o meu negócio?</summary>
+          <p>
+            O MVP atende confeitaria, artesanato, impressão 3D e estética. A conta é a mesma para
+            qualquer negócio que venda produto ou serviço sob demanda — os exemplos é que mudam.
+          </p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section class="secao secao--apertada">
+    <div class="container">
+      <div class="faixa-cta">
+        <div class="faixa-cta-grade">
+          <div>
+            <h2>Pare de adivinhar. Comece a cobrar com clareza.</h2>
+            <p>Leva menos de dois minutos. O primeiro cálculo é grátis e o PDF já sai pronto.</p>
+          </div>
+          <a class="btn" href="/calculadora">Calcular meu preço</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</Layout>
