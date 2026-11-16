@@ -1,0 +1,130 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  titulo="Cardápio no Lucro é grátis por enquanto"
+  descricao="Calculadora de ficha técnica, preço por canal, CMV e PDF. Tudo gratuito durante o período de validação."
+>
+  <section class="precos-hero">
+    <div class="container">
+      <span class="eyebrow">Grátis por enquanto</span>
+      <h1>Tudo liberado. <em>Sem cobrança.</em></h1>
+      <p>
+        Estamos validando o Cardápio no Lucro com restaurantes, lanchonetes, food trucks e
+        marmitarias. Neste período, fichas, canais e PDF são gratuitos — sem cartão e sem assinatura.
+      </p>
+    </div>
+  </section>
+
+  <section class="container">
+    <div class="planos">
+      <article class="plano">
+        <span class="eyebrow">Fichas</span>
+        <h2>Quantas quiser</h2>
+        <p class="plano-descricao">Ingredientes, rendimento, embalagem, mão de obra e custo fixo por porção.</p>
+        <p class="plano-preco">R$ 0 <small>por enquanto</small></p>
+        <ul class="lista-check">
+          <li>Ficha técnica completa</li>
+          <li>Custo real por porção</li>
+          <li>CMV alvo e CMV realizado</li>
+        </ul>
+        <a class="btn btn--contorno" href="/calculadora">Criar ficha</a>
+      </article>
+
+      <article class="plano plano--destaque">
+        <span class="plano-selo">Incluído</span>
+        <span class="eyebrow">Canais</span>
+        <h2>Preço por canal</h2>
+        <p class="plano-descricao">Salão, balcão, delivery próprio, iFood e 99Food com a comissão de cada um.</p>
+        <p class="plano-preco">R$ 0 <small>por enquanto</small></p>
+        <ul class="lista-check">
+          <li>Preço sugerido e mínimo</li>
+          <li>Margem de contribuição</li>
+          <li>Alerta quando o CMV não cobre o custo</li>
+        </ul>
+        <a class="btn btn--primario" href="/calculadora">Comparar canais</a>
+      </article>
+
+      <article class="plano">
+        <span class="eyebrow">PDF</span>
+        <h2>Pronto para a cozinha</h2>
+        <p class="plano-descricao">A ficha técnica completa para imprimir, treinar a equipe e revisar sempre.</p>
+        <p class="plano-preco">R$ 0 <small>por enquanto</small></p>
+        <ul class="lista-check">
+          <li>PDF sem marca d'água</li>
+          <li>Link e QR Code</li>
+          <li>Meu cardápio no navegador</li>
+        </ul>
+        <a class="btn btn--contorno" href="/calculadora">Gerar PDF</a>
+      </article>
+    </div>
+
+    <p class="planos-nota">
+      O produto está em validação. Se um dia houver cobrança, avisaremos com antecedência e nada
+      será cobrado sem sua autorização. Hoje, o Cardápio no Lucro é 100% gratuito.
+    </p>
+  </section>
+
+  <section class="secao">
+    <div class="container">
+      <div class="cabecalho-secao">
+        <div>
+          <span class="eyebrow">Dúvidas comuns</span>
+          <h2>Sem letras miúdas.</h2>
+        </div>
+      </div>
+
+      <div class="faq">
+        <details class="pergunta">
+          <summary>Por que está tudo grátis?</summary>
+          <p>
+            Porque estamos validando o produto com quem vive a rotina de cozinha antes de definir
+            planos. Queremos ver as fichas sendo usadas de verdade.
+          </p>
+        </details>
+        <details class="pergunta">
+          <summary>Vou precisar pagar depois?</summary>
+          <p>
+            Se o produto passar a ter planos, avisaremos com antecedência. Nada é cobrado
+            automaticamente e não pedimos cartão agora.
+          </p>
+        </details>
+        <details class="pergunta">
+          <summary>Preciso criar conta ou senha?</summary>
+          <p>
+            Não. A ficha fica acessível por um link com token. O token de edição fica salvo no seu
+            navegador. O “Meu cardápio” também é local.
+          </p>
+        </details>
+        <details class="pergunta">
+          <summary>O PDF sai com marca d'água?</summary>
+          <p>
+            Não. Durante o período gratuito, todos os PDFs saem sem marca d'água, com link e QR Code.
+          </p>
+        </details>
+        <details class="pergunta">
+          <summary>As comissões do iFood e 99Food são fixas?</summary>
+          <p>
+            Não. Você edita a porcentagem e a taxa fixa de cada canal conforme o seu contrato. O
+            cálculo usa exatamente os valores que você informar.
+          </p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section class="secao secao--apertada">
+    <div class="container">
+      <div class="faixa-cta">
+        <div class="faixa-cta-grade">
+          <div>
+            <h2>Sem preço para pensar. Só o seu prato para descobrir.</h2>
+            <p>Leva menos de três minutos. A ficha técnica sai pronta para a cozinha.</p>
+          </div>
+          <a class="btn" href="/calculadora">Calcular meu prato</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</Layout>

@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CardapioNoLucro.Api/CardapioNoLucro.Api.csproj" />
+    <Project Path="src/CardapioNoLucro.Application/CardapioNoLucro.Application.csproj" />
+    <Project Path="src/CardapioNoLucro.Domain/CardapioNoLucro.Domain.csproj" />
+    <Project Path="src/CardapioNoLucro.Infrastructure/CardapioNoLucro.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CardapioNoLucro.Application.Tests/CardapioNoLucro.Application.Tests.csproj" />
+    <Project Path="tests/CardapioNoLucro.Domain.Tests/CardapioNoLucro.Domain.Tests.csproj" />
+  </Folder>
+</Solution>

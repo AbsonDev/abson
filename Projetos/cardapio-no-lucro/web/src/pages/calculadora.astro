@@ -1,0 +1,762 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { obterCanais, obterExemplo } from '../lib/api';
+
+const exemplo = await obterExemplo();
+const canais = await obterCanais();
+const exemploJson = JSON.stringify(exemplo).replace(/</g, '\\u003c');
+---
+
+<Layout
+  titulo="Calculadora de ficha técnica — Cardápio no Lucro"
+  descricao="Calcule custo por porção, CMV real e preço por canal: salão, delivery próprio, iFood e 99Food."
+>
+  <section class="calc-topo">
+    <div class="container">
+      <span class="eyebrow">Calculadora de ficha técnica</span>
+      <h1>Quanto custa o seu prato — e quanto ele deve <em>custar em cada canal?</em></h1>
+      <p>
+        Ingredientes, rendimento, embalagem, tempo e custo fixo. O CMV e o preço de salão, delivery,
+        iFood e 99Food aparecem na hora.
+      </p>
+    </div>
+  </section>
+
+  <section class="container calc-layout">
+    {!exemplo && (
+      <div class="erro-caixa visivel" style="margin-bottom: 16px;">
+        Não foi possível carregar o exemplo agora. Você ainda pode preencher os campos e calcular,
+        mas os valores de exemplo podem não aparecer.
+      </div>
+    )}
+
+    <form id="ficha-form" class="calc-form" novalidate>
+      <div id="erro-form" class="erro-caixa" role="alert"></div>
+
+      <section class="painel" aria-labelledby="titulo-prato">
+        <div class="painel-cabecalho">
+          <span class="passo-etiqueta">01</span>
+          <div>
+            <h2 id="titulo-prato">O prato e a produção</h2>
+            <p>Informe a receita em lote. O sistema divide o custo pelas porções que ela rende.</p>
+          </div>
+        </div>
+
+        <div class="campo">
+          <label for="nome-prato">Nome do prato</label>
+          <input id="nome-prato" type="text" maxlength="120" placeholder="Ex.: frango grelhado com arroz e legumes" autocomplete="off" />
+        </div>
+
+        <div class="campo-duplo">
+          <div class="campo">
+            <label for="estabelecimento">Estabelecimento</label>
+            <input id="estabelecimento" type="text" maxlength="120" placeholder="Ex.: Cozinha do Bairro" autocomplete="organization" />
+          </div>
+          <div class="campo">
+            <label for="categoria">Categoria</label>
+            <select id="categoria">
+              <option value="Prato principal">Prato principal</option>
+              <option value="Lanche">Lanche</option>
+              <option value="Entrada">Entrada</option>
+              <option value="Sobremesa">Sobremesa</option>
+              <option value="Bebida">Bebida</option>
+              <option value="Outro">Outro</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="campo-triplo">
+          <div class="campo">
+            <label for="rendimento-porcoes">Rende quantas porções?</label>
+            <input id="rendimento-porcoes" type="number" min="1" max="10000" step="1" value="10" />
+            <small>O custo da receita será dividido por esse número.</small>
+          </div>
+          <div class="campo">
+            <label for="minutos-producao">Minutos de produção</label>
+            <div class="campo-sufixo">
+              <input id="minutos-producao" inputmode="numeric" value="120" />
+              <span>min</span>
+            </div>
+            <small>Tempo total da receita, não por porção.</small>
+          </div>
+          <div class="campo">
+            <label for="valor-hora">Valor da hora de trabalho</label>
+            <div class="campo-sufixo">
+              <input id="valor-hora" inputmode="decimal" value="32,00" />
+              <span>R$</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="painel" aria-labelledby="titulo-ingredientes">
+        <div class="painel-cabecalho">
+          <span class="passo-etiqueta">02</span>
+          <div>
+            <h2 id="titulo-ingredientes">Ingredientes</h2>
+            <p>Use a quantidade da receita e o preço da unidade que você compra.</p>
+          </div>
+        </div>
+
+        <div class="linha-ingrediente-cabecalho" aria-hidden="true">
+          <span>Ingrediente</span>
+          <span>Qtd.</span>
+          <span>Un.</span>
+          <span>Preço unit.</span>
+          <span>Rend.</span>
+          <span>Custo real</span>
+          <span></span>
+        </div>
+        <div id="lista-ingredientes"></div>
+        <button type="button" class="botao-adicionar" id="adicionar-ingrediente">Adicionar ingrediente</button>
+
+        <div class="soma-bloco">
+          <span>Total da receita</span>
+          <strong id="soma-ingredientes">R$ 0,00</strong>
+        </div>
+        <div class="soma-bloco" style="margin-top: 0; padding-top: 8px; border-top: 0;">
+          <span>Custo de ingredientes por porção</span>
+          <strong id="soma-ingredientes-porcao">R$ 0,00</strong>
+        </div>
+
+        <div class="dica">
+          O rendimento é o aproveitamento depois da limpeza/corte. Se comprou 1 kg de frango e
+          aproveita 900 g, use 90%. Se não houver perda, deixe 100%.
+        </div>
+      </section>
+
+      <section class="painel" aria-labelledby="titulo-embalagens">
+        <div class="painel-cabecalho">
+          <span class="passo-etiqueta">03</span>
+          <div>
+            <h2 id="titulo-embalagens">Embalagens e descartáveis</h2>
+            <p>O que é consumido por porção: marmita, sacola, copo, talheres, guardanapo.</p>
+          </div>
+        </div>
+
+        <div id="lista-embalagens"></div>
+        <button type="button" class="botao-adicionar" id="adicionar-embalagem">Adicionar embalagem</button>
+      </section>
+
+      <section class="painel" aria-labelledby="titulo-fixos">
+        <div class="painel-cabecalho">
+          <span class="passo-etiqueta">04</span>
+          <div>
+            <h2 id="titulo-fixos">Custos fixos e impostos</h2>
+            <p>O rateio usa o volume total de porções vendidas no mês.</p>
+          </div>
+        </div>
+
+        <div class="campo-duplo">
+          <div class="campo">
+            <label for="custos-fixos">Custos fixos por mês</label>
+            <div class="campo-sufixo">
+              <input id="custos-fixos" inputmode="decimal" value="6.000,00" />
+              <span>R$</span>
+            </div>
+            <small>Aluguel, energia, gás, equipe, internet, depreciação...</small>
+          </div>
+          <div class="campo">
+            <label for="porcoes-mes">Porções vendidas por mês</label>
+            <input id="porcoes-mes" type="number" min="1" max="10000000" step="1" value="800" />
+            <small>Volume total do cardápio, não só deste prato.</small>
+          </div>
+        </div>
+
+        <div class="campo-triplo" style="margin-top: 15px;">
+          <div class="campo">
+            <label for="imposto">Imposto</label>
+            <div class="campo-sufixo">
+              <input id="imposto" inputmode="decimal" value="6" />
+              <span>%</span>
+            </div>
+          </div>
+          <div class="campo">
+            <label for="cmv">CMV alvo</label>
+            <div class="campo-sufixo">
+              <input id="cmv" inputmode="decimal" value="30" />
+              <span>%</span>
+            </div>
+          </div>
+          <div class="campo">
+            <label for="arredondamento">Arredondar preço</label>
+            <select id="arredondamento">
+              <option value="Nenhum">Centavos exatos</option>
+              <option value="CinquentaCentavos">R$ 0,50</option>
+              <option value="Real" selected>R$ 1,00</option>
+              <option value="CincoReais">R$ 5,00</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="margem-topo" style="margin-top: 18px;">
+          <label for="cmv-range">CMV alvo</label>
+          <span class="margem-valor" id="cmv-valor">30%</span>
+        </div>
+        <input class="faixa-margem" id="cmv-range" type="range" min="10" max="60" step="1" value="30" aria-label="CMV alvo" />
+        <div class="margem-escala"><span>10%</span><span>30%</span><span>60%</span></div>
+
+        <div class="aviso">
+          CMV é o custo dos ingredientes dividido pelo preço. O preço mínimo inclui todos os custos,
+          impostos e taxas do canal. O preço sugerido é o maior entre os dois.
+        </div>
+      </section>
+
+      <section class="painel" aria-labelledby="titulo-canais">
+        <div class="painel-cabecalho">
+          <span class="passo-etiqueta">05</span>
+          <div>
+            <h2 id="titulo-canais">Canais de venda</h2>
+            <p>Ative os canais que você usa e ajuste comissão/taxa conforme o seu contrato.</p>
+          </div>
+        </div>
+
+        {canais.length > 0 ? (
+          <div id="lista-canais">
+            {canais.map((canal) => (
+              <div class="canal-form" data-tipo={canal.tipo}>
+                <input class="canal-ativo" type="checkbox" checked={canal.ativo} aria-label={`Ativar ${canal.nome}`} />
+                <div class="canal-form-nome">
+                  <strong>{canal.nome}</strong>
+                  <small>{canal.descricao}</small>
+                </div>
+                <div class="canal-campo">
+                  <label>Comissão %</label>
+                  <input class="canal-comissao" inputmode="decimal" value={String(canal.comissaoPercentual).replace('.', ',')} />
+                </div>
+                <div class="canal-campo">
+                  <label>Taxa fixa R$</label>
+                  <input class="canal-taxa" inputmode="decimal" value={String(canal.taxaFixaPorPedido).replace('.', ',')} />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p class="aviso">Não foi possível carregar os canais. Recarregue a página para tentar de novo.</p>
+        )}
+
+        <div class="dica">
+          iFood e 99Food costumam cobrar comissão sobre o valor do pedido. Confirme a porcentagem e
+          a taxa fixa no seu contrato; o cálculo usa exatamente o que você digitar.
+        </div>
+      </section>
+    </form>
+
+    <aside class="resultado-painel" id="resultado-painel" aria-label="Resultado da ficha" aria-live="polite">
+      <div class="resultado-vazio" id="resultado-vazio">
+        <span class="resultado-vazio-icone">R$</span>
+        <h3>O preço do prato aparece aqui</h3>
+        <p id="mensagem-preview">Preencha os custos e veja o CMV e o preço por canal.</p>
+      </div>
+
+      <div class="resultado-conteudo oculto" id="resultado-conteudo">
+        <div class="resultado-rotulo">
+          <span id="res-canal-rotulo">Preço sugerido</span>
+          <span class="nicho-selo" id="res-categoria">—</span>
+        </div>
+        <p class="preco-grande" id="res-preco">R$ 0,00</p>
+        <p class="preco-por-unidade" id="res-porcao"></p>
+
+        <div class="resultado-resumo">
+          <div class="resumo-item">
+            <span>Custo por porção</span>
+            <strong id="res-custo">R$ 0,00</strong>
+          </div>
+          <div class="resumo-item">
+            <span>CMV real</span>
+            <strong id="res-cmv">0%</strong>
+          </div>
+          <div class="resumo-item">
+            <span>Margem contrib.</span>
+            <strong id="res-margem">R$ 0,00</strong>
+          </div>
+        </div>
+
+        <div class="canais-resultado" id="res-canais" style="margin-top: 20px;"></div>
+
+        <div class="resultado-rodape">
+          <p>
+            O preço mínimo cobre custos, impostos e taxas do canal. Abaixo dele, o prato não paga a
+            conta.
+          </p>
+        </div>
+
+        <p class="erro-caixa" id="erro-resultado" role="alert"></p>
+
+        <div class="resultado-acoes">
+          <button class="btn btn--primario" type="submit" form="ficha-form" id="btn-salvar">
+            Salvar e gerar PDF
+          </button>
+          <small>Ficha gratuita, sem marca d'água, pronta para a cozinha.</small>
+        </div>
+      </div>
+    </aside>
+  </section>
+
+  <div class="barra-resultado-movel" id="barra-resultado-movel" hidden>
+    <div>
+      <span>Preço sugerido</span>
+      <strong id="barra-preco">R$ 0,00</strong>
+    </div>
+    <a class="btn btn--pequeno btn--primario" href="#resultado-painel">Ver detalhes</a>
+  </div>
+
+  <script type="application/json" id="exemplo-dados" set:html={exemploJson}></script>
+
+  <script>
+    // @ts-nocheck
+    const API = (document.body.dataset.api || 'http://localhost:5182').replace(/\/$/, '');
+    const exemplo = JSON.parse(document.getElementById('exemplo-dados')?.textContent || 'null');
+    const formulario = document.getElementById('ficha-form');
+    const listaIngredientes = document.getElementById('lista-ingredientes');
+    const listaEmbalagens = document.getElementById('lista-embalagens');
+    const listaCanais = document.getElementById('lista-canais');
+    const resultadoVazio = document.getElementById('resultado-vazio');
+    const resultadoConteudo = document.getElementById('resultado-conteudo');
+    const mensagemPreview = document.getElementById('mensagem-preview');
+    const erroFormulario = document.getElementById('erro-form');
+    const erroResultado = document.getElementById('erro-resultado');
+    const botaoSalvar = document.getElementById('btn-salvar');
+    const barraMovel = document.getElementById('barra-resultado-movel');
+    const barraPreco = document.getElementById('barra-preco');
+    const cmv = document.getElementById('cmv');
+    const cmvRange = document.getElementById('cmv-range');
+    const cmvValor = document.getElementById('cmv-valor');
+    const chaveRascunho = 'cardapio:rascunho:v1';
+    const chaveFicha = (token) => `cardapio:ficha:${token}`;
+    const unidades = ['kg', 'g', 'l', 'ml', 'un'];
+    let ultimoResultado = null;
+    let estadoEdicao = null;
+    let temporizador = 0;
+    let sequencia = 0;
+
+    const reais = (valor) =>
+      new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(valor || 0));
+
+    const percentual = (valor) =>
+      `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(Number(valor || 0))}%`;
+
+    const textoNumero = (valor) => {
+      const convertido = Number(valor);
+      return Number.isFinite(convertido)
+        ? convertido.toLocaleString('pt-BR', { maximumFractionDigits: 3, useGrouping: false })
+        : '';
+    };
+
+    function numero(valor) {
+      if (typeof valor === 'number') return Number.isFinite(valor) ? valor : 0;
+      if (valor === null || valor === undefined) return 0;
+      let texto = String(valor).replace(/[^\d,.-]/g, '').trim();
+      if (texto.includes(',') && texto.includes('.')) {
+        texto = texto.replace(/\./g, '').replace(',', '.');
+      } else if (texto.includes(',')) {
+        texto = texto.replace(',', '.');
+      }
+      const convertido = Number(texto);
+      return Number.isFinite(convertido) ? convertido : 0;
+    }
+
+    function valor(id) {
+      return document.getElementById(id)?.value ?? '';
+    }
+
+    function opcoesUnidade(selecionada) {
+      return unidades
+        .map((unidade) => `<option value="${unidade}"${unidade === selecionada ? ' selected' : ''}>${unidade}</option>`)
+        .join('');
+    }
+
+    function criarLinhaIngrediente(dados = {}) {
+      const linha = document.createElement('div');
+      linha.className = 'linha-ingrediente';
+      linha.innerHTML = `
+        <input class="ingrediente-desc" type="text" placeholder="Ex.: peito de frango" autocomplete="off" aria-label="Ingrediente" />
+        <input class="ingrediente-qtd" inputmode="decimal" value="1" aria-label="Quantidade" />
+        <select class="ingrediente-un" aria-label="Unidade">${opcoesUnidade(dados.unidade || 'kg')}</select>
+        <input class="ingrediente-preco" inputmode="decimal" placeholder="R$ 0,00" aria-label="Preço unitário" />
+        <input class="ingrediente-rendimento" inputmode="decimal" value="100" aria-label="Rendimento em porcentagem" />
+        <span class="custo-ingrediente">R$ 0,00</span>
+        <button class="botao-icone remover" type="button" aria-label="Remover ingrediente">×</button>
+      `;
+
+      linha.querySelector('.ingrediente-desc').value = dados.descricao || '';
+      linha.querySelector('.ingrediente-qtd').value = textoNumero(dados.quantidade ?? 1);
+      linha.querySelector('.ingrediente-preco').value = textoNumero(dados.precoUnitario ?? '');
+      linha.querySelector('.ingrediente-rendimento').value = textoNumero(dados.rendimentoPercentual ?? 100);
+
+      const atualizar = () => {
+        const quantidade = numero(linha.querySelector('.ingrediente-qtd').value);
+        const preco = numero(linha.querySelector('.ingrediente-preco').value);
+        const rendimento = numero(linha.querySelector('.ingrediente-rendimento').value);
+        const custo = rendimento > 0 ? (quantidade * preco) / (rendimento / 100) : 0;
+        linha.querySelector('.custo-ingrediente').textContent = reais(custo);
+      };
+
+      linha.addEventListener('input', () => {
+        atualizar();
+        atualizarSomas();
+        agendarPreview();
+      });
+      linha.querySelector('.remover').addEventListener('click', () => {
+        linha.remove();
+        atualizarSomas();
+        agendarPreview();
+      });
+      atualizar();
+      listaIngredientes.appendChild(linha);
+      atualizarSomas();
+    }
+
+    function criarLinhaEmbalagem(dados = {}) {
+      const linha = document.createElement('div');
+      linha.className = 'linha-embalagem';
+      linha.innerHTML = `
+        <input class="embalagem-desc" type="text" placeholder="Ex.: marmita + talheres" autocomplete="off" aria-label="Embalagem" />
+        <input class="embalagem-custo" inputmode="decimal" placeholder="R$ 0,00" aria-label="Custo por porção" />
+        <button class="botao-icone remover" type="button" aria-label="Remover embalagem">×</button>
+      `;
+      linha.querySelector('.embalagem-desc').value = dados.descricao || '';
+      linha.querySelector('.embalagem-custo').value = textoNumero(dados.custoPorPorcao ?? '');
+      linha.querySelector('.remover').addEventListener('click', () => {
+        linha.remove();
+        agendarPreview();
+      });
+      listaEmbalagens.appendChild(linha);
+    }
+
+    function totalIngredientes() {
+      return [...listaIngredientes.querySelectorAll('.linha-ingrediente')].reduce((total, linha) => {
+        const quantidade = numero(linha.querySelector('.ingrediente-qtd').value);
+        const preco = numero(linha.querySelector('.ingrediente-preco').value);
+        const rendimento = numero(linha.querySelector('.ingrediente-rendimento').value);
+        return total + (rendimento > 0 ? (quantidade * preco) / (rendimento / 100) : 0);
+      }, 0);
+    }
+
+    function atualizarSomas() {
+      const total = totalIngredientes();
+      const porcoes = Math.max(1, numero(valor('rendimento-porcoes')) || 1);
+      document.getElementById('soma-ingredientes').textContent = reais(total);
+      document.getElementById('soma-ingredientes-porcao').textContent = reais(total / porcoes);
+    }
+
+    function coletar() {
+      const ingredientes = [...listaIngredientes.querySelectorAll('.linha-ingrediente')]
+        .map((linha) => ({
+          descricao: linha.querySelector('.ingrediente-desc').value.trim(),
+          quantidade: numero(linha.querySelector('.ingrediente-qtd').value),
+          unidade: linha.querySelector('.ingrediente-un').value,
+          precoUnitario: numero(linha.querySelector('.ingrediente-preco').value),
+          rendimentoPercentual: numero(linha.querySelector('.ingrediente-rendimento').value)
+        }))
+        .filter((item) => item.descricao || item.quantidade || item.precoUnitario);
+
+      const embalagens = [...listaEmbalagens.querySelectorAll('.linha-embalagem')]
+        .map((linha) => ({
+          descricao: linha.querySelector('.embalagem-desc').value.trim(),
+          custoPorPorcao: numero(linha.querySelector('.embalagem-custo').value)
+        }))
+        .filter((item) => item.descricao || item.custoPorPorcao);
+
+      const canais = [...(listaCanais?.querySelectorAll('.canal-form') ?? [])].map((linha) => ({
+        tipo: linha.dataset.tipo,
+        comissaoPercentual: numero(linha.querySelector('.canal-comissao').value),
+        taxaFixaPorPedido: numero(linha.querySelector('.canal-taxa').value),
+        ativo: linha.querySelector('.canal-ativo').checked
+      }));
+
+      return {
+        nomeDoPrato: valor('nome-prato').trim(),
+        estabelecimento: valor('estabelecimento').trim(),
+        categoria: valor('categoria'),
+        rendimentoEmPorcoes: Math.max(1, Math.round(numero(valor('rendimento-porcoes')) || 1)),
+        porcoesVendidasPorMes: Math.max(1, Math.round(numero(valor('porcoes-mes')) || 1)),
+        ingredientes,
+        embalagens,
+        minutosDeProducao: Math.max(0, Math.round(numero(valor('minutos-producao')))),
+        valorHoraMaoDeObra: numero(valor('valor-hora')),
+        custosFixosMensais: numero(valor('custos-fixos')),
+        impostoPercentual: numero(valor('imposto')),
+        cmvAlvoPercentual: numero(valor('cmv')),
+        canais,
+        arredondamento: valor('arredondamento')
+      };
+    }
+
+    function preencher(entrada) {
+      if (!entrada) return;
+
+      document.getElementById('nome-prato').value = entrada.nomeDoPrato || '';
+      document.getElementById('estabelecimento').value = entrada.estabelecimento || '';
+      document.getElementById('categoria').value = entrada.categoria || 'Prato principal';
+      document.getElementById('rendimento-porcoes').value = entrada.rendimentoEmPorcoes ?? 1;
+      document.getElementById('porcoes-mes').value = entrada.porcoesVendidasPorMes ?? 1;
+      document.getElementById('minutos-producao').value = entrada.minutosDeProducao ?? 0;
+      document.getElementById('valor-hora').value = textoNumero(entrada.valorHoraMaoDeObra ?? 0);
+      document.getElementById('custos-fixos').value = textoNumero(entrada.custosFixosMensais ?? 0);
+      document.getElementById('imposto').value = textoNumero(entrada.impostoPercentual ?? 0);
+      document.getElementById('cmv').value = textoNumero(entrada.cmvAlvoPercentual ?? 30);
+      cmvRange.value = Math.min(60, Math.max(10, numero(entrada.cmvAlvoPercentual ?? 30)));
+      cmvValor.textContent = percentual(entrada.cmvAlvoPercentual ?? 30);
+      document.getElementById('arredondamento').value = entrada.arredondamento || 'Real';
+
+      listaIngredientes.innerHTML = '';
+      (entrada.ingredientes || []).forEach((item) => criarLinhaIngrediente(item));
+      if (!entrada.ingredientes || entrada.ingredientes.length === 0) criarLinhaIngrediente();
+
+      listaEmbalagens.innerHTML = '';
+      (entrada.embalagens || []).forEach((item) => criarLinhaEmbalagem(item));
+      if (!entrada.embalagens || entrada.embalagens.length === 0) criarLinhaEmbalagem();
+
+      (entrada.canais || []).forEach((canal) => {
+        const linha = listaCanais?.querySelector(`[data-tipo="${canal.tipo}"]`);
+        if (!linha) return;
+        linha.querySelector('.canal-ativo').checked = canal.ativo !== false;
+        linha.querySelector('.canal-comissao').value = textoNumero(canal.comissaoPercentual ?? 0);
+        linha.querySelector('.canal-taxa').value = textoNumero(canal.taxaFixaPorPedido ?? 0);
+      });
+
+      atualizarSomas();
+      agendarPreview();
+    }
+
+    function aplicarExemplo() {
+      if (!exemplo) return;
+      preencher(exemplo);
+    }
+
+    function agendarPreview() {
+      window.clearTimeout(temporizador);
+      temporizador = window.setTimeout(executarPreview, 380);
+    }
+
+    async function executarPreview() {
+      const entrada = coletar();
+      salvarRascunho(entrada);
+
+      if (!entrada.nomeDoPrato) {
+        ultimoResultado = null;
+        resultadoConteudo.classList.add('oculto');
+        resultadoVazio.classList.remove('oculto');
+        if (barraMovel) barraMovel.hidden = true;
+        mensagemPreview.textContent = 'Dê um nome ao prato para começar.';
+        return;
+      }
+
+      const minhaSequencia = ++sequencia;
+
+      try {
+        const resposta = await fetch(`${API}/api/fichas/preview`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(entrada)
+        });
+
+        if (minhaSequencia !== sequencia) return;
+
+        if (!resposta.ok) {
+          const erro = await resposta.json().catch(() => ({}));
+          ultimoResultado = null;
+          resultadoConteudo.classList.add('oculto');
+          resultadoVazio.classList.remove('oculto');
+          if (barraMovel) barraMovel.hidden = true;
+          mensagemPreview.textContent = erro.detalhe || 'Confira os valores e tente novamente.';
+          return;
+        }
+
+        const resultado = await resposta.json();
+        ultimoResultado = resultado;
+        renderizar(resultado, entrada);
+      } catch {
+        if (minhaSequencia !== sequencia) return;
+        ultimoResultado = null;
+        resultadoConteudo.classList.add('oculto');
+        resultadoVazio.classList.remove('oculto');
+        if (barraMovel) barraMovel.hidden = true;
+        mensagemPreview.textContent = 'Não conseguimos falar com o servidor agora. Verifique sua conexão.';
+      }
+    }
+
+    function renderizar(resultado, entrada) {
+      resultadoVazio.classList.add('oculto');
+      resultadoConteudo.classList.remove('oculto');
+      erroResultado.classList.remove('visivel');
+      botaoSalvar.disabled = false;
+
+      const referencia = resultado.canais[0];
+      document.getElementById('res-canal-rotulo').textContent = `Preço sugerido · ${referencia?.nome ?? 'canal'}`;
+      document.getElementById('res-preco').textContent = reais(referencia?.precoSugerido ?? 0);
+      document.getElementById('res-categoria').textContent = entrada.categoria || 'Ficha';
+      document.getElementById('res-custo').textContent = reais(resultado.custoTotalPorcao);
+      document.getElementById('res-cmv').textContent = percentual(referencia?.cmvRealizadoPercentual ?? 0);
+      document.getElementById('res-margem').textContent = reais(referencia?.margemContribuicao ?? 0);
+      document.getElementById('res-porcao').textContent =
+        `Custo por porção: ${reais(resultado.custoTotalPorcao)} · ${resultado.rendimentoEmPorcoes} porções na receita`;
+
+      if (barraMovel && barraPreco) {
+        barraMovel.hidden = false;
+        barraPreco.textContent = reais(referencia?.precoSugerido ?? 0);
+      }
+
+      document.getElementById('res-canais').innerHTML = resultado.canais
+        .map((canal) => `
+          <div class="canal-resultado${canal.tipo === 'IFood' ? ' canal-resultado--destaque' : ''}">
+            <div class="canal-resultado-topo">
+              <span class="canal-resultado-nome">${canal.nome}<small>${percentual(canal.comissaoPercentual)}</small></span>
+              <strong class="canal-resultado-preco">${reais(canal.precoSugerido)}</strong>
+            </div>
+            <div class="canal-resultado-meta">
+              <span>Mínimo<strong>${reais(canal.precoMinimo)}</strong></span>
+              <span>CMV real<strong>${percentual(canal.cmvRealizadoPercentual)}</strong></span>
+              <span>Margem<strong>${reais(canal.margemContribuicao)}</strong></span>
+            </div>
+            ${canal.ajustadoPeloCustoTotal
+              ? '<div class="canal-alerta">O CMV alvo não cobria todos os custos; o preço foi elevado ao mínimo.</div>'
+              : ''}
+          </div>
+        `)
+        .join('');
+    }
+
+    function salvarRascunho(entrada) {
+      try {
+        localStorage.setItem(chaveRascunho, JSON.stringify({ entrada, atualizadoEm: new Date().toISOString() }));
+      } catch {
+        // Modo privado: o cálculo continua funcionando.
+      }
+    }
+
+    function restaurarRascunho() {
+      try {
+        const bruto = localStorage.getItem(chaveRascunho);
+        return bruto ? JSON.parse(bruto)?.entrada : null;
+      } catch {
+        return null;
+      }
+    }
+
+    function mostrarErroFormulario(mensagem) {
+      erroFormulario.textContent = mensagem;
+      erroFormulario.classList.toggle('visivel', Boolean(mensagem));
+    }
+
+    function iniciarEdicao() {
+      const parametros = new URLSearchParams(window.location.search);
+      const token = parametros.get('editar');
+      if (!token) return false;
+
+      try {
+        const registro = JSON.parse(localStorage.getItem(chaveFicha(token)) || 'null');
+        if (!registro?.entrada || !registro.editToken) return false;
+        estadoEdicao = registro;
+        preencher(registro.entrada);
+        botaoSalvar.textContent = 'Salvar alterações';
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    document.getElementById('adicionar-ingrediente').addEventListener('click', () => {
+      criarLinhaIngrediente();
+      listaIngredientes.lastElementChild?.querySelector('.ingrediente-desc')?.focus();
+    });
+
+    document.getElementById('adicionar-embalagem').addEventListener('click', () => {
+      criarLinhaEmbalagem();
+      listaEmbalagens.lastElementChild?.querySelector('.embalagem-desc')?.focus();
+    });
+
+    formulario.addEventListener('input', (evento) => {
+      if (evento.target === cmvRange) {
+        cmv.value = cmvRange.value;
+        cmvValor.textContent = percentual(cmvRange.value);
+      } else if (evento.target === cmv) {
+        const alvo = Math.min(90, Math.max(1, numero(cmv.value)));
+        cmvRange.value = Math.min(60, Math.max(10, alvo));
+        cmvValor.textContent = percentual(alvo);
+      }
+      if (!evento.target.matches('.ingrediente-desc, .ingrediente-qtd, .ingrediente-preco, .ingrediente-rendimento, .ingrediente-un, .embalagem-desc, .embalagem-custo')) {
+        atualizarSomas();
+      }
+      agendarPreview();
+    });
+
+    formulario.addEventListener('change', agendarPreview);
+
+    formulario.addEventListener('submit', async (evento) => {
+      evento.preventDefault();
+
+      if (!ultimoResultado) {
+        mostrarErroFormulario('Preencha os dados e espere o preço aparecer antes de salvar.');
+        return;
+      }
+
+      const entrada = coletar();
+      const textoOriginal = botaoSalvar.textContent;
+      botaoSalvar.disabled = true;
+      botaoSalvar.textContent = 'Salvando...';
+      mostrarErroFormulario('');
+
+      try {
+        const editando = Boolean(estadoEdicao);
+        const url = editando ? `${API}/api/fichas/${estadoEdicao.id}` : `${API}/api/fichas`;
+        const resposta = await fetch(url, {
+          method: editando ? 'PUT' : 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(editando ? { 'X-Edit-Token': estadoEdicao.editToken } : {})
+          },
+          body: JSON.stringify(entrada)
+        });
+
+        const dados = await resposta.json().catch(() => ({}));
+        if (!resposta.ok) {
+          throw new Error(dados.detalhe || 'Não foi possível salvar a ficha.');
+        }
+
+        const shareToken = editando ? estadoEdicao.shareToken : dados.shareToken;
+        const editToken = editando ? estadoEdicao.editToken : dados.editToken;
+        const id = editando ? estadoEdicao.id : dados.id;
+        const referencia = ultimoResultado.canais[0];
+
+        try {
+          localStorage.setItem(chaveFicha(shareToken), JSON.stringify({
+            id,
+            editToken,
+            shareToken,
+            entrada,
+            nomeDoPrato: entrada.nomeDoPrato,
+            estabelecimento: entrada.estabelecimento,
+            categoria: entrada.categoria,
+            precoReferencia: referencia?.precoSugerido ?? 0,
+            canalReferencia: referencia?.nome ?? 'Canal',
+            canais: ultimoResultado.canais.map((canal) => ({ nome: canal.nome, preco: canal.precoSugerido })),
+            salvoEm: new Date().toISOString()
+          }));
+        } catch {
+          // A ficha já está salva no servidor.
+        }
+
+        window.location.href = `/f/${shareToken}?${editando ? 'atualizado' : 'novo'}=1`;
+      } catch (erro) {
+        mostrarErroFormulario(erro instanceof Error ? erro.message : 'Não foi possível salvar a ficha.');
+        botaoSalvar.disabled = false;
+        botaoSalvar.textContent = textoOriginal;
+      }
+    });
+
+    (function iniciar() {
+      const editou = iniciarEdicao();
+      if (editou) return;
+
+      const rascunho = restaurarRascunho();
+      if (rascunho) {
+        preencher(rascunho);
+        return;
+      }
+
+      aplicarExemplo();
+    })();
+  </script>
+</Layout>

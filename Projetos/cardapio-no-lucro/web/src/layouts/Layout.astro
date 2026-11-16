@@ -1,0 +1,94 @@
+---
+import Logo from '../components/Logo.astro';
+import '../styles/global.css';
+
+interface Props {
+  titulo?: string;
+  descricao?: string;
+  bodyClass?: string;
+}
+
+const {
+  titulo = 'Cardápio no Lucro — precificação para restaurantes e delivery',
+  descricao = 'Calcule o custo por porção, o CMV real e o preço certo em cada canal: salão, delivery próprio, iFood e 99Food. Ficha técnica com PDF.',
+  bodyClass = ''
+} = Astro.props;
+
+const site = (import.meta.env.PUBLIC_SITE_URL ?? Astro.url.origin).replace(/\/$/, '');
+const canonical = new URL(Astro.url.pathname, site).toString();
+const api = (import.meta.env.PUBLIC_API_URL ?? 'http://localhost:5182').replace(/\/$/, '');
+---
+
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{titulo}</title>
+    <meta name="description" content={descricao} />
+    <link rel="canonical" href={canonical} />
+    <meta name="theme-color" content="#FBF7F0" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:title" content={titulo} />
+    <meta property="og:description" content={descricao} />
+    <meta property="og:url" content={canonical} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body class={bodyClass} data-api={api}>
+    <a class="pular-conteudo" href="#conteudo">Pular para o conteúdo</a>
+
+    <header class="topo">
+      <div class="container topo-interno">
+        <Logo />
+        <nav class="nav-principal" aria-label="Navegação principal">
+          <a href="/#como-funciona">Como funciona</a>
+          <a href="/meu-cardapio">Meu cardápio</a>
+          <a href="/precos">É grátis</a>
+          <a href="/calculadora" class="btn btn--pequeno btn--primario">Calcular meu prato</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="conteudo">
+      <slot />
+    </main>
+
+    <footer class="rodape">
+      <div class="container rodape-grade">
+        <div class="rodape-marca">
+          <Logo compacto />
+          <p>Precificação que mostra o lucro de cada canal.<br />Feito para quem vive de cozinha.</p>
+        </div>
+        <div class="rodape-colunas">
+          <div>
+            <span class="rodape-titulo">Produto</span>
+            <a href="/calculadora">Calculadora</a>
+            <a href="/meu-cardapio">Meu cardápio</a>
+            <a href="/precos">É grátis</a>
+            <a href="/#como-funciona">Como funciona</a>
+          </div>
+          <div>
+            <span class="rodape-titulo">Para quem</span>
+            <a href="/calculadora">Restaurantes</a>
+            <a href="/calculadora">Lanchonetes</a>
+            <a href="/calculadora">Food trucks</a>
+            <a href="/calculadora">Marmitarias</a>
+            <a href="/calculadora">Doces por encomenda</a>
+          </div>
+        </div>
+      </div>
+      <div class="container rodape-base">
+        <span>© {new Date().getFullYear()} Cardápio no Lucro</span>
+        <span>Os custos são estimativas. Ajuste com os seus fornecedores e o seu contrato de canal.</span>
+      </div>
+    </footer>
+  </body>
+</html>

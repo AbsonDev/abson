@@ -1,0 +1,288 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { obterApi } from '../../lib/api';
+import { brl, percentual, dataCurta, horas } from '../../lib/formato';
+import type { FichaDetalhada } from '../../lib/tipos';
+
+const { token } = Astro.params;
+
+if (!token) {
+  return Astro.redirect('/calculadora');
+}
+
+const ficha = await obterApi<FichaDetalhada>(`/api/fichas/${token}`);
+
+if (!ficha) {
+  Astro.response.status = 404;
+}
+
+const site = (import.meta.env.PUBLIC_SITE_URL ?? Astro.url.origin).replace(/\/$/, '');
+const apiPublica = (import.meta.env.PUBLIC_API_URL ?? 'http://localhost:5182').replace(/\/$/, '');
+const linkCompartilhavel = `${site}/f/${token}`;
+const urlPdf = `${apiPublica}/api/fichas/${token}/pdf`;
+const referencia = ficha?.resultado.canais[0];
+const canaisAjustados = ficha?.resultado.canais.filter((canal) => canal.ajustadoPeloCustoTotal) ?? [];
+const mensagemWhatsapp = ficha
+  ? encodeURIComponent(
+      `Ficha técnica do ${ficha.nomeDoPrato}: custo de ${brl(ficha.resultado.custoTotalPorcao)} por porção. ` +
+      `Salão ${brl(ficha.resultado.canais.find((canal) => canal.tipo === 'Salao')?.precoSugerido ?? 0)} · ` +
+      `iFood ${brl(ficha.resultado.canais.find((canal) => canal.tipo === 'IFood')?.precoSugerido ?? 0)}. ` +
+      `Veja a conta: ${linkCompartilhavel}`
+    )
+  : '';
+---
+
+<Layout
+  titulo={ficha ? `${ficha.nomeDoPrato} — ${brl(referencia?.precoSugerido ?? 0)} | Cardápio no Lucro` : 'Ficha não encontrada | Cardápio no Lucro'}
+  descricao={ficha ? `Ficha técnica de ${ficha.nomeDoPrato}, com custo por porção, CMV e preço por canal.` : 'Ficha não encontrada.'}
+>
+  {!ficha || !referencia ? (
+    <section class="erro-pagina">
+      <div class="container">
+        <span class="eyebrow">Link não encontrado</span>
+        <h1>Essa ficha <em>não existe</em> mais.</h1>
+        <p>O link pode ter sido digitado errado ou a ficha foi removida. Você pode criar outra em menos de três minutos.</p>
+        <a class="btn btn--primario" href="/calculadora" style="margin-top: 22px;">Criar nova ficha</a>
+      </div>
+    </section>
+  ) : (
+    <section class="pagina-calculo">
+      <div class="container">
+        <div class="calculo-topo">
+          <div>
+            <a class="link-seta" href="/calculadora" style="font-size: 0.78rem;">Nova ficha</a>
+            <h1>{ficha.nomeDoPrato}</h1>
+            <div class="calculo-meta">
+              <span>{ficha.categoria ?? 'Ficha técnica'}</span>
+              {ficha.estabelecimento && <span>{ficha.estabelecimento}</span>}
+              <span>{ficha.resultado.rendimentoEmPorcoes} porções na receita</span>
+              <span>{horas(ficha.entrada.minutosDeProducao)} de produção</span>
+              <span>Criada em {dataCurta(ficha.criadoEm)}</span>
+            </div>
+          </div>
+          <div class="acoes-calculo" style="min-width: 210px; margin-top: 0;">
+            <a class="btn btn--primario btn--pequeno" href={urlPdf}>Baixar PDF</a>
+            <div id="editar-container" class="oculto">
+              <a class="btn btn--contorno btn--pequeno btn--largo" id="btn-editar" href={`/calculadora?editar=${token}`}>
+                Editar esta ficha
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div class="calculo-grid">
+          <div class="cartao-pilha">
+            <section class="cartao-preco">
+              <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px;">
+                <span class="rotulo">Preço sugerido · {referencia.nome}</span>
+                <span class="selo selo--terracota">PDF gratuito</span>
+              </div>
+              <p class="preco-destaque">{brl(referencia.precoSugerido)}</p>
+              <p class="por-unidade">Custo por porção: {brl(ficha.resultado.custoTotalPorcao)} · CMV real {percentual(referencia.cmvRealizadoPercentual)}</p>
+              <div class="preco-estatisticas">
+                <div>
+                  <span>CMV real</span>
+                  <strong>{percentual(referencia.cmvRealizadoPercentual)}</strong>
+                </div>
+                <div>
+                  <span>Margem contrib.</span>
+                  <strong>{brl(referencia.margemContribuicao)}</strong>
+                </div>
+                <div>
+                  <span>Custo por porção</span>
+                  <strong>{brl(ficha.resultado.custoTotalPorcao)}</strong>
+                </div>
+              </div>
+            </section>
+
+            <section class="cartao">
+              <h2>Preço por canal</h2>
+              <p>O mesmo prato, o preço necessário para cada canal pagar a conta.</p>
+              <div class="canais-resultado" style="margin-top: 16px;">
+                {ficha.resultado.canais.map((canal) => (
+                  <article class:list={['canal-resultado', { 'canal-resultado--destaque': canal.tipo === 'IFood' }]}>
+                    <div class="canal-resultado-topo">
+                      <span class="canal-resultado-nome">
+                        {canal.nome}
+                        <small>{percentual(canal.comissaoPercentual)}</small>
+                      </span>
+                      <strong class="canal-resultado-preco">{brl(canal.precoSugerido)}</strong>
+                    </div>
+                    <div class="canal-resultado-meta">
+                      <span>Mínimo<strong>{brl(canal.precoMinimo)}</strong></span>
+                      <span>CMV real<strong>{percentual(canal.cmvRealizadoPercentual)}</strong></span>
+                      <span>Margem<strong>{brl(canal.margemContribuicao)}</strong></span>
+                    </div>
+                    {canal.ajustadoPeloCustoTotal && (
+                      <div class="canal-alerta">O CMV alvo não cobria todos os custos; o preço foi elevado ao mínimo.</div>
+                    )}
+                  </article>
+                ))}
+              </div>
+              {canaisAjustados.length > 0 && (
+                <div class="aviso" style="margin-top: 14px;">
+                  Em {canaisAjustados.map((canal) => canal.nome).join(', ')}, o preço pelo CMV alvo ficaria abaixo do
+                  custo total. Por isso, o preço sugerido foi elevado ao mínimo.
+                </div>
+              )}
+            </section>
+
+            <section class="cartao">
+              <h2>Como o custo foi formado</h2>
+              <div class="tabela">
+                <div class="tabela-linha">
+                  <span>Ingredientes ({brl(ficha.resultado.custoIngredientesLote)} na receita)</span>
+                  <strong>{brl(ficha.resultado.custoIngredientesPorcao)}</strong>
+                </div>
+                <div class="tabela-linha">
+                  <span>Embalagens e descartáveis</span>
+                  <strong>{brl(ficha.resultado.custoEmbalagemPorcao)}</strong>
+                </div>
+                <div class="tabela-linha">
+                  <span>Mão de obra</span>
+                  <strong>{brl(ficha.resultado.custoMaoDeObraPorcao)}</strong>
+                </div>
+                <div class="tabela-linha">
+                  <span>Custo fixo rateado</span>
+                  <strong>{brl(ficha.resultado.custoFixoPorcao)}</strong>
+                </div>
+                <div class="tabela-linha tabela-linha--total">
+                  <span>Custo total por porção</span>
+                  <strong>{brl(ficha.resultado.custoTotalPorcao)}</strong>
+                </div>
+              </div>
+              <div class="aviso" style="margin-top: 14px;">
+                CMV alvo de {percentual(ficha.resultado.cmvAlvoPercentual)}. O preço mínimo cobre custos,
+                impostos e taxas do canal. O preço sugerido é o maior entre o CMV alvo e o mínimo.
+              </div>
+            </section>
+
+            <section class="cartao">
+              <h2>Ingredientes da receita</h2>
+              <div class="lista-materiais">
+                {ficha.entrada.ingredientes.map((ingrediente) => (
+                  <div>
+                    <span>
+                      {ingrediente.descricao} — {ingrediente.quantidade} {ingrediente.unidade}
+                      <small style="display: block; color: var(--tinta-suave); font-size: 0.66rem;">
+                        {brl(ingrediente.precoUnitario)}/{ingrediente.unidade} · rendimento {percentual(ingrediente.rendimentoPercentual)}
+                      </small>
+                    </span>
+                    <strong>{brl((ingrediente.quantidade * ingrediente.precoUnitario) / (ingrediente.rendimentoPercentual / 100))}</strong>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {ficha.entrada.embalagens.length > 0 && (
+              <section class="cartao">
+                <h2>Embalagens por porção</h2>
+                <div class="lista-materiais">
+                  {ficha.entrada.embalagens.map((embalagem) => (
+                    <div>
+                      <span>{embalagem.descricao}</span>
+                      <strong>{brl(embalagem.custoPorPorcao)}</strong>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            <section class="cartao">
+              <h2>Compartilhe esta ficha</h2>
+              <p>Quem abrir o link vê a mesma ficha, sem acessar seus dados de edição.</p>
+              <div class="compartilhar">
+                <a
+                  class="btn btn--pequeno btn--contorno"
+                  href={`https://wa.me/?text=${mensagemWhatsapp}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Enviar no WhatsApp
+                </a>
+                <button class="btn btn--pequeno btn--contorno" type="button" data-copiar-link={linkCompartilhavel}>
+                  Copiar link
+                </button>
+              </div>
+              <div class="campo" style="margin-top: 14px;">
+                <input readonly value={linkCompartilhavel} aria-label="Link compartilhável da ficha" />
+              </div>
+            </section>
+          </div>
+
+          <aside class="cartao-pilha">
+            <section class="cartao">
+              <h2>Ficha técnica pronta</h2>
+              <p>
+                Leve para a cozinha o custo por porção, o CMV real e a tabela de preços por canal.
+                O PDF sai sem marca d'água.
+              </p>
+              <div class="acoes-calculo">
+                <a class="btn btn--primario" href={urlPdf}>Baixar PDF da ficha</a>
+                <a class="btn btn--contorno" href="/meu-cardapio">Ir para Meu cardápio</a>
+              </div>
+              <p class="aviso" style="margin-top: 13px;">
+                A ficha fica salva por um link com token. O botão de edição aparece neste navegador
+                porque o token de edição fica no seu armazenamento local.
+              </p>
+            </section>
+
+            <section class="cartao" style="background: var(--creme);">
+              <span class="selo selo--terracota">Leitura rápida</span>
+              <h2 style="margin-top: 12px;">CMV não é margem</h2>
+              <p>
+                CMV é o custo dos ingredientes sobre o preço. A margem de contribuição é o que sobra
+                depois dos ingredientes, embalagem, impostos e comissão do canal — antes de mão de
+                obra e custos fixos.
+              </p>
+            </section>
+
+            <section class="cartao">
+              <h2>O que está na ficha</h2>
+              <div class="mini-tabela">
+                <div><span>Porções da receita</span><strong>{ficha.resultado.rendimentoEmPorcoes}</strong></div>
+                <div><span>Tempo de produção</span><strong>{horas(ficha.entrada.minutosDeProducao)}</strong></div>
+                <div><span>Valor da hora</span><strong>{brl(ficha.entrada.valorHoraMaoDeObra)}</strong></div>
+                <div><span>Porções vendidas/mês</span><strong>{ficha.entrada.porcoesVendidasPorMes}</strong></div>
+                <div><span>Custos fixos/mês</span><strong>{brl(ficha.entrada.custosFixosMensais)}</strong></div>
+                <div><span>Imposto</span><strong>{percentual(ficha.entrada.impostoPercentual)}</strong></div>
+                <div><span>CMV alvo</span><strong>{percentual(ficha.entrada.cmvAlvoPercentual)}</strong></div>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <script>
+      // @ts-nocheck
+      const API = (document.body.dataset.api || 'http://localhost:5182').replace(/\/$/, '');
+      const TOKEN = document.querySelector('[data-copiar-link]')?.getAttribute('data-copiar-link')?.split('/f/')[1] || '';
+
+      document.querySelectorAll('[data-copiar-link]').forEach((botao) => {
+        botao.addEventListener('click', async () => {
+          const link = botao.getAttribute('data-copiar-link') || '';
+          const textoOriginal = botao.textContent;
+          try {
+            await navigator.clipboard.writeText(link);
+            botao.textContent = 'Link copiado!';
+          } catch {
+            window.prompt('Copie o link:', link);
+          }
+          window.setTimeout(() => {
+            botao.textContent = textoOriginal;
+          }, 2200);
+        });
+      });
+
+      try {
+        const registro = localStorage.getItem(`cardapio:ficha:${TOKEN}`);
+        if (registro) {
+          document.getElementById('editar-container')?.classList.remove('oculto');
+        }
+      } catch {
+        // Sem localStorage: a ficha continua acessível para leitura.
+      }
+    </script>
+  )}
+</Layout>

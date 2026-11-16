@@ -1,0 +1,15 @@
+---
+import Layout from '../layouts/Layout.astro';
+Astro.response.status = 404;
+---
+
+<Layout titulo="Página não encontrada — Cardápio no Lucro" descricao="A página que você procura não existe.">
+  <section class="erro-pagina">
+    <div class="container">
+      <span class="eyebrow">404</span>
+      <h1>Essa página <em>saiu do cardápio.</em></h1>
+      <p>Mas o seu próximo prato pode estar a uma conta de distância.</p>
+      <a class="btn btn--primario" href="/calculadora" style="margin-top: 22px;">Ir para a calculadora</a>
+    </div>
+  </section>
+</Layout>

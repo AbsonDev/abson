@@ -5,6 +5,7 @@ Incubadora de produtos do portfólio. Cada projeto tem README, arquitetura e cam
 | # | Projeto | Status | Modelo |
 | --- | --- | --- | --- |
 | 1 | [Precifica](./precifica) — calculadora de precificação para confeiteiros, artesãos, impressão 3D e esteticistas | No ar em [precifica.abson.tech](https://precifica.abson.tech) | 100% gratuito por enquanto |
+| 2 | [Cardápio no Lucro](./cardapio-no-lucro) — ficha técnica e preço por canal para food service | MVP local em validação | 100% gratuito por enquanto |
 
 ## Critérios para entrar aqui
 

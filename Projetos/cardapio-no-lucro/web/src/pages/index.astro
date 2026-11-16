@@ -1,0 +1,358 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout>
+  <section class="hero">
+    <div class="container hero-grade">
+      <div class="hero-texto">
+        <span class="eyebrow">Para quem vive de cozinha</span>
+        <h1>Seu prato dá <em>lucro</em> ou só gira a cozinha?</h1>
+        <p class="hero-lead">
+          Descubra o custo real por porção, o CMV e quanto cobrar no salão, no delivery próprio,
+          no iFood e no 99Food. O mesmo prato pode dar lucro em um canal e prejuízo em outro.
+        </p>
+        <div class="hero-acoes">
+          <a class="btn btn--primario" href="/calculadora">Calcular meu prato</a>
+          <a class="btn btn--contorno" href="#como-funciona">Ver como funciona</a>
+        </div>
+        <div class="hero-prova">
+          <span>100% grátis por enquanto</span>
+          <span>Preço por canal</span>
+          <span>PDF de ficha técnica</span>
+        </div>
+      </div>
+
+      <div class="hero-visual" aria-hidden="true">
+        <div class="cartao-exemplo">
+          <div class="cartao-exemplo-topo">
+            <span>Ficha técnica · Prato principal</span>
+            <span class="selo selo--terracota">CMV 30%</span>
+          </div>
+          <h3>Frango grelhado com arroz e legumes</h3>
+          <p class="rotulo">Custo por porção</p>
+          <p class="preco">R$ 25,29</p>
+          <div class="mock-canais">
+            <div class="mock-canal">
+              <span><strong>Salão</strong><small>sem comissão</small></span>
+              <strong>R$ 32</strong>
+            </div>
+            <div class="mock-canal mock-canal--destaque">
+              <span><strong>iFood</strong><small>27% de comissão</small></span>
+              <strong>R$ 38</strong>
+            </div>
+            <div class="mock-canal">
+              <span><strong>99Food</strong><small>20% de comissão</small></span>
+              <strong>R$ 35</strong>
+            </div>
+          </div>
+        </div>
+        <div class="selo-pdf">
+          <span class="selo-pdf-icone">PDF</span>
+          <span>
+            <strong>Ficha pronta para a cozinha</strong>
+            <small>Ingredientes, CMV e preço por canal no mesmo lugar.</small>
+          </span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="faixa-nichos">
+    <div class="container nichos nichos--cinco">
+      <a class="nicho-mini" href="/calculadora">
+        <span aria-hidden="true">🍽️</span>
+        <span><strong>Restaurantes</strong><small>Cardápio e CMV</small></span>
+      </a>
+      <a class="nicho-mini" href="/calculadora">
+        <span aria-hidden="true">🍔</span>
+        <span><strong>Lanchonetes</strong><small>Combos e delivery</small></span>
+      </a>
+      <a class="nicho-mini" href="/calculadora">
+        <span aria-hidden="true">🚚</span>
+        <span><strong>Food trucks</strong><small>Menu enxuto, margem certa</small></span>
+      </a>
+      <a class="nicho-mini" href="/calculadora">
+        <span aria-hidden="true">🥘</span>
+        <span><strong>Marmitarias</strong><small>Almoço todo dia</small></span>
+      </a>
+      <a class="nicho-mini" href="/calculadora">
+        <span aria-hidden="true">🧁</span>
+        <span><strong>Doces por encomenda</strong><small>Bolos, tortas e doces</small></span>
+      </a>
+    </div>
+  </section>
+
+  <section class="secao">
+    <div class="container">
+      <div class="cabecalho-secao">
+        <div>
+          <span class="eyebrow">O problema não é vender</span>
+          <h2>É vender bem e descobrir que não sobrou nada.</h2>
+        </div>
+        <p>
+          O preço do prato não pode ser uma conta de cabeça. Ingrediente, rendimento, gás, equipe e
+          comissão do canal precisam entrar antes de você definir o cardápio.
+        </p>
+      </div>
+
+      <div class="grade-3">
+        <article class="argumento">
+          <span class="argumento-numero">01</span>
+          <h3>CMV invisível</h3>
+          <p>
+            Você sabe quanto custa o quilo do frango, mas não quanto ele custa depois da limpeza,
+            do tempero e da porção que chega ao prato.
+          </p>
+        </article>
+        <article class="argumento">
+          <span class="argumento-numero">02</span>
+          <h3>Comissão que come a margem</h3>
+          <p>
+            iFood e 99Food cobram por pedido. O mesmo prato que fecha no salão pode não pagar a
+            conta no delivery se o preço for igual.
+          </p>
+        </article>
+        <article class="argumento">
+          <span class="argumento-numero">03</span>
+          <h3>Custo fixo esquecido</h3>
+          <p>
+            Aluguel, energia, equipe e gás existem mesmo no dia fraco. Sem ratear esse custo por
+            porção, o lucro do prato é uma ilusão.
+          </p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="secao secao--apertada" id="como-funciona">
+    <div class="container">
+      <div class="cabecalho-secao">
+        <div>
+          <span class="eyebrow">Três passos</span>
+          <h2>Da cozinha para uma ficha técnica de verdade.</h2>
+        </div>
+        <a class="link-seta" href="/calculadora">Começar agora</a>
+      </div>
+
+      <div class="passos">
+        <article class="passo">
+          <span class="numero-passo">1</span>
+          <h3>Monte a ficha</h3>
+          <p>
+            Ingredientes, rendimento, embalagem, tempo de produção e custos fixos. O exemplo já vem
+            preenchido para você ajustar.
+          </p>
+        </article>
+        <article class="passo">
+          <span class="numero-passo">2</span>
+          <h3>Compare os canais</h3>
+          <p>
+            Veja o preço necessário no salão, no delivery próprio, no iFood e no 99Food — com a
+            comissão de cada um.
+          </p>
+        </article>
+        <article class="passo">
+          <span class="numero-passo">3</span>
+          <h3>Leve para a cozinha</h3>
+          <p>
+            Baixe a ficha técnica em PDF com custo por porção, CMV real, preço mínimo e margem de
+            contribuição.
+          </p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="secao">
+    <div class="container">
+      <div class="cabecalho-secao">
+        <div>
+          <span class="eyebrow">O mesmo prato, preço diferente</span>
+          <h2>O canal muda a conta. E o preço.</h2>
+        </div>
+        <p>
+          No salão, o prato de R$ 32 pode dar R$ 4,79 de lucro. No iFood, com 27% de comissão, o
+          mesmo prato precisa sair por R$ 38 para não empatar.
+        </p>
+      </div>
+
+      <div class="grade-2">
+        <article class="cartao">
+          <span class="selo selo--terracota">Salão · 0% de comissão</span>
+          <div class="comparativo-preco">
+            <strong>R$ 32</strong>
+            <small>Custo por porção: R$ 25,29<br />Lucro estimado: R$ 4,79</small>
+          </div>
+          <div class="tabela">
+            <div class="tabela-linha"><span>CMV real</span><strong>30%</strong></div>
+            <div class="tabela-linha"><span>Margem de contribuição</span><strong>R$ 18,69</strong></div>
+            <div class="tabela-linha"><span>Preço mínimo</span><strong>R$ 27</strong></div>
+          </div>
+        </article>
+
+        <article class="cartao" style="border-color: rgba(199, 122, 36, 0.45); background: #fffaf1;">
+          <span class="selo selo--terracota">iFood · 27% de comissão</span>
+          <div class="comparativo-preco">
+            <strong>R$ 38</strong>
+            <small>Custo por porção: R$ 25,29<br />Lucro estimado: R$ 0,17</small>
+          </div>
+          <div class="tabela">
+            <div class="tabela-linha"><span>CMV real</span><strong>25,2%</strong></div>
+            <div class="tabela-linha"><span>Margem de contribuição</span><strong>R$ 14,07</strong></div>
+            <div class="tabela-linha"><span>Preço mínimo</span><strong>R$ 38</strong></div>
+          </div>
+        </article>
+      </div>
+
+      <div class="aviso" style="max-width: 760px; margin-top: 22px;">
+        No iFood, o preço pelo CMV alvo não cobria todos os custos. O Cardápio no Lucro eleva o
+        preço ao mínimo e avisa — em vez de esconder o prejuízo.
+      </div>
+    </div>
+  </section>
+
+  <section class="secao secao-pdf">
+    <div class="container pdf-grade">
+      <div class="pdf-texto">
+        <span class="eyebrow">Ficha técnica, não planilha perdida</span>
+        <h2>Um PDF que a equipe <em>entende e usa.</em></h2>
+        <p>
+          Ingredientes com rendimento, custo por porção, preço mínimo e a tabela de preços por canal.
+          A ficha fica pronta para imprimir, treinar a equipe e revisar quando o fornecedor mudar o
+          preço.
+        </p>
+        <ul class="lista-check">
+          <li>Ficha de produção com ingredientes e rendimento</li>
+          <li>Preço sugerido e mínimo por canal</li>
+          <li>CMV real e margem de contribuição</li>
+          <li>Link e QR Code para compartilhar</li>
+        </ul>
+        <div class="hero-acoes">
+          <a class="btn btn--primario" href="/calculadora">Criar minha primeira ficha</a>
+        </div>
+      </div>
+
+      <div class="pdf-mock" aria-hidden="true">
+        <div class="pdf-mock-marca">
+          <strong>cardápio no lucro</strong>
+          <span>Cozinha do Bairro · 16/11/2026</span>
+        </div>
+        <h3>Frango grelhado com arroz e legumes</h3>
+        <div class="pdf-preco">R$ 25,29 <small style="font-size: 0.32em; letter-spacing: 0;">por porção</small></div>
+        <div class="pdf-linhas">
+          <div class="pdf-linha"><span>Ingredientes</span><strong>R$ 9,59</strong></div>
+          <div class="pdf-linha"><span>Embalagem</span><strong>R$ 1,80</strong></div>
+          <div class="pdf-linha"><span>Mão de obra</span><strong>R$ 6,40</strong></div>
+          <div class="pdf-linha"><span>Custo fixo</span><strong>R$ 7,50</strong></div>
+          <div class="pdf-linha"><span>Preço no salão</span><strong>R$ 32</strong></div>
+          <div class="pdf-linha"><span>Preço no iFood</span><strong>R$ 38</strong></div>
+        </div>
+        <div class="pdf-rodape">
+          <span>Compartilhe: cardapio.abson.tech/f/…<br />Cardápio no Lucro · grátis na validação.</span>
+          <span class="pdf-qr"></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="secao">
+    <div class="container">
+      <div class="cabecalho-secao">
+        <div>
+          <span class="eyebrow">Grátis por enquanto</span>
+          <h2>Sem cobrança para validar com a sua cozinha.</h2>
+        </div>
+        <a class="link-seta" href="/precos">Entender</a>
+      </div>
+
+      <div class="grade-3">
+        <article class="argumento">
+          <span class="argumento-numero">01</span>
+          <h3>Calculadora liberada</h3>
+          <p>Quantas fichas quiser, com todos os canais e o CMV que você definir.</p>
+        </article>
+        <article class="argumento">
+          <span class="argumento-numero">02</span>
+          <h3>PDF sem marca d'água</h3>
+          <p>A ficha sai completa, pronta para imprimir e usar no dia a dia.</p>
+        </article>
+        <article class="argumento">
+          <span class="argumento-numero">03</span>
+          <h3>Meu cardápio</h3>
+          <p>As fichas ficam salvas no seu navegador para voltar e comparar quando quiser.</p>
+        </article>
+      </div>
+
+      <div class="hero-acoes" style="margin-top: 28px;">
+        <a class="btn btn--primario" href="/calculadora">Calcular meu prato</a>
+        <a class="btn btn--contorno" href="/precos">Ver o que está incluído</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="secao secao--apertada">
+    <div class="container">
+      <div class="cabecalho-secao">
+        <div>
+          <span class="eyebrow">Dúvidas comuns</span>
+          <h2>Antes de mexer no cardápio.</h2>
+        </div>
+      </div>
+
+      <div class="faq">
+        <details class="pergunta">
+          <summary>O que é CMV?</summary>
+          <p>
+            CMV é o custo da mercadoria vendida: quanto do preço de venda é consumido pelos
+            ingredientes. Um CMV de 30% significa que R$ 30 de cada R$ 100 vendidos vão para os
+            ingredientes. O Cardápio no Lucro mostra o CMV real depois das perdas e do rendimento.
+          </p>
+        </details>
+        <details class="pergunta">
+          <summary>Por que o preço muda por canal?</summary>
+          <p>
+            Cada canal tem uma comissão. iFood e 99Food cobram uma porcentagem por pedido; no salão e
+            no balcão, normalmente não. Para sobrar o mesmo lucro, o preço no delivery precisa ser
+            maior.
+          </p>
+        </details>
+        <details class="pergunta">
+          <summary>O custo fixo entra por porção?</summary>
+          <p>
+            Sim. Você informa os custos fixos mensais e o volume de porções vendidas por mês. O
+            sistema rateia esse custo por porção para mostrar o custo total real.
+          </p>
+        </details>
+        <details class="pergunta">
+          <summary>Preciso criar conta?</summary>
+          <p>
+            Não para calcular. A ficha fica acessível por um link com token, e o token de edição fica
+            salvo no seu navegador. O “Meu cardápio” também usa o armazenamento local.
+          </p>
+        </details>
+        <details class="pergunta">
+          <summary>Serve para food truck e marmitaria?</summary>
+          <p>
+            Serve para qualquer negócio que venda comida por porção: restaurante, lanchonete, food
+            truck, marmitaria, doceria e cozinha de encomenda.
+          </p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section class="secao secao--apertada">
+    <div class="container">
+      <div class="faixa-cta">
+        <div class="faixa-cta-grade">
+          <div>
+            <h2>Seu próximo prato pode ser o primeiro com lucro calculado.</h2>
+            <p>Leva menos de três minutos. A ficha técnica sai pronta para a cozinha.</p>
+          </div>
+          <a class="btn" href="/calculadora">Calcular meu prato</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</Layout>

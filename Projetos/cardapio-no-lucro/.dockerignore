@@ -1,0 +1,14 @@
+**/bin
+**/obj
+**/node_modules
+**/dist
+**/.astro
+**/*.db
+**/*.db-shm
+**/*.db-wal
+.git
+.gitignore
+README.md
+docs
+.env
+.env.*

@@ -1,0 +1,128 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  titulo="Meu cardápio — Cardápio no Lucro"
+  descricao="As fichas técnicas salvas neste navegador, com custo por porção e preço por canal."
+>
+  <section class="calc-topo">
+    <div class="container">
+      <span class="eyebrow">Meu cardápio</span>
+      <h1>Seus pratos, <em>lado a lado.</em></h1>
+      <p>
+        As fichas ficam salvas neste navegador para você voltar, comparar canais e baixar o PDF de
+        novo. Quem tem o link também consegue abrir a ficha compartilhada.
+      </p>
+      <div class="hero-acoes">
+        <a class="btn btn--primario" href="/calculadora">Criar nova ficha</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="container" style="padding-bottom: 80px;">
+    <div id="lista-fichas" class="lista-fichas"></div>
+
+    <div id="vazio" class="estado-vazio oculto">
+      <span class="eyebrow">Nada por aqui ainda</span>
+      <h2>Seu cardápio começa com uma ficha.</h2>
+      <p>
+        Preencha o primeiro prato e salve. Ele aparece aqui com o custo por porção e o preço de cada
+        canal.
+      </p>
+      <a class="btn btn--primario" href="/calculadora" style="margin-top: 20px;">Criar primeira ficha</a>
+    </div>
+  </section>
+
+  <script>
+    // @ts-nocheck
+    const lista = document.getElementById('lista-fichas');
+    const vazio = document.getElementById('vazio');
+    const reais = (valor) =>
+      new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(valor || 0));
+    const data = (iso) => {
+      if (!iso) return '';
+      return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(iso));
+    };
+    const escapar = (texto) =>
+      String(texto ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;');
+
+    function fichasSalvas() {
+      const fichas = [];
+      try {
+        for (let i = 0; i < localStorage.length; i += 1) {
+          const chave = localStorage.key(i);
+          if (!chave?.startsWith('cardapio:ficha:')) continue;
+          const registro = JSON.parse(localStorage.getItem(chave) || 'null');
+          if (!registro?.shareToken) continue;
+          fichas.push(registro);
+        }
+      } catch {
+        return [];
+      }
+      return fichas.sort((a, b) => String(b.salvoEm || '').localeCompare(String(a.salvoEm || '')));
+    }
+
+    function renderizar() {
+      const fichas = fichasSalvas();
+      if (fichas.length === 0) {
+        lista.classList.add('oculto');
+        vazio.classList.remove('oculto');
+        return;
+      }
+
+      vazio.classList.add('oculto');
+      lista.classList.remove('oculto');
+      lista.innerHTML = fichas
+        .map((ficha) => {
+          const canais = (ficha.canais || [])
+            .slice(0, 4)
+            .map((canal) => `<span>${escapar(canal.nome)} · ${reais(canal.preco)}</span>`)
+            .join('');
+
+          return `
+            <article class="ficha-card">
+              <div class="ficha-card-topo">
+                <div>
+                  <h2>${escapar(ficha.nomeDoPrato || 'Ficha sem nome')}</h2>
+                  <p>${escapar(ficha.estabelecimento || 'Sem estabelecimento')} · ${escapar(ficha.categoria || 'Ficha')}</p>
+                </div>
+                <span class="selo selo--neutro">${escapar(data(ficha.salvoEm))}</span>
+              </div>
+              <p class="ficha-card-preco">
+                ${reais(ficha.precoReferencia)}
+                <small>Preço sugerido · ${escapar(ficha.canalReferencia || 'canal')}</small>
+              </p>
+              <div class="ficha-card-canais">${canais}</div>
+              <div class="ficha-card-acoes">
+                <a class="link-seta" href="/f/${encodeURIComponent(ficha.shareToken)}">Abrir ficha</a>
+                <button class="botao-remover-ficha" type="button" data-remover="${escapar(ficha.shareToken)}">
+                  Remover da lista
+                </button>
+              </div>
+            </article>
+          `;
+        })
+        .join('');
+
+      lista.querySelectorAll('[data-remover]').forEach((botao) => {
+        botao.addEventListener('click', () => {
+          const token = botao.getAttribute('data-remover');
+          if (!token) return;
+          try {
+            localStorage.removeItem(`cardapio:ficha:${token}`);
+          } catch {
+            // Sem localStorage: nada a remover.
+          }
+          renderizar();
+        });
+      });
+    }
+
+    renderizar();
+  </script>
+</Layout>

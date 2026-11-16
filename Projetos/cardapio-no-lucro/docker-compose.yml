@@ -1,0 +1,53 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: cardapio-postgres
+    environment:
+      POSTGRES_USER: cardapio
+      POSTGRES_PASSWORD: cardapio
+      POSTGRES_DB: cardapio
+    ports:
+      - "5434:5432"
+    volumes:
+      - cardapio_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cardapio -d cardapio"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: src/CardapioNoLucro.Api/Dockerfile
+    container_name: cardapio-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Database__Provider: Postgres
+      Database__ConnectionString: Host=postgres;Port=5432;Database=cardapio;Username=cardapio;Password=cardapio
+      Cors__AllowedOrigins: http://localhost:3001,http://127.0.0.1:3001
+      Web__Url: http://localhost:3001
+    ports:
+      - "5182:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./web
+      args:
+        PUBLIC_API_URL: http://localhost:5182
+        PUBLIC_SITE_URL: http://localhost:3001
+    container_name: cardapio-web
+    environment:
+      API_URL: http://api:8080
+      PUBLIC_API_URL: http://localhost:5182
+      PUBLIC_SITE_URL: http://localhost:3001
+    ports:
+      - "3001:4322"
+    depends_on:
+      - api
+
+volumes:
+  cardapio_pgdata:
