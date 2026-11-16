@@ -280,28 +280,30 @@ const urlPdfSemMarca = `${apiPublica}/api/calculos/${token}/pdf/premium`;
           </aside>
         </div>
       </div>
-    </section>
 
-      <dialog class="dialogo" id="dialogo-compra">
-        <div class="dialogo-conteudo">
-          <button class="dialogo-fechar" type="button" id="fechar-dialogo" aria-label="Fechar">×</button>
-          <span class="eyebrow">PDF sem marca d'água</span>
-          <h2>Um PDF, R$ 29, sem assinatura.</h2>
-          <p>
-            Você recebe o acesso a este cálculo específico. O link compartilhável continua funcionando
-            e o pagamento é processado pelo Mercado Pago.
-          </p>
-          <form id="form-compra">
-            <div class="campo">
-              <label for="email-compra">Seu e-mail</label>
-              <input id="email-compra" type="email" placeholder="voce@exemplo.com" autocomplete="email" required />
-              <small>Usamos o e-mail apenas para vincular o pagamento e liberar o PDF.</small>
-            </div>
-            <button class="btn btn--primario btn--largo" type="submit">Ir para o pagamento</button>
-            <p class="erro-caixa" id="erro-compra" role="alert"></p>
-          </form>
-        </div>
-      </dialog>
+      {!acesso?.premium && (
+        <dialog class="dialogo" id="dialogo-compra">
+          <div class="dialogo-conteudo">
+            <button class="dialogo-fechar" type="button" id="fechar-dialogo" aria-label="Fechar">×</button>
+            <span class="eyebrow">PDF sem marca d'água</span>
+            <h2>Um PDF, R$ 29, sem assinatura.</h2>
+            <p>
+              Você recebe o acesso a este cálculo específico. O link compartilhável continua funcionando
+              e o pagamento é processado pelo Mercado Pago.
+            </p>
+            <form id="form-compra">
+              <div class="campo">
+                <label for="email-compra">Seu e-mail</label>
+                <input id="email-compra" type="email" placeholder="voce@exemplo.com" autocomplete="email" required />
+                <small>Usamos o e-mail apenas para vincular o pagamento e liberar o PDF.</small>
+              </div>
+              <button class="btn btn--primario btn--largo" type="submit">Ir para o pagamento</button>
+              <p class="erro-caixa" id="erro-compra" role="alert"></p>
+            </form>
+          </div>
+        </dialog>
+      )}
+    </section>
 
     <script>
   // @ts-nocheck
