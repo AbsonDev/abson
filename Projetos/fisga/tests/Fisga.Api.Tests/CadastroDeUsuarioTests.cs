@@ -1,0 +1,170 @@
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Fisga.Application.Identidade;
+using Fisga.Domain.Common;
+using Fisga.Domain.Identidade;
+using Fisga.Infrastructure.Identity;
+using Fisga.Infrastructure.Persistence;
+
+namespace Fisga.Api.Tests;
+
+[Collection("api")]
+public sealed class CadastroDeUsuarioTests : IAsyncLifetime
+{
+    private readonly IServiceScope _scope;
+    private readonly FisgaDbContext _db;
+    private readonly ICadastroDeUsuario _cadastro;
+    private readonly UserManager<ApplicationUser> _usuarios;
+
+    public CadastroDeUsuarioTests(ApiTestFixture fixture)
+    {
+        _scope = fixture.Factory.Services.CreateScope();
+        _db = _scope.ServiceProvider.GetRequiredService<FisgaDbContext>();
+        _cadastro = _scope.ServiceProvider.GetRequiredService<ICadastroDeUsuario>();
+        _usuarios = _scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+    }
+
+    public async Task InitializeAsync()
+    {
+        await _db.Usuarios.ExecuteDeleteAsync();
+        await _db.Users.ExecuteDeleteAsync();
+    }
+
+    public Task DisposeAsync()
+    {
+        _scope.Dispose();
+        return Task.CompletedTask;
+    }
+
+    [Fact]
+    public void Cadastro_de_usuario_esta_registrado_no_di()
+    {
+        var cadastro = _scope.ServiceProvider.GetRequiredService<ICadastroDeUsuario>();
+
+        Assert.NotNull(cadastro);
+        Assert.IsType<CadastroDeUsuario>(cadastro);
+    }
+
+    [Fact]
+    public async Task CriarComSenha_cria_usuario_e_application_user_com_o_mesmo_id()
+    {
+        var email = $"{Guid.NewGuid():N}@exemplo.com";
+
+        var usuario = await _cadastro.CriarComSenhaAsync(email, "Pescador", "senha-segura-123");
+
+        var conta = await _usuarios.FindByIdAsync(usuario.Id.ToString());
+        var usuarioPersistido = await _db.Usuarios.SingleAsync(u => u.Id == usuario.Id);
+
+        Assert.NotNull(conta);
+        Assert.NotNull(usuarioPersistido);
+        Assert.Equal(usuario.Id, conta!.Id);
+        Assert.Equal(usuario.Id, usuarioPersistido.Id);
+        Assert.Equal(email, conta.Email);
+        Assert.Equal(email, conta.UserName);
+        Assert.Equal(email, usuario.Email.Valor);
+    }
+
+    [Fact]
+    public async Task CriarComSenha_email_duplicado_nao_cria_segundo_usuario()
+    {
+        var email = $"dup-{Guid.NewGuid():N}@exemplo.com";
+        await _cadastro.CriarComSenhaAsync(email, "Pescador", "senha-segura-123");
+
+        var excecao = await Assert.ThrowsAsync<DomainException>(
+            () => _cadastro.CriarComSenhaAsync(email, "Outro", "outra-senha-456"));
+
+        Assert.Equal("email_em_uso", excecao.Codigo);
+        Assert.Equal(1, await _db.Usuarios.CountAsync(u => u.Email == Email.Criar(email)));
+        Assert.Equal(1, await _db.Users.CountAsync(u => u.Email == email));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("curta")]
+    [InlineData("123456789")]
+    public async Task CriarComSenha_rejeita_senha_curta(string senha)
+    {
+        var excecao = await Assert.ThrowsAsync<DomainException>(
+            () => _cadastro.CriarComSenhaAsync($"{Guid.NewGuid():N}@exemplo.com", null, senha));
+
+        Assert.Equal("senha_curta", excecao.Codigo);
+        Assert.Equal(0, await _db.Usuarios.CountAsync());
+        Assert.Equal(0, await _db.Users.CountAsync());
+    }
+
+    [Fact]
+    public async Task CriarComSenha_rejeita_senha_longa()
+    {
+        var senha = new string('a', 129);
+
+        var excecao = await Assert.ThrowsAsync<DomainException>(
+            () => _cadastro.CriarComSenhaAsync($"{Guid.NewGuid():N}@exemplo.com", null, senha));
+
+        Assert.Equal("senha_longa", excecao.Codigo);
+        Assert.Equal(0, await _db.Usuarios.CountAsync());
+        Assert.Equal(0, await _db.Users.CountAsync());
+    }
+
+    [Fact]
+    public async Task CriarComSenha_email_verificado_comeca_nulo()
+    {
+        var usuario = await _cadastro.CriarComSenhaAsync($"{Guid.NewGuid():N}@exemplo.com", null, "senha-segura-123");
+
+        var conta = await _usuarios.FindByIdAsync(usuario.Id.ToString());
+
+        Assert.Null(usuario.EmailVerificadoEm);
+        Assert.NotNull(conta);
+        Assert.False(conta!.EmailConfirmed);
+    }
+
+    [Fact]
+    public async Task GarantirUsuarioAsync_cria_uma_vez_e_reusa_a_existente()
+    {
+        var email = Email.Criar($"{Guid.NewGuid():N}@exemplo.com");
+
+        var primeiro = await _cadastro.GarantirUsuarioAsync(email, "Pescador", emailVerificado: false);
+        var segundo = await _cadastro.GarantirUsuarioAsync(email, "Outro Nome", emailVerificado: false);
+
+        Assert.Equal(primeiro.Id, segundo.Id);
+        Assert.Equal(1, await _db.Usuarios.CountAsync(u => u.Email == email));
+    }
+
+    [Fact]
+    public async Task GarantirUsuarioAsync_marca_email_verificado_quando_solicitado()
+    {
+        var email = Email.Criar($"{Guid.NewGuid():N}@exemplo.com");
+
+        var usuario = await _cadastro.GarantirUsuarioAsync(email, null, emailVerificado: true);
+
+        Assert.NotNull(usuario.EmailVerificadoEm);
+    }
+
+    [Fact]
+    public async Task GarantirApplicationUserAsync_cria_conta_para_usuario_sem_senha()
+    {
+        var usuario = await _cadastro.GarantirUsuarioAsync(
+            Email.Criar($"{Guid.NewGuid():N}@exemplo.com"), null, emailVerificado: true);
+
+        var cadastroConcreto = (CadastroDeUsuario)_cadastro;
+        var conta = await cadastroConcreto.GarantirApplicationUserAsync(usuario);
+
+        Assert.NotNull(conta);
+        Assert.Equal(usuario.Id, conta.Id);
+        Assert.True(conta.EmailConfirmed);
+        Assert.Null(conta.PasswordHash);
+    }
+
+    [Fact]
+    public async Task ObterUsuarioAsync_retorna_usuario_por_id_ou_null()
+    {
+        var usuario = await _cadastro.CriarComSenhaAsync($"{Guid.NewGuid():N}@exemplo.com", null, "senha-segura-123");
+
+        var obtido = await _cadastro.ObterUsuarioAsync(usuario.Id);
+        var inexistente = await _cadastro.ObterUsuarioAsync(Guid.NewGuid());
+
+        Assert.NotNull(obtido);
+        Assert.Equal(usuario.Id, obtido!.Id);
+        Assert.Null(inexistente);
+    }
+}

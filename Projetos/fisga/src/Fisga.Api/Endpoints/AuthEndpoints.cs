@@ -1,8 +1,10 @@
+using Microsoft.AspNetCore.Identity;
 using Fisga.Api.Contracts;
 using Fisga.Api.Observabilidade;
 using Fisga.Application.Identidade;
 using Fisga.Domain.Common;
 using Fisga.Domain.Identidade;
+using Fisga.Infrastructure.Identity;
 
 namespace Fisga.Api.Endpoints;
 
@@ -27,6 +29,45 @@ public static class AuthEndpoints
                     new SolicitarLinkResponse(
                         "Se este e-mail puder entrar, enviamos um link de acesso. Confira sua caixa de entrada e o spam.",
                         link));
+            })
+            .AllowAnonymous()
+            .RequireRateLimiting("auth");
+
+        app.MapPost("/api/auth/registrar", async (
+                RegistrarRequest entrada,
+                ICadastroDeUsuario cadastro,
+                UserManager<ApplicationUser> usuarios,
+                IEmailSender email,
+                AutenticacaoOptions opcoes,
+                CancellationToken ct) =>
+            {
+                var usuario = await cadastro.CriarComSenhaAsync(
+                    entrada.Email ?? string.Empty,
+                    entrada.Nome,
+                    entrada.Senha ?? string.Empty,
+                    ct);
+
+                var conta = await usuarios.FindByIdAsync(usuario.Id.ToString())
+                    ?? throw new InvalidOperationException("Conta de autenticação não encontrada após o cadastro.");
+
+                var token = await usuarios.GenerateEmailConfirmationTokenAsync(conta);
+
+                var link = $"{opcoes.WebUrl.TrimEnd('/')}/confirmar-email" +
+                           $"?uid={Uri.EscapeDataString(usuario.Id.ToString())}" +
+                           $"&token={Uri.EscapeDataString(token)}";
+
+                var resultado = new ResultadoDoRegistro(usuario, link);
+
+                var assunto = "Confirme seu e-mail no Fisga";
+                var texto = $"Confirme seu e-mail no Fisga acessando: {resultado.LinkDeConfirmacao}";
+                var html = $"<p>Confirme seu e-mail no Fisga acessando o link:</p>" +
+                           $"<p><a href=\"{resultado.LinkDeConfirmacao}\">{resultado.LinkDeConfirmacao}</a></p>";
+
+                await email.EnviarAsync(resultado.Usuario.Email.Valor, assunto, html, texto, ct: ct);
+
+                return Results.Created(
+                    "/api/auth/me",
+                    new RegistrarResponse("Conta criada. Enviamos um link de confirmação para o seu e-mail."));
             })
             .AllowAnonymous()
             .RequireRateLimiting("auth");

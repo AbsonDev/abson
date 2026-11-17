@@ -78,6 +78,7 @@ public static class DependencyInjection
         services.AddScoped<ITrilhaPrivadaRepository, EfTrilhaPrivadaRepository>();
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddScoped<IDomainEventDispatcher, DomainEventDispatcher>();
+        services.AddScoped<ICadastroDeUsuario, CadastroDeUsuario>();
         services.AddScoped<IMidiaStorage, ArmazenamentoDeMidiaLocal>();
         services.AddSingleton<IRelogio, RelogioDoSistema>();
         services.AddSingleton<IGeradorDePdf, QuestPdfGerador>();

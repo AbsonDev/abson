@@ -6,6 +6,10 @@ public sealed record SolicitarLinkRequest(string? Email);
 
 public sealed record SolicitarLinkResponse(string Mensagem, string? LinkDesenvolvimento);
 
+public sealed record RegistrarRequest(string? Nome, string? Email, string? Senha);
+
+public sealed record RegistrarResponse(string Mensagem);
+
 public sealed record AtualizarPerfilRequest(string? Nome, bool AceitaNovidades);
 
 public sealed record ExcluirContaRequest(string? Confirmacao);
