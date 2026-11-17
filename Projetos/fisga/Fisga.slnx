@@ -6,6 +6,7 @@
     <Project Path="src/Fisga.Infrastructure/Fisga.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Fisga.Api.Tests/Fisga.Api.Tests.csproj" />
     <Project Path="tests/Fisga.Application.Tests/Fisga.Application.Tests.csproj" />
     <Project Path="tests/Fisga.Domain.Tests/Fisga.Domain.Tests.csproj" />
   </Folder>
