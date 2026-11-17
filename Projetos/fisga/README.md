@@ -9,6 +9,9 @@ troféu compartilhável + PDF da pescaria.
 > **Estado atual: 100% gratuito.** Diário, card do troféu e PDF liberados durante a validação, sem
 > cartão ou assinatura. Monetização futura prevista: R$ 9–19/mês.
 
+**No ar:** [fisga.abson.tech](https://fisga.abson.tech) · API em
+[api.fisga.abson.tech](https://api.fisga.abson.tech/health).
+
 ## Funcionalidades do MVP
 
 - Pescaria com local, cidade/UF, ambiente, data, período e condições (lua, maré, clima, água).
