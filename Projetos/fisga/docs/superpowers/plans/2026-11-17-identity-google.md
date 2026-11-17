@@ -44,15 +44,18 @@
 - Create: `tests/Fisga.Api.Tests/TestWebApplicationFactory.cs`
 - Create: `tests/Fisga.Api.Tests/IdentitySchemaTests.cs`
 - Create: `src/Fisga.Infrastructure/Identity/ApplicationUser.cs`
+- Create: `src/Fisga.Domain/Identidade/TipoDeConsentimento.cs`
 - Create: `src/Fisga.Domain/Identidade/Consentimento.cs`
+- Create: `src/Fisga.Application/Identidade/IConsentimentoRepository.cs`
 - Create: `src/Fisga.Infrastructure/Persistence/Configurations/ConsentimentoConfiguration.cs`
+- Create: `src/Fisga.Infrastructure/Persistence/Repositories/EfConsentimentoRepository.cs`
 - Modify: `src/Fisga.Infrastructure/Persistence/FisgaDbContext.cs`
 - Modify: `src/Fisga.Infrastructure/Fisga.Infrastructure.csproj`
 - Modify: `Fisga.slnx`
 - Create: migration em `src/Fisga.Infrastructure/Persistence/Migrations/`
 
 **Interfaces:**
-- Produces: `ApplicationUser : IdentityUser<Guid>`, `Consentimento`, `IConsentimentoRepository` (em `Fisga.Application.Identidade`), `FisgaDbContext` herdando `IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>`.
+- Produces: `ApplicationUser : IdentityUser<Guid>`, `TipoDeConsentimento`, `Consentimento`, `IConsentimentoRepository` (em `Fisga.Application.Identidade`, com `ObterUltimoAsync`, `TemVersaoAsync`, `Adicionar`), `EfConsentimentoRepository`, `FisgaDbContext` herdando `IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>`.
 
 - [ ] **Step 1: Criar o projeto de testes de API e o teste de schema**
 
@@ -85,7 +88,7 @@ Expected: FAIL porque `ApplicationUser`/`consentimentos` ainda não existem.
 
 - [ ] **Step 3: Implementar ApplicationUser, Consentimento e DbContext**
 
-`ApplicationUser` vazio, herdando `IdentityUser<Guid>`. `Consentimento` com `Id`, `UsuarioId`, `Tipo` (`Termos`/`Privacidade`), `Versao`, `AceitoEm`; factory `Criar` valida campos e versão não vazia. `FisgaDbContext` herda `IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>`, adiciona `DbSet<Consentimento> Consentimentos` e mantém os DbSets atuais.
+`ApplicationUser` vazio, herdando `IdentityUser<Guid>`. `Consentimento` com `Id`, `UsuarioId`, `Tipo` (`TipoDeConsentimento.Termos`/`Privacidade`), `Versao`, `AceitoEm`; factory `Criar` valida campos e versão não vazia. `FisgaDbContext` herda `IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>`, chama `base.OnModelCreating`, define `HasDefaultSchema("fisga")` para as tabelas da Identity, adiciona `DbSet<Consentimento> Consentimentos` e mantém os DbSets atuais. `EfConsentimentoRepository` implementa a interface.
 
 - [ ] **Step 4: Rodar e ver passar**
 
@@ -100,7 +103,7 @@ Expected: migration cria `AspNetUsers`, tabelas de Identity e `consentimentos`; 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add tests/Fisga.Api.Tests src/Fisga.Infrastructure src/Fisga.Domain/Identidade/Consentimento.cs
+git add tests/Fisga.Api.Tests src/Fisga.Infrastructure src/Fisga.Domain/Identidade src/Fisga.Application/Identidade/IConsentimentoRepository.cs
 git commit -m "feat(auth): add identity schema and consent entity"
 ```
 
@@ -113,6 +116,7 @@ git commit -m "feat(auth): add identity schema and consent entity"
 - Modify: `src/Fisga.Infrastructure/DependencyInjection.cs`
 - Modify: `src/Fisga.Api/Program.cs`
 - Modify: `src/Fisga.Api/appsettings.json`
+- Modify: `src/Fisga.Infrastructure/Fisga.Infrastructure.csproj`
 - Create: `tests/Fisga.Api.Tests/IdentityOptionsTests.cs`
 
 **Interfaces:**
@@ -147,7 +151,7 @@ Expected: FAIL (cookie padrão/opções ausentes).
 
 - [ ] **Step 3: Implementar**
 
-Em `IdentityExtensions`, usar `AddIdentity<ApplicationUser, IdentityRole<Guid>>()`, `AddEntityFrameworkStores<FisgaDbContext>()`, `AddDefaultTokenProviders()`, configurar `IdentityOptions` e `ConfigureApplicationCookie` com `fisga_auth`. Adicionar `AddAuthentication().AddGoogle(...)` com `SignInScheme = IdentityConstants.ExternalScheme`, `CallbackPath = "/signin-google"` e `SaveTokens = true`; ler `Google:ClientId`/`Google:ClientSecret`. Configurar `DataProtection` com `PersistKeysToFileSystem` usando `DataProtection:KeysPath`. Registrar em `DependencyInjection`. Em `Program`, chamar `app.UseAuthentication()` antes do middleware de sessão.
+Adicionar `Microsoft.AspNetCore.Authentication.Google` 10.0.15. Em `IdentityExtensions`, usar `AddIdentity<ApplicationUser, IdentityRole<Guid>>()`, `AddEntityFrameworkStores<FisgaDbContext>()`, `AddDefaultTokenProviders()`, configurar `IdentityOptions` e `ConfigureApplicationCookie` com `fisga_auth`. Adicionar `AddAuthentication().AddGoogle(...)` com `SignInScheme = IdentityConstants.ExternalScheme`, `CallbackPath = "/signin-google"` e `SaveTokens = true`; ler `Google:ClientId`/`Google:ClientSecret`. Configurar `DataProtection` com `PersistKeysToFileSystem` usando `DataProtection:KeysPath`. Registrar em `DependencyInjection`. Em `Program`, chamar `app.UseAuthentication()` antes do middleware de sessão.
 
 - [ ] **Step 4: Rodar e ver passar**
 
