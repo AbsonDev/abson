@@ -36,6 +36,8 @@ public interface IUsuarioRepository
 
     Task<Usuario?> ObterPorIdAsync(Guid id, CancellationToken ct = default);
 
+    Task<IReadOnlyList<Usuario>> ListarAceitaNovidadesAsync(CancellationToken ct = default);
+
     void Adicionar(Usuario usuario);
 
     void Remover(Usuario usuario);
@@ -75,6 +77,14 @@ public interface IEmailSender
         string? nome,
         string url,
         DateTimeOffset expiraEm,
+        CancellationToken ct = default);
+
+    Task EnviarAsync(
+        string destino,
+        string assunto,
+        string html,
+        string texto,
+        string? listUnsubscribeUrl = null,
         CancellationToken ct = default);
 }
 

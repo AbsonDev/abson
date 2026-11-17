@@ -58,6 +58,22 @@ public sealed class Pescaria : AggregateRoot
 
     public string? Observacoes { get; private set; }
 
+    public PrivacidadeDoLocal PrivacidadeDoLocal { get; private set; }
+
+    public string LocalPublico => PrivacidadeDoLocal switch
+    {
+        PrivacidadeDoLocal.Exato => Local,
+        PrivacidadeDoLocal.Cidade when !string.IsNullOrWhiteSpace(Cidade) =>
+            string.IsNullOrWhiteSpace(Estado) ? Cidade! : $"{Cidade} · {Estado}",
+        _ => "Local não divulgado"
+    };
+
+    public string? CidadePublica =>
+        PrivacidadeDoLocal == PrivacidadeDoLocal.Oculto ? null : Cidade;
+
+    public string? EstadoPublico =>
+        PrivacidadeDoLocal == PrivacidadeDoLocal.Oculto ? null : Estado;
+
     public DateTimeOffset CriadoEm { get; private set; }
 
     public DateTimeOffset AtualizadoEm { get; private set; }
@@ -102,6 +118,7 @@ public sealed class Pescaria : AggregateRoot
         Clima = dados.Clima;
         ClarezaDaAgua = dados.ClarezaDaAgua;
         Observacoes = string.IsNullOrWhiteSpace(dados.Observacoes) ? null : dados.Observacoes.Trim();
+        PrivacidadeDoLocal = dados.PrivacidadeDoLocal;
         AtualizadoEm = agora;
 
         var existentes = _capturas.ToDictionary(captura => captura.Id);
@@ -123,7 +140,8 @@ public sealed class Pescaria : AggregateRoot
                     entrada.Isca,
                     entrada.Solto,
                     entrada.FotoUrl,
-                    entrada.Observacao);
+                    entrada.Observacao,
+                    entrada.Fotos);
 
                 novas.Add(existente);
             }
@@ -137,7 +155,8 @@ public sealed class Pescaria : AggregateRoot
                     entrada.Isca,
                     entrada.Solto,
                     entrada.FotoUrl,
-                    entrada.Observacao));
+                    entrada.Observacao,
+                    entrada.Fotos));
             }
             else
             {
@@ -216,6 +235,11 @@ public sealed class Pescaria : AggregateRoot
         if (Observacoes?.Length > 1_000)
         {
             throw new DomainException("observacoes_longas", "As observações devem ter até 1.000 caracteres.");
+        }
+
+        if (!Enum.IsDefined(PrivacidadeDoLocal))
+        {
+            throw new DomainException("privacidade_local_invalida", "Escolha uma opção válida de privacidade do local.");
         }
 
         if (_capturas.Count > 100)

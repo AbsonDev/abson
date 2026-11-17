@@ -205,6 +205,11 @@ namespace Fisga.Infrastructure.Persistence.Migrations
                         .HasMaxLength(80)
                         .HasColumnType("character varying(80)");
 
+                    b.Property<string>("PrivacidadeDoLocal")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
                     b.Property<string>("ShareToken")
                         .IsRequired()
                         .HasMaxLength(64)
@@ -257,9 +262,15 @@ namespace Fisga.Infrastructure.Persistence.Migrations
                                 .HasMaxLength(80)
                                 .HasColumnType("character varying(80)");
 
-                            b1.Property<string>("FotoUrl")
+                            b1.Property<string>("FotoCapa")
                                 .HasMaxLength(300)
-                                .HasColumnType("character varying(300)");
+                                .HasColumnType("character varying(300)")
+                                .HasColumnName("FotoUrl");
+
+                            b1.Property<string>("Fotos")
+                                .IsRequired()
+                                .HasColumnType("text")
+                                .HasColumnName("Fotos");
 
                             b1.Property<string>("Isca")
                                 .HasMaxLength(80)

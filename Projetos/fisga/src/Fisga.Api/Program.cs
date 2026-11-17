@@ -96,6 +96,7 @@ app.MapGet("/ready", async (FisgaDbContext db, CancellationToken ct) =>
 
 app.MapAuthEndpoints();
 app.MapContaEndpoints();
+app.MapNewsletterEndpoints();
 app.MapPescariaEndpoints();
 app.MapMidiaEndpoints();
 

@@ -43,6 +43,7 @@ export interface EntradaDeCaptura {
   isca?: string | null;
   solto: boolean;
   fotoUrl?: string | null;
+  fotos?: string[] | null;
   observacao?: string | null;
 }
 
@@ -54,6 +55,7 @@ export interface Captura {
   isca: string | null;
   solto: boolean;
   fotoUrl: string | null;
+  fotos: string[];
   observacao: string | null;
 }
 
@@ -69,6 +71,7 @@ export interface EntradaDePescaria {
   lua: string;
   clima: string;
   clarezaDaAgua: string;
+  privacidadeDoLocal?: 'Exato' | 'Cidade' | 'Oculto';
   observacoes?: string | null;
   capturas: EntradaDeCaptura[];
 }
@@ -80,6 +83,7 @@ export interface PescariaDetalhada {
   capturas: Captura[];
   criadoEm: string;
   atualizadoEm: string;
+  privacidadeDoLocal: 'Exato' | 'Cidade' | 'Oculto';
   podeEditar: boolean;
 }
 
@@ -140,5 +144,9 @@ export interface Diario {
   especieTop: string | null;
   iscaTop: string | null;
   localTop: string | null;
+  taxaDeSoltura: number;
+  insights: Array<{ rotulo: string; valor: string; detalhe: string }>;
+  recordesPorEspecie: Array<{ especie: string; pesoKg: number; comprimentoCm: number; capturas: number }>;
+  iscasPorEspecie: Array<{ especie: string; isca: string; capturas: number }>;
   pescarias: PescariaResumo[];
 }

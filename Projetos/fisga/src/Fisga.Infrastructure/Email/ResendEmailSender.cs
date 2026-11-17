@@ -6,11 +6,26 @@ namespace Fisga.Infrastructure.Emails;
 
 public sealed class ResendEmailSender(HttpClient http, EmailOptions opcoes) : IEmailSender
 {
-    public async Task EnviarLinkDeAcessoAsync(
+    public Task EnviarLinkDeAcessoAsync(
         string destino,
         string? nome,
         string url,
         DateTimeOffset expiraEm,
+        CancellationToken ct = default) =>
+        EnviarAsync(
+            destino,
+            "Seu acesso ao Fisga",
+            ModeloDeEmailDeAcesso.Html(nome, url, expiraEm),
+            ModeloDeEmailDeAcesso.Texto(nome, url, expiraEm),
+            null,
+            ct);
+
+    public async Task EnviarAsync(
+        string destino,
+        string assunto,
+        string html,
+        string texto,
+        string? listUnsubscribeUrl = null,
         CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(opcoes.ResendApiKey))
@@ -19,15 +34,23 @@ public sealed class ResendEmailSender(HttpClient http, EmailOptions opcoes) : IE
                 "Configure Email:ResendApiKey para enviar e-mails em produção.");
         }
 
-        var mensagem = new
+        var mensagem = new Dictionary<string, object?>
         {
-            from = opcoes.From,
-            to = new[] { destino },
-            subject = "Seu acesso ao Fisga",
-            html = ModeloDeEmailDeAcesso.Html(nome, url, expiraEm),
-            text = ModeloDeEmailDeAcesso.Texto(nome, url, expiraEm),
-            reply_to = string.IsNullOrWhiteSpace(opcoes.ReplyTo) ? null : opcoes.ReplyTo
+            ["from"] = opcoes.From,
+            ["to"] = new[] { destino },
+            ["subject"] = assunto,
+            ["html"] = html,
+            ["text"] = texto,
+            ["reply_to"] = string.IsNullOrWhiteSpace(opcoes.ReplyTo) ? null : opcoes.ReplyTo
         };
+
+        if (!string.IsNullOrWhiteSpace(listUnsubscribeUrl))
+        {
+            mensagem["headers"] = new Dictionary<string, string>
+            {
+                ["List-Unsubscribe"] = $"<{listUnsubscribeUrl}>"
+            };
+        }
 
         using var requisicao = new HttpRequestMessage(HttpMethod.Post, "https://api.resend.com/emails")
         {

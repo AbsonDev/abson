@@ -57,6 +57,9 @@ internal sealed class UsuarioRepositorioFake : IUsuarioRepository
     public Task<Usuario?> ObterPorIdAsync(Guid id, CancellationToken ct = default) =>
         Task.FromResult(Usuarios.FirstOrDefault(usuario => usuario.Id == id));
 
+    public Task<IReadOnlyList<Usuario>> ListarAceitaNovidadesAsync(CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<Usuario>>(Usuarios.Where(usuario => usuario.AceitaNovidades).ToList());
+
     public void Adicionar(Usuario usuario) => Usuarios.Add(usuario);
 
     public void Remover(Usuario usuario) => Usuarios.Remove(usuario);
@@ -141,6 +144,21 @@ internal sealed class EmailSenderFake : IEmailSender
         Enviados.Add((destino, url));
         return Task.CompletedTask;
     }
+
+    public Task EnviarAsync(
+        string destino,
+        string assunto,
+        string html,
+        string texto,
+        string? listUnsubscribeUrl = null,
+        CancellationToken ct = default)
+    {
+        Enviados.Add((destino, assunto));
+        Mensagens.Add((destino, assunto, html, texto, listUnsubscribeUrl));
+        return Task.CompletedTask;
+    }
+
+    public List<(string Destino, string Assunto, string Html, string Texto, string? Descadastro)> Mensagens { get; } = [];
 }
 
 internal sealed class UnitOfWorkFake : IUnitOfWork

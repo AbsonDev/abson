@@ -31,4 +31,31 @@ public sealed class ConsoleEmailSender(ILogger<ConsoleEmailSender> logger) : IEm
 
         return Task.CompletedTask;
     }
+
+    public Task EnviarAsync(
+        string destino,
+        string assunto,
+        string html,
+        string texto,
+        string? listUnsubscribeUrl = null,
+        CancellationToken ct = default)
+    {
+        logger.LogWarning(
+            """
+
+            ==================== E-MAIL (DESENVOLVIMENTO) ====================
+            Para:    {Destino}
+            Assunto: {Assunto}
+            Baixa:   {Descadastro}
+            ------------------------------------------------------------------
+            {Texto}
+            ==================================================================
+            """,
+            destino,
+            assunto,
+            listUnsubscribeUrl ?? "—",
+            texto);
+
+        return Task.CompletedTask;
+    }
 }

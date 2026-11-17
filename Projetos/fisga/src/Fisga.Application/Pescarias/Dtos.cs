@@ -28,6 +28,8 @@ public sealed record EntradaDePescaria
 
     public string? Observacoes { get; init; }
 
+    public PrivacidadeDoLocal PrivacidadeDoLocal { get; init; } = PrivacidadeDoLocal.Exato;
+
     public IReadOnlyList<EntradaDeCaptura>? Capturas { get; init; }
 }
 
@@ -39,7 +41,8 @@ public sealed record EntradaDeCaptura(
     string? Isca,
     bool Solto,
     string? FotoUrl,
-    string? Observacao);
+    string? Observacao,
+    IReadOnlyList<string>? Fotos = null);
 
 public sealed record PescariaSalvaDto(Guid Id, string ShareToken);
 
@@ -51,7 +54,8 @@ public sealed record CapturaDto(
     string? Isca,
     bool Solto,
     string? FotoUrl,
-    string? Observacao);
+    string? Observacao,
+    IReadOnlyList<string> Fotos);
 
 public sealed record PescariaDetalhadaDto(
     Guid Id,
@@ -60,6 +64,7 @@ public sealed record PescariaDetalhadaDto(
     IReadOnlyList<CapturaDto> Capturas,
     DateTimeOffset CriadoEm,
     DateTimeOffset AtualizadoEm,
+    string PrivacidadeDoLocal,
     bool PodeEditar);
 
 public sealed record PescariaResumoDto(
@@ -83,7 +88,21 @@ public sealed record DiarioDto(
     string? EspecieTop,
     string? IscaTop,
     string? LocalTop,
+    decimal TaxaDeSoltura,
+    IReadOnlyList<InsightDto> Insights,
+    IReadOnlyList<RecordePorEspecieDto> RecordesPorEspecie,
+    IReadOnlyList<IscaPorEspecieDto> IscasPorEspecie,
     IReadOnlyList<PescariaResumoDto> Pescarias);
+
+public sealed record InsightDto(string Rotulo, string Valor, string Detalhe);
+
+public sealed record RecordePorEspecieDto(
+    string Especie,
+    decimal PesoKg,
+    decimal ComprimentoCm,
+    int Capturas);
+
+public sealed record IscaPorEspecieDto(string Especie, string Isca, int Capturas);
 
 public static class PescariaMapper
 {
@@ -102,6 +121,7 @@ public static class PescariaMapper
             Clima = entrada.Clima,
             ClarezaDaAgua = entrada.ClarezaDaAgua,
             Observacoes = entrada.Observacoes,
+            PrivacidadeDoLocal = entrada.PrivacidadeDoLocal,
             Capturas = (entrada.Capturas ?? [])
                 .Select(captura => new DadosDaCaptura(
                     captura.Id,
@@ -111,7 +131,8 @@ public static class PescariaMapper
                     captura.Isca,
                     captura.Solto,
                     captura.FotoUrl,
-                    captura.Observacao))
+                    captura.Observacao,
+                    captura.Fotos))
                 .ToList()
         };
 
@@ -130,6 +151,7 @@ public static class PescariaMapper
             Clima = pescaria.Clima,
             ClarezaDaAgua = pescaria.ClarezaDaAgua,
             Observacoes = pescaria.Observacoes,
+            PrivacidadeDoLocal = pescaria.PrivacidadeDoLocal,
             Capturas = pescaria.Capturas
                 .OrderBy(captura => captura.Especie, StringComparer.CurrentCultureIgnoreCase)
                 .Select(captura => new EntradaDeCaptura(
@@ -140,9 +162,21 @@ public static class PescariaMapper
                     captura.Isca,
                     captura.Solto,
                     captura.FotoUrl,
-                    captura.Observacao))
+                    captura.Observacao,
+                    captura.Fotos))
                 .ToList()
         };
+
+    public static EntradaDePescaria ParaEntradaPublica(Pescaria pescaria)
+    {
+        var entrada = ParaEntrada(pescaria);
+        return entrada with
+        {
+            Local = pescaria.LocalPublico,
+            Cidade = pescaria.CidadePublica,
+            Estado = pescaria.EstadoPublico
+        };
+    }
 
     public static PescariaDetalhadaDto ParaDetalhada(Pescaria pescaria, bool podeEditar = false) =>
         new(
@@ -155,6 +189,21 @@ public static class PescariaMapper
                 .ToList(),
             pescaria.CriadoEm,
             pescaria.AtualizadoEm,
+            pescaria.PrivacidadeDoLocal.ToString(),
+            podeEditar);
+
+    public static PescariaDetalhadaDto ParaPublica(Pescaria pescaria, bool podeEditar = false) =>
+        new(
+            pescaria.Id,
+            pescaria.ShareToken,
+            ParaEntradaPublica(pescaria),
+            pescaria.Capturas
+                .OrderBy(captura => captura.Especie, StringComparer.CurrentCultureIgnoreCase)
+                .Select(ParaCapturaDto)
+                .ToList(),
+            pescaria.CriadoEm,
+            pescaria.AtualizadoEm,
+            pescaria.PrivacidadeDoLocal.ToString(),
             podeEditar);
 
     public static CapturaDto ParaCapturaDto(Captura captura) =>
@@ -166,5 +215,6 @@ public static class PescariaMapper
             captura.Isca,
             captura.Solto,
             captura.FotoUrl,
-            captura.Observacao);
+            captura.Observacao,
+            captura.Fotos);
 }

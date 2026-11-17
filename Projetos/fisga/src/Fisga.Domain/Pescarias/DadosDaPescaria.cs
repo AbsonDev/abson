@@ -8,7 +8,8 @@ public sealed record DadosDaCaptura(
     string? Isca,
     bool Solto,
     string? FotoUrl,
-    string? Observacao);
+    string? Observacao,
+    IReadOnlyList<string>? Fotos = null);
 
 public sealed record DadosDaPescaria
 {
@@ -35,6 +36,8 @@ public sealed record DadosDaPescaria
     public ClarezaDaAgua ClarezaDaAgua { get; init; } = ClarezaDaAgua.NaoInformada;
 
     public string? Observacoes { get; init; }
+
+    public PrivacidadeDoLocal PrivacidadeDoLocal { get; init; } = PrivacidadeDoLocal.Exato;
 
     public IReadOnlyList<DadosDaCaptura> Capturas { get; init; } = [];
 }

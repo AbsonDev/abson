@@ -75,6 +75,12 @@ public sealed class Usuario : AggregateRoot
         AtualizadoEm = agora;
     }
 
+    public void DescadastrarNovidades(DateTimeOffset agora)
+    {
+        AceitaNovidades = false;
+        AtualizadoEm = agora;
+    }
+
     private static string? NormalizarNome(string? nome)
     {
         if (string.IsNullOrWhiteSpace(nome))

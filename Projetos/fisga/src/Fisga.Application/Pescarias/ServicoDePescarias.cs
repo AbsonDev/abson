@@ -94,7 +94,7 @@ public sealed class ServicoDePescarias(
         }
 
         var podeEditar = usuarioId is { } id && pescaria.PertenceA(id);
-        return PescariaMapper.ParaDetalhada(pescaria, podeEditar);
+        return PescariaMapper.ParaPublica(pescaria, podeEditar);
     }
 
     private async Task PublicarEventosAsync(Pescaria pescaria, CancellationToken ct)

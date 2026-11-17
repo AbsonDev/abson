@@ -105,6 +105,18 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         </div>
 
         <div class="campo" style="margin-top: 15px;">
+          <label for="privacidade-local">Privacidade do local</label>
+          <select id="privacidade-local">
+            <option value="Exato">Mostrar local exato no link público</option>
+            <option value="Cidade">Mostrar apenas cidade/UF</option>
+            <option value="Oculto">Ocultar local</option>
+          </select>
+          <small style="display: block; margin-top: 5px; color: var(--tinta-suave); font-size: 0.66rem;">
+            Vale para o link público, o troféu e o PDF. O diário completo continua privado.
+          </small>
+        </div>
+
+        <div class="campo" style="margin-top: 15px;">
           <label for="periodo">Período</label>
           <select id="periodo">
             <option value="Madrugada">Madrugada</option>
@@ -187,7 +199,6 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
           <span>Comp. cm</span>
           <span>Isca</span>
           <span>Solto</span>
-          <span>Foto</span>
           <span></span>
         </div>
         <div id="lista-capturas"></div>
@@ -335,24 +346,94 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       contador.textContent = `${total} ${total === 1 ? 'captura' : 'capturas'}`;
     }
 
+    const MAX_FOTOS = 4;
+
+    function fotosDaLinha(linha) {
+      try {
+        return JSON.parse(linha.dataset.fotos || '[]');
+      } catch {
+        return [];
+      }
+    }
+
+    function capaDaLinha(linha) {
+      const fotos = fotosDaLinha(linha);
+      const capa = linha.dataset.fotoCapa || '';
+      return fotos.includes(capa) ? capa : (fotos[0] || '');
+    }
+
+    function definirFotos(linha, fotos, capa) {
+      const lista = [...new Set(fotos)].slice(0, MAX_FOTOS);
+      const capaFinal = capa && lista.includes(capa) ? capa : (lista[0] || '');
+      linha.dataset.fotos = JSON.stringify(lista);
+      linha.dataset.fotoCapa = capaFinal;
+      renderizarFotos(linha);
+    }
+
+    function renderizarFotos(linha) {
+      const container = linha.querySelector('.captura-fotos');
+      const adicionar = container?.querySelector('.captura-foto-adicionar');
+      if (!container || !adicionar) return;
+
+      container.querySelectorAll('.captura-foto-thumb').forEach((thumb) => thumb.remove());
+      const fotos = fotosDaLinha(linha);
+      const capa = capaDaLinha(linha);
+
+      fotos.forEach((url) => {
+        const thumb = document.createElement('div');
+        thumb.className = `captura-foto-thumb${url === capa ? ' capa' : ''}`;
+        thumb.dataset.url = url;
+        thumb.innerHTML = `
+          <img src="${API}${url}" alt="Foto da captura" loading="lazy" />
+          <button type="button" class="remover-foto" aria-label="Remover foto">×</button>
+          ${url === capa ? '<span class="capa-selo">Capa</span>' : ''}
+        `;
+
+        thumb.addEventListener('click', (evento) => {
+          if (evento.target.closest('.remover-foto')) return;
+          linha.dataset.fotoCapa = url;
+          renderizarFotos(linha);
+          agendarRascunho();
+        });
+
+        thumb.querySelector('.remover-foto').addEventListener('click', (evento) => {
+          evento.stopPropagation();
+          const restantes = fotosDaLinha(linha).filter((foto) => foto !== url);
+          definirFotos(linha, restantes, capa === url ? (restantes[0] || '') : capa);
+          agendarRascunho();
+        });
+
+        container.insertBefore(thumb, adicionar);
+      });
+
+      adicionar.classList.toggle('oculto', fotos.length >= MAX_FOTOS);
+      const rotulo = adicionar.querySelector('span');
+      if (rotulo) rotulo.textContent = fotos.length === 0 ? 'Foto' : '+ Foto';
+    }
+
     function criarLinhaCaptura(dados = {}) {
       const linha = document.createElement('div');
       linha.className = 'linha-captura';
       linha.dataset.id = dados.id || '';
-      linha.dataset.fotoUrl = dados.fotoUrl || '';
+      const fotosIniciais = Array.isArray(dados.fotos) && dados.fotos.length > 0
+        ? dados.fotos
+        : (dados.fotoUrl ? [dados.fotoUrl] : []);
+      linha.dataset.fotos = JSON.stringify(fotosIniciais.slice(0, MAX_FOTOS));
+      linha.dataset.fotoCapa = dados.fotoUrl || fotosIniciais[0] || '';
+
       linha.innerHTML = `
         <input class="captura-especie" type="text" list="lista-especies" placeholder="Espécie" autocomplete="off" aria-label="Espécie" />
         <input class="captura-peso" inputmode="decimal" placeholder="Peso kg" aria-label="Peso em kg" />
         <input class="captura-comprimento" inputmode="decimal" placeholder="Comp. cm" aria-label="Comprimento em cm" />
         <input class="captura-isca" type="text" list="lista-iscas" placeholder="Isca" autocomplete="off" aria-label="Isca" />
         <label class="captura-solto"><input type="checkbox" class="captura-solto-check" /> Solto</label>
-        <div class="captura-foto">
-          <label class="captura-foto-preview">
-            <input type="file" accept="image/jpeg,image/png,image/webp" />
+        <button class="botao-icone remover" type="button" aria-label="Remover captura">×</button>
+        <div class="captura-fotos">
+          <label class="captura-foto-adicionar">
+            <input type="file" accept="image/jpeg,image/png,image/webp" multiple />
             <span>Foto</span>
           </label>
         </div>
-        <button class="botao-icone remover" type="button" aria-label="Remover captura">×</button>
       `;
 
       linha.querySelector('.captura-especie').value = dados.especie || '';
@@ -361,57 +442,64 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       linha.querySelector('.captura-isca').value = dados.isca || '';
       linha.querySelector('.captura-solto-check').checked = Boolean(dados.solto);
 
-      const preview = linha.querySelector('.captura-foto-preview');
       const inputArquivo = linha.querySelector('input[type="file"]');
-      const mostrarFoto = (url) => {
-        preview.innerHTML = '';
-        const imagem = document.createElement('img');
-        imagem.src = `${API}${url}`;
-        imagem.alt = 'Foto da captura';
-        imagem.crossOrigin = 'anonymous';
-        preview.appendChild(imagem);
-        linha.dataset.fotoUrl = url;
-      };
-
-      if (dados.fotoUrl) mostrarFoto(dados.fotoUrl);
-
       inputArquivo.addEventListener('change', async () => {
-        const arquivo = inputArquivo.files?.[0];
-        if (!arquivo) return;
+        const arquivos = [...(inputArquivo.files || [])];
+        if (arquivos.length === 0) return;
 
         if (!autenticado) {
           irParaEntrar();
           return;
         }
 
+        const disponiveis = MAX_FOTOS - fotosDaLinha(linha).length;
+        if (disponiveis <= 0) {
+          mostrarErro('Máximo de 4 fotos por captura.');
+          inputArquivo.value = '';
+          return;
+        }
+
+        const paraEnviar = arquivos.slice(0, disponiveis);
+        if (arquivos.length > disponiveis) {
+          mostrarErro('Máximo de 4 fotos por captura. As extras foram ignoradas.');
+        }
+
         uploadsPendentes += 1;
         botaoSalvar.disabled = true;
-        preview.innerHTML = '<span>...</span>';
+        inputArquivo.disabled = true;
 
         try {
-          const blob = await comprimirImagem(arquivo);
-          const formularioMidia = new FormData();
-          formularioMidia.append('arquivo', blob, 'foto.jpg');
+          for (const arquivo of paraEnviar) {
+            const blob = await comprimirImagem(arquivo);
+            const formularioMidia = new FormData();
+            formularioMidia.append('arquivo', blob, 'foto.jpg');
 
-          const resposta = await fetch(`${API}/api/midia`, {
-            method: 'POST',
-            credentials: 'include',
-            body: formularioMidia
-          });
+            const resposta = await fetch(`${API}/api/midia`, {
+              method: 'POST',
+              credentials: 'include',
+              body: formularioMidia
+            });
 
-          if (resposta.status === 401) {
-            irParaEntrar();
-            return;
+            if (resposta.status === 401) {
+              irParaEntrar();
+              return;
+            }
+
+            const dadosMidia = await resposta.json().catch(() => ({}));
+            if (!resposta.ok) throw new Error(dadosMidia.detalhe || 'Não foi possível enviar a foto.');
+
+            const fotos = fotosDaLinha(linha);
+            if (fotos.length >= MAX_FOTOS) break;
+            fotos.push(dadosMidia.url);
+            definirFotos(linha, fotos, capaDaLinha(linha) || dadosMidia.url);
+            agendarRascunho();
           }
-
-          const dadosMidia = await resposta.json().catch(() => ({}));
-          if (!resposta.ok) throw new Error(dadosMidia.detalhe || 'Não foi possível enviar a foto.');
-          mostrarFoto(dadosMidia.url);
         } catch (erro) {
-          preview.innerHTML = '<span>Foto</span>';
           mostrarErro(erro instanceof Error ? erro.message : 'Não foi possível enviar a foto.');
         } finally {
           uploadsPendentes -= 1;
+          inputArquivo.disabled = false;
+          inputArquivo.value = '';
           botaoSalvar.disabled = uploadsPendentes > 0;
         }
       });
@@ -422,6 +510,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         agendarRascunho();
       });
 
+      renderizarFotos(linha);
       listaCapturas.appendChild(linha);
       atualizarContador();
     }
@@ -456,7 +545,8 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
           comprimentoCm: numero(linha.querySelector('.captura-comprimento').value),
           isca: linha.querySelector('.captura-isca').value.trim() || null,
           solto: linha.querySelector('.captura-solto-check').checked,
-          fotoUrl: linha.dataset.fotoUrl || null,
+          fotoUrl: capaDaLinha(linha) || null,
+          fotos: fotosDaLinha(linha),
           observacao: null
         }))
         .filter((captura) => captura.especie || captura.pesoKg || captura.comprimentoCm);
@@ -473,6 +563,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         lua: valor('lua'),
         clima: valor('clima'),
         clarezaDaAgua: valor('clareza'),
+        privacidadeDoLocal: valor('privacidade-local') || 'Exato',
         observacoes: valor('observacoes').trim() || null,
         capturas
       };
@@ -491,6 +582,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       document.getElementById('lua').value = entrada.lua || 'NaoInformada';
       document.getElementById('clima').value = entrada.clima || 'NaoInformado';
       document.getElementById('clareza').value = entrada.clarezaDaAgua || 'NaoInformada';
+      document.getElementById('privacidade-local').value = entrada.privacidadeDoLocal || 'Exato';
       document.getElementById('observacoes').value = entrada.observacoes || '';
 
       listaCapturas.innerHTML = '';

@@ -20,10 +20,13 @@ card de troféu compartilhável + PDF da pescaria.
   JSON e exclusão de conta. O diário acompanha o pescador em qualquer aparelho.
 - **Pescaria com local, cidade/UF, ambiente, data, período e condições** (lua, maré, clima, água).
 - **Várias capturas por pescaria**, com ID estável.
-- **Espécie, peso, comprimento, isca, destino (solto/capturado), observação e foto**.
+- **Espécie, peso, comprimento, isca, destino (solto/capturado), observação e até 4 fotos por captura**, com escolha da capa.
+- **Privacidade do local por pescaria**: local exato, apenas cidade/UF ou local oculto. Vale para link público, troféu e PDF.
 - Upload de foto com compressão no navegador (até 5 MB; JPG/PNG/WebP).
 - **Estatísticas**: pescarias, capturas, espécies distintas, peixes soltos, maior peso e
-  comprimento, espécie/isca/local que mais aparecem.
+  comprimento, espécie/isca/local que mais aparecem, taxa de soltura.
+- **Insights**: melhor mês, período, lua, maré, clima e água; recordes por espécie; isca que mais
+  funcionou por espécie.
 - **Link público por pescaria**, sem expor o restante do diário; troféu e PDF também são públicos.
 - **Card do troféu** em PNG, gerado no navegador com foto, espécie, peso, local e data.
 - **Story card 1080×1920** para Instagram/WhatsApp Status, além do card quadrado 1080×1080.
@@ -32,6 +35,8 @@ card de troféu compartilhável + PDF da pescaria.
 - **PWA instalável** com manifest, ícones, página offline e rascunho local do formulário.
 - **Wiki do Pescador** com 11 espécies, 6 técnicas, 6 iscas, 5 regiões, defeso, iniciantes,
   segurança, glossário e fontes. Páginas estáticas, busca Pagefind e leitura offline.
+- **Newsletter mensal** personalizada: estatísticas do mês, leituras da wiki, lembrete de defeso e
+  descadastro assinado.
 - Edição de pescaria preservando os IDs das capturas (links de troféu não quebram).
 - **Boas-vindas no primeiro acesso**, com nome e preferência de e-mail.
 - **Conta**: perfil, troca de e-mail via novo link, sessões, exportação e exclusão com confirmação.
@@ -124,6 +129,9 @@ docker compose up --build
 | `Email__From` | remetente verificado, ex. `Fisga <acesso@abson.tech>` |
 | `Email__ResendApiKey` | API key do Resend (nunca commitar) |
 | `Email__ReplyTo` | resposta opcional |
+| `Newsletter__AdminToken` | token do endpoint administrativo de envio |
+| `Newsletter__Secret` | segredo HMAC dos links de descadastro |
+| `Newsletter__MaximoPorEnvio` | limite de destinatários por execução |
 | `Auth__LinkBaseUrl` | URL pública da API usada no link mágico |
 | `Auth__WebUrl` | URL pública do site para redirecionar após confirmar |
 | `Auth__CookieSecure` | `true` em produção (HTTPS) |
@@ -140,7 +148,7 @@ dotnet test
 cd web && npm run check
 ```
 
-Atualmente: **30 testes de backend** (domínio + aplicação) e checagem de tipos do Astro. Cobrem
+Atualmente: **41 testes de backend** (domínio + aplicação) e checagem de tipos do Astro. Cobrem
 criação/edição de pescaria, IDs de captura, validações, isolamento entre usuários, link mágico,
 expiração, uso único, sessão, logout, exclusão de conta e exportação. O fluxo completo também é
 validado com Playwright.
@@ -167,6 +175,9 @@ npm run build   # astro build + pagefind + precache offline
 | `GET` | `/api/conta/sessoes` | sessões ativas da conta |
 | `GET` | `/api/conta/exportar` | exportação JSON da conta e do diário |
 | `DELETE` | `/api/conta` | exclui conta, diário, sessões e fotos (`confirmacao: "EXCLUIR"`) |
+| `POST` | `/api/newsletter/enviar` | envia o digest mensal; exige `X-Admin-Token` |
+| `GET` | `/api/newsletter/preview` | prévia HTML do digest; exige `X-Admin-Token` |
+| `GET` | `/api/newsletter/descadastrar?token=` | descadastra via link assinado |
 | `POST` | `/api/pescarias` | cria pescaria; exige sessão |
 | `GET` | `/api/pescarias/{shareToken}` | visão pública |
 | `GET` | `/api/pescarias/{shareToken}/permissao` | se o visitante pode editar |
@@ -182,6 +193,8 @@ anônimo no navegador. Sessões e links mágicos são armazenados apenas como ha
 ## Privacidade e limites
 
 - O diário completo fica na conta do pescador; cada pescaria tem um link público próprio.
+- O local pode ser exato, aproximado (cidade/UF) ou oculto. A escolha vale para link público,
+  troféu e PDF.
 - O e-mail é a chave de acesso; não há senha para vazar ou esquecer.
 - Links mágicos são de uso único, valem 15 minutos e só o mais recente funciona.
 - Sessões duram 30 dias e podem ser encerradas no dispositivo ou em todos.
@@ -195,7 +208,6 @@ anônimo no navegador. Sessões e links mágicos são armazenados apenas como ha
 ## Próximos passos
 
 - **Sincronização offline real**: fila de pescarias no IndexedDB e envio quando o sinal voltar.
-- **Newsletter mensal** com o resumo da wiki (“o que pescar neste mês”).
 - **Mais espécies, técnicas e regiões**, com revisão por pescadores locais.
 - **Validação de defeso/tamanho mínimo** no formulário por espécie e UF.
 - **Múltiplas fotos por captura** e escolha da capa.

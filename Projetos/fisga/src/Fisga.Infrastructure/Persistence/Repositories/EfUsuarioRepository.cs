@@ -12,6 +12,11 @@ public sealed class EfUsuarioRepository(FisgaDbContext db) : IUsuarioRepository
     public async Task<Usuario?> ObterPorIdAsync(Guid id, CancellationToken ct = default) =>
         await db.Usuarios.FirstOrDefaultAsync(usuario => usuario.Id == id, ct);
 
+    public async Task<IReadOnlyList<Usuario>> ListarAceitaNovidadesAsync(CancellationToken ct = default) =>
+        await db.Usuarios
+            .Where(usuario => usuario.AceitaNovidades)
+            .ToListAsync(ct);
+
     public void Adicionar(Usuario usuario) => db.Usuarios.Add(usuario);
 
     public void Remover(Usuario usuario) => db.Usuarios.Remove(usuario);

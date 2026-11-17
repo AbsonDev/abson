@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
 using Fisga.Application.Abstractions;
 using Fisga.Application.Identidade;
+using Fisga.Application.Newsletter;
 using Fisga.Infrastructure.Emails;
 using Fisga.Infrastructure.Events;
 using Fisga.Infrastructure.Midia;
@@ -28,6 +29,9 @@ public static class DependencyInjection
 
         services.Configure<EmailOptions>(configuration.GetSection("Email"));
         services.AddSingleton(sp => sp.GetRequiredService<IOptions<EmailOptions>>().Value);
+
+        services.Configure<NewsletterOptions>(configuration.GetSection("Newsletter"));
+        services.AddSingleton(sp => sp.GetRequiredService<IOptions<NewsletterOptions>>().Value);
 
         var provider = configuration["Database:Provider"] ?? "Postgres";
         var connectionString = configuration["Database:ConnectionString"];

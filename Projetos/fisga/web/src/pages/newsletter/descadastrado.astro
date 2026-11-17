@@ -1,0 +1,59 @@
+---
+import WikiLayout from '../../layouts/WikiLayout.astro';
+import WikiBreadcrumbs from '../../components/wiki/WikiBreadcrumbs.astro';
+
+export const prerender = true;
+
+const ok = Astro.url.searchParams.get('ok') === '1';
+---
+
+<WikiLayout
+  titulo={ok ? 'Você saiu do resumo mensal — Fisga' : 'Não foi possível descadastrar — Fisga'}
+  descricao="Confirmação de descadastro do resumo mensal do Fisga."
+  noindex
+>
+  <WikiBreadcrumbs itens={[
+    { nome: 'Fisga', href: '/' },
+    { nome: 'Newsletter' }
+  ]} />
+
+  <div class="wiki-legal" data-pagefind-body>
+    <span class="eyebrow">Newsletter</span>
+    <h1>{ok ? 'Tudo certo. Você saiu do resumo.' : 'Não conseguimos identificar seu cadastro.'}</h1>
+
+    <div class="wiki-prose">
+      {ok ? (
+        <>
+          <p>
+            Você não receberá mais o resumo mensal do Fisga neste endereço. Seus dados continuam na
+            sua conta e você pode reativar a preferência quando quiser em Minha conta.
+          </p>
+          <div class="wiki-lista-chips" style="margin-top: 18px;">
+            <a class="btn btn--pequeno btn--primario" href="/meu-diario">Abrir meu diário</a>
+            <a class="btn btn--pequeno btn--contorno" href="/conta">Minha conta</a>
+            <a class="btn btn--pequeno btn--contorno" href="/wiki">Explorar a wiki</a>
+          </div>
+        </>
+      ) : (
+        <>
+          <p>
+            O link pode ter expirado ou estar incompleto. Você pode ajustar a preferência diretamente
+            em Minha conta ou falar com a gente.
+          </p>
+          <div class="wiki-lista-chips" style="margin-top: 18px;">
+            <a class="btn btn--pequeno btn--primario" href="/conta">Minha conta</a>
+            <a class="btn btn--pequeno btn--contorno" href="/contato">Falar com o Fisga</a>
+          </div>
+        </>
+      )}
+
+      <div class="wiki-callout" style="margin-top: 24px;">
+        <strong>Uma mensagem por mês</strong>
+        <p>
+          O resumo do Fisga é enviado no máximo uma vez por mês e inclui suas estatísticas, leituras
+          da wiki e um lembrete de defeso. Você pode voltar atrás em Minha conta.
+        </p>
+      </div>
+    </div>
+  </div>
+</WikiLayout>

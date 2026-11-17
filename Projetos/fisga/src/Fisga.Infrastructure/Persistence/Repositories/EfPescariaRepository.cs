@@ -35,9 +35,17 @@ public sealed class EfPescariaRepository(FisgaDbContext db) : IPescariaRepositor
 
         var fotos = pescarias
             .SelectMany(pescaria => pescaria.Capturas)
-            .Select(captura => captura.FotoUrl)
+            .SelectMany(captura =>
+            {
+                IEnumerable<string> fotos = captura.Fotos.Count > 0
+                    ? captura.Fotos
+                    : string.IsNullOrWhiteSpace(captura.FotoCapa)
+                        ? []
+                        : new[] { captura.FotoCapa! };
+
+                return fotos;
+            })
             .Where(foto => !string.IsNullOrWhiteSpace(foto))
-            .Select(foto => foto!)
             .Distinct(StringComparer.Ordinal)
             .ToList();
 

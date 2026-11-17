@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Fisga.Domain.Pescarias;
@@ -38,6 +39,11 @@ public sealed class PescariaConfiguration : IEntityTypeConfiguration<Pescaria>
         builder.Property(pescaria => pescaria.Lua).HasConversion<string>().HasMaxLength(32).IsRequired();
         builder.Property(pescaria => pescaria.Clima).HasConversion<string>().HasMaxLength(32).IsRequired();
         builder.Property(pescaria => pescaria.ClarezaDaAgua).HasConversion<string>().HasMaxLength(32).IsRequired();
+        builder.Property(pescaria => pescaria.PrivacidadeDoLocal).HasConversion<string>().HasMaxLength(16).IsRequired();
+
+        builder.Ignore(pescaria => pescaria.LocalPublico);
+        builder.Ignore(pescaria => pescaria.CidadePublica);
+        builder.Ignore(pescaria => pescaria.EstadoPublico);
 
         builder.OwnsMany(pescaria => pescaria.Capturas, capturas =>
         {
@@ -49,7 +55,18 @@ public sealed class PescariaConfiguration : IEntityTypeConfiguration<Pescaria>
             capturas.Property(captura => captura.PesoKg).HasPrecision(18, 3);
             capturas.Property(captura => captura.ComprimentoCm).HasPrecision(18, 2);
             capturas.Property(captura => captura.Isca).HasMaxLength(80);
-            capturas.Property(captura => captura.FotoUrl).HasMaxLength(300);
+            capturas.Property(captura => captura.FotoCapa)
+                .HasColumnName("FotoUrl")
+                .HasMaxLength(300);
+            capturas.Ignore(captura => captura.FotoUrl);
+            capturas.Property(captura => captura.Fotos)
+                .HasConversion(
+                    fotos => JsonSerializer.Serialize(fotos, (JsonSerializerOptions?)null),
+                    json => string.IsNullOrWhiteSpace(json)
+                        ? new List<string>()
+                        : JsonSerializer.Deserialize<List<string>>(json, (JsonSerializerOptions?)null) ?? new List<string>())
+                .HasColumnName("Fotos")
+                .HasColumnType("text");
             capturas.Property(captura => captura.Observacao).HasMaxLength(300);
         });
     }

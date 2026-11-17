@@ -52,7 +52,7 @@ public sealed class QuestPdfGerador(ICatalogoDePesca catalogo) : IGeradorDePdf
                 pagina.Header().Element(container => Cabecalho(container, pescaria));
                 pagina.Content().PaddingVertical(14).Column(coluna =>
                 {
-                    coluna.Item().Text(pescaria.Local)
+                    coluna.Item().Text(pescaria.LocalPublico)
                         .FontSize(24)
                         .Bold()
                         .FontColor(Tinta);
@@ -364,7 +364,7 @@ public sealed class QuestPdfGerador(ICatalogoDePesca catalogo) : IGeradorDePdf
     private static string Cidade(Pescaria pescaria) =>
         string.Join(" · ", new[]
         {
-            pescaria.Cidade,
-            pescaria.Estado
+            pescaria.CidadePublica,
+            pescaria.EstadoPublico
         }.Where(valor => !string.IsNullOrWhiteSpace(valor)));
 }

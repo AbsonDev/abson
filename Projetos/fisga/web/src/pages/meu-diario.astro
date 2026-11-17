@@ -58,12 +58,12 @@ import Layout from '../layouts/Layout.astro';
         <div class="stat-card"><span>Pescarias</span><strong id="stat-pescarias">0</strong><small>dias registrados</small></div>
         <div class="stat-card"><span>Capturas</span><strong id="stat-capturas">0</strong><small>peixes no diário</small></div>
         <div class="stat-card"><span>Maior peixe</span><strong id="stat-maior">—</strong><small id="stat-maior-especie">maior peso</small></div>
-        <div class="stat-card"><span>Soltos</span><strong id="stat-soltos">0</strong><small>devolvidos à água</small></div>
+        <div class="stat-card"><span>Soltos</span><strong id="stat-soltos">0</strong><small id="stat-soltos-detalhe">devolvidos à água</small></div>
       </div>
 
       <div class="grade-2" style="margin-bottom: 28px;">
         <article class="cartao">
-          <span class="selo selo--terracota">Seu padrão</span>
+          <span class="selo selo--terracota">Resumo</span>
           <div class="mini-tabela" style="margin-top: 12px;">
             <div><span>Espécie top</span><strong id="stat-especie">—</strong></div>
             <div><span>Isca top</span><strong id="stat-isca">—</strong></div>
@@ -84,6 +84,28 @@ import Layout from '../layouts/Layout.astro';
           </div>
         </article>
       </div>
+
+      <section id="insights-secao" class="oculto" style="margin-bottom: 28px;">
+        <div class="cabecalho-secao" style="margin-bottom: 14px;">
+          <div>
+            <span class="eyebrow">Seus padrões</span>
+            <h2 style="font-size: clamp(1.5rem, 2.6vw, 2rem);">O que mais funcionou</h2>
+          </div>
+        </div>
+        <div class="diario-stats" id="insights" style="margin: 0;"></div>
+        <div class="grade-2" style="margin-top: 14px;">
+          <article class="cartao">
+            <span class="selo selo--terracota">Recordes</span>
+            <h2 style="margin-top: 12px;">Por espécie</h2>
+            <div class="mini-tabela" id="recordes"></div>
+          </article>
+          <article class="cartao">
+            <span class="selo selo--terracota">Iscas</span>
+            <h2 style="margin-top: 12px;">O que funciona por espécie</h2>
+            <div class="mini-tabela" id="iscas-especie"></div>
+          </article>
+        </div>
+      </section>
 
       <div class="cabecalho-secao" style="margin-bottom: 18px;">
         <div>
@@ -163,6 +185,13 @@ import Layout from '../layouts/Layout.astro';
         document.getElementById('stat-pescarias').textContent = dados.totalPescarias ?? 0;
         document.getElementById('stat-capturas').textContent = dados.totalCapturas ?? 0;
         document.getElementById('stat-soltos').textContent = dados.totalSoltos ?? 0;
+        const soltosDetalhe = document.getElementById('stat-soltos-detalhe');
+        if (soltosDetalhe) {
+          soltosDetalhe.textContent = dados.totalCapturas > 0
+            ? `${reais(dados.taxaDeSoltura)}% do total`
+            : 'devolvidos à água';
+        }
+
         document.getElementById('stat-maior').textContent = dados.maiorPesoKg ? `${reais(dados.maiorPesoKg)} kg` : '—';
         document.getElementById('stat-especie').textContent = dados.especieTop || '—';
         document.getElementById('stat-isca').textContent = dados.iscaTop || '—';
@@ -173,6 +202,38 @@ import Layout from '../layouts/Layout.astro';
         document.getElementById('stat-maior-especie').textContent = dados.especieTop
           ? `maior peso · ${dados.especieTop}`
           : 'maior peso';
+
+        const insights = dados.insights || [];
+        if (insights.length > 0) {
+          document.getElementById('insights-secao').classList.remove('oculto');
+          document.getElementById('insights').innerHTML = insights.map((item) => `
+            <div class="stat-card insight-card">
+              <span>${escapar(item.rotulo)}</span>
+              <strong>${escapar(item.valor)}</strong>
+              <small>${escapar(item.detalhe)}</small>
+            </div>
+          `).join('');
+        }
+
+        const recordes = dados.recordesPorEspecie || [];
+        document.getElementById('recordes').innerHTML = recordes.length > 0
+          ? recordes.map((item) => `
+              <div>
+                <span>${escapar(item.especie)}</span>
+                <strong>${item.pesoKg ? `${reais(item.pesoKg)} kg` : `${reais(item.comprimentoCm)} cm`}</strong>
+              </div>
+            `).join('')
+          : '<p style="color: var(--tinta-suave); font-size: 0.74rem;">Registre capturas para ver seus recordes.</p>';
+
+        const iscasPorEspecie = dados.iscasPorEspecie || [];
+        document.getElementById('iscas-especie').innerHTML = iscasPorEspecie.length > 0
+          ? iscasPorEspecie.map((item) => `
+              <div>
+                <span>${escapar(item.especie)}</span>
+                <strong>${escapar(item.isca)} · ${item.capturas}</strong>
+              </div>
+            `).join('')
+          : '<p style="color: var(--tinta-suave); font-size: 0.74rem;">Adicione a isca nas capturas para descobrir padrões.</p>';
 
         const pescarias = dados.pescarias || [];
         if (pescarias.length === 0) {

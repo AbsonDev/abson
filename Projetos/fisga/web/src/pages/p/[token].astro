@@ -103,6 +103,11 @@ const rotuloAgua: Record<string, string> = {
               <span>{dataCurta(`${pescaria.entrada.data}T12:00:00`)}</span>
               <span>{rotuloPeriodo[pescaria.entrada.periodo] ?? pescaria.entrada.periodo}</span>
               {pescaria.entrada.cidade && <span>{pescaria.entrada.cidade}{pescaria.entrada.estado ? ` · ${pescaria.entrada.estado}` : ''}</span>}
+              {pescaria.entrada.privacidadeDoLocal !== 'Exato' && (
+                <span class="selo selo--neutro">
+                  {pescaria.entrada.privacidadeDoLocal === 'Cidade' ? 'Local aproximado' : 'Local não divulgado'}
+                </span>
+              )}
               <span>{pescaria.capturas.length} {pescaria.capturas.length === 1 ? 'captura' : 'capturas'}</span>
             </div>
           </div>
@@ -162,6 +167,9 @@ const rotuloAgua: Record<string, string> = {
                         ) : (
                           <div class="captura-sem-foto">🐟</div>
                         )}
+                        {captura.fotos.length > 1 && (
+                          <span class="captura-fotos-contagem">+{captura.fotos.length - 1} fotos</span>
+                        )}
                       </div>
                       <div class="captura-card-corpo">
                         <div class="captura-card-topo">
@@ -173,6 +181,20 @@ const rotuloAgua: Record<string, string> = {
                           <span>{captura.comprimentoCm.toLocaleString('pt-BR')} cm</span>
                           {captura.isca && <span>{captura.isca}</span>}
                         </div>
+                        {captura.fotos.length > 1 && (
+                          <div class="captura-card-galeria">
+                            {captura.fotos.map((foto) => (
+                              <a
+                                href={`${apiPublica}${foto}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-label={`Abrir foto de ${captura.especie}`}
+                              >
+                                <img src={`${apiPublica}${foto}`} alt={`Foto de ${captura.especie}`} loading="lazy" />
+                              </a>
+                            ))}
+                          </div>
+                        )}
                         {captura.observacao && <p class="captura-obs">{captura.observacao}</p>}
                         <div class="captura-card-acoes">
                           <a class="link-seta" href={`/trofeu/${token}/${captura.id}`}>Card do troféu</a>

@@ -72,9 +72,13 @@ Invariantes:
 
 - `UsuarioId` obrigatório; toda pescaria pertence a uma conta.
 - Local obrigatório (até 120 caracteres), UF com 2 letras quando informada.
+- `PrivacidadeDoLocal` define o que aparece publicamente: local exato, cidade/UF ou oculto.
+  `LocalPublico`, `CidadePublica` e `EstadoPublico` são as únicas projeções usadas no link
+  público, no troféu e no PDF.
 - Data válida; enums de ambiente/período/condições definidos.
 - Até 100 capturas; IDs únicos.
-- Captura exige espécie, pelo menos peso **ou** comprimento, e foto apenas em `/media/`.
+- Captura exige espécie, pelo menos peso **ou** comprimento, e fotos apenas em `/media/`.
+- Até 4 fotos por captura; uma delas é a capa usada no troféu. A primeira é a capa padrão.
 - Peso entre 0 e 1.000 kg; comprimento entre 0 e 500 cm.
 - Uma captura existente mantém o ID ao ser editada; ID desconhecido é rejeitado.
 - Pescaria sem captura é permitida (um dia de água também é memória).
@@ -173,6 +177,19 @@ Decisões:
   captura.
 - A wiki não é um CMS multiusuário; contribuições e revisão por especialistas ficam para a evolução.
 
+## Newsletter
+
+A newsletter é um caso de uso da aplicação, não um contexto de domínio novo.
+
+- `ServicoDeNewsletter` monta o digest mensal com estatísticas do diário (`ServicoDoDiario`) e três
+  leituras sazonais da wiki.
+- Só envia para usuários com `AceitaNovidades = true`.
+- O link de descadastro é assinado com HMAC (`usuarioId.assinatura`), sem tabela extra.
+- `POST /api/newsletter/enviar` exige `X-Admin-Token`; `GET /api/newsletter/preview` permite revisar
+  o HTML; `GET /api/newsletter/descadastrar` desativa a preferência.
+- O adaptador de e-mail é o mesmo `IEmailSender`; o envio real usa Resend com `List-Unsubscribe`.
+- O agendamento mensal fica fora da aplicação (cron do servidor chamando o endpoint).
+
 ## Mídia
 
 - `POST /api/midia` exige sessão, valida formulário, tamanho (5 MB) e tipo (`image/jpeg`,
@@ -230,6 +247,8 @@ lembretes e e-mail.
 7. Monetização futura separada (entitlement + gateway + webhooks).
 8. A wiki é editorial e estática; não há edição pela comunidade nem validação automática de defeso
    por espécie/UF/data. Essas são evoluções naturais.
+9. A newsletter não tem idempotência por mês; o endpoint deve ser chamado uma vez pelo cron.
+10. O limite de fotos é 4 por captura; armazenamento local por volume, sem CDN.
 
 ## Testes
 

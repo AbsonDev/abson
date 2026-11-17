@@ -52,3 +52,11 @@ public enum ClarezaDaAgua
     Turva = 2,
     Barrenta = 3
 }
+
+
+public enum PrivacidadeDoLocal
+{
+    Exato = 0,
+    Cidade = 1,
+    Oculto = 2
+}

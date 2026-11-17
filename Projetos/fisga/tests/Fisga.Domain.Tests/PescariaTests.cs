@@ -39,6 +39,73 @@ public sealed class PescariaTests
     }
 
     [Fact]
+    public void Privacidade_cidade_mostra_apenas_cidade_e_uf()
+    {
+        var dados = Fabrica.Dados() with { PrivacidadeDoLocal = PrivacidadeDoLocal.Cidade };
+        var pescaria = Fabrica.Pescaria(dados);
+
+        Assert.Equal("Campinas · SP", pescaria.LocalPublico);
+        Assert.Equal("Campinas", pescaria.CidadePublica);
+        Assert.Equal("SP", pescaria.EstadoPublico);
+    }
+
+    [Fact]
+    public void Privacidade_oculta_esconde_local_cidade_e_uf()
+    {
+        var dados = Fabrica.Dados() with { PrivacidadeDoLocal = PrivacidadeDoLocal.Oculto };
+        var pescaria = Fabrica.Pescaria(dados);
+
+        Assert.Equal("Local não divulgado", pescaria.LocalPublico);
+        Assert.Null(pescaria.CidadePublica);
+        Assert.Null(pescaria.EstadoPublico);
+    }
+
+    [Fact]
+    public void Captura_aceita_quatro_fotos_e_define_capa()
+    {
+        var fotos = new[]
+        {
+            "/media/a.jpg",
+            "/media/b.jpg",
+            "/media/c.jpg",
+            "/media/d.jpg"
+        };
+
+        var captura = new Captura(
+            Guid.NewGuid(), "Tucunaré", 2m, 45m, null, true,
+            "/media/b.jpg", null, fotos);
+
+        Assert.Equal(4, captura.Fotos.Count);
+        Assert.Equal("/media/b.jpg", captura.FotoCapa);
+        Assert.Equal("/media/b.jpg", captura.FotoUrl);
+    }
+
+    [Fact]
+    public void Captura_usa_primeira_foto_como_capa_quando_nao_informada()
+    {
+        var captura = new Captura(
+            Guid.NewGuid(), "Tucunaré", 2m, 45m, null, true,
+            null, null, ["/media/a.jpg", "/media/b.jpg"]);
+
+        Assert.Equal("/media/a.jpg", captura.FotoCapa);
+    }
+
+    [Fact]
+    public void Captura_rejeita_mais_de_quatro_fotos()
+    {
+        var fotos = new[]
+        {
+            "/media/a.jpg", "/media/b.jpg", "/media/c.jpg",
+            "/media/d.jpg", "/media/e.jpg"
+        };
+
+        var excecao = Assert.Throws<DomainException>(() =>
+            new Captura(Guid.NewGuid(), "Tucunaré", 2m, 45m, null, true, null, null, fotos));
+
+        Assert.Equal("muitas_fotos", excecao.Codigo);
+    }
+
+    [Fact]
     public void Rejeita_pescaria_sem_usuario()
     {
         var excecao = Assert.Throws<DomainException>(() =>

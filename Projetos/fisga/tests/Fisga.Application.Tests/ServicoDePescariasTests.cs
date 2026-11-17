@@ -93,6 +93,29 @@ public sealed class ServicoDePescariasTests
         Assert.Equal(92m, resultado.MaiorComprimentoCm);
         Assert.Equal(2, resultado.Pescarias.Count);
         Assert.Equal("Pintado", resultado.EspecieTop);
+        Assert.Equal(33.3m, resultado.TaxaDeSoltura);
+        Assert.Contains(resultado.Insights, insight => insight.Rotulo == "Melhor mês" && insight.Valor == "Novembro");
+        Assert.Contains(resultado.Insights, insight => insight.Rotulo == "Melhor período" && insight.Valor == "Manhã");
+        Assert.Contains(resultado.Insights, insight => insight.Rotulo == "Melhor lua" && insight.Valor == "Crescente");
+        Assert.Contains(resultado.RecordesPorEspecie, recorde => recorde.Especie == "Pintado" && recorde.PesoKg == 8.5m);
+        Assert.Contains(resultado.IscasPorEspecie, isca => isca.Especie == "Tucunaré" && isca.Isca == "Popper");
+    }
+
+    [Fact]
+    public async Task Publico_respeita_privacidade_do_local()
+    {
+        var repositorio = new PescariaRepositorioFake();
+        var servico = new ServicoDePescarias(repositorio, new RelogioFixo(Agora), new DispatcherFake());
+        var salva = await servico.CriarAsync(
+            Entrada() with { PrivacidadeDoLocal = PrivacidadeDoLocal.Cidade },
+            UsuarioId);
+
+        var publica = await servico.ObterPublicoAsync(salva.ShareToken);
+
+        Assert.NotNull(publica);
+        Assert.Equal("Campinas · SP", publica.Entrada.Local);
+        Assert.Equal("Cidade", publica.PrivacidadeDoLocal);
+        Assert.False(publica.PodeEditar);
     }
 
     [Fact]

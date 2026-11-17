@@ -6,6 +6,7 @@ Disallow: /meu-diario
 Disallow: /boas-vindas
 Disallow: /entrar/confirmar
 Disallow: /offline
+Disallow: /newsletter/
 Disallow: /wiki/buscar
 Disallow: /api/
 
