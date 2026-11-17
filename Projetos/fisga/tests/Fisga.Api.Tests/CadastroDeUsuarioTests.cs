@@ -167,4 +167,64 @@ public sealed class CadastroDeUsuarioTests : IAsyncLifetime
         Assert.Equal(usuario.Id, obtido!.Id);
         Assert.Null(inexistente);
     }
+
+    [Fact]
+    public async Task CriarComSenha_nao_cria_usuario_quando_ja_existe_application_user_orfa()
+    {
+        var email = $"orfa-{Guid.NewGuid():N}@exemplo.com";
+        var orfa = new ApplicationUser { Email = email, UserName = email };
+        Assert.True((await _usuarios.CreateAsync(orfa, "senha-segura-123")).Succeeded);
+
+        try
+        {
+            var excecao = await Assert.ThrowsAsync<DomainException>(
+                () => _cadastro.CriarComSenhaAsync(email, "Pescador", "outra-senha-456"));
+
+            Assert.Equal("email_em_uso", excecao.Codigo);
+            Assert.Equal(0, await _db.Usuarios.CountAsync(u => u.Email == Email.Criar(email)));
+            Assert.Equal(1, await _db.Users.CountAsync(u => u.Email == email));
+        }
+        finally
+        {
+            await _usuarios.DeleteAsync(orfa);
+        }
+    }
+
+    [Fact]
+    public async Task CriarComSenha_faz_rollback_do_usuario_de_dominio_quando_a_identity_falha()
+    {
+        var email = $"{Guid.NewGuid():N}@exemplo.com";
+
+        // Força uma falha controlada DENTRO do CreateAsync, depois que o usuário de
+        // domínio já foi adicionado ao contexto, para exercitar o caminho de rollback.
+        _usuarios.PasswordValidators.Add(new SenhaBloqueadaValidator());
+
+        var excecao = await Assert.ThrowsAsync<DomainException>(
+            () => _cadastro.CriarComSenhaAsync(email, "Pescador", SenhaBloqueadaValidator.Senha));
+
+        Assert.Equal("falha_ao_criar_conta", excecao.Codigo);
+        Assert.Equal(0, await _db.Usuarios.CountAsync(u => u.Email == Email.Criar(email)));
+        Assert.Equal(0, await _db.Users.CountAsync(u => u.Email == email));
+        // O rollback também remove o usuário de domínio do contexto (Added → Detached).
+        Assert.DoesNotContain(_db.ChangeTracker.Entries<Usuario>(), entrada => entrada.State == EntityState.Added);
+    }
+
+    private sealed class SenhaBloqueadaValidator : IPasswordValidator<ApplicationUser>
+    {
+        public const string Senha = "senha-bloqueada-123";
+
+        public Task<IdentityResult> ValidateAsync(
+            UserManager<ApplicationUser> manager,
+            ApplicationUser user,
+            string? password)
+        {
+            if (string.Equals(password, Senha, StringComparison.Ordinal))
+            {
+                return Task.FromResult(IdentityResult.Failed(
+                    new IdentityError { Code = "senha_bloqueada", Description = "Senha bloqueada para teste de rollback." }));
+            }
+
+            return Task.FromResult(IdentityResult.Success);
+        }
+    }
 }
