@@ -1,66 +1,146 @@
 # Fisga
 
-**Diário de pesca com troféus, estatísticas e relatório em PDF.**
+**Diário de pesca e copiloto de condições para o pescador brasileiro.**
 
-O pescador registra a pescaria, as condições do dia e cada captura — espécie, peso, comprimento,
-isca, foto e se o peixe foi solto. O Fisga monta um diário privado por conta, mostra padrões e gera um
-card de troféu compartilhável + PDF da pescaria.
+O Fisga ajuda antes, durante e depois da pescaria: mostra maré, vento, chuva, lua e a janela do dia;
+guarda locais, pontos e trilhas privados; registra cada captura com fotos, condições e insights; e
+transforma o dia em troféu, PDF e memória.
 
-> **Estado atual: 100% gratuito.** Diário, card do troféu e PDF liberados durante a validação, sem
-> cartão ou assinatura. Monetização futura prevista: R$ 9–19/mês.
+> **Estado atual: 100% gratuito.** Diário, condições, mapa, ferramentas, troféu e PDF liberados
+> durante a validação, sem cartão ou assinatura. Nenhum provedor pago é obrigatório.
 
 **No ar:** [fisga.abson.tech](https://fisga.abson.tech) · API em
 [api.fisga.abson.tech](https://api.fisga.abson.tech/health).
 
+---
+
+## Visão geral
+
+| Momento | Pergunta do pescador | O que o Fisga entrega |
+| --- | --- | --- |
+| **Antes** | “Vale a pena sair hoje?” | Cockpit com maré, corrente, vento, chuva, pressão, lua, solunar, janela e 7 dias |
+| **Durante** | “Onde eu estou e o que funciona aqui?” | Mapa privado, pontos, trilhas, notas, camadas náuticas/batimetria e ferramentas offline |
+| **Depois** | “O que aconteceu e o que funcionou?” | Diário, fotos, insights, comparação com o histórico, troféu, PDF e newsletter |
+
+O Fisga é **privado por padrão**: o diário é da conta, o local pode ser ocultado e pontos/trilhas
+nunca são publicados.
+
+---
+
 ## Funcionalidades
 
-- **Conta por link mágico**: o pescador informa o e-mail, recebe um link de uso único (15 min) e
-  entra sem senha. A sessão dura 30 dias em cookie `HttpOnly`.
-- **Diário privado por usuário**: pescarias, capturas, condições, fotos, estatísticas, exportação
-  JSON e exclusão de conta. O diário acompanha o pescador em qualquer aparelho.
-- **Pescaria com local, cidade/UF, ambiente, data, período e condições** (lua, maré, clima, água).
-- **Várias capturas por pescaria**, com ID estável.
-- **Espécie, peso, comprimento, isca, destino (solto/capturado), observação e até 4 fotos por captura**, com escolha da capa.
-- **Privacidade do local por pescaria**: local exato, apenas cidade/UF ou local oculto. Vale para link público, troféu e PDF.
-- Upload de foto com compressão no navegador (até 5 MB; JPG/PNG/WebP).
-- **Estatísticas**: pescarias, capturas, espécies distintas, peixes soltos, maior peso e
-  comprimento, espécie/isca/local que mais aparecem, taxa de soltura.
+### Conta e acesso
+
+- **Login por link mágico**: e-mail, link de uso único (15 min), sem senha.
+- Sessão de 30 dias em cookie `HttpOnly`, `Secure` e `SameSite=Lax`.
+- Tokens de login e sessão armazenados apenas como hash SHA-256.
+- **Boas-vindas** no primeiro acesso, com nome e preferência de e-mail.
+- **Minha conta**: perfil, troca de e-mail por novo link, sessões ativas, encerrar sessão/dispositivo,
+  exportação JSON e exclusão com confirmação `EXCLUIR`.
+- **Conta obrigatória apenas para o diário e recursos privados**; condições, wiki e ferramentas são
+  públicas.
+
+### Diário e capturas
+
+- Pescaria com **local, cidade/UF, ambiente, data, período e condições** (lua, maré, clima, água).
+- **Várias capturas por pescaria**, cada uma com ID estável.
+- Espécie, peso, comprimento, isca, destino (solto/capturado), observação e **até 4 fotos por
+  captura**, com escolha da capa.
+- Compressão de imagem no navegador (até 5 MB; JPG/PNG/WebP).
+- **Privacidade do local por pescaria**: exato, apenas cidade/UF ou oculto. Vale para link público,
+  troféu e PDF.
+- Edição preservando IDs das capturas; links de troféu não quebram.
+- Rascunho local do formulário para não perder o registro.
+
+### Compartilhamento e memória
+
+- **Link público por pescaria**, sem expor o restante do diário.
+- **Card do troféu** em PNG (1080×1080) e **story** (1080×1920), gerados no navegador.
+- **OG image** com a foto da captura para WhatsApp/Facebook.
+- **PDF da pescaria** com condições, capturas, maior peixe, notas e QR.
+- Leitura pública respeitando a privacidade do local e a galeria de fotos.
+
+### Condições e cockpit
+
+- **Página pública `/condicoes`**, sem login, com busca por cidade/praia e geolocalização.
+- **Maré aproximada** com curva, preamar/baixa-mar, altura e próximo evento.
+- **Corrente oceânica real** do modelo Open-Meteo (`ocean_current_velocity`), em km/h e direção.
+- Vento, rajadas, direção, chuva, temperatura, sensação, pressão e tendência.
+- **Alerta de mudança brusca de pressão** (“queda” ou “subida”).
+- Temperatura da água, altura e período de onda quando disponíveis.
+- **Fase da lua, iluminação, idade e períodos solunares** (maiores/menores) com motivo.
+- **Linha do tempo de 24 h** sincronizando maré, pressão, vento e faixas solunares.
+- **Janela de pesca explicável**: nota 1–5 e motivos (solunar, maré, vento, chuva, luz do dia).
+- **Próximos 7 dias** com nota e melhor horário.
+- **Locais salvos**: até 5 por conta, com um padrão que abre primeiro.
+- **Registro pré-preenchido** com local, data, período, maré, lua e clima.
+- **Comparação com o histórico**: encontra um dia parecido usando lua, maré, clima e período; exige
+  pelo menos 3 pescarias com captura.
+- Fonte, fuso e aviso de limite sempre visíveis. A maré **não serve para navegação**.
+
+### Mapa privado, pontos e trilhas
+
+- **Leaflet** com mapa base, satélite, camada náutica e batimetria, sem token pago.
+- **Pontos privados** com nome, tipo (ponto, poita, estrutura, trilha, rampa), notas e coordenadas.
+- **Trilhas privadas** de corrico/deslocamento, com distância calculada.
+- **Exportação GPX** de pontos e trilhas.
+- Nenhum endpoint público de pontos ou trilhas; nenhuma coordenada é publicada.
+- Cache local de pontos/trilhas e dos últimos azulejos visitados.
+- Limites: 200 pontos e 100 trilhas por conta; 500 pontos por trilha.
+
+### Diário inteligente
+
+- **Estatísticas**: pescarias, capturas, espécies distintas, solturas, maior peso/comprimento,
+  espécie/isca/local que mais aparecem e taxa de soltura.
 - **Insights**: melhor mês, período, lua, maré, clima e água; recordes por espécie; isca que mais
   funcionou por espécie.
-- **Link público por pescaria**, sem expor o restante do diário; troféu e PDF também são públicos.
-- **Card do troféu** em PNG, gerado no navegador com foto, espécie, peso, local e data.
-- **Story card 1080×1920** para Instagram/WhatsApp Status, além do card quadrado 1080×1080.
-- **Prévia social (OG)** com a foto da captura para o link render bonito no WhatsApp/Facebook.
-- **PDF da pescaria** com condições, capturas, maior peixe, notas e QR.
-- **PWA instalável** com manifest, ícones, página offline e rascunho local do formulário.
+- **Sinais comparativos**: “+X% de capturas com lua crescente”, com pelo menos 3 pescarias de cada
+  lado, diferença mínima de 15% e aviso “sinal, não garantia”.
+- **EXIF**: lê data/hora e GPS da foto para sugerir data, período e cidade/UF (GPS usado só para a
+  sugestão; a cidade pode ser corrigida).
+- **Lembrete de defeso**: ao preencher espécie e UF, mostra “confira tamanho mínimo e defeso de X em
+  UF” com link para o órgão oficial.
+- **Sugestão de espécie por foto**: porta plugável (`IReconhecedorDeEspecie`) com confirmação humana.
+  Sem provedor configurado, o fluxo cai no preenchimento manual.
+
+### Ferramentas offline
+
+- **Nós e montagens**: oito nós com uso, dificuldade, passo a passo, diagrama e dica.
+- **Checklists**: caiaque, costeira, embarcado e pesque-pague, com progresso salvo no aparelho.
+- **Defeso por UF**: órgão ambiental, link oficial, checklist do que confirmar e aviso legal.
+- **Guias e piloteiros**: roteiro para escolher, perguntas antes de fechar e diretório em curadoria.
+
+### Wiki e newsletter
+
 - **Wiki do Pescador** com 11 espécies, 6 técnicas, 6 iscas, 5 regiões, defeso, iniciantes,
-  segurança, glossário e fontes. Páginas estáticas, busca Pagefind e leitura offline.
-- **Newsletter mensal** personalizada: estatísticas do mês, leituras da wiki, lembrete de defeso e
-  descadastro assinado.
-- **Condições automáticas** por local: maré aproximada, vento, chuva, pressão, lua e janela de
-  pesca. Consulta pública, sem login.
-- **Locais salvos**: até 5 por conta, com um padrão que abre primeiro e pré-preenche o registro.
-- **Janela de pesca explicável**: nota de 1–5 com os motivos (solunar, maré, vento, chuva e luz do
-  dia), em vez de um número mágico.
-- **Comparação com o histórico**: encontra um dia parecido usando lua, maré, clima e período; só
-  mostra padrão quando há pelo menos 3 pescarias com captura.
-- **Registro pré-preenchido**: local, data, período, maré, lua e clima entram a partir das condições.
-- **Cockpit sincronizado**: linha do tempo de 24 h com maré, pressão, vento e solunar; corrente
-  oceânica real e alerta de mudança brusca de pressão.
-- **Mapa privado**: Leaflet com mapa, satélite, náutico e batimetria; pontos, poitas, estruturas e
-  rampas privados, com notas e cache local.
-- **Trilhas privadas**: corrico e deslocamento desenhados no mapa, distância calculada e exportação
-  GPX.
-- **Ferramentas offline**: oito nós passo a passo, checklists por modalidade, defeso por UF e guia
-  para escolher piloteiro.
-- **Diário inteligente**: leitura de EXIF (data e GPS) para sugerir data, período e cidade; lembrete
-  de defeso por espécie/UF; insights comparativos com amostra mínima.
-- **Sugestão de espécie por foto**: porta plugável (Gemini opcional) com confirmação humana e
-  fallback manual quando não há provedor configurado.
-- Edição de pescaria preservando os IDs das capturas (links de troféu não quebram).
-- **Boas-vindas no primeiro acesso**, com nome e preferência de e-mail.
-- **Conta**: perfil, troca de e-mail via novo link, sessões, exportação e exclusão com confirmação.
-- Modo gratuito, sem checkout.
+  segurança, glossário e fontes.
+- Páginas estáticas com Astro Content Collections, busca Pagefind e leitura offline.
+- **Newsletter mensal** personalizada: estatísticas do mês, leituras sazonais da wiki, lembrete de
+  defeso e descadastro assinado por HMAC.
+- Prévia HTML e endpoint administrativo protegido para envio.
+
+### Offline e PWA
+
+- Manifest, ícones, página offline e service worker.
+- Cache de wiki, ferramentas, condições já visitadas, pontos/trilhas e últimos 600 azulejos do mapa.
+- Rascunho de pescaria em `localStorage`.
+- Rotas privadas (`/locais`, `/conta`, `/meu-diario`, `/registrar`, `/trofeu`) não entram no cache de
+  navegação.
+- Não é um mapa offline completo: baixe a área antes de sair para o mar.
+
+---
+
+## Sprints entregues
+
+| Sprint | Escopo | Status |
+| --- | --- | --- |
+| **Base** | Conta, diário, capturas, fotos, troféu, story, OG, PDF, PWA e wiki | No ar |
+| **Sprint 1** | Privacidade do local, até 4 fotos com capa, insights e newsletter mensal | No ar |
+| **Sprint 2** | Condições públicas, locais salvos, janela de pesca, prefill e comparação com histórico | No ar |
+| **Sprint 3** | Cockpit de 24 h, corrente, alerta de pressão, mapa privado, pontos e cache offline | No ar |
+| **Sprint 4** | Ferramentas offline, EXIF, defeso, sinais comparativos, sugestão de espécie, trilhas, GPX e cache de azulejos | No ar |
+
+---
 
 ## Stack
 
@@ -69,29 +149,69 @@ card de troféu compartilhável + PDF da pescaria.
 | Domínio/aplicação | .NET 10 / C# 13 |
 | API | ASP.NET Core 10, Minimal APIs, OpenAPI |
 | Persistência | EF Core 10 + PostgreSQL 17 (SQLite no desenvolvimento) |
-| Autenticação | Link mágico + sessão em cookie; tokens com hash SHA-256 |
+| Autenticação | Link mágico + sessão em cookie; hashes SHA-256 |
 | E-mail | Resend (produção) e sender de console (desenvolvimento) |
 | PDF | QuestPDF + QRCoder |
 | Dados ambientais | Open-Meteo (tempo, ondas, corrente e nível do mar) + MET Norway (lua) |
-| Mapas | Leaflet + OpenStreetMap + Esri World Imagery + OpenSeaMap + GEBCO (batimetria) |
+| Geocodificação | Open-Meteo Geocoding + Nominatim/OSM (reverso) |
+| Mapas | Leaflet + OpenStreetMap + Esri World Imagery + OpenSeaMap + GEBCO |
 | Visão computacional | Porta `IReconhecedorDeEspecie` (Gemini opcional; manual por padrão) |
-| Mídia | upload local + arquivos estáticos com CORS |
+| Mídia | Upload local + arquivos estáticos com cache |
 | Card do troféu | Canvas API no navegador (quadrado + story) |
-| PWA | manifest, service worker e página offline |
+| PWA | Manifest, service worker, página offline e Cache Storage |
 | Conteúdo | Astro Content Collections (Markdown tipado) |
-| Busca | Pagefind (índice estático, funciona offline) |
+| Busca | Pagefind (índice estático, offline) |
 | Web | Astro 7 SSR + TypeScript + CSS próprio |
+| Testes | xUnit + verificação de tipos do Astro + Playwright |
 | Infra local | Docker Compose |
 
-## DDD em uma frase
+---
+
+## Arquitetura
 
 `Pescaria` é o agregado central (local, condições e `Captura`s com identidade) e pertence
-obrigatoriamente a um `Usuario`. O **Diário** é um read model privado por usuário que agrega
-pescarias e calcula estatísticas. **Identidade e Acesso** é o contexto genérico de conta, sessão e
-link mágico. Catálogo, mídia e documentos são contextos de apoio.
+obrigatoriamente a um `Usuario`. O **Diário** é um read model privado que agrega pescarias e calcula
+estatísticas.
+
+Contextos e agregados:
+
+- **Identidade e Acesso** — `Usuario`, `Sessao`, `TokenDeLogin`.
+- **Pescarias** — `Pescaria`, `Captura`, condições e privacidade do local.
+- **Locais** — `LocalDePesca`, limite de 5 e um padrão.
+- **Condições** — agregação de Open-Meteo/MET Norway, solunar, janela e comparação.
+- **Pontos Privados** — `PontoPrivado` e `TrilhaPrivada`, com ownership e sem projeção pública.
+- **Diário** — read model de estatísticas, insights e sinais.
+- **Ferramentas** — conteúdo estático de nós, checklists e defeso.
+- **Visão** — porta de sugestão de espécie, com fallback manual.
+- **Conhecimento** — Wiki do Pescador.
+- **Newsletter** — digest mensal, opt-in e descadastro HMAC.
+
+Migrações aplicadas: `Inicial`, `Contas`, `Sprint1`, `Sprint2`, `Sprint3`, `Sprint4`.
 
 Detalhes em [`docs/ddd.md`](docs/ddd.md), [`docs/adr`](docs/adr) e
 [`docs/referencias`](docs/referencias).
+
+---
+
+## Dados, fontes e atribuições
+
+| Fonte | Uso | Custo/limite | Observação |
+| --- | --- | --- | --- |
+| **Open-Meteo** | Tempo, vento, chuva, pressão, ondas, corrente e nível do mar | Gratuito para uso não comercial; plano comercial se o Fisga cobrar | Atribuição necessária; modelos globais |
+| **MET Norway** | Nascer, pôr, trânsito e fase da lua | Gratuito | CC BY 4.0/NLOD; atribuição |
+| **Open-Meteo Geocoding** | Busca de cidade/praia | Gratuito | Resultados no Brasil |
+| **Nominatim/OSM** | Cidade/UF a partir de GPS da foto | Gratuito, uso responsável | ODbL; cache e limite de requisições |
+| **OpenStreetMap** | Mapa base | Gratuito | Atribuição © OpenStreetMap |
+| **Esri World Imagery** | Satélite | Gratuito com atribuição | Tiles © Esri/Maxar |
+| **OpenSeaMap** | Sinalização náutica | Gratuito | Atribuição © OpenSeaMap |
+| **GEBCO** | Batimetria (WMS) | Gratuito | Atribuição GEBCO; modelo global |
+| **Resend** | Link mágico e newsletter | Plano gratuito/limites | Domínio verificado |
+| **Gemini** | Sugestão de espécie (opcional) | Depende da chave/conta | Sem chave, o fluxo é manual |
+
+**Avisos:** a maré é aproximada por modelo global e **não serve para navegação**. O mapa não
+substitui carta náutica oficial. O defeso é editorial e aponta para o órgão oficial; não é laudo.
+
+---
 
 ## Rodando localmente
 
@@ -122,16 +242,19 @@ npm run dev
 
 Abra **`http://localhost:4323`**.
 
-Fluxo de teste:
+### Fluxo de teste
 
 1. Abra `/registrar`; o formulário aparece bloqueado.
-2. Clique em “Entrar com e-mail”, informe um e-mail e abra o link de desenvolvimento.
-3. No primeiro acesso, preencha o nome e escolha receber dicas (opcional).
-4. Registre a pescaria, adicione uma foto em uma captura e salve.
-5. Abra o card do troféu e baixe a imagem/PDF.
-6. Volte ao `/meu-diario` e confira as estatísticas.
-7. Saia pelo menu da conta e entre de novo com o mesmo e-mail.
-8. Em `/conta`, edite o perfil, veja as sessões, exporte os dados e teste a exclusão.
+2. Entre com um e-mail e abra o link de desenvolvimento.
+3. Preencha o nome no primeiro acesso.
+4. Abra `/condicoes`, busque uma cidade, veja a janela e salve um local.
+5. Em `/mapa`, crie um ponto, desenhe uma trilha e exporte GPX.
+6. Em `/registrar`, envie uma foto com EXIF e confira data/cidade sugeridas; preencha espécie/UF e
+   veja o lembrete de defeso.
+7. Salve a pescaria, abra o troféu e baixe a imagem/PDF.
+8. Em `/meu-diario`, confira estatísticas, insights e sinais.
+9. Em `/ferramentas`, teste nós, checklists e defeso.
+10. Em `/conta`, edite o perfil, veja sessões, exporte os dados e teste a exclusão.
 
 ### Docker Compose
 
@@ -145,29 +268,73 @@ docker compose up --build
 - Postgres: `localhost:5435` (`fisga` / `fisga` / `fisga`)
 - Fotos: volume `fisga_media` em `/app/media`
 
-## Configuração de e-mail
+---
+
+## Configuração
+
+Nunca commite chaves, tokens ou senhas. Use variáveis de ambiente do provedor.
+
+### Banco e API
+
+| Variável | Descrição |
+| --- | --- |
+| `Database__Provider` | `Postgres` (produção) ou `Sqlite` (dev) |
+| `Database__ConnectionString` | conexão do banco |
+| `Cors__AllowedOrigins` | origens do site separadas por vírgula |
+| `Web__Url` | URL pública do site usada em links |
+| `Media__Path` | pasta de mídia |
+| `Auth__LinkBaseUrl` | URL pública da API no link mágico |
+| `Auth__WebUrl` | URL pública do site após confirmar |
+| `Auth__CookieSecure` | `true` em produção |
+| `Auth__ValidadeDoLinkEmMinutos` | padrão 15 |
+| `Auth__DuracaoDaSessaoEmDias` | padrão 30 |
+
+### Web (build/SSR)
+
+| Variável | Descrição |
+| --- | --- |
+| `PUBLIC_API_URL` | URL pública da API usada pelo navegador |
+| `PUBLIC_SITE_URL` | URL pública do site/canonical/sitemap |
+| `API_URL` | URL da API usada pelo SSR do Astro |
+
+### E-mail e newsletter
 
 | Variável | Descrição |
 | --- | --- |
 | `Email__Provider` | `Console` (dev) ou `Resend` (produção) |
-| `Email__From` | remetente verificado, ex. `Fisga <acesso@abson.tech>` |
-| `Email__ResendApiKey` | API key do Resend (nunca commitar) |
+| `Email__From` | remetente verificado |
+| `Email__ResendApiKey` | chave do Resend |
 | `Email__ReplyTo` | resposta opcional |
-| `Newsletter__AdminToken` | token do endpoint administrativo de envio |
-| `Newsletter__Secret` | segredo HMAC dos links de descadastro |
-| `Newsletter__MaximoPorEnvio` | limite de destinatários por execução |
-| `Condicoes__Fuso` | fuso das condições (padrão `America/Sao_Paulo`) |
-| `Condicoes__CacheMinutos` | validade do cache de condições (padrão 20) |
+| `Newsletter__AdminToken` | token do endpoint administrativo |
+| `Newsletter__Secret` | segredo HMAC do descadastro |
+| `Newsletter__MaximoPorEnvio` | limite por execução |
+
+### Condições e visão
+
+| Variável | Descrição |
+| --- | --- |
+| `Condicoes__Fuso` | padrão `America/Sao_Paulo` |
+| `Condicoes__CacheMinutos` | validade do cache (padrão 20) |
 | `Vision__Provider` | `Manual` (padrão) ou `Gemini` |
-| `Vision__ApiKey` | chave do provedor de visão (nunca commitar) |
-| `Vision__Model` | modelo de visão (padrão `gemini-2.5-flash`) |
-| `Auth__LinkBaseUrl` | URL pública da API usada no link mágico |
-| `Auth__WebUrl` | URL pública do site para redirecionar após confirmar |
-| `Auth__CookieSecure` | `true` em produção (HTTPS) |
+| `Vision__ApiKey` | chave do provedor de visão |
+| `Vision__Model` | padrão `gemini-2.5-flash` |
+
+Exemplo para ligar a sugestão de espécie:
+
+```env
+Vision__Provider=Gemini
+Vision__ApiKey=sua-chave
+Vision__Model=gemini-2.5-flash
+```
+
+Sem chave, a API responde `disponivel: false` e o formulário pede confirmação manual — sem quebrar o
+fluxo.
 
 O domínio `abson.tech` está verificado no Resend (DKIM + CNAMEs de envio + DMARC) e o remetente de
-produção é `Fisga <acesso@abson.tech>`. Se trocar de provedor, mantenha a porta `IEmailSender` e
-configure o novo adaptador.
+produção é `Fisga <acesso@abson.tech>`. O cron mensal da newsletter fica no servidor e chama
+`POST /api/newsletter/enviar` com `X-Admin-Token`.
+
+---
 
 ## Testes
 
@@ -178,109 +345,157 @@ cd web && npm run check
 ```
 
 Atualmente: **75 testes de backend** (25 de domínio + 50 de aplicação) e checagem de tipos do
-Astro. Cobrem criação/edição de pescaria, IDs de captura, validações, isolamento entre usuários,
-link mágico, expiração, uso único, sessão, logout, exclusão de conta, exportação, locais salvos,
-condições, lua/solunar, comparação com o histórico, pontos e trilhas privadas, além do fallback
-manual da sugestão de espécie. O fluxo completo também é validado com Playwright.
+Astro. Cobrem:
 
-O build da web gera as páginas da wiki e roda o Pagefind automaticamente:
+- criação/edição de pescaria, IDs de captura, validações e isolamento entre usuários;
+- link mágico, expiração, uso único, sessão, logout e exclusão de conta;
+- exportação, locais salvos, condições, lua/solunar, janela e comparação com histórico;
+- pontos e trilhas privadas, com ownership;
+- fallback manual da sugestão de espécie.
+
+O fluxo completo também é validado com Playwright: login, onboarding, condições, locais, mapa com
+camadas, pontos, trilhas, GPX, EXIF, defeso, troféu, PDF, conta e mobile.
+
+Build da web (wiki + Pagefind + precache offline):
 
 ```bash
 cd web
-npm run build   # astro build + pagefind + precache offline
+npm run build   # astro build + pagefind + precache
 ```
+
+---
 
 ## API
 
-| Método | Rota | Descrição |
-| --- | --- | --- |
-| `GET` | `/api/catalogo` | espécies, iscas, opções e exemplo |
-| `POST` | `/api/midia` | upload de foto (`multipart`, campo `arquivo`); exige sessão |
-| `POST` | `/api/auth/solicitar` | envia link mágico (resposta genérica) |
-| `GET` | `/api/auth/confirmar?token=` | confirma o link, cria sessão e redireciona |
-| `GET` | `/api/auth/me` | usuário da sessão atual (ou `{ autenticado: false }`) |
-| `POST` | `/api/auth/sair` | encerra a sessão atual |
-| `POST` | `/api/auth/sair-de-todos` | encerra todas as sessões |
-| `PATCH` | `/api/auth/perfil` | nome e preferência de e-mail |
-| `GET` | `/api/conta/sessoes` | sessões ativas da conta |
-| `GET` | `/api/conta/exportar` | exportação JSON da conta e do diário |
-| `DELETE` | `/api/conta` | exclui conta, diário, sessões e fotos (`confirmacao: "EXCLUIR"`) |
-| `POST` | `/api/newsletter/enviar` | envia o digest mensal; exige `X-Admin-Token` |
-| `GET` | `/api/newsletter/preview` | prévia HTML do digest; exige `X-Admin-Token` |
-| `GET` | `/api/newsletter/descadastrar?token=` | descadastra via link assinado |
-| `POST` | `/api/pescarias` | cria pescaria; exige sessão |
-| `GET` | `/api/pescarias/{shareToken}` | visão pública |
-| `GET` | `/api/pescarias/{shareToken}/permissao` | se o visitante pode editar |
-| `GET` | `/api/pescarias/{id}/editar` | dados privados para edição; exige dono |
-| `PUT` | `/api/pescarias/{id}` | edita; exige dono |
-| `GET` | `/api/pescarias/{shareToken}/pdf` | PDF da pescaria (público) |
-| `GET` | `/api/diario` | diário + estatísticas; exige sessão |
-| `GET` | `/api/condicoes?lat=&lon=` | condições públicas, maré aproximada e janela |
-| `GET` | `/api/condicoes/comparar?lat=&lon=` | dia parecido com o histórico; exige sessão |
-| `GET` | `/api/locais` | locais salvos; exige sessão |
-| `POST` | `/api/locais` | cria local (máximo 5); exige sessão |
-| `PUT` | `/api/locais/{id}` | edita local; exige dono |
-| `POST` | `/api/locais/{id}/padrao` | define o local padrão |
-| `DELETE` | `/api/locais/{id}` | exclui local |
-| `GET` | `/api/locais/buscar?q=` | busca cidade/praia (geocodificação) |
-| `GET` | `/api/pontos` | pontos privados do mapa; exige sessão |
-| `POST` | `/api/pontos` | cria ponto privado (máximo 200); exige sessão |
-| `PUT` | `/api/pontos/{id}` | edita ponto; exige dono |
-| `DELETE` | `/api/pontos/{id}` | exclui ponto; exige dono |
-| `GET` | `/api/trilhas` | trilhas privadas; exige sessão |
-| `POST` | `/api/trilhas` | cria trilha (máximo 100); exige sessão |
-| `PUT` | `/api/trilhas/{id}` | edita trilha; exige dono |
-| `DELETE` | `/api/trilhas/{id}` | exclui trilha; exige dono |
-| `GET` | `/api/locais/reverso?lat=&lon=` | cidade/UF a partir de coordenadas (Nominatim) |
-| `POST` | `/api/especies/sugerir` | sugestão de espécie por foto; exige sessão |
-| `GET` | `/health`, `/ready` | saúde/readiness |
+| Método | Rota | Acesso | Descrição |
+| --- | --- | --- | --- |
+| `GET` | `/health`, `/ready` | Público | Saúde/readiness |
+| `GET` | `/api/catalogo` | Público | Espécies, iscas, opções e exemplo |
+| `POST` | `/api/midia` | Sessão | Upload de foto (`multipart`, campo `arquivo`) |
+| `POST` | `/api/auth/solicitar` | Público | Envia link mágico (resposta genérica) |
+| `GET` | `/api/auth/confirmar?token=` | Público | Confirma link, cria sessão e redireciona |
+| `GET` | `/api/auth/me` | Público | Usuário da sessão ou `{ autenticado: false }` |
+| `POST` | `/api/auth/sair` | Sessão | Encerra a sessão atual |
+| `POST` | `/api/auth/sair-de-todos` | Sessão | Encerra todas as sessões |
+| `PATCH` | `/api/auth/perfil` | Sessão | Nome e preferência de e-mail |
+| `GET` | `/api/conta/sessoes` | Sessão | Sessões ativas |
+| `GET` | `/api/conta/exportar` | Sessão | Exportação JSON da conta/diário |
+| `DELETE` | `/api/conta` | Sessão | Exclui conta, diário, sessões e fotos (`confirmacao: "EXCLUIR"`) |
+| `POST` | `/api/newsletter/enviar` | Admin | Envia o digest mensal (`X-Admin-Token`) |
+| `GET` | `/api/newsletter/preview` | Admin | Prévia HTML do digest |
+| `GET` | `/api/newsletter/descadastrar?token=` | Token | Descadastra via link assinado |
+| `POST` | `/api/pescarias` | Sessão | Cria pescaria |
+| `GET` | `/api/pescarias/{shareToken}` | Público | Visão pública |
+| `GET` | `/api/pescarias/{shareToken}/permissao` | Público | Se o visitante pode editar |
+| `GET` | `/api/pescarias/{id}/editar` | Dono | Dados privados para edição |
+| `PUT` | `/api/pescarias/{id}` | Dono | Edita pescaria |
+| `GET` | `/api/pescarias/{shareToken}/pdf` | Público | PDF da pescaria |
+| `GET` | `/api/diario` | Sessão | Diário, estatísticas, insights e sinais |
+| `GET` | `/api/condicoes?lat=&lon=` | Público | Condições, maré aproximada, cockpit e janela |
+| `GET` | `/api/condicoes/comparar?lat=&lon=` | Sessão | Dia parecido com o histórico |
+| `GET` | `/api/locais` | Sessão | Locais salvos |
+| `POST` | `/api/locais` | Sessão | Cria local (máximo 5) |
+| `PUT` | `/api/locais/{id}` | Dono | Edita local |
+| `POST` | `/api/locais/{id}/padrao` | Dono | Define local padrão |
+| `DELETE` | `/api/locais/{id}` | Dono | Exclui local |
+| `GET` | `/api/locais/buscar?q=` | Público | Busca cidade/praia |
+| `GET` | `/api/locais/reverso?lat=&lon=` | Público | Cidade/UF a partir de coordenadas |
+| `GET` | `/api/pontos` | Sessão | Pontos privados |
+| `POST` | `/api/pontos` | Sessão | Cria ponto (máximo 200) |
+| `PUT` | `/api/pontos/{id}` | Dono | Edita ponto |
+| `DELETE` | `/api/pontos/{id}` | Dono | Exclui ponto |
+| `GET` | `/api/trilhas` | Sessão | Trilhas privadas |
+| `POST` | `/api/trilhas` | Sessão | Cria trilha (máximo 100) |
+| `PUT` | `/api/trilhas/{id}` | Dono | Edita trilha |
+| `DELETE` | `/api/trilhas/{id}` | Dono | Exclui trilha |
+| `POST` | `/api/especies/sugerir` | Sessão | Sugestão de espécie por foto |
 
-Cada pescaria tem `shareToken` público. O acesso ao diário é pela conta; não existe mais token
-anônimo no navegador. Sessões e links mágicos são armazenados apenas como hash SHA-256.
+Cada pescaria tem `shareToken` público. O diário é acessado pela conta; não existe token anônimo no
+navegador. Sessões e links mágicos são armazenados apenas como hash SHA-256.
 
-## Privacidade e limites
+---
 
-- O diário completo fica na conta do pescador; cada pescaria tem um link público próprio.
-- O local pode ser exato, aproximado (cidade/UF) ou oculto. A escolha vale para link público,
-  troféu e PDF.
-- O e-mail é a chave de acesso; não há senha para vazar ou esquecer.
+## Privacidade e segurança
+
+- O diário completo é privado; cada pescaria tem um link público próprio e opcional.
+- O local pode ser exato, aproximado (cidade/UF) ou oculto; a escolha vale para link, troféu e PDF.
+- Locais salvos, pontos e trilhas são privados e não têm endpoint público.
 - Links mágicos são de uso único, valem 15 minutos e só o mais recente funciona.
-- Sessões duram 30 dias e podem ser encerradas no dispositivo ou em todos.
-- Fotos são reencodadas no navegador antes do upload, o que remove metadados EXIF do arquivo.
-- O local da pescaria aparece no link público daquela pescaria; o restante do diário não.
-- Locais salvos, pontos e trilhas do mapa são privados. As condições públicas usam apenas as
-  coordenadas da URL e não expõem a conta de quem consulta.
-- O mapa usa camadas de terceiros (OSM, Esri, OpenSeaMap, GEBCO) com atribuição; não substitui carta
-  náutica oficial. Pontos, trilhas e últimos azulejos ficam em cache local; dados privados são
-  apagados quando a sessão expira (401).
-- EXIF de foto é usado apenas para sugerir data, período e cidade. O GPS não é armazenado sem ação
-  do usuário; a cidade sugerida pode ser corrigida.
-- A sugestão de espécie é opcional e nunca tem autoridade: o pescador confirma ou corrige. Sem
-  provedor configurado, o fluxo cai no preenchimento manual.
+- Sessões duram 30 dias, ficam em cookie `HttpOnly`/`Secure`/`SameSite=Lax` e podem ser encerradas.
+- Fotos são reencodadas no navegador e têm EXIF removido do arquivo enviado. O EXIF é lido antes,
+  localmente, apenas para sugerir data/período/cidade; o GPS não é armazenado sem ação do usuário.
+- A sugestão de espécie nunca tem autoridade: o pescador confirma ou corrige. Sem provedor, o fluxo
+  é manual.
 - Defeso e tamanho mínimo são um lembrete editorial com link para o órgão oficial, não um laudo.
-- A maré é uma **aproximação por modelo global** e é rotulada como tal. Não serve para navegação.
-- O card do troféu é gerado localmente no navegador; o Fisga não publica em rede social.
-- Exportação JSON e exclusão de conta (LGPD) já estão disponíveis em `/conta`.
-- Identificação de espécie, mapa de locais, dados oficiais do CHM e comunidade ficam para as
-  próximas fases.
+- Rotas privadas não entram no cache de navegação do service worker; dados privados em cache são
+  apagados ao detectar sessão expirada (401).
+- Exportação JSON e exclusão de conta (LGPD) estão em `/conta`.
+- O mapa usa camadas de terceiros com atribuição e não substitui carta náutica oficial.
+
+---
+
+## Offline e limites do offline
+
+**Funciona offline depois da primeira visita:**
+
+- wiki e busca Pagefind;
+- ferramentas (nós, checklists, defeso, guias);
+- condições já visitadas (HTML em cache);
+- pontos e trilhas já carregados (`localStorage`);
+- rascunho de pescaria;
+- últimos 600 azulejos de mapa visitados.
+
+**Não funciona offline:**
+
+- consultar condições de um local novo;
+- sincronizar uma pescaria criada sem sinal (fila/IndexedDB ainda não existe);
+- baixar uma área inteira do mapa;
+- sugestão de espécie por IA;
+- mapa completo de uma região desconhecida.
+
+---
+
+## Limites conhecidos
+
+- **Maré aproximada**: modelo global, sem tábua oficial do CHM; pode variar ~1 h em relação ao porto.
+- **Janela de pesca é heurística**: explainable, não um modelo treinado nem garantia.
+- **IA de espécie depende de provedor**: sem chave, o fluxo é manual.
+- **Defeso é editorial**: não mantemos tabela própria de tamanhos mínimos por espécie/UF.
+- **Diretório de guias em curadoria**: sem cadastro automático nem pagamento.
+- **Sem PostGIS/clustering**: raio, bacia e inteligência coletiva anonimizada ainda não existem.
+- **Sem mapa offline por área**: só cache de azulejos visitados.
+- **Cache de condições em memória**: múltiplas réplicas exigem cache distribuído.
+- **Newsletter sem idempotência por mês**: o cron deve rodar uma vez.
+- **Mídia em volume local**: escala maior pede object storage/CDN.
+
+---
 
 ## Próximos passos
 
-- **Sincronização offline real**: fila de pescarias no IndexedDB e envio quando o sinal voltar.
-- **Mais espécies, técnicas e regiões**, com revisão por pescadores locais.
-- **Validação de defeso/tamanho mínimo** no formulário por espécie e UF.
-- **Maré oficial do CHM** para os 44 portos, com importação anual e atribuição.
-- **Provedor de visão** para ativar a sugestão automática de espécie (Gemini ou outro).
-- **PostGIS e inteligência coletiva anonimizada** por macrorregião, com opt-in e amostra mínima.
-- **Tábua oficial do CHM** para os 44 portos.
-- **Diretório de guias** com curadoria e perfis verificados.
-- **Mapas offline por área** baixada (tiles em Cache Storage/IndexedDB).
-- Roadmap completo em [`docs/roadmap.md`](docs/roadmap.md).
-- **Múltiplas fotos por captura** e escolha da capa.
-- **OG image dinâmica** renderizada no servidor, além da foto atual.
-- Previsão de maré/lua/clima com APIs e sugestão de janela.
-- Catálogo de locais, mapa privado e identificação de espécie por foto.
-- Feed/comunidade, desafios e assinatura após validação.
+1. **Organização e entrada**: corrigir navegação desktop/mobile, onboarding com local padrão e uma
+   home/Hoje que apresente o copiloto. Auditoria em [`docs/ux-audit.md`](docs/ux-audit.md).
+2. **Maré oficial do CHM** para os 44 portos, com importação anual e atribuição.
+3. **Provedor de visão** para ativar a sugestão automática de espécie.
+4. **PostGIS + inteligência coletiva anonimizada** por macrorregião, com opt-in e amostra mínima.
+5. **Fila offline de pescarias** em IndexedDB e sincronização.
+6. **Mapas offline por área** baixada.
+7. **Diretório de guias** com perfis verificados.
+8. **Alertas** de janela boa e mudança brusca de pressão.
+
+Roadmap completo em [`docs/roadmap.md`](docs/roadmap.md).
+
+---
+
+## Documentação
+
+- [`docs/ddd.md`](docs/ddd.md) — contextos, agregados, invariantes e limites.
+- [`docs/roadmap.md`](docs/roadmap.md) — módulos, fases, dados e métricas.
+- [`docs/ux-audit.md`](docs/ux-audit.md) — auditoria de UX, arquitetura de informação e prioridades.
+- [`docs/adr`](docs/adr) — decisões arquiteturais (0001–0012).
+- [`docs/referencias`](docs/referencias) — estudos de referência (Fishing World Guide, Tábua de Marés).
+- [`docs/ddd.md#testes`](docs/ddd.md#testes) — estratégia de testes.
+
+---
 
 ## Licença
 
