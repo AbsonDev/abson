@@ -36,6 +36,7 @@
 }
 
 .wiki-page {
+  --tinta-suave: #4f5e62;
   padding: clamp(34px, 5vw, 64px) 0 clamp(64px, 9vw, 110px);
 }
 
@@ -496,6 +497,26 @@
   margin-top: 1.05em;
 }
 
+.wiki-prose--secoes {
+  counter-reset: secao;
+}
+
+.wiki-prose--secoes h2 {
+  counter-increment: secao;
+}
+
+.wiki-prose--secoes h2::before {
+  display: inline-block;
+  margin-right: 8px;
+  color: var(--acafrao);
+  content: counter(secao, decimal-leading-zero);
+  font-family: var(--fonte-corpo);
+  font-size: 0.55em;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  vertical-align: 0.18em;
+}
+
 .wiki-prose h2 {
   margin-top: 2.2em;
   scroll-margin-top: 100px;
@@ -871,9 +892,16 @@
   color: var(--creme);
 }
 
+.wiki-tabela-wrap {
+  margin-top: 14px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .wiki-tabela {
   width: 100%;
-  margin-top: 14px;
+  min-width: 480px;
+  margin-top: 0;
   border-collapse: collapse;
   font-size: 0.78rem;
 }
@@ -901,6 +929,10 @@
 .wiki-tabela a {
   color: var(--terracota);
   font-weight: 600;
+}
+
+.wiki-cta-fixa {
+  display: none;
 }
 
 .wiki-aviso {
@@ -1032,6 +1064,29 @@
 }
 
 @media (max-width: 980px) {
+  .wiki-body.wiki-com-cta-fixa .wiki-page {
+    padding-bottom: 104px;
+  }
+
+  .wiki-cta-fixa {
+    position: fixed;
+    z-index: 30;
+    right: 12px;
+    bottom: 12px;
+    left: 12px;
+    display: flex;
+    padding: 8px;
+    border: 1px solid var(--linha);
+    border-radius: 14px;
+    background: rgba(255, 253, 248, 0.94);
+    box-shadow: var(--sombra);
+    backdrop-filter: blur(12px);
+  }
+
+  .wiki-cta-fixa .btn {
+    width: 100%;
+  }
+
   .wiki-hero-grade {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1045,11 +1100,6 @@
   }
 
   .wiki-aside {
-    position: static;
-    order: -1;
-  }
-
-  .wiki-toc {
     display: none;
   }
 
@@ -1098,6 +1148,15 @@
 
   .wiki-fatos {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .wiki-filtro {
+    min-height: 40px;
+    padding: 9px 12px;
+  }
+
+  .wiki-chip {
+    min-height: 36px;
   }
 
   .wiki-busca {

@@ -2,6 +2,7 @@
 import WikiLayout from '../../layouts/WikiLayout.astro';
 import WikiBreadcrumbs from '../../components/wiki/WikiBreadcrumbs.astro';
 import WikiToc from '../../components/wiki/WikiToc.astro';
+import WikiTocMobile from '../../components/wiki/WikiTocMobile.astro';
 import WikiFaq from '../../components/wiki/WikiFaq.astro';
 import WikiFontes from '../../components/wiki/WikiFontes.astro';
 import WikiCta from '../../components/wiki/WikiCta.astro';
@@ -51,6 +52,17 @@ const jsonLd = jsonLdArtigo({
   faq,
   trilha
 });
+const toc = [
+        { id: 'barco', label: 'Barco e represa' },
+        { id: 'praia', label: 'Praia e correnteza' },
+        { id: 'sol', label: 'Sol e calor' },
+        { id: 'anzois', label: 'Anzóis' },
+        { id: 'criancas', label: 'Crianças' },
+        { id: 'primeiros-socorros', label: 'Primeiros socorros' },
+        { id: 'faq', label: 'Perguntas frequentes' },
+        { id: 'fontes', label: 'Fontes' }
+      ];
+
 ---
 
 <WikiLayout
@@ -75,6 +87,8 @@ const jsonLd = jsonLdArtigo({
           colete, previsão do tempo, distância da correnteza e comunicação.
         </p>
       </header>
+
+      <WikiTocMobile itens={toc} />
 
       <div class="wiki-prose" id="barco">
         <h2>Barco e represa</h2>
@@ -146,16 +160,7 @@ const jsonLd = jsonLdArtigo({
     </div>
 
     <aside class="wiki-aside">
-      <WikiToc itens={[
-        { id: 'barco', label: 'Barco e represa' },
-        { id: 'praia', label: 'Praia e correnteza' },
-        { id: 'sol', label: 'Sol e calor' },
-        { id: 'anzois', label: 'Anzóis' },
-        { id: 'criancas', label: 'Crianças' },
-        { id: 'primeiros-socorros', label: 'Primeiros socorros' },
-        { id: 'faq', label: 'Perguntas frequentes' },
-        { id: 'fontes', label: 'Fontes' }
-      ]} />
+      <WikiToc itens={toc} />
       <a class="btn btn--primario btn--largo" href="/registrar">Registrar pescaria</a>
     </aside>
   </article>

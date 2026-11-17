@@ -2,6 +2,7 @@
 import WikiLayout from '../../layouts/WikiLayout.astro';
 import WikiBreadcrumbs from '../../components/wiki/WikiBreadcrumbs.astro';
 import WikiToc from '../../components/wiki/WikiToc.astro';
+import WikiTocMobile from '../../components/wiki/WikiTocMobile.astro';
 import WikiCta from '../../components/wiki/WikiCta.astro';
 import { jsonLdArtigo } from '../../lib/wiki';
 
@@ -25,6 +26,14 @@ const jsonLd = jsonLdArtigo({
   faq: [],
   trilha
 });
+const toc = [
+        { id: 'como-fazemos', label: 'Como fazemos' },
+        { id: 'fontes', label: 'Fontes principais' },
+        { id: 'atualizacao', label: 'Como atualizamos' },
+        { id: 'independencia', label: 'Independência editorial' },
+        { id: 'aviso', label: 'Aviso legal' }
+      ];
+
 ---
 
 <WikiLayout
@@ -50,6 +59,8 @@ const jsonLd = jsonLdArtigo({
           de quem vive na água.
         </p>
       </header>
+
+      <WikiTocMobile itens={toc} />
 
       <div class="wiki-prose" id="como-fazemos">
         <h2>Como fazemos</h2>
@@ -103,13 +114,7 @@ const jsonLd = jsonLdArtigo({
     </div>
 
     <aside class="wiki-aside">
-      <WikiToc itens={[
-        { id: 'como-fazemos', label: 'Como fazemos' },
-        { id: 'fontes', label: 'Fontes principais' },
-        { id: 'atualizacao', label: 'Como atualizamos' },
-        { id: 'independencia', label: 'Independência editorial' },
-        { id: 'aviso', label: 'Aviso legal' }
-      ]} />
+      <WikiToc itens={toc} />
       <a class="btn btn--contorno btn--largo" href="/contato">Falar com o Fisga</a>
     </aside>
   </article>

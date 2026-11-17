@@ -5,6 +5,7 @@ import WikiBreadcrumbs from '../../../components/wiki/WikiBreadcrumbs.astro';
 import WikiArticleHeader from '../../../components/wiki/WikiArticleHeader.astro';
 import WikiFatos from '../../../components/wiki/WikiFatos.astro';
 import WikiToc from '../../../components/wiki/WikiToc.astro';
+import WikiTocMobile from '../../../components/wiki/WikiTocMobile.astro';
 import WikiFaq from '../../../components/wiki/WikiFaq.astro';
 import WikiFontes from '../../../components/wiki/WikiFontes.astro';
 import WikiCard from '../../../components/wiki/WikiCard.astro';
@@ -83,6 +84,8 @@ const jsonLd = jsonLdArtigo({
         tags={[entry.data.tipo]}
       />
 
+      <WikiTocMobile itens={toc} />
+
       <WikiFatos
         itens={[
           { rotulo: 'Tipo', valor: entry.data.tipo },
@@ -91,7 +94,7 @@ const jsonLd = jsonLdArtigo({
         ]}
       />
 
-      <div class="wiki-prose" id="sobre">
+      <div class="wiki-prose wiki-prose--secoes" id="sobre">
         <Content />
       </div>
 

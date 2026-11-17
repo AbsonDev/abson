@@ -14,12 +14,3 @@ const { itens } = Astro.props;
     ))}
   </ol>
 </nav>
-
-<details class="wiki-toc-mobile" data-pagefind-ignore>
-  <summary>Nesta página</summary>
-  <ol>
-    {itens.map((item) => (
-      <li><a href={`#${item.id}`}>{item.label}</a></li>
-    ))}
-  </ol>
-</details>

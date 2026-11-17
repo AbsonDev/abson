@@ -2,6 +2,7 @@
 import WikiLayout from '../../layouts/WikiLayout.astro';
 import WikiBreadcrumbs from '../../components/wiki/WikiBreadcrumbs.astro';
 import WikiToc from '../../components/wiki/WikiToc.astro';
+import WikiTocMobile from '../../components/wiki/WikiTocMobile.astro';
 import WikiFaq from '../../components/wiki/WikiFaq.astro';
 import WikiFontes from '../../components/wiki/WikiFontes.astro';
 import WikiCta from '../../components/wiki/WikiCta.astro';
@@ -80,6 +81,15 @@ const jsonLd = jsonLdArtigo({
   faq,
   trilha
 });
+const toc = [
+        { id: 'o-que-e', label: 'O que é defeso' },
+        { id: 'como-consultar', label: 'Como consultar' },
+        { id: 'orgaos', label: 'Órgãos por estado' },
+        { id: 'checklist', label: 'Checklist' },
+        { id: 'faq', label: 'Perguntas frequentes' },
+        { id: 'fontes', label: 'Fontes' }
+      ];
+
 ---
 
 <WikiLayout
@@ -105,6 +115,8 @@ const jsonLd = jsonLdArtigo({
           tempo. Este guia ensina onde conferir.
         </p>
       </header>
+
+      <WikiTocMobile itens={toc} />
 
       <div class="wiki-prose" id="o-que-e">
         <h2>O que é defeso</h2>
@@ -137,7 +149,7 @@ const jsonLd = jsonLdArtigo({
           listados; se o seu não aparecer, procure “órgão ambiental + UF” ou consulte o IBAMA.
         </p>
 
-        <table class="wiki-tabela">
+        <div class="wiki-tabela-wrap"><table class="wiki-tabela">
           <thead>
             <tr><th>UF</th><th>Órgão</th><th>Site</th></tr>
           </thead>
@@ -150,7 +162,7 @@ const jsonLd = jsonLdArtigo({
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
 
         <h2 id="checklist">Checklist antes de sair</h2>
         <ul>
@@ -182,14 +194,7 @@ const jsonLd = jsonLdArtigo({
     </div>
 
     <aside class="wiki-aside">
-      <WikiToc itens={[
-        { id: 'o-que-e', label: 'O que é defeso' },
-        { id: 'como-consultar', label: 'Como consultar' },
-        { id: 'orgaos', label: 'Órgãos por estado' },
-        { id: 'checklist', label: 'Checklist' },
-        { id: 'faq', label: 'Perguntas frequentes' },
-        { id: 'fontes', label: 'Fontes' }
-      ]} />
+      <WikiToc itens={toc} />
       <a class="btn btn--primario btn--largo" href="/registrar">Registrar pescaria</a>
     </aside>
   </article>
