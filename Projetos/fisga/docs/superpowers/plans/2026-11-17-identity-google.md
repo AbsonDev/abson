@@ -187,7 +187,7 @@ git commit -m "feat(auth): configure ASP.NET Core Identity and Google"
 
 - [ ] **Step 1: Escrever testes de provisionamento**
 
-Testes: criar conta por senha cria `Usuario` e `ApplicationUser` com o mesmo Id; e-mail duplicado não cria segundo usuário; senha curta é rejeitada; `Usuario.EmailVerificadoEm` começa nulo.
+Testes: criar conta por senha cria `Usuario` e `ApplicationUser` com o mesmo Id; e-mail duplicado não cria segundo usuário; senha curta (<10) e senha longa (>128) são rejeitadas; `Usuario.EmailVerificadoEm` começa nulo.
 
 - [ ] **Step 2: Rodar e ver falhar**
 
@@ -196,7 +196,7 @@ Expected: FAIL.
 
 - [ ] **Step 3: Implementar provisionamento transacional**
 
-`CadastroDeUsuario` usa `UserManager<ApplicationUser>` + `FisgaDbContext` + `IUsuarioRepository` + `IUnitOfWork` + `IDomainEventDispatcher`. Abrir transação, criar `Usuario`, criar `ApplicationUser` com o mesmo Id/Email/UserName, `CreateAsync`, salvar, publicar eventos, commit. Em falha, rollback e remover o usuário de domínio do contexto.
+`CadastroDeUsuario` usa `UserManager<ApplicationUser>` + `FisgaDbContext` + `IUsuarioRepository` + `IUnitOfWork` + `IDomainEventDispatcher`. Validar `senha.Length` entre 10 e 128 antes de `CreateAsync` (a Identity não tem máximo nativo). Abrir transação, criar `Usuario`, criar `ApplicationUser` com o mesmo Id/Email/UserName, `CreateAsync`, salvar, publicar eventos, commit. Em falha, rollback e remover o usuário de domínio do contexto.
 
 - [ ] **Step 4: Implementar endpoint de registro**
 
@@ -599,7 +599,7 @@ Criar uma cópia do banco de produção, rodar `dotnet ef database update`, conf
 
 - [ ] **Step 3: Escrever o runbook**
 
-Incluir: backup, janela, variáveis Google, ordem do deploy, verificação de `/health` e `/ready`, login de teste, rollback por imagem anterior, comunicação de re-login e limpeza de artefatos.
+Incluir: backup, janela, variáveis Google, volume persistente para `DataProtection:KeysPath` (`data/keys`), ordem do deploy, verificação de `/health` e `/ready`, login de teste, rollback por imagem anterior, comunicação de re-login e limpeza de artefatos.
 
 - [ ] **Step 4: E2E final**
 
