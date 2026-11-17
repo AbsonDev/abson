@@ -1,0 +1,20 @@
+---
+interface Props {
+  itens: Array<{ pergunta: string; resposta: string }>;
+  titulo?: string;
+}
+
+const { itens, titulo = 'Perguntas frequentes' } = Astro.props;
+---
+
+{itens.length > 0 && (
+  <section class="wiki-faq" id="faq">
+    <h2>{titulo}</h2>
+    {itens.map((item) => (
+      <details>
+        <summary>{item.pergunta}</summary>
+        <p>{item.resposta}</p>
+      </details>
+    ))}
+  </section>
+)}

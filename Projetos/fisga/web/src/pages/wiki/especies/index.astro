@@ -1,0 +1,122 @@
+---
+import { getCollection } from 'astro:content';
+import WikiLayout from '../../../layouts/WikiLayout.astro';
+import WikiBreadcrumbs from '../../../components/wiki/WikiBreadcrumbs.astro';
+import WikiCard from '../../../components/wiki/WikiCard.astro';
+import WikiCta from '../../../components/wiki/WikiCta.astro';
+import { jsonLdColecao } from '../../../lib/wiki';
+
+export const prerender = true;
+
+const especies = (await getCollection('especies')).sort((a, b) => a.data.ordem - b.data.ordem);
+const site = (import.meta.env.PUBLIC_SITE_URL ?? Astro.url.origin).replace(/\/$/, '');
+const jsonLd = jsonLdColecao({
+  titulo: 'Espécies de peixes — Wiki do Pescador',
+  descricao: 'Guia de espécies de água doce e salgada: identificação, habitat, iscas, técnicas e manejo.',
+  url: `${site}/wiki/especies`,
+  itens: especies.map((especie) => ({
+    nome: especie.data.titulo,
+    url: `${site}/wiki/especies/${especie.id}`
+  }))
+});
+
+const filtros = ['Todas', 'Água doce', 'Mar', 'Nativa', 'Introduzida', 'Destaque'];
+---
+
+<WikiLayout
+  titulo="Espécies de peixes — Wiki do Pescador | Fisga"
+  descricao="Guia de espécies de água doce e salgada: identificação, habitat, iscas, técnicas e manejo."
+  jsonLd={jsonLd}
+>
+  <WikiBreadcrumbs itens={[
+    { nome: 'Fisga', href: '/' },
+    { nome: 'Wiki', href: '/wiki' },
+    { nome: 'Espécies' }
+  ]} />
+
+  <div data-pagefind-body>
+    <header class="wiki-categoria-hero">
+      <span class="eyebrow">Wiki do Pescador</span>
+      <h1>Espécies</h1>
+      <p>
+        Identificação, onde encontrar, melhores iscas, técnicas e manejo. Comece pela espécie que
+        você quer pescar ou pela que apareceu no seu anzol.
+      </p>
+      <span class="wiki-contagem">{especies.length} guias publicados</span>
+    </header>
+
+    <div class="wiki-filtros" role="group" aria-label="Filtrar espécies" data-pagefind-ignore>
+      {filtros.map((filtro, indice) => (
+        <button
+          class:list={['wiki-filtro', { ativo: indice === 0 }]}
+          type="button"
+          data-filtro={filtro}
+          aria-pressed={indice === 0 ? 'true' : 'false'}
+        >
+          {filtro}
+        </button>
+      ))}
+    </div>
+
+    <div class="wiki-grid" id="lista-especies">
+      {especies.map((especie) => (
+        <div
+          data-especie
+          data-tags={especie.data.tags.join('|')}
+          data-destaque={especie.data.destaque ? 'sim' : 'nao'}
+        >
+          <WikiCard
+            href={`/wiki/especies/${especie.id}`}
+            titulo={especie.data.titulo}
+            subtitulo={especie.data.nomeCientifico}
+            descricao={especie.data.resumo}
+            tags={especie.data.tags}
+            tipo="peixe"
+            destaque={especie.data.destaque}
+          />
+        </div>
+      ))}
+    </div>
+
+    <p id="sem-resultado" class="wiki-aviso oculto">Nenhuma espécie encontrada com esse filtro.</p>
+
+    <WikiCta
+      titulo="Já sabe o que vai pescar?"
+      texto="Registre a pescaria, a isca e as condições do dia. O Fisga guarda o histórico e gera o troféu."
+      rotulo="Registrar pescaria"
+    />
+  </div>
+</WikiLayout>
+
+<script>
+  // @ts-nocheck
+  const botoes = [...document.querySelectorAll('[data-filtro]')];
+  const cards = [...document.querySelectorAll('[data-especie]')];
+  const semResultado = document.getElementById('sem-resultado');
+
+  function aplicar(filtro) {
+    let visiveis = 0;
+
+    cards.forEach((card) => {
+      const tags = (card.getAttribute('data-tags') || '').toLowerCase();
+      const destaque = card.getAttribute('data-destaque') === 'sim';
+      const corresponde =
+        filtro === 'Todas' ||
+        (filtro === 'Destaque' ? destaque : tags.includes(filtro.toLowerCase()));
+
+      card.classList.toggle('oculto', !corresponde);
+      if (corresponde) visiveis += 1;
+    });
+
+    semResultado?.classList.toggle('oculto', visiveis > 0);
+    botoes.forEach((botao) => {
+      const ativo = botao.getAttribute('data-filtro') === filtro;
+      botao.classList.toggle('ativo', ativo);
+      botao.setAttribute('aria-pressed', String(ativo));
+    });
+  }
+
+  botoes.forEach((botao) => {
+    botao.addEventListener('click', () => aplicar(botao.getAttribute('data-filtro') || 'Todas'));
+  });
+</script>

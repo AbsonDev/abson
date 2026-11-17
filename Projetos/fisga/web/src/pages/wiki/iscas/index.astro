@@ -1,0 +1,110 @@
+---
+import { getCollection } from 'astro:content';
+import WikiLayout from '../../../layouts/WikiLayout.astro';
+import WikiBreadcrumbs from '../../../components/wiki/WikiBreadcrumbs.astro';
+import WikiCard from '../../../components/wiki/WikiCard.astro';
+import WikiCta from '../../../components/wiki/WikiCta.astro';
+import { jsonLdColecao } from '../../../lib/wiki';
+
+export const prerender = true;
+
+const iscas = (await getCollection('iscas')).sort((a, b) => a.data.ordem - b.data.ordem);
+const site = (import.meta.env.PUBLIC_SITE_URL ?? Astro.url.origin).replace(/\/$/, '');
+const jsonLd = jsonLdColecao({
+  titulo: 'Iscas de pesca — Wiki do Pescador',
+  descricao: 'Iscas naturais e artificiais: quando usar, como montar, espécies-alvo e dicas.',
+  url: `${site}/wiki/iscas`,
+  itens: iscas.map((isca) => ({
+    nome: isca.data.titulo,
+    url: `${site}/wiki/iscas/${isca.id}`
+  }))
+});
+
+const filtros = ['Todas', 'Natural', 'Artificial'];
+---
+
+<WikiLayout
+  titulo="Iscas de pesca — Wiki do Pescador | Fisga"
+  descricao="Iscas naturais e artificiais: quando usar, como montar, espécies-alvo e dicas."
+  jsonLd={jsonLd}
+>
+  <WikiBreadcrumbs itens={[
+    { nome: 'Fisga', href: '/' },
+    { nome: 'Wiki', href: '/wiki' },
+    { nome: 'Iscas' }
+  ]} />
+
+  <div data-pagefind-body>
+    <header class="wiki-categoria-hero">
+      <span class="eyebrow">Wiki do Pescador</span>
+      <h1>Iscas</h1>
+      <p>
+        A isca certa não é a mais cara: é a que apresenta o movimento, a cor e a profundidade que o
+        peixe quer naquele dia. Comece pelo básico e varie.
+      </p>
+      <span class="wiki-contagem">{iscas.length} guias publicados</span>
+    </header>
+
+    <div class="wiki-filtros" role="group" aria-label="Filtrar iscas" data-pagefind-ignore>
+      {filtros.map((filtro, indice) => (
+        <button
+          class:list={['wiki-filtro', { ativo: indice === 0 }]}
+          type="button"
+          data-filtro={filtro}
+          aria-pressed={indice === 0 ? 'true' : 'false'}
+        >
+          {filtro}
+        </button>
+      ))}
+    </div>
+
+    <div class="wiki-grid" id="lista-iscas">
+      {iscas.map((isca) => (
+        <div data-isca data-tipo={isca.data.tipo}>
+          <WikiCard
+            href={`/wiki/iscas/${isca.id}`}
+            titulo={isca.data.titulo}
+            descricao={isca.data.resumo}
+            tags={[isca.data.tipo]}
+            tipo="anzol"
+          />
+        </div>
+      ))}
+    </div>
+
+    <p id="sem-resultado" class="wiki-aviso oculto">Nenhuma isca encontrada com esse filtro.</p>
+
+    <WikiCta
+      titulo="Testou uma isca nova?"
+      texto="Registre a isca e as condições do dia. Depois o diário mostra o que mais funcionou."
+      rotulo="Registrar pescaria"
+    />
+  </div>
+</WikiLayout>
+
+<script>
+  // @ts-nocheck
+  const botoes = [...document.querySelectorAll('[data-filtro]')];
+  const cards = [...document.querySelectorAll('[data-isca]')];
+  const semResultado = document.getElementById('sem-resultado');
+
+  function aplicar(filtro) {
+    let visiveis = 0;
+    cards.forEach((card) => {
+      const tipo = card.getAttribute('data-tipo') || '';
+      const corresponde = filtro === 'Todas' || tipo === filtro;
+      card.classList.toggle('oculto', !corresponde);
+      if (corresponde) visiveis += 1;
+    });
+    semResultado?.classList.toggle('oculto', visiveis > 0);
+    botoes.forEach((botao) => {
+      const ativo = botao.getAttribute('data-filtro') === filtro;
+      botao.classList.toggle('ativo', ativo);
+      botao.setAttribute('aria-pressed', String(ativo));
+    });
+  }
+
+  botoes.forEach((botao) => {
+    botao.addEventListener('click', () => aplicar(botao.getAttribute('data-filtro') || 'Todas'));
+  });
+</script>

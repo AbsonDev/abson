@@ -1,0 +1,162 @@
+---
+import WikiLayout from '../../layouts/WikiLayout.astro';
+import WikiBreadcrumbs from '../../components/wiki/WikiBreadcrumbs.astro';
+import WikiToc from '../../components/wiki/WikiToc.astro';
+import WikiFaq from '../../components/wiki/WikiFaq.astro';
+import WikiFontes from '../../components/wiki/WikiFontes.astro';
+import WikiCta from '../../components/wiki/WikiCta.astro';
+import { jsonLdArtigo } from '../../lib/wiki';
+
+export const prerender = true;
+
+const site = (import.meta.env.PUBLIC_SITE_URL ?? Astro.url.origin).replace(/\/$/, '');
+const url = `${site}/wiki/seguranca`;
+const trilha = [
+  { nome: 'Fisga', url: site },
+  { nome: 'Wiki', url: `${site}/wiki` },
+  { nome: 'Segurança na água', url }
+];
+
+const faq = [
+  {
+    pergunta: 'Preciso usar colete em represa e rio?',
+    resposta:
+      'Em barco, sim. Em margens fundas ou com correnteza, também é recomendável. O colete deve ser do tamanho certo e estar preso.'
+  },
+  {
+    pergunta: 'O que fazer se um anzol entrar na pele?',
+    resposta:
+      'Não puxe sem orientação. Se estiver superficial e sem resistência, procure atendimento. Em caso de anzol no olho ou em local profundo, vá ao pronto-socorro imediatamente.'
+  },
+  {
+    pergunta: 'Como identificar uma correnteza de retorno?',
+    resposta:
+      'A água entre ondas quebra diferente e puxa para o mar. Evite entrar nessa faixa; se for pego, nade paralelo à praia e peça ajuda.'
+  }
+];
+
+const fontes = [
+  { titulo: 'Sociedade Brasileira de Salvamento Aquático', url: 'https://sobrasa.org/' },
+  { titulo: 'Marinha do Brasil — segurança da navegação', url: 'https://www.marinha.mil.br/' },
+  { titulo: 'Defesa Civil — prevenção', url: 'https://www.gov.br/mdr/pt-br/assuntos/protecao-e-defesa-civil' }
+];
+
+const jsonLd = jsonLdArtigo({
+  titulo: 'Segurança na água — guia do pescador',
+  descricao: 'Barco, praia, sol, anzóis, crianças e primeiros socorros para uma pescaria segura.',
+  url,
+  imagem: `${site}/og-fisga.png`,
+  publicadoEm: '2026-11-17',
+  revisadoEm: '2026-11-17',
+  faq,
+  trilha
+});
+---
+
+<WikiLayout
+  titulo="Segurança na água — guia do pescador | Fisga"
+  descricao="Barco, praia, sol, anzóis, crianças e primeiros socorros para uma pescaria segura."
+  jsonLd={jsonLd}
+  tipo="article"
+>
+  <WikiBreadcrumbs itens={[
+    { nome: 'Fisga', href: '/' },
+    { nome: 'Wiki', href: '/wiki' },
+    { nome: 'Segurança na água' }
+  ]} />
+
+  <article class="wiki-artigo" data-pagefind-body>
+    <div class="wiki-artigo-conteudo">
+      <header class="wiki-artigo-cabecalho">
+        <span class="eyebrow">Pesca responsável</span>
+        <h1>Segurança na água</h1>
+        <p class="wiki-artigo-resumo">
+          Nenhum peixe vale um acidente. A maior parte dos resgates envolve decisões simples:
+          colete, previsão do tempo, distância da correnteza e comunicação.
+        </p>
+      </header>
+
+      <div class="wiki-prose" id="barco">
+        <h2>Barco e represa</h2>
+        <ul>
+          <li>Use colete salva-vidas do tamanho certo, sempre fechado.</li>
+          <li>Confira combustível, motor, âncora e comunicação antes de sair.</li>
+          <li>Respeite a capacidade máxima da embarcação.</li>
+          <li>Não navegue à noite sem iluminação e conhecimento do local.</li>
+          <li>Em represa, o vento da tarde pode levantar ondas rapidamente.</li>
+        </ul>
+
+        <h2 id="praia">Praia e correnteza</h2>
+        <ul>
+          <li>Nunca pesque sozinho em praia aberta.</li>
+          <li>Observe a correnteza de retorno: água mais calma entre ondas, puxando para o mar.</li>
+          <li>Evite entrar na água à noite ou com mar agitado.</li>
+          <li>Mantenha crianças e animais longe da linha e dos anzóis.</li>
+          <li>Se for pego por correnteza, nade paralelo à praia e peça ajuda.</li>
+        </ul>
+
+        <h2 id="sol">Sol, calor e hidratação</h2>
+        <ul>
+          <li>Use protetor solar, boné, camisa de manga longa e óculos.</li>
+          <li>Leve água e beba antes de sentir sede.</li>
+          <li>Evite as horas mais quentes do dia.</li>
+          <li>Fique atento a tontura, fraqueza e pele quente: pode ser insolação.</li>
+        </ul>
+
+        <h2 id="anzois">Anzóis e equipamento</h2>
+        <ul>
+          <li>Use óculos de proteção ao arremessar e ao retirar anzóis.</li>
+          <li>Não deixe anzóis soltos na areia, no barco ou na margem.</li>
+          <li>Use alicate e corta-anzol; não tente arrancar um anzol cravado.</li>
+          <li>Revise linha e nós antes de cada arremesso.</li>
+        </ul>
+
+        <h2 id="criancas">Crianças</h2>
+        <ul>
+          <li>Comece com equipamento leve e anzol sem farpa quando possível.</li>
+          <li>Ensine a olhar para trás antes de arremessar.</li>
+          <li>Colete e supervisão de adulto são obrigatórios perto da água.</li>
+        </ul>
+
+        <h2 id="primeiros-socorros">Primeiros socorros</h2>
+        <ul>
+          <li>Anzol superficial: procure atendimento; não puxe sem orientação.</li>
+          <li>Anzol no olho ou em local profundo: pronto-socorro imediatamente.</li>
+          <li>Afogamento: acione o 193 (Bombeiros) ou 192 (SAMU) e não entre na água sem segurança.</li>
+          <li>Insolação: leve para a sombra, hidrate e procure ajuda.</li>
+        </ul>
+
+        <div class="wiki-callout">
+          <strong>Antes de sair</strong>
+          <p>
+            Avise alguém sobre o local e o horário de volta. Leve celular carregado, power bank e, em
+            locais remotos, comunicação por rádio ou satélite.
+          </p>
+        </div>
+      </div>
+
+      <WikiFaq itens={faq} />
+      <WikiFontes fontes={fontes} revisadoEm="2026-11-17" />
+
+      <WikiCta
+        titulo="Volte bem para contar a história."
+        texto="Segurança faz parte da pescaria. Registre a trip depois, com calma e sem pressa."
+        rotulo="Registrar pescaria"
+      />
+    </div>
+
+    <aside class="wiki-aside">
+      <WikiToc itens={[
+        { id: 'barco', label: 'Barco e represa' },
+        { id: 'praia', label: 'Praia e correnteza' },
+        { id: 'sol', label: 'Sol e calor' },
+        { id: 'anzois', label: 'Anzóis' },
+        { id: 'criancas', label: 'Crianças' },
+        { id: 'primeiros-socorros', label: 'Primeiros socorros' },
+        { id: 'faq', label: 'Perguntas frequentes' },
+        { id: 'fontes', label: 'Fontes' }
+      ]} />
+      <a class="btn btn--primario btn--largo" href="/registrar">Registrar pescaria</a>
+    </aside>
+  </article>
+</WikiLayout>

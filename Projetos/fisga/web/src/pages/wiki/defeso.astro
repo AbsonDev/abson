@@ -1,0 +1,196 @@
+---
+import WikiLayout from '../../layouts/WikiLayout.astro';
+import WikiBreadcrumbs from '../../components/wiki/WikiBreadcrumbs.astro';
+import WikiToc from '../../components/wiki/WikiToc.astro';
+import WikiFaq from '../../components/wiki/WikiFaq.astro';
+import WikiFontes from '../../components/wiki/WikiFontes.astro';
+import WikiCta from '../../components/wiki/WikiCta.astro';
+import { jsonLdArtigo } from '../../lib/wiki';
+
+export const prerender = true;
+
+const site = (import.meta.env.PUBLIC_SITE_URL ?? Astro.url.origin).replace(/\/$/, '');
+const url = `${site}/wiki/defeso`;
+const trilha = [
+  { nome: 'Fisga', url: site },
+  { nome: 'Wiki', url: `${site}/wiki` },
+  { nome: 'Defeso e tamanhos mínimos', url }
+];
+
+const faq = [
+  {
+    pergunta: 'O que é defeso?',
+    resposta:
+      'É o período em que a pesca de determinada espécie é restrita ou proibida para proteger a reprodução. Pode variar por espécie, estado e bacia.'
+  },
+  {
+    pergunta: 'O defeso é igual em todo o Brasil?',
+    resposta:
+      'Não. Cada estado e, em alguns casos, cada bacia têm regras próprias. Além disso, as regras mudam com o tempo. Consulte sempre a agência ambiental da sua UF.'
+  },
+  {
+    pergunta: 'Como saber o tamanho mínimo de um peixe?',
+    resposta:
+      'O tamanho mínimo é definido pela legislação estadual ou federal e pode variar por espécie e região. A lista oficial está no site do órgão ambiental, não em um único aplicativo.'
+  },
+  {
+    pergunta: 'Preciso de licença para pescar?',
+    resposta:
+      'Na maioria dos estados, sim. A licença e as exigências variam conforme a modalidade e o local. Consulte o órgão ambiental antes de sair.'
+  },
+  {
+    pergunta: 'O Fisga avisa automaticamente se o peixe está no defeso?',
+    resposta:
+      'Hoje o Fisga oferece conteúdo educativo e links oficiais. Ainda não faz validação automática por espécie, UF e data. Trate a wiki como ponto de partida e confirme na fonte oficial.'
+  }
+];
+
+const ufs = [
+  { uf: 'SP', orgao: 'SEMIL', site: 'https://semil.sp.gov.br/' },
+  { uf: 'RJ', orgao: 'INEA', site: 'https://www.inea.rj.gov.br/' },
+  { uf: 'MG', orgao: 'SEMAD', site: 'https://www.meioambiente.mg.gov.br/' },
+  { uf: 'ES', orgao: 'IEMA', site: 'https://iema.es.gov.br/' },
+  { uf: 'PR', orgao: 'IAT', site: 'https://www.iat.pr.gov.br/' },
+  { uf: 'SC', orgao: 'IMA', site: 'https://www.ima.sc.gov.br/' },
+  { uf: 'RS', orgao: 'SEMA', site: 'https://www.sema.rs.gov.br/' },
+  { uf: 'BA', orgao: 'INEMA', site: 'https://www.inema.ba.gov.br/' },
+  { uf: 'PE', orgao: 'CPRH', site: 'https://www.cprh.pe.gov.br/' },
+  { uf: 'CE', orgao: 'SEMACE', site: 'https://www.semace.ce.gov.br/' },
+  { uf: 'AM', orgao: 'SEMA', site: 'https://www.sema.am.gov.br/' },
+  { uf: 'PA', orgao: 'SEMAS', site: 'https://www.semas.pa.gov.br/' },
+  { uf: 'MT', orgao: 'SEMA', site: 'https://www.sema.mt.gov.br/' },
+  { uf: 'MS', orgao: 'IMASUL', site: 'https://www.imasul.ms.gov.br/' },
+  { uf: 'GO', orgao: 'SEMAD', site: 'https://www.meioambiente.go.gov.br/' },
+  { uf: 'DF', orgao: 'IBRAM', site: 'https://www.ibram.df.gov.br/' }
+];
+
+const fontes = [
+  { titulo: 'IBAMA — Instituto Brasileiro do Meio Ambiente', url: 'https://www.gov.br/ibama/pt-br' },
+  { titulo: 'ICMBio — Instituto Chico Mendes', url: 'https://www.gov.br/icmbio/pt-br' },
+  { titulo: 'FishBase — base de dados de peixes', url: 'https://www.fishbase.se/' }
+];
+
+const jsonLd = jsonLdArtigo({
+  titulo: 'Defeso e tamanhos mínimos — guia de consulta',
+  descricao: 'O que é defeso, como consultar as regras do seu estado e o que verificar antes de pescar.',
+  url,
+  imagem: `${site}/og-fisga.png`,
+  publicadoEm: '2026-11-17',
+  revisadoEm: '2026-11-17',
+  faq,
+  trilha
+});
+---
+
+<WikiLayout
+  titulo="Defeso e tamanhos mínimos — guia de consulta | Fisga"
+  descricao="O que é defeso, como consultar as regras do seu estado e o que verificar antes de pescar."
+  jsonLd={jsonLd}
+  tipo="article"
+>
+  <WikiBreadcrumbs itens={[
+    { nome: 'Fisga', href: '/' },
+    { nome: 'Wiki', href: '/wiki' },
+    { nome: 'Defeso e tamanhos mínimos' }
+  ]} />
+
+  <article class="wiki-artigo" data-pagefind-body>
+    <div class="wiki-artigo-conteudo">
+      <header class="wiki-artigo-cabecalho">
+        <span class="eyebrow">Pesca responsável</span>
+        <h1>Defeso e tamanhos mínimos</h1>
+        <p class="wiki-artigo-resumo">
+          O defeso protege a reprodução dos peixes. Tamanhos mínimos garantem que o peixe tenha
+          chance de crescer e se reproduzir. As regras mudam por estado e por bacia — e mudam com o
+          tempo. Este guia ensina onde conferir.
+        </p>
+      </header>
+
+      <div class="wiki-prose" id="o-que-e">
+        <h2>O que é defeso</h2>
+        <p>
+          Defeso é o período em que a pesca de uma espécie é restrita ou proibida para proteger a
+          reprodução. Ele pode valer para uma espécie, um grupo de espécies ou uma área inteira.
+        </p>
+        <p>
+          Além do defeso, existem <strong>tamanhos mínimos</strong>, limites de captura, licenças e
+          regras específicas para rios, represas, praias e áreas protegidas. Nenhuma regra substitui
+          a outra: todas podem valer ao mesmo tempo.
+        </p>
+        <blockquote>
+          A regra que vale é a do órgão ambiental da sua UF e da bacia onde você vai pescar. Em caso
+          de dúvida, não pesque.
+        </blockquote>
+
+        <h2 id="como-consultar">Como consultar</h2>
+        <ol>
+          <li>Identifique a espécie que pretende pescar.</li>
+          <li>Confira o período de defeso e o tamanho mínimo no site do órgão ambiental do estado.</li>
+          <li>Verifique se a licença de pesca está válida para a modalidade e o local.</li>
+          <li>Cheque se a área tem regra própria (parque, reserva, represa, unidade de conservação).</li>
+          <li>Salve o link oficial ou o telefone do órgão antes de sair.</li>
+        </ol>
+
+        <h2 id="orgaos">Órgãos por estado</h2>
+        <p>
+          A tabela abaixo leva às páginas dos órgãos ambientais estaduais. Nem todos os estados estão
+          listados; se o seu não aparecer, procure “órgão ambiental + UF” ou consulte o IBAMA.
+        </p>
+
+        <table class="wiki-tabela">
+          <thead>
+            <tr><th>UF</th><th>Órgão</th><th>Site</th></tr>
+          </thead>
+          <tbody>
+            {ufs.map((item) => (
+              <tr>
+                <td>{item.uf}</td>
+                <td>{item.orgao}</td>
+                <td><a href={item.site} target="_blank" rel="noopener noreferrer">Abrir site</a></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <h2 id="checklist">Checklist antes de sair</h2>
+        <ul>
+          <li>Licença de pesca válida e documento com você.</li>
+          <li>Defeso e tamanho mínimo da espécie conferidos na fonte oficial.</li>
+          <li>Limite de captura e petrechos permitidos conferidos.</li>
+          <li>Local permitido e regras da área verificadas.</li>
+          <li>Equipamento de segurança e comunicação prontos.</li>
+        </ul>
+
+        <div class="wiki-callout">
+          <strong>Aviso</strong>
+          <p>
+            Este conteúdo é educativo e não substitui a legislação. Regulamentações mudam com
+            frequência. Confirme sempre no site oficial do órgão ambiental da sua UF e, em caso de
+            dúvida, procure a fiscalização antes de pescar.
+          </p>
+        </div>
+      </div>
+
+      <WikiFaq itens={faq} />
+      <WikiFontes fontes={fontes} revisadoEm="2026-11-17" />
+
+      <WikiCta
+        titulo="Pesca responsável também é registro."
+        texto="Anote local, espécie, tamanho e destino do peixe. O diário ajuda a enxergar o impacto das suas escolhas."
+        rotulo="Registrar pescaria"
+      />
+    </div>
+
+    <aside class="wiki-aside">
+      <WikiToc itens={[
+        { id: 'o-que-e', label: 'O que é defeso' },
+        { id: 'como-consultar', label: 'Como consultar' },
+        { id: 'orgaos', label: 'Órgãos por estado' },
+        { id: 'checklist', label: 'Checklist' },
+        { id: 'faq', label: 'Perguntas frequentes' },
+        { id: 'fontes', label: 'Fontes' }
+      ]} />
+      <a class="btn btn--primario btn--largo" href="/registrar">Registrar pescaria</a>
+    </aside>
+  </article>
+</WikiLayout>

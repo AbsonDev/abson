@@ -1,0 +1,29 @@
+---
+interface Item {
+  nome: string;
+  href?: string;
+}
+
+interface Props {
+  itens: Item[];
+}
+
+const { itens } = Astro.props;
+---
+
+<nav class="wiki-breadcrumbs" aria-label="Trilha de navegação">
+  <ol>
+    {itens.map((item, indice) => {
+      const ultimo = indice === itens.length - 1;
+      return (
+        <li>
+          {item.href && !ultimo ? (
+            <a href={item.href}>{item.nome}</a>
+          ) : (
+            <span aria-current={ultimo ? 'page' : undefined}>{item.nome}</span>
+          )}
+        </li>
+      );
+    })}
+  </ol>
+</nav>

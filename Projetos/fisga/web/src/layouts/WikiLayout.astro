@@ -1,0 +1,40 @@
+---
+import Layout from './Layout.astro';
+import '../styles/wiki.css';
+
+interface Props {
+  titulo: string;
+  descricao: string;
+  jsonLd?: string;
+  imagem?: string;
+  tipo?: string;
+  noindex?: boolean;
+  bodyClass?: string;
+}
+
+const {
+  titulo,
+  descricao,
+  jsonLd,
+  imagem,
+  tipo = 'website',
+  noindex = false,
+  bodyClass = ''
+} = Astro.props;
+---
+
+<Layout
+  titulo={titulo}
+  descricao={descricao}
+  jsonLd={jsonLd}
+  imagem={imagem}
+  tipo={tipo}
+  noindex={noindex}
+  bodyClass={`wiki-body ${bodyClass}`}
+>
+  <div class="wiki-page">
+    <div class="container">
+      <slot />
+    </div>
+  </div>
+</Layout>

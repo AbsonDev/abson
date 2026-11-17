@@ -1,0 +1,122 @@
+---
+import WikiLayout from '../layouts/WikiLayout.astro';
+import WikiBreadcrumbs from '../components/wiki/WikiBreadcrumbs.astro';
+
+export const prerender = true;
+---
+
+<WikiLayout
+  titulo="Política de Privacidade — Fisga"
+  descricao="Como o Fisga coleta, usa, armazena e protege seus dados."
+>
+  <WikiBreadcrumbs itens={[
+    { nome: 'Fisga', href: '/' },
+    { nome: 'Privacidade' }
+  ]} />
+
+  <div class="wiki-legal" data-pagefind-body>
+    <span class="eyebrow">Legal</span>
+    <h1>Política de Privacidade</h1>
+    <p class="wiki-artigo-resumo">Última atualização: 17 de novembro de 2026.</p>
+
+    <div class="wiki-prose">
+      <p>
+        O Fisga é um diário de pesca gratuito durante a validação. Esta política explica quais dados
+        coletamos, por que coletamos e como você pode acessar, exportar ou excluir sua conta.
+      </p>
+
+      <h2>1. Dados que coletamos</h2>
+      <ul>
+        <li><strong>Conta:</strong> e-mail, nome opcional e preferência de receber novidades.</li>
+        <li><strong>Diário:</strong> pescarias, locais, datas, condições, capturas, medidas, iscas, fotos e observações que você registra.</li>
+        <li><strong>Sessão:</strong> identificador de sessão, user agent do navegador e hash do IP, usados para segurança e para listar dispositivos.</li>
+        <li><strong>Suporte:</strong> mensagens que você enviar para o contato.</li>
+      </ul>
+
+      <h2>2. Para que usamos</h2>
+      <ul>
+        <li>Autenticar seu acesso por link mágico e manter sua sessão.</li>
+        <li>Armazenar e exibir o seu diário, as estatísticas, o troféu e o PDF.</li>
+        <li>Gerar links públicos apenas quando você compartilha uma pescaria.</li>
+        <li>Prevenir abuso, fraude e acessos não autorizados.</li>
+        <li>Enviar avisos sobre novidades e conteúdo, se você optar por receber.</li>
+        <li>Entender e melhorar o produto, de forma agregada.</li>
+      </ul>
+
+      <h2>3. Bases legais</h2>
+      <p>
+        Tratamos os dados de conta e diário para executar o serviço que você solicitou. Usamos
+        legítimo interesse para segurança e melhoria do produto. A newsletter é baseada no seu
+        consentimento, que pode ser retirado em Minha conta.
+      </p>
+
+      <h2>4. Compartilhamento</h2>
+      <p>
+        Não vendemos seus dados. Compartilhamos apenas o necessário com prestadores de serviço:
+      </p>
+      <ul>
+        <li><strong>Resend:</strong> entrega dos e-mails de acesso e avisos.</li>
+        <li><strong>Hostinger/Coolify:</strong> hospedagem da aplicação, banco de dados e arquivos.</li>
+        <li><strong>Autoridades:</strong> quando houver obrigação legal ou ordem judicial.</li>
+      </ul>
+      <p>
+        Alguns provedores podem processar dados fora do Brasil. Nesses casos, buscamos contratos e
+        salvaguardas compatíveis com a LGPD.
+      </p>
+
+      <h2>5. Cookies e sessão</h2>
+      <p>
+        Usamos um cookie essencial chamado <code>fisga_sessao</code>, com as flags HttpOnly, Secure
+        e SameSite=Lax, para manter você autenticado. Não usamos cookies de publicidade. Se
+        adicionarmos analytics, esta política será atualizada e o consentimento será solicitado
+        quando necessário.
+      </p>
+
+      <h2>6. Retenção e exclusão</h2>
+      <p>
+        Mantemos os dados enquanto sua conta estiver ativa. Você pode excluir a conta em
+        <a href="/conta">Minha conta</a>; a exclusão remove o usuário, as pescarias, as sessões e os
+        arquivos de foto referenciados. Cópias de backup podem persistir por um período limitado
+        antes de serem sobrescritas.
+      </p>
+
+      <h2>7. Seus direitos</h2>
+      <ul>
+        <li>Acessar e exportar seus dados em <a href="/conta">Minha conta</a> (JSON).</li>
+        <li>Corrigir o nome e a preferência de e-mail em <a href="/conta">Minha conta</a>.</li>
+        <li>Excluir a conta e o diário em <a href="/conta">Minha conta</a>.</li>
+        <li>Revogar o consentimento da newsletter a qualquer momento.</li>
+        <li>Solicitar informações pelo e-mail <a href="mailto:acesso@abson.tech">acesso@abson.tech</a>.</li>
+      </ul>
+      <p>
+        Você também pode contatar a Autoridade Nacional de Proteção de Dados (ANPD) se entender que
+        seus direitos não foram atendidos.
+      </p>
+
+      <h2>8. Segurança</h2>
+      <p>
+        Tokens de sessão e de login são armazenados apenas como hash. O acesso ao banco e aos arquivos
+        é restrito ao servidor. Usamos HTTPS e políticas de origem para reduzir acessos indevidos.
+        Nenhum sistema é 100% imune; se você suspeitar de acesso não autorizado, fale conosco.
+      </p>
+
+      <h2>9. Links públicos</h2>
+      <p>
+        Quando você compartilha uma pescaria, os dados daquele registro — incluindo local, data,
+        fotos e capturas — ficam acessíveis a quem tiver o link. O restante do diário não é exposto.
+      </p>
+
+      <h2>10. Alterações</h2>
+      <p>
+        Podemos atualizar esta política para refletir mudanças no produto ou na lei. A data de
+        atualização no topo indica a versão vigente. Mudanças relevantes serão comunicadas no site
+        ou por e-mail.
+      </p>
+
+      <h2>11. Contato</h2>
+      <p>
+        Dúvidas sobre privacidade: <a href="mailto:acesso@abson.tech">acesso@abson.tech</a>.
+      </p>
+    </div>
+  </div>
+</WikiLayout>

@@ -1,0 +1,137 @@
+---
+import WikiLayout from '../../layouts/WikiLayout.astro';
+import WikiBreadcrumbs from '../../components/wiki/WikiBreadcrumbs.astro';
+import WikiCta from '../../components/wiki/WikiCta.astro';
+import { jsonLdArtigo } from '../../lib/wiki';
+
+export const prerender = true;
+
+const site = (import.meta.env.PUBLIC_SITE_URL ?? Astro.url.origin).replace(/\/$/, '');
+const url = `${site}/wiki/glossario`;
+const trilha = [
+  { nome: 'Fisga', url: site },
+  { nome: 'Wiki', url: `${site}/wiki` },
+  { nome: 'Glossário', url }
+];
+
+const termos = [
+  ['Arremesso', 'Movimento de lançar a isca com a vara e a linha.'],
+  ['Anzol', 'Peça metálica com ponta e farpa usada para fisgar o peixe.'],
+  ['Artificial', 'Isca feita de material sintético que imita um peixe, inseto ou animal.'],
+  ['Baitcasting', 'Técnica com carretilha, geralmente usada para artificiais maiores.'],
+  ['Boia', 'Acessório que flutua e indica a mordida ou mantém a isca em uma profundidade.'],
+  ['Cabeleira', 'Emaranhado de linha no carretel, comum em carretilha mal ajustada.'],
+  ['Carretilha', 'Carretel com manivela e freio, usado em arremessos de precisão.'],
+  ['Chumbada', 'Peso que leva a isca ao fundo e segura a linha na correnteza.'],
+  ['Classe', 'Numeração que indica a potência da vara ou o peso da linha.'],
+  ['Corrico', 'Pesca com a isca em movimento, geralmente rebocada por um barco.'],
+  ['Defeso', 'Período de restrição ou proibição da pesca para proteger a reprodução.'],
+  ['Drag', 'Freio da carretilha ou molinete que controla a saída de linha.'],
+  ['Engate', 'Batida ou toque do peixe na isca, antes da fisgada.'],
+  ['Ferragem', 'Movimento de fisgar o peixe quando ele ataca a isca.'],
+  ['Fluorcarbono', 'Material de líder com baixa visibilidade e boa resistência à abrasão.'],
+  ['Fly', 'Pesca com mosca, em que a linha carrega a isca.'],
+  ['Girador', 'Peça que evita a torção da linha.'],
+  ['Hélice', 'Isca artificial com pás que giram e fazem barulho na superfície.'],
+  ['Isca natural', 'Isca viva ou fresca, como minhoca, lambari, camarão ou massa.'],
+  ['Jig', 'Isca artificial com peso na cabeça, usada para fundo e estrutura.'],
+  ['Líder', 'Trecho final da linha, mais resistente ou menos visível.'],
+  ['Linha', 'Fio que conecta a vara ao anzol e à isca.'],
+  ['Molinete', 'Carretel fixo com cesto, comum para iniciantes.'],
+  ['Nó', 'Amarração que une linha, anzol, girador ou artificial.'],
+  ['Popper', 'Isca de superfície com face côncava que faz barulho ao ser puxada.'],
+  ['Pesque-pague', 'Local de pesca com peixes criados e soltos para a prática.'],
+  ['Soltura', 'Devolver o peixe à água com vida.'],
+  ['Spinning', 'Técnica com molinete e iscas artificiais.'],
+  ['Tippet', 'Trecho final do leader no fly, onde a mosca é amarrada.'],
+  ['Trabalhar a isca', 'Dar movimento à isca com a vara e o recolhimento.'],
+  ['Vara', 'Equipamento que sustenta a linha e transmite o movimento ao peixe.'],
+  ['Vazante', 'Movimento de descida da maré ou da água.'],
+  ['Enchente', 'Movimento de subida da maré ou da água.']
+];
+
+const jsonLd = jsonLdArtigo({
+  titulo: 'Glossário de pesca — termos essenciais',
+  descricao: 'Arremesso, defeso, popper, vazante e outros termos da pesca explicados de forma simples.',
+  url,
+  imagem: `${site}/og-fisga.png`,
+  publicadoEm: '2026-11-17',
+  revisadoEm: '2026-11-17',
+  faq: [],
+  trilha
+});
+---
+
+<WikiLayout
+  titulo="Glossário de pesca — termos essenciais | Fisga"
+  descricao="Arremesso, defeso, popper, vazante e outros termos da pesca explicados de forma simples."
+  jsonLd={jsonLd}
+  tipo="article"
+>
+  <WikiBreadcrumbs itens={[
+    { nome: 'Fisga', href: '/' },
+    { nome: 'Wiki', href: '/wiki' },
+    { nome: 'Glossário' }
+  ]} />
+
+  <div data-pagefind-body>
+    <header class="wiki-categoria-hero">
+      <span class="eyebrow">Wiki do Pescador</span>
+      <h1>Glossário</h1>
+      <p>
+        Os termos que aparecem nas conversas de pescaria, nos vídeos e nos manuais — explicados sem
+        jargão.
+      </p>
+    </header>
+
+    <dl class="wiki-glossario">
+      {termos.sort((a, b) => a[0].localeCompare(b[0], 'pt-BR')).map(([termo, definicao]) => (
+        <div>
+          <dt>{termo}</dt>
+          <dd>{definicao}</dd>
+        </div>
+      ))}
+    </dl>
+
+    <WikiCta
+      titulo="Ficou com dúvida em algum termo?"
+      texto="Registre a pescaria e use as observações para anotar o que aprendeu."
+      rotulo="Registrar pescaria"
+    />
+  </div>
+</WikiLayout>
+
+<style>
+  .wiki-glossario {
+    display: grid;
+    gap: 10px;
+    margin: 24px 0 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .wiki-glossario div {
+    padding: 13px 15px;
+    border: 1px solid var(--linha);
+    border-radius: 10px;
+    background: var(--superficie);
+  }
+
+  .wiki-glossario dt {
+    color: var(--tinta);
+    font-size: 0.8rem;
+    font-weight: 700;
+  }
+
+  .wiki-glossario dd {
+    margin: 3px 0 0;
+    color: var(--tinta-suave);
+    font-size: 0.74rem;
+    line-height: 1.55;
+  }
+
+  @media (max-width: 760px) {
+    .wiki-glossario {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+</style>

@@ -25,6 +25,7 @@ flowchart LR
 
   subgraph Supporting
     catalogo[Catálogo<br/>espécies · iscas · opções]
+    conhecimento[Conhecimento<br/>Wiki · espécies · defeso]
     midia[Mídia<br/>upload · arquivos]
     documentos[Documentos<br/>PDF · QR]
     diario[Diário<br/>read model privado]
@@ -34,6 +35,7 @@ flowchart LR
   identidade -->|autentica| pescarias
   identidade -->|envia link| email
   pescarias -->|opções e exemplo| catalogo
+  conhecimento -->|conteúdo e CTA| pescarias
   pescarias -->|fotos| midia
   pescarias -->|relatório| documentos
   diario -->|lista e estatísticas| pescarias
@@ -147,6 +149,30 @@ Contexto genérico, sem dependência de ASP.NET ou do provedor de e-mail.
   - resumos ordenados por data.
 - Não há token nem link de backup: o e-mail é a recuperação.
 
+## Conhecimento (Wiki do Pescador)
+
+Contexto de apoio, editorial e público. Não participa das transações do diário; existe para educar,
+atrair busca orgânica e levar o leitor ao registro.
+
+- **Espécie**: nome popular/científico, família, habitat, distribuição, tamanho, época, iscas,
+  técnicas, FAQ e fontes.
+- **Técnica**: dificuldade, equipamento, passo a passo, erros, segurança e espécies-alvo.
+- **Isca**: tipo (natural/artificial), quando usar, como montar, dicas e espécies-alvo.
+- **Região**: UF, bioma, ambientes, espécies, melhores épocas, licença e segurança.
+- **Guia**: defeso, iniciantes, segurança, glossário e fontes/metodologia.
+
+Decisões:
+
+- Conteúdo em Markdown tipado (Astro Content Collections), versionado no repositório.
+- Páginas **estáticas** (`prerender = true`) para SEO, velocidade e cache offline.
+- Busca **Pagefind** gerada no build; o índice é cacheado pelo service worker.
+- Cada página tem resumo, data de revisão, fontes e, quando faz sentido, FAQ com JSON-LD.
+- Regulamentação é tratada como **educativa**: links oficiais e aviso para confirmar no órgão
+  ambiental. O Fisga ainda não valida automaticamente espécie + UF + data.
+- O CTA “Registrar captura” leva a `/registrar?especie=...`; o formulário pré-preenche a primeira
+  captura.
+- A wiki não é um CMS multiusuário; contribuições e revisão por especialistas ficam para a evolução.
+
 ## Mídia
 
 - `POST /api/midia` exige sessão, valida formulário, tamanho (5 MB) e tipo (`image/jpeg`,
@@ -202,6 +228,8 @@ lembretes e e-mail.
 5. Card do troféu gerado no navegador; fotos precisam de CORS para o canvas.
 6. Fotos ficam em volume local; para escala, mover para object storage + CDN.
 7. Monetização futura separada (entitlement + gateway + webhooks).
+8. A wiki é editorial e estática; não há edição pela comunidade nem validação automática de defeso
+   por espécie/UF/data. Essas são evoluções naturais.
 
 ## Testes
 

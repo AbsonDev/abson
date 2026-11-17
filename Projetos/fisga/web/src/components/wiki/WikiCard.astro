@@ -1,0 +1,47 @@
+---
+import PeixeIcone from './PeixeIcone.astro';
+
+interface Props {
+  href: string;
+  titulo: string;
+  subtitulo?: string;
+  descricao: string;
+  tags?: string[];
+  tipo?: 'peixe' | 'var' | 'anzol' | 'mapa' | 'escudo' | 'livro';
+  destaque?: boolean;
+  rotulo?: string;
+}
+
+const {
+  href,
+  titulo,
+  subtitulo,
+  descricao,
+  tags = [],
+  tipo = 'peixe',
+  destaque = false,
+  rotulo = 'Abrir guia'
+} = Astro.props;
+---
+
+<a class="wiki-card" href={href} data-pagefind-ignore>
+  <div class="wiki-card-topo">
+    <span class="wiki-card-icone"><PeixeIcone tipo={tipo} /></span>
+    {destaque && <span class="wiki-selo">Destaque</span>}
+  </div>
+
+  <div>
+    <h3>{titulo}</h3>
+    {subtitulo && <p class="wiki-card-subtitulo">{subtitulo}</p>}
+  </div>
+
+  <p class="wiki-card-desc">{descricao}</p>
+
+  {tags.length > 0 && (
+    <div class="wiki-card-tags">
+      {tags.slice(0, 3).map((tag) => <span class="wiki-tag">{tag}</span>)}
+    </div>
+  )}
+
+  <span class="wiki-card-seta">{rotulo} →</span>
+</a>

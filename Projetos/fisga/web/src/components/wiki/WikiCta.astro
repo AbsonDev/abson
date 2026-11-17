@@ -1,0 +1,25 @@
+---
+interface Props {
+  especie?: string;
+  titulo?: string;
+  texto?: string;
+  rotulo?: string;
+}
+
+const {
+  especie,
+  titulo = 'Registre a sua captura.',
+  texto = 'O diário do Fisga guarda local, condições, iscas, fotos e o troféu daquele peixe. É grátis por enquanto.',
+  rotulo = 'Registrar captura'
+} = Astro.props;
+
+const href = especie
+  ? `/registrar?especie=${encodeURIComponent(especie)}`
+  : '/registrar';
+---
+
+<section class="wiki-cta" data-pagefind-ignore>
+  <h2>{titulo}</h2>
+  <p>{texto}</p>
+  <a class="btn btn--pequeno" href={href}>{rotulo}</a>
+</section>

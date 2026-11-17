@@ -1,0 +1,32 @@
+---
+import { formatarData } from '../../lib/wiki';
+
+interface Props {
+  fontes: Array<{ titulo: string; url: string }>;
+  revisadoEm: string;
+}
+
+const { fontes, revisadoEm } = Astro.props;
+---
+
+<section class="wiki-fontes" id="fontes">
+  <h2>Fontes e revisão</h2>
+
+  {fontes.length > 0 ? (
+    <ul>
+      {fontes.map((fonte) => (
+        <li>
+          <a href={fonte.url} target="_blank" rel="noopener noreferrer">{fonte.titulo}</a>
+        </li>
+      ))}
+    </ul>
+  ) : (
+    <p class="wiki-revisao">Conteúdo educativo produzido pela equipe do Fisga.</p>
+  )}
+
+  <p class="wiki-revisao">
+    Última revisão em {formatarData(revisadoEm)}. Este conteúdo é educativo e não substitui a
+    legislação. Regulamentações de pesca, tamanhos mínimos e períodos de defeso mudam; confirme
+    sempre na agência ambiental do seu estado.
+  </p>
+</section>

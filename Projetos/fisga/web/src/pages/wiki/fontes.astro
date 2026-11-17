@@ -1,0 +1,116 @@
+---
+import WikiLayout from '../../layouts/WikiLayout.astro';
+import WikiBreadcrumbs from '../../components/wiki/WikiBreadcrumbs.astro';
+import WikiToc from '../../components/wiki/WikiToc.astro';
+import WikiCta from '../../components/wiki/WikiCta.astro';
+import { jsonLdArtigo } from '../../lib/wiki';
+
+export const prerender = true;
+
+const site = (import.meta.env.PUBLIC_SITE_URL ?? Astro.url.origin).replace(/\/$/, '');
+const url = `${site}/wiki/fontes`;
+const trilha = [
+  { nome: 'Fisga', url: site },
+  { nome: 'Wiki', url: `${site}/wiki` },
+  { nome: 'Fontes e metodologia', url }
+];
+
+const jsonLd = jsonLdArtigo({
+  titulo: 'Fontes e metodologia da Wiki do Pescador',
+  descricao: 'Como a wiki do Fisga é produzida, revisada e corrigida.',
+  url,
+  imagem: `${site}/og-fisga.png`,
+  publicadoEm: '2026-11-17',
+  revisadoEm: '2026-11-17',
+  faq: [],
+  trilha
+});
+---
+
+<WikiLayout
+  titulo="Fontes e metodologia — Wiki do Pescador | Fisga"
+  descricao="Como a wiki do Fisga é produzida, revisada e corrigida."
+  jsonLd={jsonLd}
+  tipo="article"
+>
+  <WikiBreadcrumbs itens={[
+    { nome: 'Fisga', href: '/' },
+    { nome: 'Wiki', href: '/wiki' },
+    { nome: 'Fontes e metodologia' }
+  ]} />
+
+  <article class="wiki-artigo" data-pagefind-body>
+    <div class="wiki-artigo-conteudo">
+      <header class="wiki-artigo-cabecalho">
+        <span class="eyebrow">Transparência</span>
+        <h1>Fontes e metodologia</h1>
+        <p class="wiki-artigo-resumo">
+          A Wiki do Pescador é um conteúdo editorial do Fisga. O objetivo é explicar o básico com
+          clareza e apontar para as fontes oficiais — não substituir a legislação nem o conhecimento
+          de quem vive na água.
+        </p>
+      </header>
+
+      <div class="wiki-prose" id="como-fazemos">
+        <h2>Como fazemos</h2>
+        <ul>
+          <li>Partimos de fontes públicas: órgãos ambientais, literatura científica e bases de dados de peixes.</li>
+          <li>Escrevemos em português claro, com foco no que o pescador precisa decidir na prática.</li>
+          <li>Cada página tem data de revisão e, quando aplicável, links para as fontes.</li>
+          <li>Conteúdo sobre regulamentação é tratado como educativo: sempre indicamos a consulta ao órgão oficial.</li>
+          <li>Não publicamos “pesqueiros secretos” nem incentivamos pesca em áreas proibidas.</li>
+        </ul>
+
+        <h2 id="fontes">Fontes principais</h2>
+        <ul>
+          <li><a href="https://www.gov.br/ibama/pt-br" target="_blank" rel="noopener noreferrer">IBAMA</a> — regras federais, licenças e fiscalização.</li>
+          <li><a href="https://www.gov.br/icmbio/pt-br" target="_blank" rel="noopener noreferrer">ICMBio</a> — unidades de conservação e espécies.</li>
+          <li><a href="https://www.fishbase.se/" target="_blank" rel="noopener noreferrer">FishBase</a> — nomes científicos, distribuição e biologia.</li>
+          <li>Órgãos ambientais estaduais — defeso, tamanhos mínimos e licenças locais.</li>
+          <li>Literatura científica e materiais de educação ambiental.</li>
+        </ul>
+
+        <h2 id="atualizacao">Como atualizamos</h2>
+        <p>
+          As páginas são revisadas periodicamente. Quando uma regra muda, a data de revisão e o
+          conteúdo são atualizados. Se você encontrar um erro, envie uma mensagem para
+          <a href="mailto:acesso@abson.tech">acesso@abson.tech</a> com o link da página e a correção.
+        </p>
+
+        <h2 id="independencia">Independência editorial</h2>
+        <p>
+          A wiki não tem conteúdo pago disfarçado. Se um dia houver links de afiliados ou parcerias,
+          isso será sinalizado de forma clara na página. A prioridade é a informação útil e a pesca
+          responsável.
+        </p>
+
+        <h2 id="aviso">Aviso legal</h2>
+        <div class="wiki-callout">
+          <strong>Conteúdo educativo</strong>
+          <p>
+            Nada aqui substitui a legislação, a licença de pesca ou a orientação do órgão ambiental.
+            Regulamentações mudam e variam por estado e bacia. Confirme sempre na fonte oficial antes
+            de pescar.
+          </p>
+        </div>
+      </div>
+
+      <WikiCta
+        titulo="Quer sugerir um tema ou corrigir algo?"
+        texto="A wiki cresce com a comunidade. Envie sua sugestão com fontes e contexto."
+        rotulo="Falar com o Fisga"
+      />
+    </div>
+
+    <aside class="wiki-aside">
+      <WikiToc itens={[
+        { id: 'como-fazemos', label: 'Como fazemos' },
+        { id: 'fontes', label: 'Fontes principais' },
+        { id: 'atualizacao', label: 'Como atualizamos' },
+        { id: 'independencia', label: 'Independência editorial' },
+        { id: 'aviso', label: 'Aviso legal' }
+      ]} />
+      <a class="btn btn--contorno btn--largo" href="/contato">Falar com o Fisga</a>
+    </aside>
+  </article>
+</WikiLayout>

@@ -68,8 +68,8 @@ import Layout from '../layouts/Layout.astro';
           </form>
 
           <p class="entrar-micro">
-            Sem senha. O link é de uso único e vale por 15 minutos. Ao entrar, você concorda em
-            manter um comportamento responsável na pesca.
+            Sem senha. O link é de uso único e vale por 15 minutos. Ao entrar, você concorda com os
+            <a href="/termos">Termos</a> e a <a href="/privacidade">Política de Privacidade</a>.
           </p>
 
           <div class="entrar-divisor"><span>O que você encontra</span></div>
@@ -234,6 +234,12 @@ import Layout from '../layouts/Layout.astro';
 
   #entrar-form .btn {
     margin-top: 12px;
+  }
+
+  .entrar-micro a {
+    color: var(--terracota);
+    text-decoration: underline;
+    text-underline-offset: 2px;
   }
 
   .entrar-micro {

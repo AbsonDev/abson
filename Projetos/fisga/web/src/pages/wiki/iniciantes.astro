@@ -1,0 +1,170 @@
+---
+import WikiLayout from '../../layouts/WikiLayout.astro';
+import WikiBreadcrumbs from '../../components/wiki/WikiBreadcrumbs.astro';
+import WikiToc from '../../components/wiki/WikiToc.astro';
+import WikiFaq from '../../components/wiki/WikiFaq.astro';
+import WikiFontes from '../../components/wiki/WikiFontes.astro';
+import WikiCta from '../../components/wiki/WikiCta.astro';
+import { jsonLdArtigo } from '../../lib/wiki';
+
+export const prerender = true;
+
+const site = (import.meta.env.PUBLIC_SITE_URL ?? Astro.url.origin).replace(/\/$/, '');
+const url = `${site}/wiki/iniciantes`;
+const trilha = [
+  { nome: 'Fisga', url: site },
+  { nome: 'Wiki', url: `${site}/wiki` },
+  { nome: 'Primeira pescaria', url }
+];
+
+const faq = [
+  {
+    pergunta: 'Preciso de licença para a primeira pescaria?',
+    resposta:
+      'Na maioria dos estados, sim. A licença e as exigências variam por modalidade e local. Consulte o órgão ambiental da sua UF antes de sair.'
+  },
+  {
+    pergunta: 'Qual equipamento comprar primeiro?',
+    resposta:
+      'Um conjunto médio de molinete, vara de 1,80 a 2,40 m, linha de 0,25 a 0,30 mm, anzóis, chumbadas, alicate e fita métrica já permitem aprender muito.'
+  },
+  {
+    pergunta: 'Preciso saber o nome de todos os peixes?',
+    resposta:
+      'Não. Comece pelas espécies mais comuns da sua região e use a wiki para comparar. O importante é registrar o que funcionou.'
+  },
+  {
+    pergunta: 'Posso pescar sozinho?',
+    resposta:
+      'Em locais seguros e conhecidos, sim. Em praia, barco, rio remoto ou água funda, prefira companhia e use colete.'
+  }
+];
+
+const fontes = [
+  { titulo: 'IBAMA', url: 'https://www.gov.br/ibama/pt-br' },
+  { titulo: 'ICMBio', url: 'https://www.gov.br/icmbio/pt-br' },
+  { titulo: 'FishBase', url: 'https://www.fishbase.se/' }
+];
+
+const jsonLd = jsonLdArtigo({
+  titulo: 'Primeira pescaria — guia para começar',
+  descricao: 'Licença, equipamento básico, nós, arremesso, segurança e etiqueta para a primeira pescaria.',
+  url,
+  imagem: `${site}/og-fisga.png`,
+  publicadoEm: '2026-11-17',
+  revisadoEm: '2026-11-17',
+  faq,
+  trilha
+});
+---
+
+<WikiLayout
+  titulo="Primeira pescaria — guia para começar | Fisga"
+  descricao="Licença, equipamento básico, nós, arremesso, segurança e etiqueta para a primeira pescaria."
+  jsonLd={jsonLd}
+  tipo="article"
+>
+  <WikiBreadcrumbs itens={[
+    { nome: 'Fisga', href: '/' },
+    { nome: 'Wiki', href: '/wiki' },
+    { nome: 'Primeira pescaria' }
+  ]} />
+
+  <article class="wiki-artigo" data-pagefind-body>
+    <div class="wiki-artigo-conteudo">
+      <header class="wiki-artigo-cabecalho">
+        <span class="eyebrow">Comece por aqui</span>
+        <h1>Primeira pescaria</h1>
+        <p class="wiki-artigo-resumo">
+          Não precisa de equipamento caro nem de saber tudo. Precisa de licença, um conjunto
+          simples, paciência e respeito pela água. Este guia é o caminho curto para a primeira
+          captura.
+        </p>
+      </header>
+
+      <div class="wiki-prose" id="antes-de-sair">
+        <h2>Antes de sair</h2>
+        <ul>
+          <li><strong>Licença:</strong> consulte o órgão ambiental da sua UF e o tipo de pesca.</li>
+          <li><strong>Local:</strong> confirme se a pesca é permitida e se há regra da área.</li>
+          <li><strong>Defeso:</strong> veja espécies, tamanhos e períodos no <a href="/wiki/defeso">guia de defeso</a>.</li>
+          <li><strong>Clima:</strong> evite temporais, vento forte e maré perigosa.</li>
+          <li><strong>Companhia:</strong> avise alguém para onde você vai e quando volta.</li>
+        </ul>
+
+        <h2 id="equipamento">Equipamento básico</h2>
+        <p>
+          Um conjunto médio resolve a maioria das situações de água doce e costeira. Não compre tudo
+          de uma vez; aprenda com o que tem.
+        </p>
+        <ul>
+          <li>Vara de 1,80 a 2,40 m e molinete médio.</li>
+          <li>Linha de 0,25 a 0,30 mm, anzóis variados, chumbadas e giradores.</li>
+          <li>Alicate, tesoura, fita métrica e um pano.</li>
+          <li>Óculos de proteção, boné, protetor solar e água.</li>
+          <li>Caixa térmica ou bolsa para iscas e um saco para o lixo.</li>
+        </ul>
+
+        <h2 id="nos">Nós essenciais</h2>
+        <p>
+          Você só precisa de dois ou três nós para começar. O importante é apertar bem e testar antes
+          de arremessar.
+        </p>
+        <ul>
+          <li><strong>Clinch melhorado:</strong> para amarrar anzol e artificial.</li>
+          <li><strong>Palomar:</strong> simples e forte para anzóis e giradores.</li>
+          <li><strong>Laço para unir linhas:</strong> útil para líder e emendas.</li>
+        </ul>
+
+        <h2 id="primeira">A primeira pescaria</h2>
+        <ol>
+          <li>Escolha um ponto seguro, com espaço atrás e sem banhistas.</li>
+          <li>Monte a linha, molhe o nó e teste a resistência.</li>
+          <li>Arremesse com calma; não precisa ser longe.</li>
+          <li>Deixe a isca trabalhar e observe a linha.</li>
+          <li>Quando sentir peso, fera firme e mantenha a linha tensionada.</li>
+          <li>Molhe as mãos, apoie o peixe e devolva-o com cuidado.</li>
+        </ol>
+
+        <h2 id="etiqueta">Etiqueta e soltura</h2>
+        <ul>
+          <li>Mantenha distância de outros pescadores.</li>
+          <li>Não deixe lixo, linha ou anzol na margem.</li>
+          <li>Respeite o defeso e o tamanho mínimo.</li>
+          <li>Se for soltar, não levante o peixe pelo maxilar e não o deixe no seco.</li>
+          <li>Fotografe rápido e devolva o peixe à água.</li>
+        </ul>
+
+        <div class="wiki-callout">
+          <strong>Dica</strong>
+          <p>
+            A primeira pescaria não precisa ser a maior. Escolha um lugar confortável, leve pouca
+            tralha e foque em aprender a arremessar, observar e cuidar do peixe.
+          </p>
+        </div>
+      </div>
+
+      <WikiFaq itens={faq} />
+      <WikiFontes fontes={fontes} revisadoEm="2026-11-17" />
+
+      <WikiCta
+        titulo="Pronto para a primeira?"
+        texto="Registre a pescaria, a isca e as condições. O primeiro registro vira referência para os próximos."
+        rotulo="Registrar primeira pescaria"
+      />
+    </div>
+
+    <aside class="wiki-aside">
+      <WikiToc itens={[
+        { id: 'antes-de-sair', label: 'Antes de sair' },
+        { id: 'equipamento', label: 'Equipamento básico' },
+        { id: 'nos', label: 'Nós essenciais' },
+        { id: 'primeira', label: 'A primeira pescaria' },
+        { id: 'etiqueta', label: 'Etiqueta e soltura' },
+        { id: 'faq', label: 'Perguntas frequentes' },
+        { id: 'fontes', label: 'Fontes' }
+      ]} />
+      <a class="btn btn--primario btn--largo" href="/registrar">Registrar pescaria</a>
+    </aside>
+  </article>
+</WikiLayout>

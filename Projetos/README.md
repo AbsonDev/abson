@@ -6,7 +6,7 @@ Incubadora de produtos do portfólio. Cada projeto tem README, arquitetura e cam
 | --- | --- | --- | --- |
 | 1 | [Precifica](./precifica) — calculadora de precificação para confeiteiros, artesãos, impressão 3D e esteticistas | No ar em [precifica.abson.tech](https://precifica.abson.tech) | 100% gratuito por enquanto |
 | 2 | [Cardápio no Lucro](./cardapio-no-lucro) — ficha técnica e preço por canal para food service | MVP local em validação | 100% gratuito por enquanto |
-| 3 | [Fisga](./fisga) — diário de pesca com troféu, estatísticas e PDF | No ar em [fisga.abson.tech](https://fisga.abson.tech) | 100% gratuito por enquanto |
+| 3 | [Fisga](./fisga) — diário de pesca com troféu, wiki, estatísticas e PDF | No ar em [fisga.abson.tech](https://fisga.abson.tech) | 100% gratuito por enquanto |
 
 ## Critérios para entrar aqui
 

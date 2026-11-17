@@ -1,0 +1,193 @@
+---
+import { getCollection, render } from 'astro:content';
+import WikiLayout from '../../../layouts/WikiLayout.astro';
+import WikiBreadcrumbs from '../../../components/wiki/WikiBreadcrumbs.astro';
+import WikiArticleHeader from '../../../components/wiki/WikiArticleHeader.astro';
+import WikiFatos from '../../../components/wiki/WikiFatos.astro';
+import WikiToc from '../../../components/wiki/WikiToc.astro';
+import WikiFaq from '../../../components/wiki/WikiFaq.astro';
+import WikiFontes from '../../../components/wiki/WikiFontes.astro';
+import WikiCard from '../../../components/wiki/WikiCard.astro';
+import WikiCta from '../../../components/wiki/WikiCta.astro';
+import { jsonLdArtigo } from '../../../lib/wiki';
+
+export const prerender = true;
+
+export async function getStaticPaths() {
+  const tecnicas = await getCollection('tecnicas');
+  return tecnicas.map((entry) => ({
+    params: { slug: entry.id },
+    props: { entry }
+  }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+const site = (import.meta.env.PUBLIC_SITE_URL ?? Astro.url.origin).replace(/\/$/, '');
+const url = `${site}/wiki/tecnicas/${entry.id}`;
+const trilha = [
+  { nome: 'Fisga', url: site },
+  { nome: 'Wiki', url: `${site}/wiki` },
+  { nome: 'Técnicas', url: `${site}/wiki/tecnicas` },
+  { nome: entry.data.titulo, url }
+];
+
+const especies = await getCollection('especies');
+const iscas = await getCollection('iscas');
+const especiesPorId = new Map(especies.map((especie) => [especie.id, especie]));
+const iscasPorId = new Map(iscas.map((isca) => [isca.id, isca]));
+
+const especiesRelacionadas = entry.data.especies.flatMap((slug) => {
+  const especie = especiesPorId.get(slug);
+  return especie ? [especie] : [];
+});
+const iscasRelacionadas = entry.data.iscas.flatMap((slug) => {
+  const isca = iscasPorId.get(slug);
+  return isca ? [isca] : [];
+});
+
+const toc = [
+  { id: 'sobre', label: 'Sobre a técnica' },
+  ...(entry.data.equipamento.length > 0 ? [{ id: 'equipamento', label: 'Equipamento' }] : []),
+  ...(entry.data.passos.length > 0 ? [{ id: 'passos', label: 'Passo a passo' }] : []),
+  ...(entry.data.erros.length > 0 ? [{ id: 'erros', label: 'Erros comuns' }] : []),
+  ...(entry.data.seguranca.length > 0 ? [{ id: 'seguranca', label: 'Segurança' }] : []),
+  ...(especiesRelacionadas.length > 0 ? [{ id: 'especies', label: 'Espécies' }] : []),
+  ...(iscasRelacionadas.length > 0 ? [{ id: 'iscas', label: 'Iscas' }] : []),
+  ...(entry.data.faq.length > 0 ? [{ id: 'faq', label: 'Perguntas frequentes' }] : []),
+  { id: 'fontes', label: 'Fontes e revisão' }
+];
+
+const jsonLd = jsonLdArtigo({
+  titulo: `${entry.data.titulo} — técnica de pesca`,
+  descricao: entry.data.resumo,
+  url,
+  imagem: `${site}/og-fisga.png`,
+  publicadoEm: entry.data.revisadoEm,
+  revisadoEm: entry.data.revisadoEm,
+  faq: entry.data.faq,
+  trilha
+});
+---
+
+<WikiLayout
+  titulo={`${entry.data.titulo} — técnica de pesca | Fisga`}
+  descricao={entry.data.resumo}
+  jsonLd={jsonLd}
+  tipo="article"
+>
+  <WikiBreadcrumbs itens={[
+    { nome: 'Fisga', href: '/' },
+    { nome: 'Wiki', href: '/wiki' },
+    { nome: 'Técnicas', href: '/wiki/tecnicas' },
+    { nome: entry.data.titulo }
+  ]} />
+
+  <article class="wiki-artigo" data-pagefind-body>
+    <div class="wiki-artigo-conteudo">
+      <WikiArticleHeader
+        categoria="Técnica"
+        titulo={entry.data.titulo}
+        resumo={entry.data.resumo}
+        tags={[`Dificuldade ${entry.data.dificuldade}`]}
+      />
+
+      <WikiFatos
+        itens={[
+          { rotulo: 'Dificuldade', valor: entry.data.dificuldade },
+          { rotulo: 'Equipamento', valor: `${entry.data.equipamento.length} itens essenciais` },
+          { rotulo: 'Espécies-alvo', valor: `${especiesRelacionadas.length} guias` },
+          { rotulo: 'Revisão', valor: entry.data.revisadoEm.split('-').reverse().join('/') }
+        ]}
+      />
+
+      <div class="wiki-prose" id="sobre">
+        <Content />
+      </div>
+
+      {entry.data.equipamento.length > 0 && (
+        <section class="wiki-secao-artigo" id="equipamento">
+          <h2>Equipamento</h2>
+          <ul>
+            {entry.data.equipamento.map((item) => <li>{item}</li>)}
+          </ul>
+        </section>
+      )}
+
+      {entry.data.passos.length > 0 && (
+        <section class="wiki-secao-artigo" id="passos">
+          <h2>Passo a passo</h2>
+          <ol>
+            {entry.data.passos.map((passo) => <li>{passo}</li>)}
+          </ol>
+        </section>
+      )}
+
+      {entry.data.erros.length > 0 && (
+        <section class="wiki-secao-artigo" id="erros">
+          <h2>Erros comuns</h2>
+          <ul>
+            {entry.data.erros.map((erro) => <li>{erro}</li>)}
+          </ul>
+        </section>
+      )}
+
+      {entry.data.seguranca.length > 0 && (
+        <section class="wiki-secao-artigo" id="seguranca">
+          <h2>Segurança</h2>
+          <ul>
+            {entry.data.seguranca.map((item) => <li>{item}</li>)}
+          </ul>
+        </section>
+      )}
+
+      {especiesRelacionadas.length > 0 && (
+        <section class="wiki-secao-artigo" id="especies">
+          <h2>Espécies que respondem bem</h2>
+          <div class="wiki-lista-chips">
+            {especiesRelacionadas.map((especie) => (
+              <a class="wiki-chip" href={`/wiki/especies/${especie.id}`}>{especie.data.titulo}</a>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {iscasRelacionadas.length > 0 && (
+        <section class="wiki-secao-artigo" id="iscas">
+          <h2>Iscas para esta técnica</h2>
+          <div class="wiki-lista-chips">
+            {iscasRelacionadas.map((isca) => (
+              <a class="wiki-chip" href={`/wiki/iscas/${isca.id}`}>{isca.data.titulo} · {isca.data.tipo}</a>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <WikiFaq itens={entry.data.faq} />
+      <WikiFontes fontes={entry.data.fontes} revisadoEm={entry.data.revisadoEm} />
+
+      <section class="wiki-secao-artigo" id="relacionados">
+        <h2>Continue aprendendo</h2>
+        <div class="wiki-relacionados">
+          {especiesRelacionadas.slice(0, 2).map((especie) => (
+            <WikiCard
+              href={`/wiki/especies/${especie.id}`}
+              titulo={especie.data.titulo}
+              subtitulo={especie.data.nomeCientifico}
+              descricao={especie.data.resumo}
+              tags={especie.data.tags}
+              tipo="peixe"
+            />
+          ))}
+        </div>
+      </section>
+
+      <WikiCta />
+    </div>
+
+    <aside class="wiki-aside">
+      <WikiToc itens={toc} />
+      <a class="btn btn--primario btn--largo" href="/registrar">Registrar pescaria</a>
+    </aside>
+  </article>
+</WikiLayout>

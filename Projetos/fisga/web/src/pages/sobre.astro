@@ -1,0 +1,72 @@
+---
+import WikiLayout from '../layouts/WikiLayout.astro';
+import WikiBreadcrumbs from '../components/wiki/WikiBreadcrumbs.astro';
+
+export const prerender = true;
+---
+
+<WikiLayout
+  titulo="Sobre o Fisga — diário de pesca e conhecimento"
+  descricao="Por que o Fisga existe, o que ele guarda e como a Wiki do Pescador ajuda quem pesca."
+>
+  <WikiBreadcrumbs itens={[
+    { nome: 'Fisga', href: '/' },
+    { nome: 'Sobre' }
+  ]} />
+
+  <div class="wiki-legal" data-pagefind-body>
+    <span class="eyebrow">Sobre</span>
+    <h1>Cada peixe tem uma história. <em>O Fisga guarda a sua.</em></h1>
+
+    <div class="wiki-prose">
+      <p>
+        O Fisga nasceu de uma ideia simples: a pescaria tem contexto, e esse contexto se perde. O
+        local, a lua, a maré, a isca, o horário, o tamanho do peixe — tudo fica na memória ou espalhado
+        em fotos e conversas.
+      </p>
+      <p>
+        O Fisga organiza esse contexto em um diário privado, com estatísticas, troféu e PDF. A Wiki
+        do Pescador completa o caminho: antes de registrar, você aprende sobre a espécie, a técnica,
+        a isca e as regras.
+      </p>
+
+      <h2>O que o Fisga faz hoje</h2>
+      <ul>
+        <li>Diário privado por conta, com acesso por link mágico e sem senha.</li>
+        <li>Pescarias com várias capturas, condições, fotos e observações.</li>
+        <li>Estatísticas do que mais funcionou no seu histórico.</li>
+        <li>Card de troféu quadrado e story, além do PDF da pescaria.</li>
+        <li>Links públicos por pescaria, sem abrir o restante do diário.</li>
+        <li>Wiki com espécies, técnicas, iscas, regiões, defeso, segurança e glossário.</li>
+      </ul>
+
+      <h2>Por que é grátis</h2>
+      <p>
+        O Fisga está em validação. O objetivo agora é aprender com quem pesca, melhorar o produto e
+        construir uma base de conteúdo útil. Se um dia houver cobrança, avisaremos com antecedência.
+      </p>
+
+      <h2>Nossa postura</h2>
+      <ul>
+        <li>Pesca responsável: defeso, tamanho mínimo e soltura.</li>
+        <li>Conteúdo com fontes e data de revisão.</li>
+        <li>Privacidade por padrão: o diário é seu; o link público é escolha sua.</li>
+        <li>Sem promessas mágicas: o Fisga é uma ferramenta, não substitui a experiência local.</li>
+      </ul>
+
+      <h2>Contato</h2>
+      <p>
+        Sugestões, correções e parcerias: <a href="mailto:acesso@abson.tech">acesso@abson.tech</a>.
+      </p>
+
+      <div class="wiki-cta">
+        <h2>Comece pelo diário ou pela wiki.</h2>
+        <p>Registre a próxima pescaria ou aprenda sobre a espécie que você quer pescar.</p>
+        <div class="wiki-lista-chips">
+          <a class="btn btn--pequeno" href="/registrar">Registrar pescaria</a>
+          <a class="btn btn--pequeno" href="/wiki">Explorar a wiki</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</WikiLayout>

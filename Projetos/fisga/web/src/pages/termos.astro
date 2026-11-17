@@ -1,0 +1,111 @@
+---
+import WikiLayout from '../layouts/WikiLayout.astro';
+import WikiBreadcrumbs from '../components/wiki/WikiBreadcrumbs.astro';
+
+export const prerender = true;
+---
+
+<WikiLayout
+  titulo="Termos de Uso — Fisga"
+  descricao="As regras de uso do Fisga, do diário e da Wiki do Pescador."
+>
+  <WikiBreadcrumbs itens={[
+    { nome: 'Fisga', href: '/' },
+    { nome: 'Termos' }
+  ]} />
+
+  <div class="wiki-legal" data-pagefind-body>
+    <span class="eyebrow">Legal</span>
+    <h1>Termos de Uso</h1>
+    <p class="wiki-artigo-resumo">Última atualização: 17 de novembro de 2026.</p>
+
+    <div class="wiki-prose">
+      <p>
+        Ao usar o Fisga, você concorda com estes termos. Se não concordar, não use o serviço.
+      </p>
+
+      <h2>1. O serviço</h2>
+      <p>
+        O Fisga é um diário de pesca que permite registrar pescarias, capturas, condições, fotos e
+        gerar estatísticas, card de troféu e PDF. A Wiki do Pescador é um conteúdo educativo sobre
+        espécies, técnicas, iscas, regiões e defeso.
+      </p>
+
+      <h2>2. Gratuidade durante a validação</h2>
+      <p>
+        O Fisga é gratuito durante a validação. Podemos introduzir planos no futuro, com aviso
+        prévio. Nada será cobrado sem sua autorização.
+      </p>
+
+      <h2>3. Conta e segurança</h2>
+      <ul>
+        <li>Você é responsável por manter o acesso ao seu e-mail seguro.</li>
+        <li>O link mágico é de uso único e pessoal; não compartilhe.</li>
+        <li>Você pode encerrar sessões e excluir a conta em <a href="/conta">Minha conta</a>.</li>
+      </ul>
+
+      <h2>4. Uso aceitável</h2>
+      <p>Você concorda em não:</p>
+      <ul>
+        <li>Usar o Fisga para atividades ilegais, incluindo pesca em desacordo com a legislação.</li>
+        <li>Enviar conteúdo ofensivo, fraudulento ou que viole direitos de terceiros.</li>
+        <li>Tentar acessar contas, dados ou sistemas de outras pessoas.</li>
+        <li>Sobrecarregar, automatizar abusivamente ou explorar falhas do serviço.</li>
+        <li>Publicar imagens de terceiros sem autorização.</li>
+      </ul>
+
+      <h2>5. Seu conteúdo</h2>
+      <p>
+        Você mantém os direitos sobre as fotos e os dados que registra. Ao usar o Fisga, você nos
+        concede uma licença limitada para armazenar, processar e exibir esse conteúdo com a finalidade
+        de operar o serviço — inclusive em links públicos que você decidir compartilhar. Não usamos
+        suas fotos em publicidade sem autorização.
+      </p>
+
+      <h2>6. Links públicos</h2>
+      <p>
+        Ao compartilhar uma pescaria, você entende que os dados daquele registro — local, data,
+        fotos, capturas e condições — ficam acessíveis a quem tiver o link. O restante do diário não
+        é exposto. Você é responsável pelo que decide compartilhar.
+      </p>
+
+      <h2>7. Wiki e regulamentação</h2>
+      <p>
+        A Wiki do Pescador é educativa e não substitui a legislação, a licença de pesca ou a
+        orientação do órgão ambiental. Tamanhos mínimos, defeso e regras mudam por estado e por
+        bacia. Confirme sempre na fonte oficial antes de pescar.
+      </p>
+
+      <h2>8. Disponibilidade</h2>
+      <p>
+        O Fisga é oferecido “como está”. Podemos alterar, suspender ou descontinuar funcionalidades.
+        Não garantimos disponibilidade ininterrupta, mas trabalhamos para manter o serviço estável e
+        avisar sobre mudanças relevantes.
+      </p>
+
+      <h2>9. Limitação de responsabilidade</h2>
+      <p>
+        Na medida permitida pela lei, o Fisga não se responsabiliza por danos indiretos, perda de
+        dados causada por fatores fora do nosso controle, decisões de pesca tomadas com base na wiki
+        ou conteúdo enviado por usuários. Faça backup das fotos que importam para você.
+      </p>
+
+      <h2>10. Propriedade intelectual</h2>
+      <p>
+        A marca, o layout, o código e os textos editoriais do Fisga pertencem aos seus responsáveis.
+        Você não pode copiar, revender ou redistribuir o serviço sem autorização.
+      </p>
+
+      <h2>11. Alterações</h2>
+      <p>
+        Podemos atualizar estes termos. A data no topo indica a versão vigente. O uso contínuo após
+        a atualização significa concordância com a nova versão.
+      </p>
+
+      <h2>12. Contato</h2>
+      <p>
+        Dúvidas sobre os termos: <a href="mailto:acesso@abson.tech">acesso@abson.tech</a>.
+      </p>
+    </div>
+  </div>
+</WikiLayout>

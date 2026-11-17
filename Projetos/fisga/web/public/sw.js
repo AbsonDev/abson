@@ -1,4 +1,4 @@
-const VERSAO = 'fisga-v1';
+const VERSAO = 'fisga-v2';
 const CASCA = [
   '/',
   '/entrar',
@@ -6,6 +6,8 @@ const CASCA = [
   '/registrar',
   '/precos',
   '/offline',
+  '/wiki',
+  '/wiki/buscar',
   '/manifest.webmanifest',
   '/favicon.svg',
   '/icon-192.png',
@@ -14,11 +16,24 @@ const CASCA = [
 ];
 
 self.addEventListener('install', (evento) => {
-  evento.waitUntil(
-    caches.open(VERSAO)
-      .then((cache) => cache.addAll(CASCA))
-      .then(() => self.skipWaiting())
-  );
+  evento.waitUntil((async () => {
+    const cache = await caches.open(VERSAO);
+    await cache.addAll(CASCA);
+
+    // A wiki é estática e feita para ser lida offline. O build gera a lista
+    // de páginas e arquivos do Pagefind; se falhar, o app continua online.
+    try {
+      const resposta = await fetch('/wiki-precache.json', { cache: 'no-cache' });
+      if (resposta.ok) {
+        const urls = await resposta.json();
+        await Promise.allSettled(urls.map((url) => cache.add(url)));
+      }
+    } catch {
+      // Sem precache da wiki nesta instalação.
+    }
+
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener('activate', (evento) => {

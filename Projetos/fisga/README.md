@@ -30,6 +30,8 @@ card de troféu compartilhável + PDF da pescaria.
 - **Prévia social (OG)** com a foto da captura para o link render bonito no WhatsApp/Facebook.
 - **PDF da pescaria** com condições, capturas, maior peixe, notas e QR.
 - **PWA instalável** com manifest, ícones, página offline e rascunho local do formulário.
+- **Wiki do Pescador** com 11 espécies, 6 técnicas, 6 iscas, 5 regiões, defeso, iniciantes,
+  segurança, glossário e fontes. Páginas estáticas, busca Pagefind e leitura offline.
 - Edição de pescaria preservando os IDs das capturas (links de troféu não quebram).
 - **Boas-vindas no primeiro acesso**, com nome e preferência de e-mail.
 - **Conta**: perfil, troca de e-mail via novo link, sessões, exportação e exclusão com confirmação.
@@ -48,6 +50,8 @@ card de troféu compartilhável + PDF da pescaria.
 | Mídia | upload local + arquivos estáticos com CORS |
 | Card do troféu | Canvas API no navegador (quadrado + story) |
 | PWA | manifest, service worker e página offline |
+| Conteúdo | Astro Content Collections (Markdown tipado) |
+| Busca | Pagefind (índice estático, funciona offline) |
 | Web | Astro 7 SSR + TypeScript + CSS próprio |
 | Infra local | Docker Compose |
 
@@ -141,6 +145,13 @@ criação/edição de pescaria, IDs de captura, validações, isolamento entre u
 expiração, uso único, sessão, logout, exclusão de conta e exportação. O fluxo completo também é
 validado com Playwright.
 
+O build da web gera as páginas da wiki e roda o Pagefind automaticamente:
+
+```bash
+cd web
+npm run build   # astro build + pagefind + precache offline
+```
+
 ## API
 
 | Método | Rota | Descrição |
@@ -184,6 +195,9 @@ anônimo no navegador. Sessões e links mágicos são armazenados apenas como ha
 ## Próximos passos
 
 - **Sincronização offline real**: fila de pescarias no IndexedDB e envio quando o sinal voltar.
+- **Newsletter mensal** com o resumo da wiki (“o que pescar neste mês”).
+- **Mais espécies, técnicas e regiões**, com revisão por pescadores locais.
+- **Validação de defeso/tamanho mínimo** no formulário por espécie e UF.
 - **Múltiplas fotos por captura** e escolha da capa.
 - **OG image dinâmica** renderizada no servidor, além da foto atual.
 - Previsão de maré/lua/clima com APIs e sugestão de janela.

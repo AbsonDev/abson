@@ -1,0 +1,64 @@
+---
+import { getCollection } from 'astro:content';
+import WikiLayout from '../../../layouts/WikiLayout.astro';
+import WikiBreadcrumbs from '../../../components/wiki/WikiBreadcrumbs.astro';
+import WikiCard from '../../../components/wiki/WikiCard.astro';
+import WikiCta from '../../../components/wiki/WikiCta.astro';
+import { jsonLdColecao } from '../../../lib/wiki';
+
+export const prerender = true;
+
+const locais = (await getCollection('locais')).sort((a, b) => a.data.ordem - b.data.ordem);
+const site = (import.meta.env.PUBLIC_SITE_URL ?? Astro.url.origin).replace(/\/$/, '');
+const jsonLd = jsonLdColecao({
+  titulo: 'Regiões de pesca — Wiki do Pescador',
+  descricao: 'Guia por estado e bioma: ambientes, espécies, melhores épocas e regras.',
+  url: `${site}/wiki/locais`,
+  itens: locais.map((local) => ({
+    nome: local.data.titulo,
+    url: `${site}/wiki/locais/${local.id}`
+  }))
+});
+---
+
+<WikiLayout
+  titulo="Regiões de pesca — Wiki do Pescador | Fisga"
+  descricao="Guia por estado e bioma: ambientes, espécies, melhores épocas e regras."
+  jsonLd={jsonLd}
+>
+  <WikiBreadcrumbs itens={[
+    { nome: 'Fisga', href: '/' },
+    { nome: 'Wiki', href: '/wiki' },
+    { nome: 'Regiões' }
+  ]} />
+
+  <div data-pagefind-body>
+    <header class="wiki-categoria-hero">
+      <span class="eyebrow">Wiki do Pescador</span>
+      <h1>Regiões</h1>
+      <p>
+        Cada região tem ambientes, espécies e calendários próprios. Estes guias ajudam a planejar a
+        viagem e a respeitar as regras locais.
+      </p>
+      <span class="wiki-contagem">{locais.length} guias publicados</span>
+    </header>
+
+    <div class="wiki-grid">
+      {locais.map((local) => (
+        <WikiCard
+          href={`/wiki/locais/${local.id}`}
+          titulo={local.data.titulo}
+          descricao={local.data.resumo}
+          tags={[local.data.uf, local.data.bioma]}
+          tipo="mapa"
+        />
+      ))}
+    </div>
+
+    <WikiCta
+      titulo="Planejando a próxima viagem?"
+      texto="Registre a pescaria e as condições de cada região. O diário ajuda a comparar o que funcionou."
+      rotulo="Registrar pescaria"
+    />
+  </div>
+</WikiLayout>

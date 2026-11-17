@@ -92,7 +92,7 @@ import Layout from '../layouts/Layout.astro';
         </article>
         <article class="argumento">
           <span class="argumento-numero">02</span>
-          <h3>O padrão desaparece</h3>
+          <h3>O contexto desaparece</h3>
           <p>
             Maré, lua, vento e água contam uma história. Sem registrar, é impossível descobrir o
             padrão dos seus melhores dias.
@@ -130,7 +130,7 @@ import Layout from '../layouts/Layout.astro';
         </article>
         <article class="passo">
           <span class="numero-passo">2</span>
-          <h3>Veja seus padrões</h3>
+          <h3>Veja seu resumo</h3>
           <p>
             Espécies, iscas, locais, soltos e recordes pessoais aparecem no seu diário privado.
           </p>
@@ -147,16 +147,47 @@ import Layout from '../layouts/Layout.astro';
     </div>
   </section>
 
+  <section class="secao secao--apertada">
+    <div class="container">
+      <div class="cabecalho-secao">
+        <div>
+          <span class="eyebrow">Wiki do Pescador</span>
+          <h2>Aprenda antes de arremessar.</h2>
+        </div>
+        <a class="link-seta" href="/wiki">Explorar a wiki</a>
+      </div>
+
+      <div class="grade-3">
+        <a class="argumento" href="/wiki/especies">
+          <span class="argumento-numero">01</span>
+          <h3>Espécies</h3>
+          <p>Identificação, habitat, iscas, técnicas e manejo — em linguagem de pescador.</p>
+        </a>
+        <a class="argumento" href="/wiki/defeso">
+          <span class="argumento-numero">02</span>
+          <h3>Defeso e tamanhos</h3>
+          <p>Aprenda a consultar as regras do seu estado antes de sair.</p>
+        </a>
+        <a class="argumento" href="/wiki/tecnicas">
+          <span class="argumento-numero">03</span>
+          <h3>Técnicas</h3>
+          <p>Arremesso, fly, baitcasting, fundo, corrico e praia, do básico ao avançado.</p>
+        </a>
+      </div>
+    </div>
+  </section>
+
   <section class="secao">
     <div class="container">
       <div class="cabecalho-secao">
         <div>
           <span class="eyebrow">Diário que vira estatística</span>
-          <h2>Seus melhores dias deixam de ser coincidência.</h2>
+          <h2>Seus melhores dias começam a fazer sentido.</h2>
+          <p style="margin-top: 8px; color: var(--tinta-suave); font-size: 0.66rem;">Números de exemplo.</p>
         </div>
         <p>
-          O Fisga cruza suas capturas para mostrar o que mais funciona: espécie, isca, local, peso e
-          quantos peixes voltaram para a água.
+          O Fisga organiza suas capturas para mostrar o que mais funcionou: espécie, isca, local,
+          peso e quantos peixes voltaram para a água.
         </p>
       </div>
 
@@ -169,7 +200,7 @@ import Layout from '../layouts/Layout.astro';
 
       <div class="grade-2" style="margin-top: 22px;">
         <article class="cartao">
-          <span class="selo selo--terracota">Seu padrão</span>
+          <span class="selo selo--terracota">Seu resumo</span>
           <h2 style="margin-top: 12px;">Tucunaré responde melhor ao Popper</h2>
           <p>Na represa, as capturas com isca artificial aconteceram no início da manhã, com água turva.</p>
           <div class="tabela">
@@ -242,7 +273,7 @@ import Layout from '../layouts/Layout.astro';
       <div class="grade-3">
         <article class="argumento"><span class="argumento-numero">01</span><h3>Diário liberado</h3><p>Quantas pescarias e capturas quiser, com fotos e condições.</p></article>
         <article class="argumento"><span class="argumento-numero">02</span><h3>Troféu e PDF</h3><p>Card compartilhável e relatório completo, sem marca d'água.</p></article>
-        <article class="argumento"><span class="argumento-numero">03</span><h3>Estatísticas reais</h3><p>Espécies, iscas, locais, recordes e taxa de soltura.</p></article>
+        <article class="argumento"><span class="argumento-numero">03</span><h3>Estatísticas do seu diário</h3><p>Espécies, iscas, locais, maior peixe e soltura.</p></article>
       </div>
 
       <div class="hero-acoes" style="margin-top: 28px;">
@@ -262,8 +293,9 @@ import Layout from '../layouts/Layout.astro';
         <details class="pergunta">
           <summary>Meu local fica público?</summary>
           <p>
-            Não. O diário é privado na sua conta. O link compartilhado de uma pescaria mostra apenas
-            aquele dia e o que você escolher; o restante do diário continua fora do link.
+            O diário completo é privado na sua conta. Quando você compartilha uma pescaria, aquele
+            link mostra os dados daquele dia — incluindo local, data, fotos e capturas. O restante do
+            diário continua fora do link. Você escolhe o que compartilhar.
           </p>
         </details>
         <details class="pergunta">
@@ -276,8 +308,8 @@ import Layout from '../layouts/Layout.astro';
         <details class="pergunta">
           <summary>O card do troféu é uma imagem?</summary>
           <p>
-            Sim. A página do troféu tem um botão para baixar a imagem quadrada pronta para redes
-            sociais, além do PDF da pescaria.
+            Sim. Você pode baixar o card quadrado 1080×1080, o story 1080×1920 ou o PDF da
+            pescaria.
           </p>
         </details>
         <details class="pergunta">

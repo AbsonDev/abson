@@ -1,0 +1,56 @@
+---
+import WikiLayout from '../layouts/WikiLayout.astro';
+import WikiBreadcrumbs from '../components/wiki/WikiBreadcrumbs.astro';
+
+export const prerender = true;
+---
+
+<WikiLayout
+  titulo="Contato — Fisga"
+  descricao="Fale com o Fisga sobre suporte, privacidade, correções na wiki ou parcerias."
+>
+  <WikiBreadcrumbs itens={[
+    { nome: 'Fisga', href: '/' },
+    { nome: 'Contato' }
+  ]} />
+
+  <div class="wiki-legal" data-pagefind-body>
+    <span class="eyebrow">Contato</span>
+    <h1>Fale com o Fisga.</h1>
+
+    <div class="wiki-prose">
+      <p>
+        O Fisga é um projeto pequeno e independente. A melhor forma de falar com a gente é por
+        e-mail. Respondemos em até dois dias úteis.
+      </p>
+
+      <h2>E-mail</h2>
+      <p>
+        <a href="mailto:acesso@abson.tech">acesso@abson.tech</a>
+      </p>
+
+      <h2>Assuntos</h2>
+      <ul>
+        <li><strong>Suporte:</strong> problema para entrar, salvar ou acessar o diário.</li>
+        <li><strong>Privacidade:</strong> acesso, correção, exportação ou exclusão de dados.</li>
+        <li><strong>Wiki:</strong> correções, sugestões de pauta e fontes.</li>
+        <li><strong>Parcerias:</strong> conteúdo, comunidades e projetos de pesca responsável.</li>
+      </ul>
+
+      <h2>Antes de escrever</h2>
+      <p>
+        Muitas dúvidas já estão respondidas na <a href="/wiki">Wiki do Pescador</a> e nas
+        <a href="/precos">páginas de preço e FAQ</a>. Para problemas de conta, informe o e-mail usado
+        no acesso e o que aconteceu.
+      </p>
+
+      <div class="wiki-callout">
+        <strong>Privacidade</strong>
+        <p>
+          Não envie senhas, tokens de acesso ou documentos por e-mail. Para excluir sua conta, use a
+          opção em <a href="/conta">Minha conta</a> ou solicite pelo e-mail acima.
+        </p>
+      </div>
+    </div>
+  </div>
+</WikiLayout>

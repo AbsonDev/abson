@@ -1,0 +1,16 @@
+---
+interface Props {
+  itens: Array<{ rotulo: string; valor: string }>;
+}
+
+const { itens } = Astro.props;
+---
+
+<div class="wiki-fatos">
+  {itens.map((item) => (
+    <div class="wiki-fato">
+      <span>{item.rotulo}</span>
+      <strong>{item.valor}</strong>
+    </div>
+  ))}
+</div>

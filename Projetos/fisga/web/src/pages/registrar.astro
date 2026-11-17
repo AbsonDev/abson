@@ -5,6 +5,7 @@ import { obterCatalogo } from '../lib/api';
 const catalogo = await obterCatalogo();
 const catalogoJson = JSON.stringify(catalogo).replace(/</g, '\\u003c');
 const hoje = new Date().toISOString().slice(0, 10);
+const retornoRegistro = `/registrar${Astro.url.search}`;
 ---
 
 <Layout
@@ -33,7 +34,7 @@ const hoje = new Date().toISOString().slice(0, 10);
         </p>
       </div>
       <div class="aviso-acesso-acoes">
-        <a class="btn btn--primario" href="/entrar?voltar=/registrar">Entrar com e-mail</a>
+        <a class="btn btn--primario" href={`/entrar?voltar=${encodeURIComponent(retornoRegistro)}`}>Entrar com e-mail</a>
         <a class="btn btn--contorno" href="/precos">É grátis</a>
       </div>
     </div>
@@ -280,6 +281,7 @@ const hoje = new Date().toISOString().slice(0, 10);
     const erroFormulario = document.getElementById('erro-form');
     const acessoRegistrar = document.getElementById('acesso-registrar');
     const chaveRascunho = 'fisga:rascunho:v1';
+    const especieParam = new URLSearchParams(window.location.search).get('especie');
     let estadoEdicao = null;
     let uploadsPendentes = 0;
     let autenticado = false;
@@ -307,13 +309,13 @@ const hoje = new Date().toISOString().slice(0, 10);
 
     function guardarRetorno() {
       try {
-        sessionStorage.setItem('fisga:retorno', '/registrar');
+        sessionStorage.setItem('fisga:retorno', urlDeRetorno());
       } catch {}
     }
 
     function irParaEntrar() {
       guardarRetorno();
-      window.location.href = '/entrar?voltar=/registrar';
+      window.location.href = `/entrar?voltar=${encodeURIComponent(urlDeRetorno())}`;
     }
 
     function bloquearFormulario() {
@@ -513,6 +515,15 @@ const hoje = new Date().toISOString().slice(0, 10);
       }
     }
 
+    function aplicarEspecieDaWiki() {
+      if (!especieParam) return;
+      const primeira = listaCapturas.querySelector('.captura-especie');
+      if (primeira) {
+        primeira.value = especieParam;
+        primeira.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    }
+
     function mostrarErro(mensagem) {
       erroFormulario.textContent = mensagem;
       erroFormulario.classList.toggle('visivel', Boolean(mensagem));
@@ -655,6 +666,7 @@ const hoje = new Date().toISOString().slice(0, 10);
       if (!autenticado) {
         bloquearFormulario();
         aplicarExemplo();
+        aplicarEspecieDaWiki();
         return;
       }
 
@@ -665,10 +677,12 @@ const hoje = new Date().toISOString().slice(0, 10);
       const rascunho = restaurarRascunho();
       if (rascunho) {
         preencher(rascunho);
+        aplicarEspecieDaWiki();
         return;
       }
 
       aplicarExemplo();
+      aplicarEspecieDaWiki();
     })();
   </script>
 </Layout>

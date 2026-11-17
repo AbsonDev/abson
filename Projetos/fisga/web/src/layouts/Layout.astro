@@ -10,6 +10,7 @@ interface Props {
   noindex?: boolean;
   imagem?: string;
   tipo?: string;
+  jsonLd?: string;
 }
 
 const {
@@ -18,7 +19,8 @@ const {
   bodyClass = '',
   noindex = false,
   imagem = '/og-fisga.png',
-  tipo = 'website'
+  tipo = 'website',
+  jsonLd = ''
 } = Astro.props;
 
 const site = (import.meta.env.PUBLIC_SITE_URL ?? Astro.url.origin).replace(/\/$/, '');
@@ -37,6 +39,7 @@ const imagemAbsoluta = /^https?:\/\//.test(imagem)
     <title>{titulo}</title>
     <meta name="description" content={descricao} />
     {noindex && <meta name="robots" content="noindex,nofollow" />}
+    {jsonLd && <script type="application/ld+json" set:html={jsonLd} />}
     <link rel="canonical" href={canonical} />
     <meta name="theme-color" content="#F8F4EA" />
     <meta property="og:type" content={tipo} />
@@ -63,14 +66,15 @@ const imagemAbsoluta = /^https?:\/\//.test(imagem)
     />
   </head>
   <body class={bodyClass} data-api={api}>
-    <a class="pular-conteudo" href="#conteudo">Pular para o conteúdo</a>
+    <a class="pular-conteudo" href="#conteudo" data-pagefind-ignore>Pular para o conteúdo</a>
 
-    <header class="topo">
+    <header class="topo" data-pagefind-ignore>
       <div class="container topo-interno">
         <Logo />
         <nav class="nav-principal" aria-label="Navegação principal">
           <a href="/#como-funciona" class="nav-publico">Como funciona</a>
           <a href="/precos" class="nav-publico">É grátis</a>
+          <a href="/wiki" class="nav-wiki">Wiki</a>
           <a href="/meu-diario" class="nav-privado oculto">Meu diário</a>
           <a href="/registrar" class="nav-privado oculto">Registrar</a>
           <a href="/registrar" class="btn btn--pequeno btn--primario nav-publico">Registrar pescaria</a>
@@ -83,7 +87,7 @@ const imagemAbsoluta = /^https?:\/\//.test(imagem)
       <slot />
     </main>
 
-    <footer class="rodape">
+    <footer class="rodape" data-pagefind-ignore>
       <div class="container rodape-grade">
         <div class="rodape-marca">
           <Logo compacto />
@@ -95,6 +99,7 @@ const imagemAbsoluta = /^https?:\/\//.test(imagem)
             <a href="/registrar">Registrar pescaria</a>
             <a href="/meu-diario">Meu diário</a>
             <a href="/conta">Minha conta</a>
+            <a href="/wiki">Wiki do Pescador</a>
             <a href="/precos">É grátis</a>
             <a href="/#como-funciona">Como funciona</a>
           </div>
@@ -111,6 +116,13 @@ const imagemAbsoluta = /^https?:\/\//.test(imagem)
             <a href="/entrar">Entrar</a>
             <a href="/meu-diario">Meu diário</a>
             <a href="/conta">Minha conta</a>
+          </div>
+          <div>
+            <span class="rodape-titulo">Fisga</span>
+            <a href="/sobre">Sobre</a>
+            <a href="/contato">Contato</a>
+            <a href="/privacidade">Privacidade</a>
+            <a href="/termos">Termos</a>
           </div>
         </div>
       </div>

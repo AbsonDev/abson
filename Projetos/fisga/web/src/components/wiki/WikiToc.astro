@@ -1,0 +1,25 @@
+---
+interface Props {
+  itens: Array<{ id: string; label: string }>;
+}
+
+const { itens } = Astro.props;
+---
+
+<nav class="wiki-toc" aria-label="Nesta página" data-pagefind-ignore>
+  <strong>Nesta página</strong>
+  <ol>
+    {itens.map((item) => (
+      <li><a href={`#${item.id}`}>{item.label}</a></li>
+    ))}
+  </ol>
+</nav>
+
+<details class="wiki-toc-mobile" data-pagefind-ignore>
+  <summary>Nesta página</summary>
+  <ol>
+    {itens.map((item) => (
+      <li><a href={`#${item.id}`}>{item.label}</a></li>
+    ))}
+  </ol>
+</details>

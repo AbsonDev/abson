@@ -1,0 +1,229 @@
+---
+import { getCollection } from 'astro:content';
+import WikiLayout from '../../layouts/WikiLayout.astro';
+import WikiBreadcrumbs from '../../components/wiki/WikiBreadcrumbs.astro';
+import WikiCard from '../../components/wiki/WikiCard.astro';
+import WikiCta from '../../components/wiki/WikiCta.astro';
+import PeixeIcone from '../../components/wiki/PeixeIcone.astro';
+import { CATEGORIAS, jsonLdColecao } from '../../lib/wiki';
+
+export const prerender = true;
+
+const especies = await getCollection('especies');
+const tecnicas = await getCollection('tecnicas');
+const iscas = await getCollection('iscas');
+const locais = await getCollection('locais');
+
+const contagens: Record<string, number> = {
+  especies: especies.length,
+  tecnicas: tecnicas.length,
+  iscas: iscas.length,
+  locais: locais.length
+};
+
+const guias = [
+  {
+    titulo: 'Defeso e tamanhos mínimos',
+    descricao: 'O que é, como consultar por estado e por que a regra muda.',
+    href: '/wiki/defeso',
+    icone: 'escudo'
+  },
+  {
+    titulo: 'Primeira pescaria',
+    descricao: 'Licença, equipamento básico, nós e o que levar.',
+    href: '/wiki/iniciantes',
+    icone: 'livro'
+  },
+  {
+    titulo: 'Segurança na água',
+    descricao: 'Praia, barco, sol, anzóis e primeiros socorros.',
+    href: '/wiki/seguranca',
+    icone: 'escudo'
+  },
+  {
+    titulo: 'Glossário',
+    descricao: 'Arremesso, defeso, popper, vazante e outros termos.',
+    href: '/wiki/glossario',
+    icone: 'livro'
+  }
+] as const;
+
+const destaques = especies
+  .filter((especie) => especie.data.destaque)
+  .sort((a, b) => a.data.ordem - b.data.ordem)
+  .slice(0, 3);
+
+const site = (import.meta.env.PUBLIC_SITE_URL ?? Astro.url.origin).replace(/\/$/, '');
+const jsonLd = jsonLdColecao({
+  titulo: 'Wiki do Pescador — Fisga',
+  descricao: 'Guia de espécies, técnicas, iscas, regiões e defeso para pescar melhor.',
+  url: `${site}/wiki`,
+  itens: [
+    ...CATEGORIAS.map((categoria) => ({
+      nome: categoria.titulo,
+      url: `${site}/wiki/${categoria.slug}`
+    })),
+    ...guias.map((guia) => ({ nome: guia.titulo, url: `${site}${guia.href}` }))
+  ]
+});
+
+const meses = [
+  'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+  'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'
+];
+const mesAtual = meses[new Date().getMonth()];
+---
+
+<WikiLayout
+  titulo="Wiki do Pescador — guia de espécies, técnicas e defeso | Fisga"
+  descricao="Aprenda sobre espécies, iscas, técnicas, regiões e defeso. Conteúdo para pescar melhor e cuidar da água."
+  jsonLd={jsonLd}
+>
+  <WikiBreadcrumbs itens={[
+    { nome: 'Fisga', href: '/' },
+    { nome: 'Wiki' }
+  ]} />
+
+  <div data-pagefind-body>
+    <section class="wiki-hero">
+      <div class="wiki-hero-grade">
+        <div class="wiki-hero-texto">
+          <span class="eyebrow">Wiki do Pescador</span>
+          <h1>Conhecimento para pescar <em>melhor.</em></h1>
+          <p class="wiki-hero-lead">
+            Espécies, iscas, técnicas, regiões e defeso explicados sem enrolação. Aprenda antes de
+            arremessar — e registre o que funcionou no seu diário.
+          </p>
+
+          <form class="wiki-busca" action="/wiki/buscar" method="get" role="search" data-pagefind-ignore>
+            <label class="sr-only" for="busca-wiki">Buscar na wiki</label>
+            <input
+              id="busca-wiki"
+              type="search"
+              name="q"
+              placeholder="Busque por espécie, isca, técnica ou UF"
+              autocomplete="off"
+            />
+            <button class="btn btn--pequeno btn--primario" type="submit">Buscar</button>
+          </form>
+
+          <span class="wiki-hero-selo"><span></span> Disponível offline no app</span>
+        </div>
+
+        <div class="wiki-hero-mapa" aria-hidden="true">
+          <div class="wiki-hero-mapa-conteudo">
+            <PeixeIcone tipo="peixe" />
+            <strong>Guia de campo</strong>
+            <span>{especies.length} espécies · {tecnicas.length} técnicas · {iscas.length} iscas · {locais.length} regiões</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="wiki-secao" aria-labelledby="categorias-titulo">
+      <div class="wiki-secao-cabecalho">
+        <div>
+          <span class="eyebrow">Explore por assunto</span>
+          <h2 id="categorias-titulo">Escolha o que quer aprender.</h2>
+        </div>
+        <a class="wiki-link-seta" href="/wiki/buscar">Buscar em tudo →</a>
+      </div>
+
+      <div class="wiki-categorias">
+        {CATEGORIAS.map((categoria) => (
+          <a class="wiki-categoria" href={`/wiki/${categoria.slug}`}>
+            <div class="wiki-categoria-topo">
+              <span class="wiki-categoria-icone"><PeixeIcone tipo={categoria.icone} /></span>
+              <span class="wiki-categoria-contagem">{contagens[categoria.slug]} guias</span>
+            </div>
+            <h3>{categoria.titulo}</h3>
+            <p>{categoria.descricao}</p>
+            <span class="wiki-categoria-seta">Explorar →</span>
+          </a>
+        ))}
+
+        {guias.map((guia) => (
+          <a class="wiki-categoria" href={guia.href}>
+            <div class="wiki-categoria-topo">
+              <span class="wiki-categoria-icone"><PeixeIcone tipo={guia.icone} /></span>
+              <span class="wiki-categoria-contagem">Guia</span>
+            </div>
+            <h3>{guia.titulo}</h3>
+            <p>{guia.descricao}</p>
+            <span class="wiki-categoria-seta">Ler guia →</span>
+          </a>
+        ))}
+      </div>
+    </section>
+
+    <section class="wiki-secao" aria-labelledby="comece-titulo">
+      <div class="wiki-secao-cabecalho">
+        <div>
+          <span class="eyebrow">Comece por aqui</span>
+          <h2 id="comece-titulo">Os guias mais procurados.</h2>
+        </div>
+      </div>
+
+      <div class="wiki-grid">
+        {destaques.map((especie) => (
+          <WikiCard
+            href={`/wiki/especies/${especie.id}`}
+            titulo={especie.data.titulo}
+            subtitulo={especie.data.nomeCientifico}
+            descricao={especie.data.resumo}
+            tags={especie.data.tags}
+            tipo="peixe"
+            destaque
+          />
+        ))}
+      </div>
+    </section>
+
+    <section class="wiki-secao" aria-labelledby="mes-titulo">
+      <div class="wiki-secao-cabecalho">
+        <div>
+          <span class="eyebrow">Ideias para {mesAtual}</span>
+          <h2 id="mes-titulo">O que pescar neste mês.</h2>
+        </div>
+        <a class="wiki-link-seta" href="/wiki/locais">Ver regiões →</a>
+      </div>
+
+      <div class="wiki-faixa">
+        <a class="wiki-faixa-item" href="/wiki/especies/tucunare">
+          <strong>Tucunaré em água quente</strong>
+          <span>Procure estrutura e sombra nas primeiras horas do dia.</span>
+        </a>
+        <a class="wiki-faixa-item" href="/wiki/especies/tainha">
+          <strong>Tainha na costa</strong>
+          <span>Acompanhe a migração e a movimentação da maré na sua região.</span>
+        </a>
+        <a class="wiki-faixa-item" href="/wiki/especies/robalo">
+          <strong>Robalo no estuário</strong>
+          <span>Água em movimento e estrutura são o ponto de partida.</span>
+        </a>
+      </div>
+    </section>
+
+    <section class="wiki-secao" aria-labelledby="defeso-titulo">
+      <div class="wiki-secao-cabecalho">
+        <div>
+          <span class="eyebrow">Pesca responsável</span>
+          <h2 id="defeso-titulo">Antes de sair, confira o defeso.</h2>
+        </div>
+        <a class="wiki-link-seta" href="/wiki/defeso">Abrir guia →</a>
+      </div>
+
+      <div class="wiki-aviso">
+        <strong>Regulamentação muda.</strong> Tamanhos mínimos, períodos de defeso e licenças variam
+        por estado e por bacia. O Fisga não substitui a legislação; confirme sempre na agência
+        ambiental da sua UF antes de pescar.
+      </div>
+    </section>
+
+    <WikiCta
+      titulo="Aprendeu algo novo? Registre a próxima captura."
+      texto="O diário do Fisga guarda local, condições, iscas, fotos e o troféu. É grátis por enquanto."
+      rotulo="Abrir meu diário"
+    />
+  </div>
+</WikiLayout>

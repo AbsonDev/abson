@@ -1,0 +1,24 @@
+---
+interface Props {
+  categoria: string;
+  titulo: string;
+  subtitulo?: string;
+  resumo: string;
+  tags?: string[];
+}
+
+const { categoria, titulo, subtitulo, resumo, tags = [] } = Astro.props;
+---
+
+<header class="wiki-artigo-cabecalho">
+  <span class="eyebrow">{categoria}</span>
+  <h1>{titulo}</h1>
+  {subtitulo && <p class="wiki-artigo-cientifico">{subtitulo}</p>}
+  <p class="wiki-artigo-resumo">{resumo}</p>
+
+  {tags.length > 0 && (
+    <div class="wiki-artigo-tags">
+      {tags.map((tag) => <span class="wiki-tag">{tag}</span>)}
+    </div>
+  )}
+</header>
