@@ -100,17 +100,25 @@ public static class AuthEndpoints
 
                 if (resultado.IsNotAllowed)
                 {
-                    Metricas.LoginFalhou("email_nao_confirmado");
+                    // PasswordSignInAsync devolve IsNotAllowed ANTES de verificar a senha
+                    // (o PreSignInCheck roda antes do CheckPasswordAsync). Verificamos a
+                    // senha aqui para só enviar um novo link quando as credenciais forem
+                    // realmente válidas — evita um "email-trigger" não autenticado (spam/
+                    // enumeração) em contas não confirmadas.
+                    if (await usuarios.CheckPasswordAsync(conta, entrada.Senha ?? string.Empty))
+                    {
+                        Metricas.LoginFalhou("email_nao_confirmado");
 
-                    // A senha está correta mas o e-mail não foi confirmado: gera um novo
-                    // link de confirmação e envia, para não deixar o usuário num beco sem
-                    // saída quando o link original expirou.
-                    var token = await usuarios.GenerateEmailConfirmationTokenAsync(conta);
-                    await emails.EnviarConfirmacaoAsync(conta.Email ?? email, conta.Id, token, ct);
+                        var token = await usuarios.GenerateEmailConfirmationTokenAsync(conta);
+                        await emails.EnviarConfirmacaoAsync(conta.Email ?? email, conta.Id, token, ct);
 
-                    return Results.Ok(new EntrarResponse(
-                        false,
-                        "Confirme seu e-mail para entrar. Enviamos um link de confirmação."));
+                        return Results.Ok(new EntrarResponse(
+                            false,
+                            "Confirme seu e-mail para entrar. Enviamos um link de confirmação."));
+                    }
+
+                    Metricas.LoginFalhou("credenciais_invalidas");
+                    return Results.Ok(new EntrarResponse(false, MensagemCredenciaisInvalidas));
                 }
 
                 Metricas.LoginFalhou("credenciais_invalidas");

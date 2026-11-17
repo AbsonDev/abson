@@ -135,6 +135,26 @@ public sealed class LoginSenhaTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Entrar_com_email_nao_confirmado_e_senha_errada_nao_envia_email()
+    {
+        var email = $"{Guid.NewGuid():N}@exemplo.com";
+        await CriarUsuarioAsync(email, confirmado: false);
+
+        var resposta = await _client.PostAsJsonAsync(
+            "/api/auth/entrar", new { email, senha = "senha-errada-999" });
+
+        Assert.Equal(HttpStatusCode.OK, resposta.StatusCode);
+
+        var corpo = await resposta.Content.ReadFromJsonAsync<EntrarResponse>();
+        Assert.False(corpo!.Autenticado);
+        Assert.Equal("E-mail ou senha incorretos.", corpo.Mensagem);
+
+        Assert.DoesNotContain(
+            EmailSenderFake.Enviados,
+            e => e.Destino == email && e.Assunto == "Confirme seu e-mail no Fisga");
+    }
+
+    [Fact]
     public async Task Entrar_com_senha_errada_incrementa_lockout()
     {
         var email = $"{Guid.NewGuid():N}@exemplo.com";
