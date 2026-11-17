@@ -189,7 +189,9 @@ nunca são publicados.
 
 ### Observabilidade
 
-- **Sentry** captura erros, logs e traces da API e do web (SSR + navegador).
+- **Sentry** captura erros, logs, traces e métricas da API e do web (SSR + navegador).
+- Métricas de negócio com tags de baixa cardinalidade: pescarias, capturas, locais, condições,
+  login, mídia e duração das rotas `/api`.
 - Dados sensíveis são removidos antes do envio: cookies, headers, corpo, e-mail, nome,
   coordenadas e query string de local.
 - **Session Replay** com texto, inputs e mídia mascarados/bloqueados; mapas e fotos do diário são

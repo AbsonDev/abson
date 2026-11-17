@@ -94,6 +94,7 @@ app.UseStaticFiles(new StaticFileOptions
         contexto.Context.Response.Headers.CacheControl = "public,max-age=31536000,immutable";
     }
 });
+app.UseMiddleware<MetricasDeRequisicaoMiddleware>();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseMiddleware<ProtecaoCsrfMiddleware>();
 app.UseMiddleware<SessaoMiddleware>();

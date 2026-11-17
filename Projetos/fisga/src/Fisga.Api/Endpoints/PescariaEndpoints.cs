@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using Fisga.Api.Contracts;
+using Fisga.Api.Observabilidade;
 using Fisga.Application.Abstractions;
 using Fisga.Application.Catalogo;
 using Fisga.Application.Documentos;
@@ -26,6 +27,7 @@ public static class PescariaEndpoints
             {
                 var usuarioId = http.ExigirUsuarioId();
                 var salva = await servico.CriarAsync(entrada, usuarioId, ct);
+                Metricas.PescariaCriada(entrada.Ambiente, entrada.Capturas);
                 var url = $"{web.Value.Url.TrimEnd('/')}/p/{salva.ShareToken}";
 
                 return Results.Created(
@@ -83,6 +85,7 @@ public static class PescariaEndpoints
             {
                 var usuarioId = http.ExigirUsuarioId();
                 var pescaria = await servico.AtualizarAsync(id, usuarioId, entrada, ct);
+                Metricas.PescariaAtualizada(entrada.Ambiente);
                 return Results.Ok(pescaria);
             })
             .RequireRateLimiting("escrita");
@@ -149,6 +152,7 @@ public static class PescariaEndpoints
 
                 await using var stream = arquivo.OpenReadStream();
                 var url = await midia.SalvarAsync(stream, arquivo.ContentType, ct);
+                Metricas.MidiaEnviada(arquivo.ContentType, arquivo.Length);
                 return Results.Ok(new MidiaResponse(url));
             })
             .RequireRateLimiting("midia");

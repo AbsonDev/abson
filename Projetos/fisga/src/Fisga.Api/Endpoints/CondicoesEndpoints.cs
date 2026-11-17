@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using Fisga.Api.Contracts;
+using Fisga.Api.Observabilidade;
 using Fisga.Application.Comparacao;
 using Fisga.Application.Condicoes;
 using Fisga.Application.Locais;
@@ -30,6 +32,7 @@ public static class CondicoesEndpoints
                     ? valor
                     : AmbienteDePesca.Outro;
 
+                var inicio = Stopwatch.GetTimestamp();
                 var condicoes = await servico.ObterAsync(
                     lat.Value,
                     lon.Value,
@@ -38,6 +41,10 @@ public static class CondicoesEndpoints
                     estado,
                     ambienteFinal,
                     ct);
+                Metricas.CondicoesConsultadas(
+                    ambienteFinal,
+                    "condicoes",
+                    Stopwatch.GetElapsedTime(inicio).TotalMilliseconds);
 
                 return Results.Ok(condicoes);
             })
@@ -68,6 +75,7 @@ public static class CondicoesEndpoints
                     ? valor
                     : AmbienteDePesca.Outro;
 
+                var inicio = Stopwatch.GetTimestamp();
                 var condicoes = await condicoesServico.ObterAsync(
                     lat.Value,
                     lon.Value,
@@ -76,6 +84,10 @@ public static class CondicoesEndpoints
                     estado,
                     ambienteFinal,
                     ct);
+                Metricas.CondicoesConsultadas(
+                    ambienteFinal,
+                    "comparar",
+                    Stopwatch.GetElapsedTime(inicio).TotalMilliseconds);
 
                 var lua = Enum.TryParse<FaseDaLua>(condicoes.Solunar.Fase, true, out var faseLua)
                     ? faseLua
@@ -141,6 +153,7 @@ public static class CondicoesEndpoints
             {
                 var usuarioId = http.ExigirUsuarioId();
                 var local = await servico.CriarAsync(entrada, usuarioId, ct);
+                Metricas.LocalSalvo(entrada.Ambiente);
                 return Results.Created($"/api/locais/{local.Id}", local);
             })
             .RequireRateLimiting("escrita");

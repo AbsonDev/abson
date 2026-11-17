@@ -1,4 +1,5 @@
 using Fisga.Api.Contracts;
+using Fisga.Api.Observabilidade;
 using Fisga.Application.Identidade;
 using Fisga.Domain.Common;
 using Fisga.Domain.Identidade;
@@ -16,6 +17,7 @@ public static class AuthEndpoints
                 CancellationToken ct) =>
             {
                 var resultado = await servico.SolicitarLinkAsync(entrada.Email, ct);
+                Metricas.LoginSolicitado();
                 var link = ambiente.IsDevelopment() && !string.IsNullOrWhiteSpace(resultado.Link)
                     ? resultado.Link
                     : null;
@@ -46,6 +48,7 @@ public static class AuthEndpoints
                         ct);
 
                     DefinirCookie(http, sessao.Token, sessao.ExpiraEm, opcoes);
+                    Metricas.LoginConfirmado(sessao.PrimeiroAcesso);
                     var destino = sessao.PrimeiroAcesso
                         ? "/boas-vindas?novo=1"
                         : "/entrar/confirmar?estado=ok";
@@ -53,6 +56,7 @@ public static class AuthEndpoints
                 }
                 catch (DomainException excecao)
                 {
+                    Metricas.LoginFalhou(excecao.Codigo);
                     return Results.Redirect($"{web}/entrar/confirmar?estado={Uri.EscapeDataString(excecao.Codigo)}");
                 }
             })
