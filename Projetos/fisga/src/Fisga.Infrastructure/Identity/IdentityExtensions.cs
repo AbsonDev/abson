@@ -47,9 +47,14 @@ public static class IdentityExtensions
 
             // E-mail único e normalizado.
             opcoes.User.RequireUniqueEmail = true;
+
+            // Token de reset usa provedor dedicado de 15 min (ResetPasswordTokenProvider);
+            // a confirmação de e-mail permanece no provedor "Default" (1 dia).
+            opcoes.Tokens.PasswordResetTokenProvider = "ResetPassword";
         })
             .AddEntityFrameworkStores<FisgaDbContext>()
-            .AddDefaultTokenProviders();
+            .AddDefaultTokenProviders()
+            .AddTokenProvider<ResetPasswordTokenProvider>("ResetPassword");
 
         // Auth:CookieSecure é a fonte única da política Secure do cookie da Identity:
         // true (produção) → Secure=Always; false (dev/teste) → Secure apenas sob HTTPS.
@@ -66,12 +71,6 @@ public static class IdentityExtensions
             opcoes.ExpireTimeSpan = TimeSpan.FromDays(30);
             opcoes.SlidingExpiration = true;
         });
-
-        // Token de reset de senha de uso único e validade curta (15 min). O provedor
-        // "Default" (DataProtectorTokenProvider) cobre o reset; a confirmação de e-mail
-        // usa o provedor "Email" (código de 6 dígitos) e não é afetada por esta opção.
-        services.Configure<DataProtectionTokenProviderOptions>(opcoes =>
-            opcoes.TokenLifespan = TimeSpan.FromMinutes(15));
 
         var clientId = configuration["Google:ClientId"];
         var clientSecret = configuration["Google:ClientSecret"];

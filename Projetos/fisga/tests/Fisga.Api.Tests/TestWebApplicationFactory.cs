@@ -57,6 +57,12 @@ public sealed class TestWebApplicationFactory : WebApplicationFactory<Program>
 
 internal sealed class EmailSenderFake : IEmailSender
 {
+    private static readonly System.Collections.Concurrent.ConcurrentQueue<EmailRegistrado> EnviadosQueue = new();
+
+    public static IReadOnlyList<EmailRegistrado> Enviados => EnviadosQueue.ToArray();
+
+    public static void Limpar() => EnviadosQueue.Clear();
+
     public Task EnviarLinkDeAcessoAsync(
         string destino,
         string? nome,
@@ -70,5 +76,11 @@ internal sealed class EmailSenderFake : IEmailSender
         string html,
         string texto,
         string? listUnsubscribeUrl = null,
-        CancellationToken ct = default) => Task.CompletedTask;
+        CancellationToken ct = default)
+    {
+        EnviadosQueue.Enqueue(new EmailRegistrado(destino, assunto, html, texto));
+        return Task.CompletedTask;
+    }
 }
+
+internal sealed record EmailRegistrado(string Destino, string Assunto, string Html, string Texto);

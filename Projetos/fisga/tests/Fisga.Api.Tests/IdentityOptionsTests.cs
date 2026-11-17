@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Fisga.Infrastructure.Identity;
 
 namespace Fisga.Api.Tests;
 
@@ -28,5 +29,22 @@ public sealed class IdentityOptionsTests(ApiTestFixture fixture)
 
         // Host de teste roda em Development, onde Auth:CookieSecure é false.
         Assert.Equal(CookieSecurePolicy.SameAsRequest, cookie.Cookie.SecurePolicy);
+    }
+
+    [Fact]
+    public void Reset_usa_provedor_curto_e_confirmacao_mantem_default()
+    {
+        var identity = _fixture.Factory.Services.GetRequiredService<IOptions<IdentityOptions>>().Value;
+
+        // Reset de senha usa o provedor dedicado "ResetPassword" (15 min)…
+        Assert.Equal("ResetPassword", identity.Tokens.PasswordResetTokenProvider);
+        // …e a confirmação de e-mail permanece no provedor "Default" (1 dia).
+        Assert.Equal(TokenOptions.DefaultProvider, identity.Tokens.EmailConfirmationTokenProvider);
+
+        var reset = _fixture.Factory.Services.GetRequiredService<IOptions<ResetPasswordTokenProviderOptions>>().Value;
+        Assert.Equal(TimeSpan.FromMinutes(15), reset.TokenLifespan);
+
+        var padrao = _fixture.Factory.Services.GetRequiredService<IOptions<DataProtectionTokenProviderOptions>>().Value;
+        Assert.Equal(TimeSpan.FromDays(1), padrao.TokenLifespan);
     }
 }

@@ -38,6 +38,7 @@ public sealed class LoginSenhaTests : IAsyncLifetime
     {
         await _db.Usuarios.ExecuteDeleteAsync();
         await _db.Users.ExecuteDeleteAsync();
+        EmailSenderFake.Limpar();
     }
 
     public Task DisposeAsync()
@@ -112,6 +113,25 @@ public sealed class LoginSenhaTests : IAsyncLifetime
 
         var conta = await _usuarios.FindByIdAsync(usuario.Id.ToString());
         Assert.False(conta!.EmailConfirmed);
+    }
+
+    [Fact]
+    public async Task Entrar_com_email_nao_confirmado_reenvia_link_de_confirmacao()
+    {
+        var email = $"{Guid.NewGuid():N}@exemplo.com";
+        await CriarUsuarioAsync(email, confirmado: false);
+
+        var resposta = await _client.PostAsJsonAsync(
+            "/api/auth/entrar", new { email, senha = Senha });
+
+        Assert.Equal(HttpStatusCode.OK, resposta.StatusCode);
+
+        var corpo = await resposta.Content.ReadFromJsonAsync<EntrarResponse>();
+        Assert.False(corpo!.Autenticado);
+
+        Assert.Contains(
+            EmailSenderFake.Enviados,
+            e => e.Destino == email && e.Assunto == "Confirme seu e-mail no Fisga");
     }
 
     [Fact]

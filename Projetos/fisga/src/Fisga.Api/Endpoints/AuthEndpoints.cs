@@ -66,6 +66,7 @@ public static class AuthEndpoints
                 EntrarRequest entrada,
                 SignInManager<ApplicationUser> signIn,
                 UserManager<ApplicationUser> usuarios,
+                EmailDeIdentidade emails,
                 CancellationToken ct) =>
             {
                 var email = (entrada.Email ?? string.Empty).Trim();
@@ -100,6 +101,13 @@ public static class AuthEndpoints
                 if (resultado.IsNotAllowed)
                 {
                     Metricas.LoginFalhou("email_nao_confirmado");
+
+                    // A senha está correta mas o e-mail não foi confirmado: gera um novo
+                    // link de confirmação e envia, para não deixar o usuário num beco sem
+                    // saída quando o link original expirou.
+                    var token = await usuarios.GenerateEmailConfirmationTokenAsync(conta);
+                    await emails.EnviarConfirmacaoAsync(conta.Email ?? email, conta.Id, token, ct);
+
                     return Results.Ok(new EntrarResponse(
                         false,
                         "Confirme seu e-mail para entrar. Enviamos um link de confirmação."));
