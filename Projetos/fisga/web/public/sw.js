@@ -1,4 +1,4 @@
-const VERSAO = 'fisga-v2';
+const VERSAO = 'fisga-v3';
 const CASCA = [
   '/',
   '/entrar',
@@ -60,7 +60,17 @@ self.addEventListener('fetch', (evento) => {
           caches.open(VERSAO).then((cache) => cache.put(evento.request, copia));
           return resposta;
         })
-        .catch(async () => (await caches.match(evento.request)) || caches.match('/offline'))
+        .catch(async () => {
+          const url = new URL(evento.request.url);
+          const comBarra = url.pathname.endsWith('/') ? url.pathname : `${url.pathname}/`;
+          const semBarra = comBarra.replace(/\/$/, '');
+          return (
+            (await caches.match(evento.request)) ||
+            (await caches.match(new URL(comBarra, url.origin).toString())) ||
+            (await caches.match(new URL(semBarra, url.origin).toString())) ||
+            caches.match('/offline')
+          );
+        })
     );
     return;
   }
