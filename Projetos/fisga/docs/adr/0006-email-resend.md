@@ -10,8 +10,9 @@ credenciais ou domínio verificado. Também queremos evitar acoplar o domínio a
 ## Decisão
 
 - A aplicação define a porta `IEmailSender`.
-- Em desenvolvimento, `ConsoleEmailSender` imprime o link no log e a API o devolve em
-  `linkDesenvolvimento` para o botão de teste na tela `/entrar`.
+- Em desenvolvimento, `ConsoleEmailSender` loga apenas metadados seguros (domínio, assunto,
+  expiração) — nunca o link nem o token — e a API devolve o link em `linkDesenvolvimento`
+  para o botão de teste na tela `/entrar`.
 - Em produção, `ResendEmailSender` chama `POST https://api.resend.com/emails` com HTML e texto.
 - O template HTML é da aplicação (`ModeloDeEmailDeAcesso`), com a identidade do Fisga.
 - A API key fica apenas em variável de ambiente do servidor; nunca no repositório.

@@ -278,7 +278,8 @@ captura. Isso evita um pipeline de imagem no servidor e mantém a personalizaç�
 ## E-mail
 
 - Porta `IEmailSender` na aplicação.
-- `ConsoleEmailSender` em desenvolvimento: imprime o link no log.
+- `ConsoleEmailSender` em desenvolvimento: loga apenas metadados seguros (domínio, assunto,
+  expiração), nunca o link/token; o link é devolvido pela API em `linkDesenvolvimento`.
 - `ResendEmailSender` em produção: usa a API do Resend com HTML e texto.
 - O template é código da aplicação (`ModeloDeEmailDeAcesso`), não do provedor.
 - Sem domínio verificado no Resend, só o e-mail dono da conta recebe. O domínio `abson.tech` precisa
