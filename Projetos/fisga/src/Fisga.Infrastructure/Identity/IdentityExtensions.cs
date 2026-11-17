@@ -27,8 +27,9 @@ public static class IdentityExtensions
 
         services.AddIdentity<ApplicationUser, IdentityRole<Guid>>(opcoes =>
         {
-            // Senha: mínimo 10, máximo 128 (limite do Identity), sem exigir
-            // maiúscula, número ou símbolo.
+            // Senha: mínimo 10 configurado na Identity (RequiredLength). O máximo de
+            // 128 não é configurável aqui — PasswordOptions não tem limite máximo — e
+            // será validado no endpoint/validator (Task 3/12), não pela Identity.
             opcoes.Password.RequiredLength = 10;
             opcoes.Password.RequireDigit = false;
             opcoes.Password.RequireLowercase = false;
