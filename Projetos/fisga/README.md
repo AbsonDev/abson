@@ -187,6 +187,17 @@ nunca são publicados.
 | Testes | xUnit + verificação de tipos do Astro + Playwright |
 | Infra local | Docker Compose |
 
+### Observabilidade
+
+- **Sentry** captura erros, logs e traces da API e do web (SSR + navegador).
+- Dados sensíveis são removidos antes do envio: cookies, headers, corpo, e-mail, nome,
+  coordenadas e query string de local.
+- **Sem Session Replay** e sem analytics de navegação; o diário continua privado.
+- Source maps do web são enviados no build quando `SENTRY_AUTH_TOKEN` está presente; sem ele,
+  stack traces de produção ficam minificados.
+- `/health` verifica o processo; `/ready` verifica o banco. O Docker reinicia containers doentes.
+- Logs continuam disponíveis no Coolify para investigação imediata.
+
 ---
 
 ## Arquitetura
