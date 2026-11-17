@@ -8,6 +8,7 @@ export const GET: APIRoute = async ({ site }) => {
     '/',
     '/precos',
     '/registrar',
+    '/condicoes',
     '/wiki',
     '/wiki/especies',
     '/wiki/tecnicas',

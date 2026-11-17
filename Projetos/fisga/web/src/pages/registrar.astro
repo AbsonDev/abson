@@ -50,6 +50,14 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
     <form id="pescaria-form" class="calc-form" novalidate>
       <div id="erro-form" class="erro-caixa" role="alert"></div>
 
+      <div id="condicoes-aplicadas" class="condicoes-aplicadas oculto" role="status">
+        <div>
+          <span class="selo selo--terracota">Condições aplicadas</span>
+          <p id="condicoes-texto"></p>
+        </div>
+        <button id="ocultar-condicoes" class="btn btn--pequeno btn--contorno" type="button">Ocultar</button>
+      </div>
+
       <datalist id="lista-especies">
         {(catalogo?.especies ?? []).map((especie) => <option value={especie}></option>)}
       </datalist>
@@ -591,6 +599,88 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       atualizarContador();
     }
 
+    function periodoDeAgora() {
+      const hora = new Date().getHours();
+      if (hora < 6) return 'Madrugada';
+      if (hora < 12) return 'Manha';
+      if (hora < 18) return 'Tarde';
+      return 'Noite';
+    }
+
+    function climaDe(tempo) {
+      if (tempo.chuvaProbabilidade >= 60) return 'Chuva';
+      if (tempo.ventoKmh >= 25) return 'Vento';
+      if (tempo.chuvaProbabilidade >= 30) return 'Nublado';
+      return 'Sol';
+    }
+
+    async function aplicarCondicoesDaUrl() {
+      const params = new URLSearchParams(window.location.search);
+      if (!params.get('lat') || !params.get('lon')) return false;
+
+      try {
+        const resposta = await fetch(`${API}/api/condicoes?${params.toString()}`);
+        if (!resposta.ok) return false;
+        const condicoes = await resposta.json();
+
+        const agora = new Date();
+        let mare = 'NaoSeAplica';
+        if (condicoes.temMare && condicoes.mare) {
+          mare = condicoes.mare.estado === 'subindo'
+            ? 'Enchente'
+            : condicoes.mare.estado === 'descendo'
+              ? 'Vazante'
+              : 'Cheia';
+          const proximo = condicoes.mare.proximoEvento;
+          if (proximo) {
+            const diferenca = (new Date(proximo.hora).getTime() - agora.getTime()) / 3600000;
+            if (diferenca >= 0 && diferenca <= 1) {
+              mare = proximo.tipo === 'Cheia' ? 'Cheia' : 'Seca';
+            }
+          }
+        }
+
+        preencher({
+          local: params.get('nome') || condicoes.local.nome,
+          cidade: params.get('cidade') || condicoes.local.cidade || '',
+          estado: params.get('estado') || condicoes.local.estado || '',
+          ambiente: params.get('ambiente') || condicoes.local.ambiente || 'Outro',
+          data: dataHojeLocal(),
+          periodo: periodoDeAgora(),
+          mare,
+          lua: condicoes.solunar.fase || 'NaoInformada',
+          clima: climaDe(condicoes.tempo),
+          clarezaDaAgua: 'NaoInformada',
+          privacidadeDoLocal: 'Exato',
+          capturas: []
+        });
+
+        const banner = document.getElementById('condicoes-aplicadas');
+        const texto = document.getElementById('condicoes-texto');
+        if (banner && texto) {
+          const atualizado = new Intl.DateTimeFormat('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+          }).format(new Date(condicoes.atualizadoEm));
+          const mareTexto = condicoes.temMare
+            ? mare === 'Enchente'
+              ? 'maré enchendo'
+              : mare === 'Vazante'
+                ? 'maré vazando'
+                : 'maré parada'
+            : 'sem maré';
+          texto.textContent = `${condicoes.local.nome} · ${atualizado} · ${mareTexto} · ${condicoes.solunar.faseNome.toLowerCase()} · vento ${Math.round(condicoes.tempo.ventoKmh)} km/h`;
+          banner.classList.remove('oculto');
+        }
+
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
     function dataHojeLocal() {
       const agora = new Date();
       const local = new Date(agora.getTime() - agora.getTimezoneOffset() * 60000);
@@ -675,6 +765,10 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       }
     }
 
+    document.getElementById('ocultar-condicoes')?.addEventListener('click', () => {
+      document.getElementById('condicoes-aplicadas')?.classList.add('oculto');
+    });
+
     document.getElementById('adicionar-captura').addEventListener('click', () => {
       criarLinhaCaptura();
       listaCapturas.lastElementChild?.querySelector('.captura-especie')?.focus();
@@ -757,7 +851,8 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
 
       if (!autenticado) {
         bloquearFormulario();
-        aplicarExemplo();
+        const aplicouCondicoes = await aplicarCondicoesDaUrl();
+        if (!aplicouCondicoes) aplicarExemplo();
         aplicarEspecieDaWiki();
         return;
       }
@@ -773,13 +868,39 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         return;
       }
 
-      aplicarExemplo();
+      const aplicouCondicoes = await aplicarCondicoesDaUrl();
+      if (!aplicouCondicoes) aplicarExemplo();
       aplicarEspecieDaWiki();
     })();
   </script>
 </Layout>
 
 <style>
+  .condicoes-aplicadas {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+    padding: 16px 18px;
+    border: 1px solid var(--terracota);
+    border-radius: 12px;
+    background: var(--terracota-clara);
+  }
+
+  .condicoes-aplicadas p {
+    margin-top: 4px;
+    color: var(--terracota-escura);
+    font-size: 0.76rem;
+  }
+
+  @media (max-width: 640px) {
+    .condicoes-aplicadas {
+      align-items: start;
+      flex-direction: column;
+    }
+  }
+
   .aviso-acesso {
     display: flex;
     align-items: center;

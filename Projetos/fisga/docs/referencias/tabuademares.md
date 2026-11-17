@@ -122,3 +122,16 @@ para “maré aproximada”, insuficiente para vender precisão.
 - Não testamos o app Nautide nem o fluxo de assinatura.
 - A comparação cobre um porto e três dias; precisa de validação em mais portos e datas.
 - O site muda com frequência; este documento vale para a data acima.
+
+## Decisão implementada (17/11/2026)
+
+Para não travar o Sprint 2, a primeira versão usa apenas fontes gratuitas:
+
+- **Open-Meteo** para tempo, vento, chuva, pressão, ondas e nível do mar (`sea_level_height_msl`).
+- **MET Norway** para nascer, pôr, trânsito e anti-trânsito da lua e ângulo de fase. O teste de
+  Aracaju retornou 46% de iluminação, trânsito às 17:47 e janelas solunares 4:25–6:25 e 16:47–18:47,
+  praticamente iguais às da referência.
+- A maré continua **aproximada**, com datum do nível médio do mar e aviso explícito. A comparação
+  com a tábua oficial segue valendo: o modelo chega ~1 h adiantado em Aracaju.
+- A tábua oficial do CHM para os 44 portos fica para a próxima fase, com importação anual,
+  atribuição e validação. Nada de scraping do tabuademares.com.

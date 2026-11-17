@@ -150,3 +150,118 @@ export interface Diario {
   iscasPorEspecie: Array<{ especie: string; isca: string; capturas: number }>;
   pescarias: PescariaResumo[];
 }
+
+export interface LocalSalvo {
+  id: string;
+  nome: string;
+  cidade: string | null;
+  estado: string | null;
+  latitude: number;
+  longitude: number;
+  ambiente: string;
+  padrao: boolean;
+  criadoEm: string;
+}
+
+export interface ResultadoDeBusca {
+  nome: string;
+  cidade: string | null;
+  estado: string | null;
+  latitude: number;
+  longitude: number;
+  pais: string | null;
+}
+
+export interface Condicoes {
+  local: {
+    nome: string;
+    cidade: string | null;
+    estado: string | null;
+    latitude: number;
+    longitude: number;
+    ambiente: string;
+  };
+  atualizadoEm: string;
+  fuso: string;
+  fonte: string;
+  temMare: boolean;
+  mareAproximada: boolean;
+  aviso: string | null;
+  agora: {
+    resumo: string;
+    mareEstado: string | null;
+    proximoEvento: string | null;
+    proximoEventoEm: string | null;
+  };
+  melhorJanela: {
+    inicio: string;
+    fim: string;
+    nota: number;
+    forca: string;
+    motivos: string[];
+  } | null;
+  dias: Array<{
+    data: string;
+    nota: number;
+    forca: string;
+    melhorInicio: string | null;
+    melhorFim: string | null;
+    resumo: string;
+    nascerDoSol: string;
+    porDoSol: string;
+  }>;
+  mare: {
+    estado: string;
+    datum: string;
+    proximoEvento: {
+      tipo: string;
+      hora: string;
+      alturaM: number;
+      emHoras: number | null;
+    } | null;
+    eventos: Array<{
+      tipo: string;
+      hora: string;
+      alturaM: number;
+      emHoras: number | null;
+    }>;
+    curva: Array<{ hora: string; alturaM: number }>;
+  } | null;
+  solunar: {
+    fase: string;
+    faseNome: string;
+    iluminacao: number;
+    idadeDias: number;
+    periodos: Array<{
+      tipo: string;
+      inicio: string;
+      fim: string;
+      motivo: string;
+      atividade: string;
+    }>;
+  };
+  tempo: {
+    ventoKmh: number;
+    rajadaKmh: number;
+    direcaoGraus: number;
+    direcao: string;
+    chuvaProbabilidade: number;
+    temperaturaC: number;
+    sensacaoC: number;
+    pressaoHpa: number;
+    pressaoTendencia: string;
+    temperaturaDaAguaC: number | null;
+    ondaAlturaM: number | null;
+    ondaPeriodoS: number | null;
+  };
+}
+
+export interface Comparacao {
+  temDados: boolean;
+  titulo: string;
+  detalhe: string;
+  pescariaId: string | null;
+  shareToken: string | null;
+  fatores: string[];
+  pescariasConsideradas: number;
+}

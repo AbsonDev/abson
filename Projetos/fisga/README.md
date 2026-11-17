@@ -37,6 +37,14 @@ card de troféu compartilhável + PDF da pescaria.
   segurança, glossário e fontes. Páginas estáticas, busca Pagefind e leitura offline.
 - **Newsletter mensal** personalizada: estatísticas do mês, leituras da wiki, lembrete de defeso e
   descadastro assinado.
+- **Condições automáticas** por local: maré aproximada, vento, chuva, pressão, lua e janela de
+  pesca. Consulta pública, sem login.
+- **Locais salvos**: até 5 por conta, com um padrão que abre primeiro e pré-preenche o registro.
+- **Janela de pesca explicável**: nota de 1–5 com os motivos (solunar, maré, vento, chuva e luz do
+  dia), em vez de um número mágico.
+- **Comparação com o histórico**: encontra um dia parecido usando lua, maré, clima e período; só
+  mostra padrão quando há pelo menos 3 pescarias com captura.
+- **Registro pré-preenchido**: local, data, período, maré, lua e clima entram a partir das condições.
 - Edição de pescaria preservando os IDs das capturas (links de troféu não quebram).
 - **Boas-vindas no primeiro acesso**, com nome e preferência de e-mail.
 - **Conta**: perfil, troca de e-mail via novo link, sessões, exportação e exclusão com confirmação.
@@ -52,6 +60,7 @@ card de troféu compartilhável + PDF da pescaria.
 | Autenticação | Link mágico + sessão em cookie; tokens com hash SHA-256 |
 | E-mail | Resend (produção) e sender de console (desenvolvimento) |
 | PDF | QuestPDF + QRCoder |
+| Dados ambientais | Open-Meteo (tempo, ondas e nível do mar) + MET Norway (lua) |
 | Mídia | upload local + arquivos estáticos com CORS |
 | Card do troféu | Canvas API no navegador (quadrado + story) |
 | PWA | manifest, service worker e página offline |
@@ -133,6 +142,8 @@ docker compose up --build
 | `Newsletter__AdminToken` | token do endpoint administrativo de envio |
 | `Newsletter__Secret` | segredo HMAC dos links de descadastro |
 | `Newsletter__MaximoPorEnvio` | limite de destinatários por execução |
+| `Condicoes__Fuso` | fuso das condições (padrão `America/Sao_Paulo`) |
+| `Condicoes__CacheMinutos` | validade do cache de condições (padrão 20) |
 | `Auth__LinkBaseUrl` | URL pública da API usada no link mágico |
 | `Auth__WebUrl` | URL pública do site para redirecionar após confirmar |
 | `Auth__CookieSecure` | `true` em produção (HTTPS) |
@@ -149,10 +160,11 @@ dotnet test
 cd web && npm run check
 ```
 
-Atualmente: **41 testes de backend** (domínio + aplicação) e checagem de tipos do Astro. Cobrem
-criação/edição de pescaria, IDs de captura, validações, isolamento entre usuários, link mágico,
-expiração, uso único, sessão, logout, exclusão de conta e exportação. O fluxo completo também é
-validado com Playwright.
+Atualmente: **60 testes de backend** (19 de domínio + 41 de aplicação) e checagem de tipos do
+Astro. Cobrem criação/edição de pescaria, IDs de captura, validações, isolamento entre usuários,
+link mágico, expiração, uso único, sessão, logout, exclusão de conta, exportação, locais salvos,
+condições, lua/solunar e comparação com o histórico. O fluxo completo também é validado com
+Playwright.
 
 O build da web gera as páginas da wiki e roda o Pagefind automaticamente:
 
@@ -186,6 +198,14 @@ npm run build   # astro build + pagefind + precache offline
 | `PUT` | `/api/pescarias/{id}` | edita; exige dono |
 | `GET` | `/api/pescarias/{shareToken}/pdf` | PDF da pescaria (público) |
 | `GET` | `/api/diario` | diário + estatísticas; exige sessão |
+| `GET` | `/api/condicoes?lat=&lon=` | condições públicas, maré aproximada e janela |
+| `GET` | `/api/condicoes/comparar?lat=&lon=` | dia parecido com o histórico; exige sessão |
+| `GET` | `/api/locais` | locais salvos; exige sessão |
+| `POST` | `/api/locais` | cria local (máximo 5); exige sessão |
+| `PUT` | `/api/locais/{id}` | edita local; exige dono |
+| `POST` | `/api/locais/{id}/padrao` | define o local padrão |
+| `DELETE` | `/api/locais/{id}` | exclui local |
+| `GET` | `/api/locais/buscar?q=` | busca cidade/praia (geocodificação) |
 | `GET` | `/health`, `/ready` | saúde/readiness |
 
 Cada pescaria tem `shareToken` público. O acesso ao diário é pela conta; não existe mais token
@@ -201,16 +221,21 @@ anônimo no navegador. Sessões e links mágicos são armazenados apenas como ha
 - Sessões duram 30 dias e podem ser encerradas no dispositivo ou em todos.
 - Fotos são reencodadas no navegador antes do upload, o que remove metadados EXIF do arquivo.
 - O local da pescaria aparece no link público daquela pescaria; o restante do diário não.
+- Locais salvos são privados. As condições públicas usam apenas as coordenadas da URL e não expõem
+  a conta de quem consulta.
+- A maré é uma **aproximação por modelo global** e é rotulada como tal. Não serve para navegação.
 - O card do troféu é gerado localmente no navegador; o Fisga não publica em rede social.
 - Exportação JSON e exclusão de conta (LGPD) já estão disponíveis em `/conta`.
-- Identificação de espécie, mapa de locais, maré automática e comunidade ficam para as próximas
-  fases.
+- Identificação de espécie, mapa de locais, dados oficiais do CHM e comunidade ficam para as
+  próximas fases.
 
 ## Próximos passos
 
 - **Sincronização offline real**: fila de pescarias no IndexedDB e envio quando o sinal voltar.
 - **Mais espécies, técnicas e regiões**, com revisão por pescadores locais.
 - **Validação de defeso/tamanho mínimo** no formulário por espécie e UF.
+- **Maré oficial do CHM** para os 44 portos, com importação anual e atribuição.
+- **Identificação de espécie por foto**, com confirmação humana e link para a wiki.
 - **Múltiplas fotos por captura** e escolha da capa.
 - **OG image dinâmica** renderizada no servidor, além da foto atual.
 - Previsão de maré/lua/clima com APIs e sugestão de janela.

@@ -1,7 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
 using Fisga.Application.Catalogo;
+using Fisga.Application.Comparacao;
+using Fisga.Application.Condicoes;
 using Fisga.Application.Documentos;
 using Fisga.Application.Identidade;
+using Fisga.Application.Locais;
 using Fisga.Application.Newsletter;
 using Fisga.Application.Pescarias;
 
@@ -18,6 +21,9 @@ public static class DependencyInjection
         services.AddScoped<ServicoDeAutenticacao>();
         services.AddScoped<ServicoDeConta>();
         services.AddScoped<ServicoDeNewsletter>();
+        services.AddScoped<ServicoDeLocais>();
+        services.AddScoped<ServicoDeCondicoes>();
+        services.AddScoped<ServicoDeComparacao>();
         return services;
     }
 }

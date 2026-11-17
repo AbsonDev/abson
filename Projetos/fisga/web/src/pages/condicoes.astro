@@ -1,0 +1,1748 @@
+---
+export const prerender = false;
+
+import Layout from '../layouts/Layout.astro';
+import { apiBase } from '../lib/api';
+import type { Comparacao, Condicoes, LocalSalvo } from '../lib/tipos';
+
+const params = Astro.url.searchParams;
+const cookie = Astro.request.headers.get('cookie') ?? '';
+
+type Resposta<T> = { ok: boolean; status: number; dados: T | null };
+
+async function chamar<T>(caminho: string): Promise<Resposta<T>> {
+  try {
+    const resposta = await fetch(`${apiBase}${caminho}`, {
+      headers: cookie ? { cookie } : {}
+    });
+
+    if (!resposta.ok) {
+      return { ok: false, status: resposta.status, dados: null };
+    }
+
+    return { ok: true, status: resposta.status, dados: (await resposta.json()) as T };
+  } catch {
+    return { ok: false, status: 0, dados: null };
+  }
+}
+
+let autenticado = false;
+let locais: LocalSalvo[] = [];
+
+if (cookie) {
+  const resposta = await chamar<LocalSalvo[]>('/api/locais');
+  if (resposta.ok && resposta.dados) {
+    autenticado = true;
+    locais = resposta.dados;
+  }
+}
+
+const temCoordenadas = params.has('lat') && params.has('lon');
+let latitude = temCoordenadas ? Number(params.get('lat')) : Number.NaN;
+let longitude = temCoordenadas ? Number(params.get('lon')) : Number.NaN;
+let nome = params.get('nome')?.trim() ?? '';
+let cidade = params.get('cidade')?.trim() ?? '';
+let estado = params.get('estado')?.trim() ?? '';
+let ambiente = params.get('ambiente')?.trim() || 'Outro';
+
+const localPadrao = locais.find((local) => local.padrao) ?? locais[0] ?? null;
+const usandoPadrao = !temCoordenadas && localPadrao !== null;
+
+if (usandoPadrao && localPadrao) {
+  latitude = localPadrao.latitude;
+  longitude = localPadrao.longitude;
+  nome = localPadrao.nome;
+  cidade = localPadrao.cidade ?? '';
+  estado = localPadrao.estado ?? '';
+  ambiente = localPadrao.ambiente;
+}
+
+const coordenadasValidas =
+  Number.isFinite(latitude) &&
+  Number.isFinite(longitude) &&
+  latitude >= -90 &&
+  latitude <= 90 &&
+  longitude >= -180 &&
+  longitude <= 180;
+
+let condicoes: Condicoes | null = null;
+let comparacao: Comparacao | null = null;
+let erroCondicoes = '';
+const consulta = new URLSearchParams({
+  lat: String(latitude),
+  lon: String(longitude),
+  nome: nome || 'Local',
+  cidade,
+  estado,
+  ambiente
+});
+
+if (coordenadasValidas) {
+  const resposta = await chamar<Condicoes>(`/api/condicoes?${consulta.toString()}`);
+  if (resposta.ok && resposta.dados) {
+    condicoes = resposta.dados;
+    nome = condicoes.local.nome;
+    cidade = condicoes.local.cidade ?? '';
+    estado = condicoes.local.estado ?? '';
+    ambiente = condicoes.local.ambiente;
+  } else {
+    erroCondicoes = 'Não conseguimos carregar as condições deste local agora. Tente de novo em instantes.';
+  }
+
+  if (autenticado && condicoes) {
+    const respostaComparacao = await chamar<Comparacao>(`/api/condicoes/comparar?${consulta.toString()}`);
+    if (respostaComparacao.ok) {
+      comparacao = respostaComparacao.dados;
+    }
+  }
+}
+
+const localAtual = condicoes?.local ?? {
+  nome: nome || 'Seu local',
+  cidade: cidade || null,
+  estado: estado || null,
+  latitude,
+  longitude,
+  ambiente
+};
+
+const queryAtual = new URLSearchParams({
+  lat: String(localAtual.latitude),
+  lon: String(localAtual.longitude),
+  nome: localAtual.nome,
+  cidade: localAtual.cidade ?? '',
+  estado: localAtual.estado ?? '',
+  ambiente: localAtual.ambiente
+});
+
+const urlRegistrar = `/registrar?${queryAtual.toString()}`;
+
+const titulo = condicoes
+  ? `Condições de pesca em ${condicoes.local.nome} — Fisga`
+  : 'Condições de pesca: maré, vento e janela — Fisga';
+const descricao = condicoes
+  ? `Maré, vento, chuva, lua e janela de pesca em ${condicoes.local.nome}. Veja os próximos sete dias e registre a pescaria já preenchida.`
+  : 'Consulte maré, vento, chuva, lua e a janela de pesca do seu local. Sem cadastro para consultar; com conta para salvar locais e comparar com o seu histórico.';
+
+const jsonLd = JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  name: titulo,
+  description: descricao,
+  inLanguage: 'pt-BR',
+  about: condicoes
+    ? {
+        '@type': 'Place',
+        name: condicoes.local.nome,
+        geo: {
+          '@type': 'GeoCoordinates',
+          latitude: condicoes.local.latitude,
+          longitude: condicoes.local.longitude
+        }
+      }
+    : undefined
+});
+
+const fuso = 'America/Sao_Paulo';
+const hora = (valor: string | null | undefined) =>
+  valor
+    ? new Intl.DateTimeFormat('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: fuso
+      }).format(new Date(valor))
+    : '—';
+const comoData = (valor: string) =>
+  new Date(valor.length === 10 ? `${valor}T12:00:00-03:00` : valor);
+const dataCurta = (valor: string) =>
+  new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: 'short',
+    timeZone: fuso
+  })
+    .format(comoData(valor))
+    .replace('.', '');
+const diaSemana = (valor: string) =>
+  new Intl.DateTimeFormat('pt-BR', {
+    weekday: 'short',
+    timeZone: fuso
+  })
+    .format(comoData(valor))
+    .replace('.', '');
+const numero = (valor: number | null | undefined, casas = 0) =>
+  valor === null || valor === undefined
+    ? '—'
+    : valor.toLocaleString('pt-BR', {
+        minimumFractionDigits: casas,
+        maximumFractionDigits: casas
+      });
+const altura = (valor: number) => `${numero(valor, 2)} m`;
+const capitalizar = (texto: string) => (texto ? texto[0].toUpperCase() + texto.slice(1) : texto);
+const estrelas = (nota: number) => '★'.repeat(Math.max(0, Math.min(5, nota))) + '☆'.repeat(Math.max(0, 5 - nota));
+const nomeMare = (tipo: string) => (tipo === 'Cheia' ? 'Preamar' : 'Baixa-mar');
+
+function caminhoCurva(pontos: Array<{ hora: string; alturaM: number }>): string {
+  if (pontos.length < 2) return '';
+  const alturas = pontos.map((ponto) => ponto.alturaM);
+  const minimo = Math.min(...alturas);
+  const maximo = Math.max(...alturas);
+  const faixa = Math.max(0.2, maximo - minimo);
+
+  return pontos
+    .map((ponto, indice) => {
+      const x = (indice / (pontos.length - 1)) * 320;
+      const y = 76 - ((ponto.alturaM - minimo) / faixa) * 56;
+      return `${indice === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(' ');
+}
+
+function linkDoLocal(local: LocalSalvo): string {
+  const consulta = new URLSearchParams({
+    lat: String(local.latitude),
+    lon: String(local.longitude),
+    nome: local.nome,
+    cidade: local.cidade ?? '',
+    estado: local.estado ?? '',
+    ambiente: local.ambiente
+  });
+  return `/condicoes?${consulta.toString()}`;
+}
+
+const exemplos = [
+  { nome: 'Aracaju', cidade: 'Aracaju', estado: 'SE', ambiente: 'Mar', lat: '-10.911', lon: '-37.071' },
+  { nome: 'Ilhabela', cidade: 'Ilhabela', estado: 'SP', ambiente: 'Mar', lat: '-23.778', lon: '-45.358' },
+  { nome: 'Campinas', cidade: 'Campinas', estado: 'SP', ambiente: 'Represa', lat: '-22.905', lon: '-47.060' }
+];
+---
+
+<Layout
+  titulo={titulo}
+  descricao={descricao}
+  bodyClass="pagina-condicoes"
+  jsonLd={jsonLd}
+>
+  <section class="condicoes-topo">
+    <div class="container">
+      <span class="eyebrow">{condicoes ? 'Condições agora' : 'Condições de pesca'}</span>
+      <h1>
+        {condicoes ? (
+          <>
+            {condicoes.local.nome}
+            {condicoes.local.estado && <em>, {condicoes.local.estado}</em>}
+          </>
+        ) : (
+          <>Vale a pena sair <em>hoje?</em></>
+        )}
+      </h1>
+      <p class="condicoes-linha-fina">
+        {condicoes
+          ? 'Vale a pena sair hoje? Veja a maré, o vento e a janela de pesca deste lugar.'
+          : 'Maré, vento, chuva, lua e a janela que costuma funcionar. Consultar é grátis e não precisa de conta.'}
+      </p>
+
+      <div class="condicoes-busca" role="search">
+        <div class="campo-busca">
+          <label class="oculto" for="busca-local">Buscar cidade ou praia</label>
+          <input
+            id="busca-local"
+            type="search"
+            placeholder="Busque uma cidade, praia ou represa"
+            autocomplete="off"
+            aria-describedby="busca-ajuda"
+          />
+          <div id="resultados-busca" class="busca-resultados oculto" role="listbox"></div>
+        </div>
+        <button id="usar-localizacao" class="btn btn--contorno" type="button">
+          Usar minha localização
+        </button>
+      </div>
+      <p id="busca-ajuda" class="busca-ajuda">
+        Buscamos pelo nome da cidade. Você também pode abrir um local salvo ou usar o GPS.
+      </p>
+      <p id="status-localizacao" class="busca-status" role="status" aria-live="polite"></p>
+
+      {condicoes && (
+        <div class="hero-acoes condicoes-hero-acoes">
+          <a class="btn btn--primario" href={urlRegistrar}>Registrar pescaria</a>
+          <button class="btn btn--contorno" type="button" data-copiar>Compartilhar condições</button>
+          <span class="hero-nota">Registrar e salvar locais pedem conta. Ver condições não.</span>
+        </div>
+      )}
+
+      {locais.length > 0 && (
+        <div class="locais-lista">
+          <span class="locais-rotulo">Seus locais</span>
+          {locais.map((local) => (
+            <a
+              class:list={[
+                'chip-local',
+                {
+                  ativo:
+                    condicoes &&
+                    Math.abs(condicoes.local.latitude - local.latitude) < 0.001 &&
+                    Math.abs(condicoes.local.longitude - local.longitude) < 0.001
+                }
+              ]}
+              href={linkDoLocal(local)}
+            >
+              {local.padrao && <span aria-hidden="true">★</span>}
+              {local.nome}
+            </a>
+          ))}
+          <a class="chip-local chip-local--gerenciar" href="/locais">Gerenciar</a>
+        </div>
+      )}
+
+      {!autenticado && !condicoes && (
+        <p class="entrar-salvar">
+          <a href={`/entrar?voltar=${encodeURIComponent('/condicoes')}`}>Entre</a> para salvar seus
+          locais e abrir as condições com um toque.
+        </p>
+      )}
+    </div>
+  </section>
+
+  {condicoes ? (
+    <section class="container condicoes-conteudo">
+      <div class="condicoes-grade">
+        <div class="condicoes-principal">
+          <article class="cartao cartao-agora">
+            <div class="cartao-topo">
+              <span class="eyebrow">Agora</span>
+              <span class="selo selo--terracota">{condicoes.local.nome}</span>
+            </div>
+            <h2>{condicoes.agora.resumo}</h2>
+            <div class="agora-metricas">
+              <div>
+                <span>Maré</span>
+                <strong>{condicoes.mare ? capitalizar(condicoes.mare.estado) : 'Sem maré'}</strong>
+                <small>{condicoes.agora.proximoEvento ?? 'não se aplica'}</small>
+              </div>
+              <div>
+                <span>Lua</span>
+                <strong>{condicoes.solunar.faseNome}</strong>
+                <small>{numero(condicoes.solunar.iluminacao)}% iluminada</small>
+              </div>
+              <div>
+                <span>Vento</span>
+                <strong>{numero(condicoes.tempo.ventoKmh)} km/h</strong>
+                <small>{condicoes.tempo.direcao}</small>
+              </div>
+              <div>
+                <span>Chuva</span>
+                <strong>{numero(condicoes.tempo.chuvaProbabilidade)}%</strong>
+                <small>próximas horas</small>
+              </div>
+              <div>
+                <span>Pressão</span>
+                <strong>{numero(condicoes.tempo.pressaoHpa)} hPa</strong>
+                <small>{capitalizar(condicoes.tempo.pressaoTendencia)}</small>
+              </div>
+            </div>
+            {autenticado && (
+              <div class="agora-acoes">
+                <button id="salvar-local" class="btn btn--pequeno btn--contorno" type="button">
+                  Salvar local
+                </button>
+              </div>
+            )}
+          </article>
+
+          <article class:list={['cartao', 'cartao-janela', condicoes.melhorJanela ? `forca-${condicoes.melhorJanela.nota}` : '']}>
+            <div class="cartao-topo">
+              <span class="eyebrow">Janela de pesca</span>
+              <span class="nota">{condicoes.melhorJanela ? estrelas(condicoes.melhorJanela.nota) : '☆☆☆☆☆'}</span>
+            </div>
+
+            {condicoes.melhorJanela ? (
+              <>
+                <div class="janela-topo">
+                  <h2>{hora(condicoes.melhorJanela.inicio)}–{hora(condicoes.melhorJanela.fim)}</h2>
+                  <span class="janela-forca">{condicoes.melhorJanela.forca}</span>
+                </div>
+                <div class="motivos">
+                  {condicoes.melhorJanela.motivos.map((motivo) => (
+                    <span class="motivo">{motivo}</span>
+                  ))}
+                </div>
+                <p class="janela-nota">
+                  Calculado com maré, solunar, vento e chuva. Se o seu ponto tiver particularidades,
+                  ajuste na hora de registrar.
+                </p>
+              </>
+            ) : (
+              <p class="vazio-suave">
+                Ainda não há uma janela clara para hoje. Confira os próximos dias abaixo.
+              </p>
+            )}
+          </article>
+
+          {comparacao && (
+            <article class:list={['cartao', 'cartao-comparacao', { 'sem-dados': !comparacao.temDados }]}>
+              <div class="cartao-topo">
+                <span class="eyebrow">Seu histórico</span>
+                <span class="selo selo--neutro">{comparacao.pescariasConsideradas} {comparacao.pescariasConsideradas === 1 ? 'pescaria' : 'pescarias'}</span>
+              </div>
+              <h3>{comparacao.titulo}</h3>
+              <p>{comparacao.detalhe}</p>
+              {comparacao.fatores.length > 0 && (
+                <div class="comparacao-fatores">
+                  {comparacao.fatores.map((fator) => <span>{fator}</span>)}
+                </div>
+              )}
+              {comparacao.shareToken ? (
+                <a class="link-seta" href={`/p/${comparacao.shareToken}`}>Ver pescaria →</a>
+              ) : (
+                <a class="link-seta" href={urlRegistrar}>Registrar pescaria →</a>
+              )}
+            </article>
+          )}
+
+          <section class="dias">
+            <div class="cabecalho-secao">
+              <div>
+                <span class="eyebrow">Próximos 7 dias</span>
+                <h2>Quando voltar</h2>
+              </div>
+              <span class="dias-legenda">★ = força da janela</span>
+            </div>
+            <div class="dias-lista">
+              {condicoes.dias.map((dia, indice) => (
+                <article class:list={['dia-card', { hoje: indice === 0 }]}>
+                  <span class="dia-semana">{indice === 0 ? 'Hoje' : diaSemana(dia.data)}</span>
+                  <strong class="dia-data">{dataCurta(dia.data)}</strong>
+                  <span class="dia-estrelas" aria-label={`Nota ${dia.nota} de 5`}>{estrelas(dia.nota)}</span>
+                  <span class="dia-janela">
+                    {dia.melhorInicio ? `${hora(dia.melhorInicio)}–${hora(dia.melhorFim)}` : 'Sem janela'}
+                  </span>
+                  <p>{dia.resumo}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <div class="condicoes-dupla">
+            <article class="cartao cartao-mare">
+              <div class="cartao-topo">
+                <span class="eyebrow">Maré</span>
+                {condicoes.temMare && <span class="selo selo--neutro">Aproximada</span>}
+              </div>
+
+              {condicoes.mare ? (
+                <>
+                  <div class="mare-estado">
+                    <h3>{condicoes.mare.estado === 'subindo' ? 'Maré enchendo' : condicoes.mare.estado === 'descendo' ? 'Maré vazando' : 'Maré estável'}</h3>
+                    {condicoes.mare.proximoEvento && (
+                      <p>
+                        {nomeMare(condicoes.mare.proximoEvento.tipo)} às{' '}
+                        {hora(condicoes.mare.proximoEvento.hora)} · {altura(condicoes.mare.proximoEvento.alturaM)}
+                      </p>
+                    )}
+                  </div>
+
+                  {condicoes.mare.curva.length > 1 && (
+                    <svg
+                      class="mare-curva"
+                      viewBox="0 0 320 90"
+                      role="img"
+                      aria-label="Curva da maré nas próximas 24 horas"
+                    >
+                      <path d={caminhoCurva(condicoes.mare.curva)} fill="none" stroke="var(--terracota)" stroke-width="2.5" stroke-linecap="round" />
+                    </svg>
+                  )}
+
+                  <div class="mare-tabela">
+                    {condicoes.mare.eventos.map((evento) => (
+                      <div class="mare-linha">
+                        <span class:list={['mare-tipo', evento.tipo === 'Cheia' ? 'cheia' : 'baixa']}>
+                          {evento.tipo === 'Cheia' ? '↑' : '↓'} {nomeMare(evento.tipo)}
+                        </span>
+                        <strong>{hora(evento.hora)}</strong>
+                        <span>{altura(evento.alturaM)}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <p class="fonte-pequena">
+                    {condicoes.mare.datum}. Não use para navegação; confira a tábua oficial do porto.
+                  </p>
+                </>
+              ) : (
+                <p class="vazio-suave">
+                  Este local não tem maré. Mostramos vento, chuva, lua e solunar — e o diário continua
+                  valendo.
+                </p>
+              )}
+            </article>
+
+            <article class="cartao cartao-solunar">
+              <div class="cartao-topo">
+                <span class="eyebrow">Solunar</span>
+                <span class="selo selo--neutro">{numero(condicoes.solunar.iluminacao)}% iluminada</span>
+              </div>
+              <h3>{condicoes.solunar.faseNome}</h3>
+              <p class="fonte-pequena">
+                {numero(condicoes.solunar.idadeDias, 1)} dias de idade lunar
+              </p>
+
+              <div class="solunar-lista">
+                {condicoes.solunar.periodos.map((periodo) => (
+                  <div class:list={['solunar-linha', periodo.tipo === 'Maior' ? 'maior' : 'menor']}>
+                    <span class="solunar-tipo">{periodo.tipo}</span>
+                    <strong>{hora(periodo.inicio)}–{hora(periodo.fim)}</strong>
+                    <span class="solunar-motivo">{periodo.motivo}</span>
+                  </div>
+                ))}
+              </div>
+            </article>
+          </div>
+        </div>
+
+        <aside class="condicoes-lateral">
+          <article class="cartao cartao-tempo">
+            <div class="cartao-topo">
+              <span class="eyebrow">Tempo agora</span>
+              <span class="selo selo--neutro">{condicoes.tempo.direcao}</span>
+            </div>
+            <div class="tempo-grid">
+              <div><span>Vento</span><strong>{numero(condicoes.tempo.ventoKmh)} km/h</strong></div>
+              <div><span>Rajadas</span><strong>{numero(condicoes.tempo.rajadaKmh)} km/h</strong></div>
+              <div><span>Chuva</span><strong>{numero(condicoes.tempo.chuvaProbabilidade)}%</strong></div>
+              <div><span>Temperatura</span><strong>{numero(condicoes.tempo.temperaturaC)} °C</strong></div>
+              <div><span>Sensação</span><strong>{numero(condicoes.tempo.sensacaoC)} °C</strong></div>
+              <div><span>Pressão</span><strong>{numero(condicoes.tempo.pressaoHpa)} hPa</strong></div>
+              {condicoes.tempo.temperaturaDaAguaC !== null && (
+                <div><span>Água</span><strong>{numero(condicoes.tempo.temperaturaDaAguaC)} °C</strong></div>
+              )}
+              {condicoes.tempo.ondaAlturaM !== null && (
+                <div><span>Ondas</span><strong>{numero(condicoes.tempo.ondaAlturaM, 1)} m</strong></div>
+              )}
+            </div>
+            <p class="fonte-pequena">Pressão {condicoes.tempo.pressaoTendencia} nas últimas horas.</p>
+          </article>
+
+          <article class="cartao cartao-locais">
+            <div class="cartao-topo">
+              <span class="eyebrow">Seus locais</span>
+              <span class="selo selo--neutro">{locais.length} de 5</span>
+            </div>
+            {locais.length > 0 ? (
+              <div class="rail-locais">
+                {locais.map((local) => (
+                  <a class="rail-local" href={linkDoLocal(local)}>
+                    <span>{local.padrao ? '★' : '·'}</span>
+                    <strong>{local.nome}</strong>
+                    <small>{local.estado ?? ''}</small>
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <p class="vazio-suave">
+                {autenticado
+                  ? 'Nenhum local salvo. Busque e toque em “Salvar local”.'
+                  : 'Entre para salvar seus locais e abrir as condições com um toque.'}
+              </p>
+            )}
+            <a class="link-seta" href={autenticado ? '/locais' : `/entrar?voltar=${encodeURIComponent('/condicoes')}`}>
+              {autenticado ? 'Gerenciar locais' : 'Entrar para salvar'} →
+            </a>
+          </article>
+
+          <article class="cartao cartao-compartilhar">
+            <span class="eyebrow">Página pública</span>
+            <h3>Compartilhar condições</h3>
+            <p>Qualquer pessoa vê sem login. O link leva o local e o nome.</p>
+            <button class="btn btn--pequeno btn--contorno" type="button" data-copiar>Copiar link</button>
+          </article>
+
+          <article class="cartao cartao-fonte">
+            <span class="eyebrow">Fonte e limites</span>
+            <p>
+              Dados de{' '}
+              <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a>
+              {' + '}
+              <a href="https://www.met.no" target="_blank" rel="noopener">MET Norway</a>. Atualizado
+              às {hora(condicoes.atualizadoEm)}, horário de Brasília.
+            </p>
+            {condicoes.aviso ? (
+              <p class="fonte-pequena">{condicoes.aviso}</p>
+            ) : (
+              <p class="fonte-pequena">
+                A maré é uma aproximação por modelo global. Para navegação, use a tábua oficial do
+                porto mais próximo.
+              </p>
+            )}
+          </article>
+
+          <article class="cartao cartao-cta">
+            <span class="eyebrow">Menos digitação</span>
+            <h3>Registre com as condições já preenchidas.</h3>
+            <p>Local, data, maré, lua e clima entram sozinhos. Você só adiciona os peixes.</p>
+            <a class="btn btn--primario btn--largo" href={urlRegistrar}>Registrar pescaria</a>
+          </article>
+        </aside>
+      </div>
+    </section>
+  ) : (
+    <section class="container condicoes-conteudo">
+      {erroCondicoes ? (
+        <div class="erro-caixa" role="alert">{erroCondicoes}</div>
+      ) : (
+        <div class="estado-inicial">
+          <div>
+            <span class="eyebrow">Comece por um local</span>
+            <h2>Escolha onde você pesca.</h2>
+            <p>
+              Mostramos a maré, o vento, a chuva, a lua e a melhor janela do dia. Se o local não tiver
+              maré, tudo bem: o solunar e o tempo continuam valendo.
+            </p>
+          </div>
+          <div class="exemplos-lista">
+            {exemplos.map((exemplo) => (
+              <a
+                class="exemplo-local"
+                href={`/condicoes?lat=${exemplo.lat}&lon=${exemplo.lon}&nome=${encodeURIComponent(exemplo.nome)}&cidade=${encodeURIComponent(exemplo.cidade)}&estado=${exemplo.estado}&ambiente=${exemplo.ambiente}`}
+              >
+                <strong>{exemplo.nome}</strong>
+                <span>{exemplo.cidade} · {exemplo.estado} · {exemplo.ambiente}</span>
+              </a>
+            ))}
+          </div>
+          <div class="como-funciona-condicoes">
+            <span>O que você vê</span>
+            <ul>
+              <li>Maré aproximada, com próxima preamar/baixa-mar.</li>
+              <li>Janela de pesca com o motivo de cada escolha.</li>
+              <li>Sete dias, solunar, vento, chuva e pressão.</li>
+            </ul>
+          </div>
+        </div>
+      )}
+    </section>
+  )}
+
+  <div id="dados-condicoes" class="oculto" data-lat={localAtual.latitude} data-lon={localAtual.longitude} data-nome={localAtual.nome} data-cidade={localAtual.cidade ?? ''} data-estado={localAtual.estado ?? ''} data-ambiente={localAtual.ambiente}></div>
+
+  <dialog id="dialogo-local" class="dialogo-local">
+    <form id="form-local">
+      <div class="dialogo-topo">
+        <div>
+          <span class="eyebrow">Salvar local</span>
+          <h2>Como você chama este lugar?</h2>
+        </div>
+        <button id="fechar-dialogo" class="botao-icone" type="button" aria-label="Fechar">×</button>
+      </div>
+      <div class="campo">
+        <label for="local-nome">Nome do local</label>
+        <input id="local-nome" name="nome" maxlength="80" required />
+      </div>
+      <div class="campo-duplo">
+        <div class="campo">
+          <label for="local-cidade">Cidade</label>
+          <input id="local-cidade" name="cidade" maxlength="80" />
+        </div>
+        <div class="campo">
+          <label for="local-estado">UF</label>
+          <input id="local-estado" name="estado" maxlength="2" />
+        </div>
+      </div>
+      <div class="campo">
+        <label for="local-ambiente">Ambiente</label>
+        <select id="local-ambiente" name="ambiente">
+          <option value="Rio">Rio</option>
+          <option value="Mar">Mar</option>
+          <option value="Lagoa">Lagoa</option>
+          <option value="Represa">Represa</option>
+          <option value="PesquePague">Pesque-pague</option>
+          <option value="Outro">Outro</option>
+        </select>
+      </div>
+      <p id="local-erro" class="erro-campo oculto" role="alert"></p>
+      <div class="dialogo-acoes">
+        <button id="cancelar-local" class="btn btn--contorno" type="button">Cancelar</button>
+        <button id="confirmar-local" class="btn btn--primario" type="submit">Salvar local</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast oculto" role="status" aria-live="polite"></div>
+
+  <script>
+    const API = (document.body.dataset.api ?? 'http://localhost:5184').replace(/\/$/, '');
+    const busca = document.getElementById('busca-local') as HTMLInputElement | null;
+    const resultados = document.getElementById('resultados-busca') as HTMLDivElement | null;
+    const statusLocalizacao = document.getElementById('status-localizacao');
+    const botaoLocalizacao = document.getElementById('usar-localizacao') as HTMLButtonElement | null;
+    const dados = document.getElementById('dados-condicoes') as HTMLElement | null;
+    const dialogo = document.getElementById('dialogo-local') as HTMLDialogElement | null;
+    const formLocal = document.getElementById('form-local') as HTMLFormElement | null;
+    const erroLocal = document.getElementById('local-erro');
+    const toast = document.getElementById('toast');
+    let timerToast = 0;
+
+    let timerBusca = 0;
+
+    function mostrarToast(mensagem: string) {
+      if (!toast) return;
+      toast.textContent = mensagem;
+      toast.classList.remove('oculto');
+      window.clearTimeout(timerToast);
+      timerToast = window.setTimeout(() => toast.classList.add('oculto'), 2600);
+    }
+
+    function irPara(local: { latitude: number; longitude: number; nome?: string; cidade?: string | null; estado?: string | null; ambiente?: string }) {
+      const params = new URLSearchParams({
+        lat: String(local.latitude),
+        lon: String(local.longitude),
+        nome: local.nome ?? 'Local',
+        cidade: local.cidade ?? '',
+        estado: local.estado ?? '',
+        ambiente: local.ambiente ?? 'Outro'
+      });
+      window.location.href = `/condicoes?${params.toString()}`;
+    }
+
+    async function buscar(termo: string) {
+      if (!resultados) return;
+      if (!termo || termo.trim().length < 2) {
+        resultados.classList.add('oculto');
+        return;
+      }
+
+      try {
+        const resposta = await fetch(`${API}/api/locais/buscar?q=${encodeURIComponent(termo.trim())}`);
+        if (!resposta.ok) throw new Error('busca');
+        const lista = await resposta.json();
+        if (!Array.isArray(lista) || lista.length === 0) {
+          resultados.innerHTML = '<p class="busca-vazia">Nenhum lugar encontrado. Tente outro nome.</p>';
+          resultados.classList.remove('oculto');
+          return;
+        }
+
+        resultados.innerHTML = '';
+        for (const item of lista) {
+          const botao = document.createElement('button');
+          botao.type = 'button';
+          botao.className = 'busca-item';
+          botao.innerHTML = `<strong>${item.nome}</strong><span>${[item.estado, item.pais].filter(Boolean).join(' · ')}</span>`;
+          botao.addEventListener('click', () => irPara(item));
+          resultados.appendChild(botao);
+        }
+        resultados.classList.remove('oculto');
+      } catch {
+        resultados.innerHTML = '<p class="busca-vazia">Não foi possível buscar agora.</p>';
+        resultados.classList.remove('oculto');
+      }
+    }
+
+    busca?.addEventListener('input', () => {
+      window.clearTimeout(timerBusca);
+      timerBusca = window.setTimeout(() => buscar(busca.value), 320);
+    });
+
+    document.addEventListener('click', (evento) => {
+      const alvo = evento.target as HTMLElement | null;
+      if (!alvo?.closest('.campo-busca')) {
+        resultados?.classList.add('oculto');
+      }
+    });
+
+    botaoLocalizacao?.addEventListener('click', () => {
+      if (!navigator.geolocation) {
+        if (statusLocalizacao) statusLocalizacao.textContent = 'Seu navegador não oferece localização.';
+        return;
+      }
+
+      botaoLocalizacao.disabled = true;
+      botaoLocalizacao.textContent = 'Localizando...';
+      if (statusLocalizacao) statusLocalizacao.textContent = 'Buscando sua localização...';
+
+      navigator.geolocation.getCurrentPosition(
+        (posicao) => {
+          irPara({
+            latitude: Number(posicao.coords.latitude.toFixed(5)),
+            longitude: Number(posicao.coords.longitude.toFixed(5)),
+            nome: 'Minha localização',
+            cidade: '',
+            estado: '',
+            ambiente: 'Outro'
+          });
+        },
+        () => {
+          botaoLocalizacao.disabled = false;
+          botaoLocalizacao.textContent = 'Usar minha localização';
+          if (statusLocalizacao) statusLocalizacao.textContent = 'Não conseguimos usar sua localização. Busque pelo nome.';
+        },
+        { enableHighAccuracy: false, timeout: 12000, maximumAge: 300000 }
+      );
+    });
+
+    document.querySelectorAll<HTMLButtonElement>('[data-copiar]').forEach((botao) => {
+      botao.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(window.location.href);
+          mostrarToast('Link copiado.');
+        } catch {
+          mostrarToast('Não foi possível copiar o link.');
+        }
+      });
+    });
+
+    if (dialogo && dados) {
+      const nome = document.getElementById('local-nome') as HTMLInputElement | null;
+      const cidade = document.getElementById('local-cidade') as HTMLInputElement | null;
+      const estado = document.getElementById('local-estado') as HTMLInputElement | null;
+      const ambiente = document.getElementById('local-ambiente') as HTMLSelectElement | null;
+
+      document.getElementById('salvar-local')?.addEventListener('click', () => {
+        if (nome) nome.value = dados.dataset.nome || '';
+        if (cidade) cidade.value = dados.dataset.cidade || '';
+        if (estado) estado.value = dados.dataset.estado || '';
+        if (ambiente) ambiente.value = dados.dataset.ambiente || 'Outro';
+        erroLocal?.classList.add('oculto');
+        dialogo.showModal();
+      });
+
+      document.getElementById('fechar-dialogo')?.addEventListener('click', () => dialogo.close());
+      document.getElementById('cancelar-local')?.addEventListener('click', () => dialogo.close());
+
+      formLocal?.addEventListener('submit', async (evento) => {
+        evento.preventDefault();
+        const botao = document.getElementById('confirmar-local') as HTMLButtonElement | null;
+        const texto = botao?.textContent ?? 'Salvar local';
+        if (botao) {
+          botao.disabled = true;
+          botao.textContent = 'Salvando...';
+        }
+        erroLocal?.classList.add('oculto');
+
+        try {
+          const resposta = await fetch(`${API}/api/locais`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              nome: nome?.value.trim(),
+              cidade: cidade?.value.trim() || null,
+              estado: estado?.value.trim().toUpperCase() || null,
+              latitude: Number(dados.dataset.lat),
+              longitude: Number(dados.dataset.lon),
+              ambiente: ambiente?.value || 'Outro',
+              padrao: false
+            })
+          });
+
+          if (resposta.status === 401) {
+            window.location.href = `/entrar?voltar=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+            return;
+          }
+
+          const corpo = await resposta.json().catch(() => ({}));
+          if (!resposta.ok) throw new Error(corpo.detalhe || 'Não foi possível salvar o local.');
+
+          mostrarToast('Local salvo.');
+          window.setTimeout(() => window.location.reload(), 500);
+        } catch (erro) {
+          if (erroLocal) {
+            erroLocal.textContent = erro instanceof Error ? erro.message : 'Não foi possível salvar o local.';
+            erroLocal.classList.remove('oculto');
+          }
+          if (botao) {
+            botao.disabled = false;
+            botao.textContent = texto;
+          }
+        }
+      });
+    }
+  </script>
+
+  <style>
+    .condicoes-topo {
+      padding: clamp(48px, 7vw, 86px) 0 34px;
+    }
+
+    .condicoes-topo h1 {
+      max-width: 760px;
+      font-size: clamp(2.8rem, 6.4vw, 5.2rem);
+    }
+
+    .condicoes-linha-fina {
+      max-width: 620px;
+      margin-top: 18px;
+      color: var(--tinta-suave);
+      font-size: 1.02rem;
+    }
+
+    .condicoes-hero-acoes {
+      align-items: center;
+      margin-top: 18px;
+    }
+
+    .hero-nota {
+      color: var(--tinta-suave);
+      font-size: 0.7rem;
+    }
+
+    .condicoes-busca {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      max-width: 760px;
+      margin-top: 28px;
+    }
+
+    .campo-busca {
+      position: relative;
+    }
+
+    .campo-busca input {
+      width: 100%;
+      height: 52px;
+      padding: 0 16px;
+      border: 1px solid var(--linha-forte);
+      border-radius: 11px;
+      background: var(--superficie);
+      color: var(--tinta);
+      font: inherit;
+      font-size: 0.96rem;
+    }
+
+    .campo-busca input:focus {
+      border-color: var(--terracota);
+      outline: 3px solid rgba(23, 78, 87, 0.18);
+      outline-offset: 1px;
+    }
+
+    .busca-resultados {
+      position: absolute;
+      z-index: 30;
+      top: calc(100% + 6px);
+      left: 0;
+      right: 0;
+      overflow: hidden;
+      border: 1px solid var(--linha);
+      border-radius: 12px;
+      background: var(--superficie);
+      box-shadow: var(--sombra-suave);
+    }
+
+    .busca-item {
+      display: flex;
+      width: 100%;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border: 0;
+      border-bottom: 1px solid var(--linha);
+      background: transparent;
+      color: var(--tinta);
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .busca-item:last-child {
+      border-bottom: 0;
+    }
+
+    .busca-item:hover,
+    .busca-item:focus-visible {
+      background: var(--creme);
+    }
+
+    .busca-item span {
+      color: var(--tinta-suave);
+      font-size: 0.72rem;
+    }
+
+    .busca-vazia {
+      padding: 14px;
+      color: var(--tinta-suave);
+      font-size: 0.82rem;
+    }
+
+    .busca-ajuda,
+    .busca-status {
+      max-width: 760px;
+      margin-top: 8px;
+      color: var(--tinta-suave);
+      font-size: 0.72rem;
+    }
+
+    .busca-status:empty {
+      display: none;
+    }
+
+    .locais-lista {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-top: 20px;
+    }
+
+    .locais-rotulo {
+      margin-right: 4px;
+      color: var(--tinta-suave);
+      font-size: 0.66rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .chip-local {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 7px 12px;
+      border: 1px solid var(--linha);
+      border-radius: 999px;
+      background: var(--superficie);
+      color: var(--tinta-suave);
+      font-size: 0.76rem;
+      text-decoration: none;
+    }
+
+    .chip-local:hover,
+    .chip-local.ativo {
+      border-color: var(--terracota);
+      background: var(--terracota-clara);
+      color: var(--terracota-escura);
+    }
+
+    .chip-local--gerenciar {
+      border-style: dashed;
+    }
+
+    .entrar-salvar {
+      margin-top: 14px;
+      color: var(--tinta-suave);
+      font-size: 0.76rem;
+    }
+
+    .condicoes-conteudo {
+      padding-bottom: 84px;
+    }
+
+    .condicoes-grade {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .condicoes-principal,
+    .condicoes-lateral {
+      display: grid;
+      gap: 18px;
+    }
+
+    .condicoes-lateral {
+      position: sticky;
+      top: 88px;
+    }
+
+    .cartao-topo {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .cartao-agora h2 {
+      margin-top: 16px;
+      font-size: clamp(1.6rem, 3vw, 2.5rem);
+    }
+
+    .agora-metricas {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 0;
+      margin-top: 20px;
+      border-top: 1px solid var(--linha);
+    }
+
+    .agora-metricas div {
+      padding: 12px 12px 0 0;
+      border-right: 1px solid var(--linha);
+    }
+
+    .agora-metricas div:last-child {
+      border-right: 0;
+    }
+
+    .agora-metricas span {
+      display: block;
+      color: var(--tinta-suave);
+      font-size: 0.58rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .agora-metricas strong {
+      display: block;
+      margin-top: 2px;
+      font-family: var(--fonte-titulo);
+      font-size: 1.06rem;
+      font-weight: 600;
+    }
+
+    .agora-metricas small {
+      display: block;
+      margin-top: 1px;
+      color: var(--tinta-suave);
+      font-size: 0.6rem;
+      line-height: 1.3;
+    }
+
+    .agora-acoes {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 24px;
+    }
+
+    .cartao-janela {
+      border-color: var(--terracota-escura);
+      background: var(--terracota-escura);
+      color: var(--creme);
+    }
+
+    .cartao-janela .eyebrow,
+    .cartao-janela .nota,
+    .cartao-janela .janela-forca {
+      color: var(--dourado);
+    }
+
+    .cartao-janela .motivo {
+      background: rgba(255, 249, 240, 0.12);
+      color: var(--creme);
+    }
+
+    .cartao-janela .janela-nota {
+      color: rgba(255, 249, 240, 0.68);
+    }
+
+    .cartao-janela .vazio-suave {
+      color: rgba(255, 249, 240, 0.72);
+    }
+
+    .nota {
+      color: var(--acafrao);
+      font-size: 0.9rem;
+      letter-spacing: 0.08em;
+    }
+
+    .janela-topo {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      margin-top: 12px;
+    }
+
+    .janela-topo h2 {
+      font-size: clamp(2.2rem, 5vw, 3.6rem);
+    }
+
+    .janela-forca {
+      color: var(--terracota);
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .motivos {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-top: 16px;
+    }
+
+    .motivo {
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: var(--terracota-clara);
+      color: var(--terracota-escura);
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+
+    .janela-nota,
+    .fonte-pequena {
+      margin-top: 14px;
+      color: var(--tinta-suave);
+      font-size: 0.72rem;
+      line-height: 1.6;
+    }
+
+    .vazio-suave {
+      margin-top: 14px;
+      color: var(--tinta-suave);
+      font-size: 0.86rem;
+    }
+
+    .cartao-comparacao {
+      background: var(--creme);
+    }
+
+    .cartao-comparacao.sem-dados {
+      border-style: dashed;
+      background: transparent;
+    }
+
+    .cartao-comparacao h3 {
+      margin-top: 10px;
+      font-size: 1.35rem;
+    }
+
+    .cartao-comparacao > p {
+      margin-top: 4px;
+      color: var(--tinta-suave);
+      font-size: 0.76rem;
+    }
+
+    .comparacao-fatores {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 12px;
+    }
+
+    .comparacao-fatores span {
+      padding: 5px 9px;
+      border: 1px solid var(--linha);
+      border-radius: 999px;
+      background: var(--superficie);
+      color: var(--terracota);
+      font-size: 0.68rem;
+      font-weight: 600;
+    }
+
+    .dias {
+      display: grid;
+      gap: 12px;
+    }
+
+    .dias .cabecalho-secao {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: end;
+      justify-content: space-between;
+      gap: 10px 16px;
+      margin-bottom: 0;
+    }
+
+    .dias h2 {
+      font-size: clamp(1.6rem, 2.8vw, 2.1rem);
+    }
+
+    .dias-legenda {
+      color: var(--tinta-suave);
+      font-size: 0.66rem;
+    }
+
+    .dias-lista {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .dia-card {
+      display: grid;
+      gap: 3px;
+      padding: 11px 9px;
+      border: 1px solid var(--linha);
+      border-radius: 10px;
+      background: var(--superficie);
+    }
+
+    .dia-card.hoje {
+      border-color: var(--terracota);
+      background: var(--terracota-clara);
+    }
+
+    .dia-semana {
+      color: var(--tinta-suave);
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .dia-data {
+      font-family: var(--fonte-titulo);
+      font-size: 1.08rem;
+      font-weight: 600;
+    }
+
+    .dia-estrelas {
+      color: var(--acafrao);
+      font-size: 0.58rem;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+
+    .dia-janela {
+      color: var(--terracota);
+      font-size: 0.68rem;
+      font-weight: 700;
+    }
+
+    .dia-card p {
+      margin-top: 2px;
+      color: var(--tinta-suave);
+      font-size: 0.58rem;
+      line-height: 1.35;
+    }
+
+    .condicoes-dupla {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    .mare-estado h3 {
+      margin-top: 10px;
+      font-size: 1.45rem;
+    }
+
+    .mare-estado p {
+      margin-top: 3px;
+      color: var(--tinta-suave);
+      font-size: 0.78rem;
+    }
+
+    .mare-curva {
+      display: block;
+      width: 100%;
+      height: 84px;
+      margin: 14px 0 8px;
+    }
+
+    .mare-tabela {
+      display: grid;
+      gap: 1px;
+      overflow: hidden;
+      border: 1px solid var(--linha);
+      border-radius: 9px;
+      background: var(--linha);
+    }
+
+    .mare-linha {
+      display: grid;
+      grid-template-columns: 1.2fr 0.7fr 0.7fr;
+      gap: 8px;
+      align-items: center;
+      padding: 8px 10px;
+      background: var(--superficie);
+      font-size: 0.76rem;
+    }
+
+    .mare-linha strong {
+      font-family: var(--fonte-titulo);
+      font-size: 0.94rem;
+    }
+
+    .mare-tipo.cheia {
+      color: var(--terracota);
+    }
+
+    .mare-tipo.baixa {
+      color: var(--acafrao);
+    }
+
+    .cartao-solunar h3 {
+      margin-top: 10px;
+      font-size: 1.45rem;
+    }
+
+    .solunar-lista {
+      display: grid;
+      gap: 7px;
+      margin-top: 14px;
+    }
+
+    .solunar-linha {
+      display: grid;
+      grid-template-columns: 52px 1fr;
+      gap: 2px 10px;
+      padding: 8px 10px;
+      border-left: 2px solid var(--linha-forte);
+      background: var(--creme);
+      font-size: 0.74rem;
+    }
+
+    .solunar-linha.maior {
+      border-left-color: var(--terracota);
+    }
+
+    .solunar-linha.menor {
+      border-left-color: var(--dourado);
+    }
+
+    .solunar-tipo {
+      grid-row: span 2;
+      color: var(--tinta-suave);
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .solunar-linha strong {
+      font-family: var(--fonte-titulo);
+      font-size: 0.94rem;
+    }
+
+    .solunar-motivo {
+      color: var(--tinta-suave);
+      font-size: 0.64rem;
+    }
+
+    .tempo-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 9px;
+      margin-top: 14px;
+    }
+
+    .tempo-grid div {
+      padding: 8px 0;
+      border-bottom: 1px solid var(--linha);
+    }
+
+    .tempo-grid span {
+      display: block;
+      color: var(--tinta-suave);
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .tempo-grid strong {
+      font-family: var(--fonte-titulo);
+      font-size: 1.12rem;
+      font-weight: 600;
+    }
+
+    .cartao-fonte {
+      border-style: dashed;
+    }
+
+    .cartao-fonte p {
+      margin-top: 8px;
+      color: var(--tinta-suave);
+      font-size: 0.74rem;
+    }
+
+    .cartao-locais h3,
+    .cartao-compartilhar h3 {
+      margin-top: 8px;
+      font-size: 1.25rem;
+    }
+
+    .cartao-compartilhar p {
+      margin-top: 7px;
+      color: var(--tinta-suave);
+      font-size: 0.74rem;
+    }
+
+    .cartao-compartilhar .btn {
+      margin-top: 12px;
+    }
+
+    .rail-locais {
+      display: grid;
+      gap: 5px;
+      margin-top: 12px;
+    }
+
+    .rail-local {
+      display: grid;
+      grid-template-columns: 14px 1fr auto;
+      gap: 6px;
+      align-items: center;
+      padding: 7px 8px;
+      border-radius: 8px;
+      color: var(--tinta);
+      font-size: 0.74rem;
+      text-decoration: none;
+    }
+
+    .rail-local:hover {
+      background: var(--creme);
+    }
+
+    .rail-local span {
+      color: var(--acafrao);
+    }
+
+    .rail-local small {
+      color: var(--tinta-suave);
+      font-size: 0.62rem;
+    }
+
+    .link-seta {
+      display: inline-block;
+      margin-top: 12px;
+      color: var(--terracota);
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .cartao-cta {
+      background: var(--terracota);
+      color: var(--creme);
+    }
+
+    .cartao-cta .eyebrow {
+      color: var(--creme);
+      opacity: 0.7;
+    }
+
+    .cartao-cta h3 {
+      margin-top: 8px;
+      font-size: 1.35rem;
+    }
+
+    .cartao-cta p {
+      margin-top: 8px;
+      color: rgba(255, 249, 240, 0.78);
+      font-size: 0.78rem;
+    }
+
+    .cartao-cta .btn {
+      margin-top: 14px;
+      background: var(--creme);
+      color: var(--terracota-escura);
+    }
+
+    .estado-inicial {
+      display: grid;
+      gap: 20px;
+      max-width: 920px;
+      margin: 0 auto;
+      padding: clamp(24px, 4vw, 40px);
+      border: 1px solid var(--linha);
+      border-radius: var(--raio);
+      background: var(--superficie);
+    }
+
+    .estado-inicial h2 {
+      margin-top: 8px;
+      font-size: clamp(1.8rem, 3.4vw, 2.6rem);
+    }
+
+    .estado-inicial p {
+      max-width: 620px;
+      margin-top: 10px;
+      color: var(--tinta-suave);
+    }
+
+    .exemplos-lista {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .exemplo-local {
+      display: grid;
+      gap: 2px;
+      padding: 14px;
+      border: 1px solid var(--linha);
+      border-radius: 12px;
+      background: var(--creme);
+      color: var(--tinta);
+      text-decoration: none;
+    }
+
+    .exemplo-local:hover {
+      border-color: var(--terracota);
+    }
+
+    .exemplo-local strong {
+      font-family: var(--fonte-titulo);
+      font-size: 1.2rem;
+    }
+
+    .exemplo-local span {
+      color: var(--tinta-suave);
+      font-size: 0.68rem;
+    }
+
+    .como-funciona-condicoes {
+      padding-top: 18px;
+      border-top: 1px solid var(--linha);
+    }
+
+    .como-funciona-condicoes > span {
+      color: var(--tinta-suave);
+      font-size: 0.64rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .como-funciona-condicoes ul {
+      display: grid;
+      gap: 6px;
+      margin: 10px 0 0;
+      padding-left: 18px;
+      color: var(--tinta-suave);
+      font-size: 0.8rem;
+    }
+
+    .dialogo-local {
+      width: min(480px, calc(100vw - 32px));
+      padding: 24px;
+      border: 1px solid var(--linha);
+      border-radius: 18px;
+      background: var(--superficie);
+      color: var(--tinta);
+      box-shadow: var(--sombra);
+    }
+
+    .dialogo-local::backdrop {
+      background: rgba(16, 56, 63, 0.42);
+    }
+
+    .dialogo-topo {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .dialogo-topo h2 {
+      margin-top: 4px;
+      font-size: 1.5rem;
+    }
+
+    .dialogo-acoes {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 18px;
+    }
+
+    .erro-campo {
+      margin-top: 10px;
+      padding: 8px 10px;
+      border: 1px solid var(--acafrao);
+      border-radius: 8px;
+      background: #fff4ea;
+      color: #8a3f1c;
+      font-size: 0.74rem;
+    }
+
+    .toast {
+      position: fixed;
+      z-index: 80;
+      bottom: 24px;
+      left: 50%;
+      padding: 10px 16px;
+      border-radius: 999px;
+      background: var(--terracota-escura);
+      color: var(--creme);
+      font-size: 0.78rem;
+      transform: translateX(-50%);
+      box-shadow: var(--sombra);
+    }
+
+    @media (max-width: 980px) {
+      .condicoes-grade {
+        grid-template-columns: 1fr;
+      }
+
+      .condicoes-lateral {
+        position: static;
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .condicoes-lateral .cartao-cta {
+        grid-column: 1 / -1;
+      }
+    }
+
+    @media (max-width: 820px) {
+      .condicoes-hero-acoes {
+      align-items: center;
+      margin-top: 18px;
+    }
+
+    .hero-nota {
+      color: var(--tinta-suave);
+      font-size: 0.7rem;
+    }
+
+    .condicoes-busca {
+        grid-template-columns: 1fr;
+      }
+
+      .dias-lista {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .condicoes-dupla {
+        grid-template-columns: 1fr;
+      }
+
+      .exemplos-lista {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .condicoes-topo h1 {
+        font-size: clamp(2.5rem, 12vw, 3.6rem);
+      }
+
+      .dias-lista {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .condicoes-lateral {
+        grid-template-columns: 1fr;
+      }
+
+      .agora-metricas {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0 10px;
+      }
+
+      .agora-metricas div {
+        padding: 10px 10px 8px 0;
+        border-bottom: 1px solid var(--linha);
+      }
+
+      .agora-metricas div:nth-child(2n) {
+        border-right: 0;
+      }
+
+      .dias-legenda {
+        display: none;
+      }
+
+      .janela-topo {
+        display: block;
+      }
+
+      .janela-forca {
+        display: inline-block;
+        margin-top: 4px;
+      }
+
+      .agora-acoes .btn {
+        flex: 1 1 auto;
+      }
+    }
+  </style>
+</Layout>

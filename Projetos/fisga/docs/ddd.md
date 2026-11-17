@@ -29,6 +29,7 @@ flowchart LR
     midia[Mídia<br/>upload · arquivos]
     documentos[Documentos<br/>PDF · QR]
     diario[Diário<br/>read model privado]
+    condicoes[Condições e Locais<br/>LocalDePesca · previsão · janela]
     email[E-mail<br/>Porta IEmailSender]
   end
 
@@ -39,6 +40,7 @@ flowchart LR
   pescarias -->|fotos| midia
   pescarias -->|relatório| documentos
   diario -->|lista e estatísticas| pescarias
+  condicoes -->|condições e local padrão| pescarias
   assinatura -.->|futuro| documentos
 ```
 
@@ -153,6 +155,28 @@ Contexto genérico, sem dependência de ASP.NET ou do provedor de e-mail.
   - resumos ordenados por data.
 - Não há token nem link de backup: o e-mail é a recuperação.
 
+## Condições e Locais
+
+`LocalDePesca` é um agregado próprio, privado e limitado a cinco por usuário.
+
+- Nome (até 80), cidade/UF, latitude/longitude e `AmbienteDePesca`.
+- `ServicoDeLocais` garante ownership, limite de 5 e um único padrão por conta. Excluir o padrão
+  promove o local mais recente restante.
+- `ServicoDeCondicoes` agrega **Open-Meteo** (tempo, ondas e nível do mar) e **MET Norway** (lua:
+  nascer, pôr, trânsito, anti-trânsito e ângulo de fase). O solunar e a janela são calculados na
+  aplicação.
+- `DadosDeCondicoes` é o modelo bruto do provedor; `CondicoesDto` é a projeção para a web.
+- Cache em memória de 20 minutos por coordenada arredondada; a previsão é determinística dentro da
+  janela.
+- A maré é **aproximada** e sempre rotulada. Não é tábua oficial e não serve para navegação.
+- A janela tem nota 1–5 e motivos explícitos (solunar, direção da maré, vento, chuva, luz do dia e
+  tendência de pressão). Não é uma promessa nem um número mágico.
+- `/condicoes` é pública; salvar local, comparação e preenchimento automático exigem conta.
+- `ServicoDeComparacao` usa lua, maré, clima e período para encontrar um dia parecido. Exige pelo
+  menos 3 pescarias com captura; sem dados suficientes, devolve um estado honesto em vez de um
+  padrão inventado.
+- Locais salvos são privados. A página pública não expõe a conta de quem consulta.
+
 ## Conhecimento (Wiki do Pescador)
 
 Contexto de apoio, editorial e público. Não participa das transações do diário; existe para educar,
@@ -240,7 +264,8 @@ lembretes e e-mail.
 
 1. Sem senha e sem login social; o link mágico é o único método. Google OAuth é o próximo atalho.
 2. Sem verificação de e-mail em dois canais; o próprio link prova a posse do endereço.
-3. Sem sincronização automática de maré/clima; condições são registradas manualmente.
+3. A maré vem de modelo global e é aproximada; a tábua oficial do CHM para os 44 portos fica para a
+   próxima fase. Condições registradas à mão continuam prevalecendo no diário.
 4. Catálogo de espécies/iscas estático e sugestivo, não uma validação taxonômica.
 5. Card do troféu gerado no navegador; fotos precisam de CORS para o canvas.
 6. Fotos ficam em volume local; para escala, mover para object storage + CDN.
@@ -249,10 +274,14 @@ lembretes e e-mail.
    por espécie/UF/data. Essas são evoluções naturais.
 9. A newsletter não tem idempotência por mês; o endpoint deve ser chamado uma vez pelo cron.
 10. O limite de fotos é 4 por captura; armazenamento local por volume, sem CDN.
+11. O cache de condições é em memória e por instância; múltiplas réplicas exigem cache distribuído.
+12. A janela de pesca é uma heurística explicável, não um modelo treinado; precisa de validação com
+    pescadores antes de prometer precisão.
 
 ## Testes
 
 `Fisga.Domain.Tests` cobre invariantes, criação, edição, preservação de IDs e ownership.
 `Fisga.Application.Tests` cobre casos de uso, link mágico, expiração, uso único, sessão, logout,
-isolamento entre usuários, exclusão e exportação. A experiência completa (login, onboarding,
-registro, foto, troféu, PDF, conta e logout) é validada com Playwright.
+isolamento entre usuários, exclusão, exportação, locais salvos, agregação de condições, lua/solunar,
+janela e comparação com o histórico. A experiência completa (login, onboarding, registro, foto,
+troféu, PDF, conta, condições, locais e logout) é validada com Playwright.

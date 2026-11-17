@@ -3,8 +3,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
 using Fisga.Application.Abstractions;
+using Fisga.Application.Condicoes;
 using Fisga.Application.Identidade;
+using Fisga.Application.Locais;
 using Fisga.Application.Newsletter;
+using Fisga.Infrastructure.Condicoes;
 using Fisga.Infrastructure.Emails;
 using Fisga.Infrastructure.Events;
 using Fisga.Infrastructure.Midia;
@@ -33,6 +36,9 @@ public static class DependencyInjection
         services.Configure<NewsletterOptions>(configuration.GetSection("Newsletter"));
         services.AddSingleton(sp => sp.GetRequiredService<IOptions<NewsletterOptions>>().Value);
 
+        services.Configure<CondicoesOptions>(configuration.GetSection("Condicoes"));
+        services.AddSingleton(sp => sp.GetRequiredService<IOptions<CondicoesOptions>>().Value);
+
         var provider = configuration["Database:Provider"] ?? "Postgres";
         var connectionString = configuration["Database:ConnectionString"];
 
@@ -58,11 +64,28 @@ public static class DependencyInjection
         services.AddScoped<IUsuarioRepository, EfUsuarioRepository>();
         services.AddScoped<ISessaoRepository, EfSessaoRepository>();
         services.AddScoped<ITokenDeLoginRepository, EfTokenDeLoginRepository>();
+        services.AddScoped<ILocalDePescaRepository, EfLocalDePescaRepository>();
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddScoped<IDomainEventDispatcher, DomainEventDispatcher>();
         services.AddScoped<IMidiaStorage, ArmazenamentoDeMidiaLocal>();
         services.AddSingleton<IRelogio, RelogioDoSistema>();
         services.AddSingleton<IGeradorDePdf, QuestPdfGerador>();
+
+        services.AddSingleton<ICacheDeCondicoes, CacheEmMemoriaDeCondicoes>();
+        services.AddHttpClient<OpenMeteoProvedorDeCondicoes>(cliente =>
+        {
+            cliente.Timeout = TimeSpan.FromSeconds(12);
+            cliente.DefaultRequestHeaders.UserAgent.ParseAdd("Fisga/1.0 (+https://fisga.abson.tech)");
+        });
+        services.AddHttpClient<OpenMeteoGeocodificador>(cliente =>
+        {
+            cliente.Timeout = TimeSpan.FromSeconds(10);
+            cliente.DefaultRequestHeaders.UserAgent.ParseAdd("Fisga/1.0 (+https://fisga.abson.tech)");
+        });
+        services.AddScoped<IProvedorDeCondicoes>(servicos =>
+            servicos.GetRequiredService<OpenMeteoProvedorDeCondicoes>());
+        services.AddScoped<IGeocodificador>(servicos =>
+            servicos.GetRequiredService<OpenMeteoGeocodificador>());
 
         services.AddSingleton<ConsoleEmailSender>();
         services.AddHttpClient<ResendEmailSender>();

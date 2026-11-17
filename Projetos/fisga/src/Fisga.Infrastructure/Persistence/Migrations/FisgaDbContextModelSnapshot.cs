@@ -140,6 +140,54 @@ namespace Fisga.Infrastructure.Persistence.Migrations
                     b.ToTable("usuarios", "fisga");
                 });
 
+            modelBuilder.Entity("Fisga.Domain.Locais.LocalDePesca", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Ambiente")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTimeOffset>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Cidade")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<DateTimeOffset>("CriadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Estado")
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)");
+
+                    b.Property<double>("Latitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("Longitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<bool>("Padrao")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("locais_de_pesca", "fisga");
+                });
+
             modelBuilder.Entity("Fisga.Domain.Pescarias.Pescaria", b =>
                 {
                     b.Property<Guid>("Id")
@@ -229,6 +277,15 @@ namespace Fisga.Infrastructure.Persistence.Migrations
                 });
 
             modelBuilder.Entity("Fisga.Domain.Identidade.Sessao", b =>
+                {
+                    b.HasOne("Fisga.Domain.Identidade.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Fisga.Domain.Locais.LocalDePesca", b =>
                 {
                     b.HasOne("Fisga.Domain.Identidade.Usuario", null)
                         .WithMany()

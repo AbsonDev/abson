@@ -1,6 +1,9 @@
 using Fisga.Application.Abstractions;
+using Fisga.Application.Condicoes;
 using Fisga.Application.Identidade;
+using Fisga.Application.Locais;
 using Fisga.Domain.Identidade;
+using Fisga.Domain.Locais;
 using Fisga.Domain.Pescarias;
 
 namespace Fisga.Application.Tests;
@@ -45,6 +48,64 @@ internal sealed class PescariaRepositorioFake : IPescariaRepository
     }
 
     public Task SalvarAsync(Pescaria pescaria, CancellationToken ct = default) => Task.CompletedTask;
+}
+
+internal sealed class LocalDePescaRepositorioFake : ILocalDePescaRepository
+{
+    public List<LocalDePesca> Locais { get; } = [];
+
+    public Task<IReadOnlyList<LocalDePesca>> ListarPorUsuarioAsync(Guid usuarioId, CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<LocalDePesca>>(
+            Locais.Where(local => local.UsuarioId == usuarioId).ToList());
+
+    public Task<LocalDePesca?> ObterPorIdAsync(Guid id, CancellationToken ct = default) =>
+        Task.FromResult(Locais.FirstOrDefault(local => local.Id == id));
+
+    public Task<int> ContarPorUsuarioAsync(Guid usuarioId, CancellationToken ct = default) =>
+        Task.FromResult(Locais.Count(local => local.UsuarioId == usuarioId));
+
+    public Task AdicionarAsync(LocalDePesca local, CancellationToken ct = default)
+    {
+        Locais.Add(local);
+        return Task.CompletedTask;
+    }
+
+    public Task SalvarAsync(LocalDePesca local, CancellationToken ct = default) => Task.CompletedTask;
+
+    public Task RemoverAsync(LocalDePesca local, CancellationToken ct = default)
+    {
+        Locais.Remove(local);
+        return Task.CompletedTask;
+    }
+
+    public Task DesmarcarPadraoAsync(Guid usuarioId, CancellationToken ct = default)
+    {
+        foreach (var local in Locais.Where(local => local.UsuarioId == usuarioId && local.Padrao))
+        {
+            local.DefinirPadrao(false, DateTimeOffset.UtcNow);
+        }
+
+        return Task.CompletedTask;
+    }
+}
+
+internal sealed class ProvedorDeCondicoesFake(DadosDeCondicoes dados) : IProvedorDeCondicoes
+{
+    public Task<DadosDeCondicoes?> ObterAsync(
+        double latitude,
+        double longitude,
+        DateOnly diaLocal,
+        CancellationToken ct = default) =>
+        Task.FromResult<DadosDeCondicoes?>(dados);
+}
+
+internal sealed class GeocodificadorFake : IGeocodificador
+{
+    public Task<IReadOnlyList<ResultadoDeBusca>> BuscarAsync(
+        string termo,
+        CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<ResultadoDeBusca>>(
+            [new ResultadoDeBusca("Aracaju", "Aracaju", "SE", -10.911, -37.071, "Brasil")]);
 }
 
 internal sealed class UsuarioRepositorioFake : IUsuarioRepository
