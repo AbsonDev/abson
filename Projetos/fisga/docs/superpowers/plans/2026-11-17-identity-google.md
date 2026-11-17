@@ -126,21 +126,24 @@ git commit -m "feat(auth): add identity schema and consent entity"
 - [ ] **Step 1: Escrever o teste de opções**
 
 ```csharp
-[Fact]
-public void Identity_usa_cookie_e_politicas_do_spec()
+[Collection("api")]
+public sealed class IdentityOptionsTests(ApiTestFixture fixture)
 {
-    using var factory = new TestWebApplicationFactory();
-    var identity = factory.Services.GetRequiredService<IOptions<IdentityOptions>>().Value;
-    var cookie = factory.Services
-        .GetRequiredService<IOptionsMonitor<CookieAuthenticationOptions>>()
-        .Get(IdentityConstants.ApplicationScheme);
+    [Fact]
+    public void Identity_usa_cookie_e_politicas_do_spec()
+    {
+        var identity = fixture.Factory.Services.GetRequiredService<IOptions<IdentityOptions>>().Value;
+        var cookie = fixture.Factory.Services
+            .GetRequiredService<IOptionsMonitor<CookieAuthenticationOptions>>()
+            .Get(IdentityConstants.ApplicationScheme);
 
-    Assert.Equal("fisga_auth", cookie.Cookie.Name);
-    Assert.True(identity.SignIn.RequireConfirmedEmail);
-    Assert.Equal(10, identity.Password.RequiredLength);
-    Assert.False(identity.Password.RequireNonAlphanumeric);
-    Assert.Equal(5, identity.Lockout.MaxFailedAccessAttempts);
-    Assert.Equal(TimeSpan.FromMinutes(15), identity.Lockout.DefaultLockoutTimeSpan);
+        Assert.Equal("fisga_auth", cookie.Cookie.Name);
+        Assert.True(identity.SignIn.RequireConfirmedEmail);
+        Assert.Equal(10, identity.Password.RequiredLength);
+        Assert.False(identity.Password.RequireNonAlphanumeric);
+        Assert.Equal(5, identity.Lockout.MaxFailedAccessAttempts);
+        Assert.Equal(TimeSpan.FromMinutes(15), identity.Lockout.DefaultLockoutTimeSpan);
+    }
 }
 ```
 
@@ -151,7 +154,7 @@ Expected: FAIL (cookie padrão/opções ausentes).
 
 - [ ] **Step 3: Implementar**
 
-Adicionar `Microsoft.AspNetCore.Authentication.Google` 10.0.15. Em `IdentityExtensions`, usar `AddIdentity<ApplicationUser, IdentityRole<Guid>>()`, `AddEntityFrameworkStores<FisgaDbContext>()`, `AddDefaultTokenProviders()`, configurar `IdentityOptions` e `ConfigureApplicationCookie` com `fisga_auth`. Adicionar `AddAuthentication().AddGoogle(...)` com `SignInScheme = IdentityConstants.ExternalScheme`, `CallbackPath = "/signin-google"` e `SaveTokens = true`; ler `Google:ClientId`/`Google:ClientSecret`. Configurar `DataProtection` com `PersistKeysToFileSystem` usando `DataProtection:KeysPath`. Registrar em `DependencyInjection`. Em `Program`, chamar `app.UseAuthentication()` antes do middleware de sessão.
+Adicionar `Microsoft.AspNetCore.Authentication.Google` 10.0.15. Em `IdentityExtensions`, usar `AddIdentity<ApplicationUser, IdentityRole<Guid>>()`, `AddEntityFrameworkStores<FisgaDbContext>()`, `AddDefaultTokenProviders()`, configurar `IdentityOptions` e `ConfigureApplicationCookie` com `fisga_auth`. Adicionar `AddGoogle(...)` **somente quando** `Google:ClientId` e `Google:ClientSecret` estiverem preenchidos; usar `SignInScheme = IdentityConstants.ExternalScheme`, `CallbackPath = "/signin-google"` e `SaveTokens = true`. Configurar `DataProtection` com `PersistKeysToFileSystem` usando `DataProtection:KeysPath` (default `data/keys`). Registrar em `DependencyInjection`. Em `Program`, chamar `app.UseAuthentication()` antes do middleware de sessão.
 
 - [ ] **Step 4: Rodar e ver passar**
 
