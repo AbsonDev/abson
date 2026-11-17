@@ -1,4 +1,4 @@
-const VERSAO = 'fisga-v3';
+const VERSAO = 'fisga-v4';
 const CASCA = [
   '/',
   '/entrar',
@@ -76,15 +76,25 @@ self.addEventListener('fetch', (evento) => {
   }
 
   if (url.origin === self.location.origin) {
-    evento.respondWith(
-      caches.match(evento.request).then((emCache) => {
-        if (emCache) return emCache;
-        return fetch(evento.request).then((resposta) => {
-          const copia = resposta.clone();
-          caches.open(VERSAO).then((cache) => cache.put(evento.request, copia));
-          return resposta;
-        });
-      })
-    );
+    evento.respondWith((async () => {
+      const emCache = await caches.match(evento.request);
+      if (emCache) return emCache;
+
+      // O Pagefind usa ?ts= para furar o cache do navegador. O conteúdo é o
+      // mesmo arquivo já precacheado sem a query.
+      if (url.pathname.startsWith('/pagefind/')) {
+        const semQuery = await caches.match(new URL(url.pathname, url.origin).toString());
+        if (semQuery) return semQuery;
+      }
+
+      try {
+        const resposta = await fetch(evento.request);
+        const copia = resposta.clone();
+        caches.open(VERSAO).then((cache) => cache.put(evento.request, copia));
+        return resposta;
+      } catch {
+        return new Response('', { status: 504, statusText: 'Offline' });
+      }
+    })());
   }
 });
