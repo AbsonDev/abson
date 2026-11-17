@@ -97,6 +97,7 @@ app.UseStaticFiles(new StaticFileOptions
 app.UseMiddleware<MetricasDeRequisicaoMiddleware>();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseMiddleware<ProtecaoCsrfMiddleware>();
+app.UseAuthentication();
 app.UseMiddleware<SessaoMiddleware>();
 app.UseRateLimiter();
 

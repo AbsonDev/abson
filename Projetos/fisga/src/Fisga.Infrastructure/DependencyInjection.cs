@@ -13,6 +13,7 @@ using Fisga.Application.Newsletter;
 using Fisga.Infrastructure.Condicoes;
 using Fisga.Infrastructure.Emails;
 using Fisga.Infrastructure.Events;
+using Fisga.Infrastructure.Identity;
 using Fisga.Infrastructure.Midia;
 using Fisga.Infrastructure.Pdf;
 using Fisga.Infrastructure.Persistence;
@@ -121,6 +122,8 @@ public static class DependencyInjection
                 ? sp.GetRequiredService<ResendEmailSender>()
                 : sp.GetRequiredService<ConsoleEmailSender>();
         });
+
+        services.AdicionarIdentity(configuration);
 
         return services;
     }
