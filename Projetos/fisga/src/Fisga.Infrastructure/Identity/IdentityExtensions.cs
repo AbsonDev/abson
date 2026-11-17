@@ -67,6 +67,12 @@ public static class IdentityExtensions
             opcoes.SlidingExpiration = true;
         });
 
+        // Token de reset de senha de uso único e validade curta (15 min). O provedor
+        // "Default" (DataProtectorTokenProvider) cobre o reset; a confirmação de e-mail
+        // usa o provedor "Email" (código de 6 dígitos) e não é afetada por esta opção.
+        services.Configure<DataProtectionTokenProviderOptions>(opcoes =>
+            opcoes.TokenLifespan = TimeSpan.FromMinutes(15));
+
         var clientId = configuration["Google:ClientId"];
         var clientSecret = configuration["Google:ClientSecret"];
 

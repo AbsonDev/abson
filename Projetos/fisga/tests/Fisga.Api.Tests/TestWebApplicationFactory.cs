@@ -1,8 +1,12 @@
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
+using System.Threading.RateLimiting;
 using Fisga.Application.Identidade;
 using Fisga.Infrastructure.Persistence;
 
@@ -31,6 +35,22 @@ public sealed class TestWebApplicationFactory : WebApplicationFactory<Program>
 
             services.RemoveAll<IEmailSender>();
             services.AddScoped<IEmailSender, EmailSenderFake>();
+
+            // Neutraliza o rate limiter nos testes. As políticas por IP/1min ("auth",
+            // "leitura", etc.) usam RemoteIpAddress, que é nulo no host em memória →
+            // chave única "anonimo" compartilhada entre todas as classes; isso rejeitaria
+            // requisições legítimas a partir da 9ª chamada na mesma janela. Reconfiguramos
+            // os mesmos nomes como "sem limite" para não quebrar os endpoints.
+            services.RemoveAll<IConfigureOptions<RateLimiterOptions>>();
+            services.Configure<RateLimiterOptions>(options =>
+            {
+                options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+                options.AddPolicy<string>("leitura", _ => RateLimitPartition.GetNoLimiter(string.Empty));
+                options.AddPolicy<string>("escrita", _ => RateLimitPartition.GetNoLimiter(string.Empty));
+                options.AddPolicy<string>("auth", _ => RateLimitPartition.GetNoLimiter(string.Empty));
+                options.AddPolicy<string>("pdf", _ => RateLimitPartition.GetNoLimiter(string.Empty));
+                options.AddPolicy<string>("midia", _ => RateLimitPartition.GetNoLimiter(string.Empty));
+            });
         });
     }
 }

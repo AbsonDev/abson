@@ -10,6 +10,22 @@ public sealed record RegistrarRequest(string? Nome, string? Email, string? Senha
 
 public sealed record RegistrarResponse(string Mensagem);
 
+public sealed record EntrarRequest(string? Email, string? Senha);
+
+public sealed record EntrarResponse(bool Autenticado, string? Mensagem);
+
+public sealed record ConfirmarEmailRequest(string? Uid, string? Token);
+
+public sealed record ConfirmarEmailResponse(string Mensagem);
+
+public sealed record EsqueciSenhaRequest(string? Email);
+
+public sealed record EsqueciSenhaResponse(string Mensagem);
+
+public sealed record RedefinirSenhaRequest(string? Uid, string? Token, string? Senha);
+
+public sealed record RedefinirSenhaResponse(string Mensagem);
+
 public sealed record AtualizarPerfilRequest(string? Nome, bool AceitaNovidades);
 
 public sealed record ExcluirContaRequest(string? Confirmacao);

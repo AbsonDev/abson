@@ -1,15 +1,18 @@
 using Microsoft.AspNetCore.Identity;
 using Fisga.Api.Contracts;
 using Fisga.Api.Observabilidade;
+using Fisga.Application.Abstractions;
 using Fisga.Application.Identidade;
 using Fisga.Domain.Common;
 using Fisga.Domain.Identidade;
+using Fisga.Infrastructure.Emails;
 using Fisga.Infrastructure.Identity;
 
 namespace Fisga.Api.Endpoints;
 
 public static class AuthEndpoints
 {
+    private const string MensagemCredenciaisInvalidas = "E-mail ou senha incorretos.";
     public static IEndpointRouteBuilder MapAuthEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapPost("/api/auth/solicitar", async (
@@ -37,8 +40,7 @@ public static class AuthEndpoints
                 RegistrarRequest entrada,
                 ICadastroDeUsuario cadastro,
                 UserManager<ApplicationUser> usuarios,
-                IEmailSender email,
-                AutenticacaoOptions opcoes,
+                EmailDeIdentidade emails,
                 CancellationToken ct) =>
             {
                 var usuario = await cadastro.CriarComSenhaAsync(
@@ -51,23 +53,190 @@ public static class AuthEndpoints
                     ?? throw new InvalidOperationException("Conta de autenticação não encontrada após o cadastro.");
 
                 var token = await usuarios.GenerateEmailConfirmationTokenAsync(conta);
-
-                var link = $"{opcoes.WebUrl.TrimEnd('/')}/confirmar-email" +
-                           $"?uid={Uri.EscapeDataString(usuario.Id.ToString())}" +
-                           $"&token={Uri.EscapeDataString(token)}";
-
-                var resultado = new ResultadoDoRegistro(usuario, link);
-
-                var assunto = "Confirme seu e-mail no Fisga";
-                var texto = $"Confirme seu e-mail no Fisga acessando: {resultado.LinkDeConfirmacao}";
-                var html = $"<p>Confirme seu e-mail no Fisga acessando o link:</p>" +
-                           $"<p><a href=\"{resultado.LinkDeConfirmacao}\">{resultado.LinkDeConfirmacao}</a></p>";
-
-                await email.EnviarAsync(resultado.Usuario.Email.Valor, assunto, html, texto, ct: ct);
+                await emails.EnviarConfirmacaoAsync(usuario.Email.Valor, usuario.Id, token, ct);
 
                 return Results.Created(
                     "/api/auth/me",
                     new RegistrarResponse("Conta criada. Enviamos um link de confirmação para o seu e-mail."));
+            })
+            .AllowAnonymous()
+            .RequireRateLimiting("auth");
+
+        app.MapPost("/api/auth/entrar", async (
+                EntrarRequest entrada,
+                SignInManager<ApplicationUser> signIn,
+                UserManager<ApplicationUser> usuarios,
+                CancellationToken ct) =>
+            {
+                var email = (entrada.Email ?? string.Empty).Trim();
+                var conta = await usuarios.FindByEmailAsync(email);
+
+                if (conta is null)
+                {
+                    Metricas.LoginFalhou("credenciais_invalidas");
+                    return Results.Ok(new EntrarResponse(false, MensagemCredenciaisInvalidas));
+                }
+
+                var resultado = await signIn.PasswordSignInAsync(
+                    conta,
+                    entrada.Senha ?? string.Empty,
+                    isPersistent: false,
+                    lockoutOnFailure: true);
+
+                if (resultado.Succeeded)
+                {
+                    Metricas.LoginConfirmado(false);
+                    return Results.Ok(new EntrarResponse(true, null));
+                }
+
+                if (resultado.IsLockedOut)
+                {
+                    Metricas.LoginFalhou("bloqueado");
+                    return Results.Ok(new EntrarResponse(
+                        false,
+                        "Muitas tentativas. Tente novamente em alguns minutos."));
+                }
+
+                if (resultado.IsNotAllowed)
+                {
+                    Metricas.LoginFalhou("email_nao_confirmado");
+                    return Results.Ok(new EntrarResponse(
+                        false,
+                        "Confirme seu e-mail para entrar. Enviamos um link de confirmação."));
+                }
+
+                Metricas.LoginFalhou("credenciais_invalidas");
+                return Results.Ok(new EntrarResponse(false, MensagemCredenciaisInvalidas));
+            })
+            .AllowAnonymous()
+            .RequireRateLimiting("auth");
+
+        app.MapPost("/api/auth/confirmar-email", async (
+                ConfirmarEmailRequest entrada,
+                UserManager<ApplicationUser> usuarios,
+                ICadastroDeUsuario cadastro,
+                IUnitOfWork unidade,
+                IRelogio relogio,
+                CancellationToken ct) =>
+            {
+                if (!Guid.TryParse(entrada.Uid, out var usuarioId))
+                {
+                    throw new DomainException(
+                        "confirmacao_invalida",
+                        "Este link de confirmação é inválido ou expirado.");
+                }
+
+                var conta = await usuarios.FindByIdAsync(usuarioId.ToString());
+                if (conta is null)
+                {
+                    throw new DomainException(
+                        "confirmacao_invalida",
+                        "Este link de confirmação é inválido ou expirado.");
+                }
+
+                var resultado = await usuarios.ConfirmEmailAsync(conta, entrada.Token ?? string.Empty);
+                if (!resultado.Succeeded)
+                {
+                    throw new DomainException(
+                        "confirmacao_invalida",
+                        "Este link de confirmação é inválido ou expirado.");
+                }
+
+                var usuario = await cadastro.ObterUsuarioAsync(usuarioId, ct);
+                if (usuario is not null)
+                {
+                    usuario.VerificarEmail(relogio.Agora);
+                    await unidade.SalvarAsync(ct);
+                }
+
+                return Results.Ok(new ConfirmarEmailResponse("E-mail confirmado. Você já pode entrar."));
+            })
+            .AllowAnonymous()
+            .RequireRateLimiting("auth");
+
+        app.MapPost("/api/auth/esqueci-senha", async (
+                EsqueciSenhaRequest entrada,
+                UserManager<ApplicationUser> usuarios,
+                EmailDeIdentidade emails,
+                CancellationToken ct) =>
+            {
+                const string mensagem = "Se este e-mail estiver cadastrado, enviamos um link para redefinir sua senha.";
+
+                if (string.IsNullOrWhiteSpace(entrada.Email))
+                {
+                    return Results.Accepted("/api/auth/me", new EsqueciSenhaResponse(mensagem));
+                }
+
+                var conta = await usuarios.FindByEmailAsync(entrada.Email.Trim());
+                if (conta is not null)
+                {
+                    var token = await usuarios.GeneratePasswordResetTokenAsync(conta);
+                    await emails.EnviarRedefinicaoAsync(
+                        conta.Email ?? entrada.Email.Trim(),
+                        conta.Id,
+                        token,
+                        ct);
+                    Metricas.ResetSolicitado();
+                }
+
+                return Results.Accepted("/api/auth/me", new EsqueciSenhaResponse(mensagem));
+            })
+            .AllowAnonymous()
+            .RequireRateLimiting("auth");
+
+        app.MapPost("/api/auth/redefinir-senha", async (
+                RedefinirSenhaRequest entrada,
+                UserManager<ApplicationUser> usuarios,
+                ISessaoRepository sessoes,
+                IUnitOfWork unidade,
+                IRelogio relogio,
+                CancellationToken ct) =>
+            {
+                if (!Guid.TryParse(entrada.Uid, out var usuarioId))
+                {
+                    throw new DomainException(
+                        "link_invalido",
+                        "Este link de redefinição é inválido ou expirado. Peça um novo.");
+                }
+
+                var conta = await usuarios.FindByIdAsync(usuarioId.ToString());
+                if (conta is null)
+                {
+                    throw new DomainException(
+                        "link_invalido",
+                        "Este link de redefinição é inválido ou expirado. Peça um novo.");
+                }
+
+                var senha = entrada.Senha ?? string.Empty;
+                if (senha.Length < 10)
+                {
+                    throw new DomainException("senha_curta", "A senha deve ter pelo menos 10 caracteres.");
+                }
+
+                if (senha.Length > 128)
+                {
+                    throw new DomainException("senha_longa", "A senha deve ter no máximo 128 caracteres.");
+                }
+
+                var resultado = await usuarios.ResetPasswordAsync(conta, entrada.Token ?? string.Empty, senha);
+                if (!resultado.Succeeded)
+                {
+                    throw new DomainException(
+                        "link_invalido",
+                        "Este link de redefinição é inválido ou expirado. Peça um novo.");
+                }
+
+                // O SecurityStamp já é rotacionado pelo ResetPasswordAsync; este segundo
+                // UpdateSecurityStampAsync torna explícita a invalidação de cookies antigos
+                // (constraint global), sem criar infraestrutura de sessão.
+                await usuarios.UpdateSecurityStampAsync(conta);
+
+                // Revoga sessões de dispositivo existentes, se houver (Task 5 cria a ponte).
+                await sessoes.RevogarTodasAsync(conta.Id, relogio.Agora, exceto: null, ct);
+                await unidade.SalvarAsync(ct);
+
+                Metricas.ResetConcluido();
+                return Results.Ok(new RedefinirSenhaResponse("Senha redefinida. Você já pode entrar."));
             })
             .AllowAnonymous()
             .RequireRateLimiting("auth");

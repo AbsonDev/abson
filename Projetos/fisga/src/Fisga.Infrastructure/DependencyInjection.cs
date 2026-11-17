@@ -123,6 +123,7 @@ public static class DependencyInjection
                 ? sp.GetRequiredService<ResendEmailSender>()
                 : sp.GetRequiredService<ConsoleEmailSender>();
         });
+        services.AddScoped<EmailDeIdentidade>();
 
         services.AdicionarIdentity(configuration);
 

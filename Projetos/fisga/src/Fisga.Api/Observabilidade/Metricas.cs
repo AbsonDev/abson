@@ -76,6 +76,12 @@ public static class Metricas
             1,
             Atributos(("motivo", motivo)));
 
+    public static void ResetSolicitado() =>
+        SentrySdk.Metrics.EmitCounter("fisga.reset.solicitado", 1, []);
+
+    public static void ResetConcluido() =>
+        SentrySdk.Metrics.EmitCounter("fisga.reset.concluido", 1, []);
+
     public static void MidiaEnviada(string tipo, long bytes)
     {
         SentrySdk.Metrics.EmitCounter(

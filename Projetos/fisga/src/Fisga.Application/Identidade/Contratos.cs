@@ -90,8 +90,6 @@ public interface IEmailSender
 
 public sealed record ResultadoDaSolicitacao(string Email, string Link);
 
-public sealed record ResultadoDoRegistro(Usuario Usuario, string LinkDeConfirmacao);
-
 public sealed record SessaoValida(Sessao Sessao, Usuario Usuario);
 
 public sealed record SessaoCriada(string Token, DateTimeOffset ExpiraEm, Usuario Usuario, bool PrimeiroAcesso);
