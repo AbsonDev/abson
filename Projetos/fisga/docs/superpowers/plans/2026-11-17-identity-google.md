@@ -263,41 +263,98 @@ git commit -m "feat(auth): add password login, email confirmation and reset"
 ### Task 5: Ponte de sessão e dispositivos
 
 **Files:**
+- Modify: `src/Fisga.Domain/Identidade/Sessao.cs`
 - Modify: `src/Fisga.Application/Identidade/Contratos.cs`
 - Modify: `src/Fisga.Infrastructure/Persistence/Repositories/EfSessaoRepository.cs`
-- Create: `src/Fisga.Api/Middleware/SessaoIdentityMiddleware.cs`
 - Create: `src/Fisga.Api/IdentitySessionService.cs`
-- Modify: `src/Fisga.Api/HttpContextExtensions.cs`
+- Create: `src/Fisga.Api/Middleware/SessaoIdentityMiddleware.cs`
+- Modify: `src/Fisga.Api/Middleware/SessaoMiddleware.cs`
 - Modify: `src/Fisga.Api/Program.cs`
 - Modify: `src/Fisga.Api/Endpoints/AuthEndpoints.cs`
 - Create: `tests/Fisga.Api.Tests/SessaoIdentityTests.cs`
+- Create: `tests/Fisga.Domain.Tests/SessaoTests.cs` (se ainda não existir)
 
 **Interfaces:**
-- Produces: `IdentitySessionService.AssinarAsync(ApplicationUser, Usuario, HttpContext, CancellationToken) : Task`; `SessaoIdentityMiddleware`; claim `sessao_id`; `ISessaoRepository.ObterPorIdAsync(Guid, CancellationToken)`.
-- Consumes: `SignInManager`/Identity da Task 2.
+- Produces: `Sessao.Criar(Guid id, Guid usuarioId, string tokenHash, string? userAgent, string? ipHash, DateTimeOffset agora, TimeSpan duracao)`; o overload atual delega com `Guid.NewGuid()`.
+- Produces: `ISessaoRepository.ObterPorIdAsync(Guid, CancellationToken)`; implementação EF com `FirstOrDefaultAsync(s => s.Id == id)`.
+- Produces: `IdentitySessionService.AssinarAsync(ApplicationUser conta, Usuario usuario, HttpContext http, CancellationToken ct) : Task`.
+- Produces: claim `sessao_id` no cookie da Identity; `SessaoIdentityMiddleware`.
+- Consumes: `SignInManager`/Identity da Task 2 e `Sessao`/`ISessaoRepository` atuais.
+
+**Decisões de implementação (vinculantes):**
+- Não haverá cache da validação de sessão nesta entrega. O middleware consulta a sessão por chave primária a cada requisição `/api`. `UltimoUsoEm` só é atualizado quando passou mais de 5 minutos, como hoje.
+- O login por senha passa a usar `SignInManager.CheckPasswordSignInAsync(conta, senha, lockoutOnFailure: true)` e, em sucesso, `IdentitySessionService.AssinarAsync`. Não chamar `PasswordSignInAsync` e assinar de novo.
+- O `SessaoMiddleware` antigo (`fisga_sessao`) permanece como fallback somente quando a Identity ainda não resolveu a sessão. A Task 6 remove o fallback ao migrar o link mágico. Isso mantém a suíte verde entre as tarefas.
+- “Sair de todos” invalida imediatamente porque revoga todas as linhas de `Sessoes`; o `SecurityStamp` é defesa em profundidade, não o mecanismo primário.
+- Sessão cujo `UsuarioId` não bate com o `NameIdentifier` do cookie é tratada como inválida e não define `Items`.
 
 - [ ] **Step 1: Escrever testes**
 
-Sessão ativa permite `/api/auth/me`; sessão revogada faz o próximo `/api/auth/me` retornar não autenticado; “sair” revoga só a atual; “sair de todos” revoga todas e invalida cookies.
+Cobrir:
+1. Login válido cria uma linha em `Sessoes` com `UsuarioId` do usuário e `TokenHash` de 64 caracteres; `/api/auth/me` retorna autenticado.
+2. Sessão revogada diretamente no banco faz `/api/auth/me` retornar `autenticado:false` e um endpoint protegido (`/api/conta/sessoes`) retornar 401; o cookie é limpo.
+3. Sessão expirada (`ExpiraEm` no passado) é tratada como inválida.
+4. Claim `sessao_id` apontando para sessão de outro usuário não autentica.
+5. `POST /api/auth/sair` revoga apenas a sessão atual e limpa o cookie; outro cliente continua autenticado.
+6. `POST /api/auth/sair-de-todos` revoga todas as sessões do usuário; o segundo cliente perde acesso no request seguinte.
+7. `GET /api/conta/sessoes` marca a sessão atual (`atual: true` em exatamente uma).
 
 - [ ] **Step 2: Rodar e ver falhar**
 
 Run: `dotnet test tests/Fisga.Api.Tests --filter SessaoIdentity`
 Expected: FAIL.
 
-- [ ] **Step 3: Implementar**
+- [ ] **Step 3: Implementar domínio e repositório**
 
-Criar helper `AssinarAsync(ApplicationUser, Usuario, HttpContext)` que cria `Sessao` (hash do `sessao_id` em `TokenHash`), chama `SignInManager.SignInWithClaimsAsync` com `sessao_id` e atualiza `Items`. Middleware lê o claim, busca a sessão, valida `EstaAtiva`; se inválida, `SignOutAsync` e limpa `Items`. `ExigirUsuarioId` usa `UsuarioAtual()`.
+Adicionar o overload de `Sessao.Criar` que recebe `Id`; validar `Id != Guid.Empty`. Extrair a validação de `tokenHash`/duração para um método privado para não duplicar. Adicionar `ObterPorIdAsync` à interface e ao repositório EF.
 
-- [ ] **Step 4: Rodar e ver passar**
+- [ ] **Step 4: Implementar assinatura e middleware**
+
+`IdentitySessionService`:
+- gera `var id = Guid.NewGuid()`;
+- cria `Sessao.Criar(id, usuario.Id, TokensSeguros.Hash(id.ToString()), userAgent, ipHash, relogio.Agora, TimeSpan.FromDays(opcoes.DuracaoDaSessaoEmDias))`;
+- adiciona ao repositório e `IUnitOfWork.SalvarAsync`;
+- chama `signIn.SignInWithClaimsAsync(conta, isPersistent: true, [new Claim("sessao_id", id.ToString())])`;
+- publica `SessaoIniciada` (mesmo padrão do serviço atual) e chama `http.DefinirSessao(sessao, usuario)`.
+
+`SessaoIdentityMiddleware`, para `/api`:
+- se não houver `HttpContext.User` autenticado, segue;
+- lê `sessao_id`; sem claim → segue (fallback legado ainda pode resolver);
+- busca por id; se nula, revogada, expirada ou `UsuarioId` diferente do `NameIdentifier` → `SignOutAsync(IdentityConstants.ApplicationScheme)`, não define `Items`, segue;
+- se válida e `agora - UltimoUsoEm > 5 min` → `RegistrarUso` + salvar;
+- carrega `Usuario` por id (`IUsuarioRepository`) e chama `http.DefinirSessao`.
+- O middleware precisa tolerar `Usuario` ausente sem derrubar a requisição.
+
+Em `Program.cs`, registrar `IdentitySessionService` como scoped e usar `app.UseAuthentication()` seguido de `app.UseMiddleware<SessaoIdentityMiddleware>()` antes do `SessaoMiddleware` legado.
+
+- [ ] **Step 5: Implementar logout**
+
+`POST /api/auth/sair`:
+- se autenticado e com `sessao_id`, revogar essa `Sessao` (`Revogar` + salvar);
+- `SignOutAsync(IdentityConstants.ApplicationScheme)`;
+- limpar o cookie legado `fisga_sessao`;
+- 204.
+
+`POST /api/auth/sair-de-todos`:
+- `sessoes.RevogarTodasAsync(usuarioId, agora, exceto: null)`;
+- `UserManager.UpdateSecurityStampAsync(conta)`;
+- `SignOutAsync` + limpar cookie legado;
+- 204.
+
+- [ ] **Step 6: Rodar e ver passar**
 
 Run: `dotnet test tests/Fisga.Api.Tests --filter SessaoIdentity`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 7: Rodar a suíte completa**
+
+Run: `dotnet test`
+Expected: PASS, incluindo os testes antigos de link mágico (fallback legado).
+
+- [ ] **Step 8: Commit**
 
 ```bash
-git add src/Fisga.Application/Identidade/Contratos.cs src/Fisga.Infrastructure/Persistence/Repositories/EfSessaoRepository.cs src/Fisga.Api tests/Fisga.Api.Tests
+git add src/Fisga.Domain/Identidade/Sessao.cs src/Fisga.Application/Identidade/Contratos.cs src/Fisga.Infrastructure/Persistence/Repositories/EfSessaoRepository.cs src/Fisga.Api tests/Fisga.Api.Tests tests/Fisga.Domain.Tests
 git commit -m "feat(auth): bridge identity cookie to device sessions"
 ```
 
