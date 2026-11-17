@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -24,5 +25,8 @@ public sealed class IdentityOptionsTests(ApiTestFixture fixture)
         Assert.False(identity.Password.RequireNonAlphanumeric);
         Assert.Equal(5, identity.Lockout.MaxFailedAccessAttempts);
         Assert.Equal(TimeSpan.FromMinutes(15), identity.Lockout.DefaultLockoutTimeSpan);
+
+        // Host de teste roda em Development, onde Auth:CookieSecure é false.
+        Assert.Equal(CookieSecurePolicy.SameAsRequest, cookie.Cookie.SecurePolicy);
     }
 }

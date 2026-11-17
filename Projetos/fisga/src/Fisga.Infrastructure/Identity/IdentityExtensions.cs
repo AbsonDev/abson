@@ -50,13 +50,18 @@ public static class IdentityExtensions
             .AddEntityFrameworkStores<FisgaDbContext>()
             .AddDefaultTokenProviders();
 
+        // Auth:CookieSecure é a fonte única da política Secure do cookie da Identity:
+        // true (produção) → Secure=Always; false (dev/teste) → Secure apenas sob HTTPS.
+        var cookieSecure = configuration.GetValue<bool?>("Auth:CookieSecure") ?? true;
+
         services.ConfigureApplicationCookie(opcoes =>
         {
             opcoes.Cookie.Name = "fisga_auth";
             opcoes.Cookie.HttpOnly = true;
             opcoes.Cookie.SameSite = SameSiteMode.Lax;
-            // Secure sob HTTPS (produção, atrás do proxy); sem Secure em HTTP local.
-            opcoes.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+            opcoes.Cookie.SecurePolicy = cookieSecure
+                ? CookieSecurePolicy.Always
+                : CookieSecurePolicy.SameAsRequest;
             opcoes.ExpireTimeSpan = TimeSpan.FromDays(30);
             opcoes.SlidingExpiration = true;
         });
