@@ -192,7 +192,8 @@ nunca são publicados.
 - **Sentry** captura erros, logs e traces da API e do web (SSR + navegador).
 - Dados sensíveis são removidos antes do envio: cookies, headers, corpo, e-mail, nome,
   coordenadas e query string de local.
-- **Sem Session Replay** e sem analytics de navegação; o diário continua privado.
+- **Session Replay** com texto, inputs e mídia mascarados/bloqueados; mapas e fotos do diário são
+  bloqueados. Sem analytics de navegação.
 - Source maps do web são enviados no build quando `SENTRY_AUTH_TOKEN` está presente; sem ele,
   stack traces de produção ficam minificados.
 - `/health` verifica o processo; `/ready` verifica o banco. O Docker reinicia containers doentes.
