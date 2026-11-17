@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
@@ -7,12 +8,28 @@ using Microsoft.Extensions.FileProviders;
 using Fisga.Api;
 using Fisga.Api.Endpoints;
 using Fisga.Api.Middleware;
+using Fisga.Api.Observabilidade;
 using Fisga.Application;
 using Fisga.Infrastructure;
 using Fisga.Infrastructure.Midia;
 using Fisga.Infrastructure.Persistence;
+using Microsoft.Extensions.Logging;
+using Sentry;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.WebHost.UseSentry(opcoes =>
+{
+    opcoes.SendDefaultPii = false;
+    opcoes.MaxRequestBodySize = Sentry.Extensibility.RequestSize.None;
+    opcoes.EnableLogs = true;
+    opcoes.MinimumEventLevel = LogLevel.Warning;
+    opcoes.MinimumBreadcrumbLevel = LogLevel.Information;
+    opcoes.MaxBreadcrumbs = 50;
+    opcoes.TracesSampleRate = TaxaDeAmostragem(builder.Environment);
+    opcoes.SetBeforeSend(SentryScrubber.ScrubEvent);
+    opcoes.SetBeforeSendTransaction(SentryScrubber.ScrubTransaction);
+});
 
 builder.Services.AddProblemDetails();
 builder.Services.AddOpenApi();
@@ -107,6 +124,17 @@ app.MapVisionEndpoints();
 await app.Services.InicializarBancoAsync();
 
 app.Run();
+
+static double TaxaDeAmostragem(IWebHostEnvironment ambiente)
+{
+    var configurada = Environment.GetEnvironmentVariable("SENTRY_TRACES_SAMPLE_RATE");
+    if (double.TryParse(configurada, NumberStyles.Float, CultureInfo.InvariantCulture, out var taxa))
+    {
+        return Math.Clamp(taxa, 0, 1);
+    }
+
+    return ambiente.IsDevelopment() ? 1.0 : 0.1;
+}
 
 static void AdicionarPolitica(Microsoft.AspNetCore.RateLimiting.RateLimiterOptions opcoes, string nome, int limitePorMinuto)
 {

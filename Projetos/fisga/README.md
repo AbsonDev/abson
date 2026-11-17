@@ -178,6 +178,7 @@ nunca são publicados.
 | Mapas | Leaflet + OpenStreetMap + Esri World Imagery + OpenSeaMap + GEBCO |
 | Visão computacional | Porta `IReconhecedorDeEspecie` (Gemini opcional; manual por padrão) |
 | Mídia | Upload local + arquivos estáticos com cache |
+| Observabilidade | Sentry (erros, logs e traces) + health checks do Docker/Coolify |
 | Card do troféu | Canvas API no navegador (quadrado + story) |
 | PWA | Manifest, service worker, página offline e Cache Storage |
 | Conteúdo | Astro Content Collections (Markdown tipado) |
@@ -309,6 +310,10 @@ Nunca commite chaves, tokens ou senhas. Use variáveis de ambiente do provedor.
 | `Auth__CookieSecure` | `true` em produção |
 | `Auth__ValidadeDoLinkEmMinutos` | padrão 15 |
 | `Auth__DuracaoDaSessaoEmDias` | padrão 30 |
+| `SENTRY_DSN` | DSN do projeto `fisga-api` |
+| `SENTRY_ENVIRONMENT` | `production` ou `development` |
+| `SENTRY_RELEASE` | commit/deploy para agrupar erros e traces |
+| `SENTRY_TRACES_SAMPLE_RATE` | amostragem de traces (padrão 0.1 em produção) |
 
 ### Web (build/SSR)
 
@@ -317,6 +322,11 @@ Nunca commite chaves, tokens ou senhas. Use variáveis de ambiente do provedor.
 | `PUBLIC_API_URL` | URL pública da API usada pelo navegador |
 | `PUBLIC_SITE_URL` | URL pública do site/canonical/sitemap |
 | `API_URL` | URL da API usada pelo SSR do Astro |
+| `SENTRY_DSN` | DSN do projeto `fisga-web` no SSR |
+| `PUBLIC_SENTRY_DSN` | DSN do navegador (build) |
+| `SENTRY_ENVIRONMENT` | `production` ou `development` (build e runtime) |
+| `SENTRY_RELEASE` | commit/deploy (build e runtime) |
+| `SENTRY_AUTH_TOKEN` | token de upload de source maps (somente build; opcional) |
 
 ### E-mail e newsletter
 

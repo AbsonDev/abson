@@ -30,6 +30,7 @@ export const prerender = true;
         <li><strong>Conta:</strong> e-mail, nome opcional e preferência de receber novidades.</li>
         <li><strong>Diário:</strong> pescarias, locais, datas, condições, capturas, medidas, iscas, fotos e observações que você registra.</li>
         <li><strong>Sessão:</strong> identificador de sessão, user agent do navegador e hash do IP, usados para segurança e para listar dispositivos.</li>
+        <li><strong>Diagnóstico:</strong> mensagens de erro, stack trace, rota, tipo de navegador, versão do app e release. Não enviamos conteúdo do diário, fotos, e-mail, coordenadas ou cookie de sessão.</li>
         <li><strong>Suporte:</strong> mensagens que você enviar para o contato.</li>
       </ul>
 
@@ -39,6 +40,7 @@ export const prerender = true;
         <li>Armazenar e exibir o seu diário, as estatísticas, o troféu e o PDF.</li>
         <li>Gerar links públicos apenas quando você compartilha uma pescaria.</li>
         <li>Prevenir abuso, fraude e acessos não autorizados.</li>
+        <li>Diagnosticar falhas, medir estabilidade e corrigir erros.</li>
         <li>Enviar avisos sobre novidades e conteúdo, se você optar por receber.</li>
         <li>Entender e melhorar o produto, de forma agregada.</li>
       </ul>
@@ -57,6 +59,7 @@ export const prerender = true;
       <ul>
         <li><strong>Resend:</strong> entrega dos e-mails de acesso e avisos.</li>
         <li><strong>Hostinger/Coolify:</strong> hospedagem da aplicação, banco de dados e arquivos.</li>
+        <li><strong>Sentry:</strong> monitoramento de erros e desempenho, com dados técnicos e sem conteúdo do diário.</li>
         <li><strong>Autoridades:</strong> quando houver obrigação legal ou ordem judicial.</li>
       </ul>
       <p>
@@ -77,7 +80,8 @@ export const prerender = true;
         Mantemos os dados enquanto sua conta estiver ativa. Você pode excluir a conta em
         <a href="/conta">Minha conta</a>; a exclusão remove o usuário, as pescarias, as sessões e os
         arquivos de foto referenciados. Cópias de backup podem persistir por um período limitado
-        antes de serem sobrescritas.
+        antes de serem sobrescritas. Dados de diagnóstico no Sentry são mantidos por até 30 dias no
+        plano atual.
       </p>
 
       <h2>7. Seus direitos</h2>
