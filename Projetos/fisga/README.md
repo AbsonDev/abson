@@ -45,6 +45,10 @@ card de troféu compartilhável + PDF da pescaria.
 - **Comparação com o histórico**: encontra um dia parecido usando lua, maré, clima e período; só
   mostra padrão quando há pelo menos 3 pescarias com captura.
 - **Registro pré-preenchido**: local, data, período, maré, lua e clima entram a partir das condições.
+- **Cockpit sincronizado**: linha do tempo de 24 h com maré, pressão, vento e solunar; corrente
+  oceânica real e alerta de mudança brusca de pressão.
+- **Mapa privado**: Leaflet com mapa, satélite, náutico e batimetria; pontos, poitas, estruturas e
+  rampas privados, com notas e cache local.
 - Edição de pescaria preservando os IDs das capturas (links de troféu não quebram).
 - **Boas-vindas no primeiro acesso**, com nome e preferência de e-mail.
 - **Conta**: perfil, troca de e-mail via novo link, sessões, exportação e exclusão com confirmação.
@@ -60,7 +64,8 @@ card de troféu compartilhável + PDF da pescaria.
 | Autenticação | Link mágico + sessão em cookie; tokens com hash SHA-256 |
 | E-mail | Resend (produção) e sender de console (desenvolvimento) |
 | PDF | QuestPDF + QRCoder |
-| Dados ambientais | Open-Meteo (tempo, ondas e nível do mar) + MET Norway (lua) |
+| Dados ambientais | Open-Meteo (tempo, ondas, corrente e nível do mar) + MET Norway (lua) |
+| Mapas | Leaflet + OpenStreetMap + Esri World Imagery + OpenSeaMap + GEBCO (batimetria) |
 | Mídia | upload local + arquivos estáticos com CORS |
 | Card do troféu | Canvas API no navegador (quadrado + story) |
 | PWA | manifest, service worker e página offline |
@@ -160,11 +165,11 @@ dotnet test
 cd web && npm run check
 ```
 
-Atualmente: **60 testes de backend** (19 de domínio + 41 de aplicação) e checagem de tipos do
+Atualmente: **67 testes de backend** (22 de domínio + 45 de aplicação) e checagem de tipos do
 Astro. Cobrem criação/edição de pescaria, IDs de captura, validações, isolamento entre usuários,
 link mágico, expiração, uso único, sessão, logout, exclusão de conta, exportação, locais salvos,
-condições, lua/solunar e comparação com o histórico. O fluxo completo também é validado com
-Playwright.
+condições, lua/solunar, comparação com o histórico e pontos privados do mapa. O fluxo completo
+também é validado com Playwright.
 
 O build da web gera as páginas da wiki e roda o Pagefind automaticamente:
 
@@ -206,6 +211,10 @@ npm run build   # astro build + pagefind + precache offline
 | `POST` | `/api/locais/{id}/padrao` | define o local padrão |
 | `DELETE` | `/api/locais/{id}` | exclui local |
 | `GET` | `/api/locais/buscar?q=` | busca cidade/praia (geocodificação) |
+| `GET` | `/api/pontos` | pontos privados do mapa; exige sessão |
+| `POST` | `/api/pontos` | cria ponto privado (máximo 200); exige sessão |
+| `PUT` | `/api/pontos/{id}` | edita ponto; exige dono |
+| `DELETE` | `/api/pontos/{id}` | exclui ponto; exige dono |
 | `GET` | `/health`, `/ready` | saúde/readiness |
 
 Cada pescaria tem `shareToken` público. O acesso ao diário é pela conta; não existe mais token
@@ -221,8 +230,10 @@ anônimo no navegador. Sessões e links mágicos são armazenados apenas como ha
 - Sessões duram 30 dias e podem ser encerradas no dispositivo ou em todos.
 - Fotos são reencodadas no navegador antes do upload, o que remove metadados EXIF do arquivo.
 - O local da pescaria aparece no link público daquela pescaria; o restante do diário não.
-- Locais salvos são privados. As condições públicas usam apenas as coordenadas da URL e não expõem
-  a conta de quem consulta.
+- Locais salvos e pontos do mapa são privados. As condições públicas usam apenas as coordenadas da
+  URL e não expõem a conta de quem consulta.
+- O mapa usa camadas de terceiros (OSM, Esri, OpenSeaMap, GEBCO) com atribuição; não substitui carta
+  náutica oficial. Pontos ficam em cache local e são apagados quando a sessão expira.
 - A maré é uma **aproximação por modelo global** e é rotulada como tal. Não serve para navegação.
 - O card do troféu é gerado localmente no navegador; o Fisga não publica em rede social.
 - Exportação JSON e exclusão de conta (LGPD) já estão disponíveis em `/conta`.
@@ -236,6 +247,10 @@ anônimo no navegador. Sessões e links mágicos são armazenados apenas como ha
 - **Validação de defeso/tamanho mínimo** no formulário por espécie e UF.
 - **Maré oficial do CHM** para os 44 portos, com importação anual e atribuição.
 - **Identificação de espécie por foto**, com confirmação humana e link para a wiki.
+- **Trilhas reais, PostGIS e inteligência coletiva anonimizada** por macrorregião.
+- **EXIF automático e defeso/tamanho mínimo** por espécie e UF.
+- **Nós, montagens, checklists e diretório de guias** offline.
+- Roadmap completo em [`docs/roadmap.md`](docs/roadmap.md).
 - **Múltiplas fotos por captura** e escolha da capa.
 - **OG image dinâmica** renderizada no servidor, além da foto atual.
 - Previsão de maré/lua/clima com APIs e sugestão de janela.

@@ -1,9 +1,11 @@
-const VERSAO = 'fisga-v4';
+const VERSAO = 'fisga-v5';
 const CASCA = [
   '/',
   '/entrar',
   '/meu-diario',
   '/registrar',
+  '/condicoes',
+  '/mapa',
   '/precos',
   '/offline',
   '/wiki',
@@ -53,6 +55,14 @@ self.addEventListener('fetch', (evento) => {
   if (url.pathname.startsWith('/api/')) return;
 
   if (evento.request.mode === 'navigate') {
+    const privada = ['/locais', '/conta', '/meu-diario', '/registrar', '/trofeu'].some((rota) =>
+      url.pathname.startsWith(rota)
+    );
+    if (privada) {
+      evento.respondWith(fetch(evento.request));
+      return;
+    }
+
     evento.respondWith(
       fetch(evento.request)
         .then((resposta) => {

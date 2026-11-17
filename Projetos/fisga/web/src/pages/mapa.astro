@@ -1,0 +1,898 @@
+---
+import Layout from '../layouts/Layout.astro';
+import 'leaflet/dist/leaflet.css';
+---
+
+<Layout
+  titulo="Mapa privado — Fisga"
+  descricao="Seus pontos de pesca, poitas, estruturas e trilhas. Privados por padrão, com camadas náuticas e batimetria."
+  noindex
+>
+  <section class="mapa-topo">
+    <div class="container">
+      <span class="eyebrow">Mapa privado</span>
+      <h1>Seus pontos, <em>só seus.</em></h1>
+      <p>
+        Marque poitas, lajes, canais, manguezais e rampas. Nenhuma coordenada é publicada. O mapa
+        usa camadas gratuitas e funciona como caderno pessoal.
+      </p>
+      <div class="hero-acoes">
+        <button id="adicionar-ponto" class="btn btn--primario" type="button">Adicionar ponto</button>
+        <button id="usar-localizacao-mapa" class="btn btn--contorno" type="button">Ir para minha localização</button>
+        <a id="entrar-mapa" class="btn btn--contorno oculto" href={`/entrar?voltar=${encodeURIComponent('/mapa')}`}>Entrar para salvar</a>
+      </div>
+      <p class="mapa-aviso-privacidade">
+        Privacidade por padrão: os pontos ficam na sua conta. O Fisga não mostra suas coordenadas
+        para outros pescadores.
+      </p>
+    </div>
+  </section>
+
+  <section class="container mapa-conteudo">
+    <div id="mapa-aviso" class="mapa-aviso oculto" role="status" aria-live="polite"></div>
+
+    <div class="mapa-layout">
+      <div class="mapa-painel">
+        <div id="mapa" aria-label="Mapa de pontos privados de pesca"></div>
+        <div class="mapa-legenda" aria-hidden="true">
+          <span><i class="ponto-legenda"></i> Ponto privado</span>
+          <span>Camadas: mapa, satélite, náutico e batimetria</span>
+        </div>
+      </div>
+
+      <aside class="mapa-lateral">
+        <article class="cartao mapa-lista">
+          <div class="cartao-topo">
+            <span class="eyebrow">Seus pontos</span>
+            <span id="contagem-pontos" class="selo selo--neutro">0</span>
+          </div>
+          <p class="mapa-lista-ajuda">
+            Clique no mapa para marcar um ponto. Arraste, aproxime e use as camadas no canto.
+          </p>
+          <div id="lista-pontos" class="lista-pontos"></div>
+        </article>
+
+        <article class="cartao mapa-offline">
+          <span class="eyebrow">No mar, sem sinal</span>
+          <h3>O que fica no aparelho</h3>
+          <p>
+            Seus pontos ficam salvos localmente para consulta offline. As condições já visitadas
+            também ficam em cache. Os azulejos do mapa precisam de conexão.
+          </p>
+        </article>
+
+        <article class="cartao mapa-privacidade">
+          <span class="eyebrow">Privacidade</span>
+          <h3>Nenhum ponto é público.</h3>
+          <p>
+            Waypoints, poitas e trilhas são privados. A inteligência coletiva futura será anônima e
+            por macrorregião, nunca com a coordenada exata.
+          </p>
+        </article>
+      </aside>
+    </div>
+  </section>
+
+  <dialog id="dialogo-ponto" class="dialogo-ponto">
+    <form id="form-ponto">
+      <input id="ponto-id" type="hidden" />
+      <div class="dialogo-topo">
+        <div>
+          <span class="eyebrow">Ponto privado</span>
+          <h2 id="titulo-dialogo-ponto">Novo ponto</h2>
+        </div>
+        <button id="fechar-ponto" class="botao-icone" type="button" aria-label="Fechar">×</button>
+      </div>
+
+      <div class="campo">
+        <label for="ponto-nome">Nome</label>
+        <input id="ponto-nome" maxlength="80" required placeholder="Ex.: Laje do Farol" />
+      </div>
+
+      <div class="campo">
+        <label for="ponto-tipo">Tipo</label>
+        <select id="ponto-tipo">
+          <option value="Ponto">Ponto</option>
+          <option value="Poita">Poita</option>
+          <option value="Estrutura">Estrutura</option>
+          <option value="Trilha">Trilha</option>
+          <option value="Rampa">Rampa</option>
+        </select>
+      </div>
+
+      <div class="campo">
+        <label for="ponto-descricao">Notas privadas</label>
+        <textarea id="ponto-descricao" rows="4" maxlength="1000" placeholder="Profundidade, fundo, isca, cuidado com a corrente..."></textarea>
+      </div>
+
+      <div class="campo-duplo">
+        <div class="campo">
+          <label for="ponto-lat">Latitude</label>
+          <input id="ponto-lat" inputmode="decimal" required />
+        </div>
+        <div class="campo">
+          <label for="ponto-lon">Longitude</label>
+          <input id="ponto-lon" inputmode="decimal" required />
+        </div>
+      </div>
+
+      <p id="ponto-erro" class="erro-campo oculto" role="alert"></p>
+
+      <div class="dialogo-acoes">
+        <button id="cancelar-ponto" class="btn btn--contorno" type="button">Cancelar</button>
+        <button id="salvar-ponto" class="btn btn--primario" type="submit">Salvar ponto</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast oculto" role="status" aria-live="polite"></div>
+
+  <script>
+    import L from 'leaflet';
+
+    const API = (document.body.dataset.api ?? 'http://localhost:5184').replace(/\/$/, '');
+    const TIPOS: Record<string, string> = {
+      Ponto: 'Ponto',
+      Poita: 'Poita',
+      Estrutura: 'Estrutura',
+      Trilha: 'Trilha',
+      Rampa: 'Rampa'
+    };
+
+    const mapa = L.map('mapa', { zoomControl: true }).setView([-14.235, -51.925], 4);
+
+    const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap'
+    });
+    const satelite = L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      {
+        maxZoom: 19,
+        attribution: 'Tiles &copy; Esri — Esri, Maxar, Earthstar Geographics'
+      }
+    );
+    const nautico = L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      attribution: '&copy; OpenSeaMap'
+    });
+    const batimetria = L.tileLayer.wms('https://wms.gebco.net/mapserv?', {
+      layers: 'GEBCO_LATEST',
+      format: 'image/png',
+      transparent: true,
+      version: '1.3.0',
+      crs: L.CRS.EPSG3857,
+      opacity: 0.55,
+      attribution: 'GEBCO'
+    });
+
+    osm.addTo(mapa);
+    nautico.addTo(mapa);
+
+    L.control
+      .layers(
+        { Mapa: osm, Satélite: satelite },
+        { Náutico: nautico, Batimetria: batimetria },
+        { collapsed: L.Browser.mobile }
+      )
+      .addTo(mapa);
+
+    L.control.scale({ imperial: false }).addTo(mapa);
+
+    const camadaPontos = L.layerGroup().addTo(mapa);
+    const lista = document.getElementById('lista-pontos') as HTMLDivElement | null;
+    const contagem = document.getElementById('contagem-pontos');
+    const aviso = document.getElementById('mapa-aviso');
+    const dialogo = document.getElementById('dialogo-ponto') as HTMLDialogElement | null;
+    const form = document.getElementById('form-ponto') as HTMLFormElement | null;
+    const erro = document.getElementById('ponto-erro');
+    const botaoEntrar = document.getElementById('entrar-mapa');
+    const toast = document.getElementById('toast');
+    const botaoSalvar = document.getElementById('salvar-ponto') as HTMLButtonElement | null;
+
+    let pontos: Array<Record<string, any>> = [];
+    let autenticado = false;
+    let editandoId: string | null = null;
+    let timerToast = 0;
+
+    function mostrarToast(mensagem: string) {
+      if (!toast) return;
+      toast.textContent = mensagem;
+      toast.classList.remove('oculto');
+      window.clearTimeout(timerToast);
+      timerToast = window.setTimeout(() => toast.classList.add('oculto'), 2800);
+    }
+
+    function mostrarAviso(mensagem: string) {
+      if (!aviso) return;
+      aviso.textContent = mensagem;
+      aviso.classList.remove('oculto');
+    }
+
+    function esconderAviso() {
+      aviso?.classList.add('oculto');
+    }
+
+    function rotuloTipo(tipo: string) {
+      return TIPOS[tipo] ?? tipo;
+    }
+
+    function icone(tipo: string) {
+      return L.divIcon({
+        className: `ponto-marker ponto-${tipo.toLowerCase()}`,
+        html: '<span></span>',
+        iconSize: [28, 28],
+        iconAnchor: [14, 28],
+        popupAnchor: [0, -26]
+      });
+    }
+
+    function conteudoPopup(ponto: Record<string, any>) {
+      const container = document.createElement('div');
+      container.className = 'popup-ponto';
+      const titulo = document.createElement('strong');
+      titulo.textContent = ponto.nome;
+      const tipo = document.createElement('span');
+      tipo.textContent = rotuloTipo(ponto.tipo);
+      container.append(titulo, tipo);
+
+      if (ponto.descricao) {
+        const notas = document.createElement('p');
+        notas.textContent = ponto.descricao;
+        container.appendChild(notas);
+      }
+
+      const coordenadas = document.createElement('code');
+      coordenadas.textContent = `${Number(ponto.latitude).toFixed(4)}, ${Number(ponto.longitude).toFixed(4)}`;
+      container.appendChild(coordenadas);
+      return container;
+    }
+
+    function criarCartao(ponto: Record<string, any>) {
+      const artigo = document.createElement('article');
+      artigo.className = 'ponto-card';
+
+      const topo = document.createElement('div');
+      topo.className = 'ponto-card-topo';
+      const nome = document.createElement('strong');
+      nome.textContent = ponto.nome;
+      const tipo = document.createElement('span');
+      tipo.className = 'ponto-tipo';
+      tipo.textContent = rotuloTipo(ponto.tipo);
+      topo.append(nome, tipo);
+
+      const coordenadas = document.createElement('small');
+      coordenadas.textContent = `${Number(ponto.latitude).toFixed(4)}, ${Number(ponto.longitude).toFixed(4)}`;
+
+      const notas = document.createElement('p');
+      notas.textContent = ponto.descricao || 'Sem notas.';
+
+      const acoes = document.createElement('div');
+      acoes.className = 'ponto-acoes';
+
+      const ir = document.createElement('button');
+      ir.type = 'button';
+      ir.className = 'btn btn--pequeno btn--contorno';
+      ir.textContent = 'Ir';
+      ir.addEventListener('click', () => {
+        mapa.flyTo([Number(ponto.latitude), Number(ponto.longitude)], 13, { duration: 0.7 });
+      });
+
+      const editar = document.createElement('button');
+      editar.type = 'button';
+      editar.className = 'btn btn--pequeno btn--contorno';
+      editar.textContent = 'Editar';
+      editar.addEventListener('click', () => abrirDialogo(ponto));
+
+      const excluir = document.createElement('button');
+      excluir.type = 'button';
+      excluir.className = 'btn btn--pequeno btn--contorno';
+      excluir.textContent = 'Excluir';
+      excluir.addEventListener('click', () => excluirPonto(ponto));
+
+      acoes.append(ir, editar, excluir);
+      artigo.append(topo, coordenadas, notas, acoes);
+      return artigo;
+    }
+
+    function renderizar() {
+      camadaPontos.clearLayers();
+      if (lista) lista.innerHTML = '';
+      if (contagem) contagem.textContent = String(pontos.length);
+
+      if (pontos.length === 0) {
+        const vazio = document.createElement('p');
+        vazio.className = 'mapa-vazio';
+        vazio.textContent = autenticado
+          ? 'Nenhum ponto ainda. Clique no mapa para começar.'
+          : 'Entre para salvar pontos privados. O mapa continua disponível para explorar.';
+        lista?.appendChild(vazio);
+        return;
+      }
+
+      for (const ponto of pontos) {
+        const marcador = L.marker([Number(ponto.latitude), Number(ponto.longitude)], {
+          icon: icone(String(ponto.tipo))
+        })
+          .addTo(camadaPontos)
+          .bindPopup(conteudoPopup(ponto));
+
+        marcador.on('click', () => {
+          mapa.flyTo([Number(ponto.latitude), Number(ponto.longitude)], Math.max(mapa.getZoom(), 11), {
+            duration: 0.5
+          });
+        });
+
+        lista?.appendChild(criarCartao(ponto));
+      }
+    }
+
+    async function carregarPontos() {
+      if (!autenticado) {
+        pontos = [];
+        renderizar();
+        return;
+      }
+
+      try {
+        const resposta = await fetch(`${API}/api/pontos`, { credentials: 'include' });
+        if (resposta.status === 401) {
+          autenticado = false;
+          localStorage.removeItem('fisga:pontos:v1');
+          atualizarSessao();
+          return;
+        }
+
+        if (!resposta.ok) throw new Error('api');
+        pontos = await resposta.json();
+        localStorage.setItem('fisga:pontos:v1', JSON.stringify(pontos));
+        esconderAviso();
+        renderizar();
+      } catch {
+        const cache = localStorage.getItem('fisga:pontos:v1');
+        if (cache) {
+          pontos = JSON.parse(cache);
+          renderizar();
+          mostrarAviso('Sem conexão. Mostrando os pontos salvos neste aparelho; edições precisam de sinal.');
+        } else {
+          mostrarAviso('Não foi possível carregar seus pontos. Tente de novo.');
+        }
+      }
+    }
+
+    function atualizarSessao() {
+      botaoEntrar?.classList.toggle('oculto', autenticado);
+      if (dialogo && !autenticado) {
+        dialogo.close();
+      }
+    }
+
+    function abrirDialogo(ponto: Record<string, any> | null, coordenadas?: L.LatLng) {
+      if (!autenticado) {
+        mostrarToast('Entre para salvar pontos privados.');
+        return;
+      }
+
+      if (!dialogo || !form) return;
+
+      editandoId = ponto?.id ?? null;
+      const titulo = document.getElementById('titulo-dialogo-ponto');
+      if (titulo) titulo.textContent = ponto ? 'Editar ponto' : 'Novo ponto';
+
+      (document.getElementById('ponto-id') as HTMLInputElement).value = ponto?.id ?? '';
+      (document.getElementById('ponto-nome') as HTMLInputElement).value = ponto?.nome ?? '';
+      (document.getElementById('ponto-tipo') as HTMLSelectElement).value = ponto?.tipo ?? 'Ponto';
+      (document.getElementById('ponto-descricao') as HTMLTextAreaElement).value = ponto?.descricao ?? '';
+      (document.getElementById('ponto-lat') as HTMLInputElement).value = String(
+        ponto?.latitude ?? coordenadas?.lat ?? mapa.getCenter().lat
+      );
+      (document.getElementById('ponto-lon') as HTMLInputElement).value = String(
+        ponto?.longitude ?? coordenadas?.lng ?? mapa.getCenter().lng
+      );
+
+      erro?.classList.add('oculto');
+      dialogo.showModal();
+    }
+
+    async function excluirPonto(ponto: Record<string, any>) {
+      if (!window.confirm(`Excluir “${ponto.nome}”? As notas e a coordenada serão removidas.`)) {
+        return;
+      }
+
+      try {
+        const resposta = await fetch(`${API}/api/pontos/${ponto.id}`, {
+          method: 'DELETE',
+          credentials: 'include'
+        });
+        if (!resposta.ok) throw new Error('excluir');
+        pontos = pontos.filter((item) => item.id !== ponto.id);
+        localStorage.setItem('fisga:pontos:v1', JSON.stringify(pontos));
+        renderizar();
+        mostrarToast('Ponto excluído.');
+      } catch {
+        mostrarToast('Não foi possível excluir o ponto.');
+      }
+    }
+
+    document.getElementById('adicionar-ponto')?.addEventListener('click', () => {
+      if (!autenticado) {
+        window.location.href = `/entrar?voltar=${encodeURIComponent('/mapa')}`;
+        return;
+      }
+      abrirDialogo(null);
+    });
+    document.getElementById('usar-localizacao-mapa')?.addEventListener('click', () => {
+      mapa.locate({ setView: true, maxZoom: 13 });
+    });
+
+    mapa.on('locationfound', (evento) => {
+      L.circleMarker(evento.latlng, {
+        radius: 8,
+        color: '#174E57',
+        fillColor: '#174E57',
+        fillOpacity: 0.25,
+        weight: 2
+      })
+        .addTo(mapa)
+        .bindPopup('Sua localização aproximada.')
+        .openPopup();
+    });
+
+    mapa.on('locationerror', () => {
+      mostrarToast('Não conseguimos usar sua localização. Navegue até o ponto.');
+    });
+
+    mapa.on('click', (evento) => {
+      if (!autenticado) {
+        mostrarToast('Entre para salvar pontos privados. O mapa continua livre para explorar.');
+        return;
+      }
+      abrirDialogo(null, evento.latlng);
+    });
+
+    document.getElementById('fechar-ponto')?.addEventListener('click', () => dialogo?.close());
+    document.getElementById('cancelar-ponto')?.addEventListener('click', () => dialogo?.close());
+
+    form?.addEventListener('submit', async (evento) => {
+      evento.preventDefault();
+      if (!autenticado) return;
+
+      const textoOriginal = botaoSalvar?.textContent ?? 'Salvar ponto';
+      if (botaoSalvar) {
+        botaoSalvar.disabled = true;
+        botaoSalvar.textContent = 'Salvando...';
+      }
+      erro?.classList.add('oculto');
+
+      const corpo = {
+        nome: (document.getElementById('ponto-nome') as HTMLInputElement).value.trim(),
+        tipo: (document.getElementById('ponto-tipo') as HTMLSelectElement).value,
+        descricao: (document.getElementById('ponto-descricao') as HTMLTextAreaElement).value.trim() || null,
+        latitude: Number((document.getElementById('ponto-lat') as HTMLInputElement).value),
+        longitude: Number((document.getElementById('ponto-lon') as HTMLInputElement).value)
+      };
+
+      try {
+        const resposta = await fetch(
+          editandoId ? `${API}/api/pontos/${editandoId}` : `${API}/api/pontos`,
+          {
+            method: editandoId ? 'PUT' : 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(corpo)
+          }
+        );
+
+        if (resposta.status === 401) {
+          window.location.href = `/entrar?voltar=${encodeURIComponent('/mapa')}`;
+          return;
+        }
+
+        const dados = await resposta.json().catch(() => ({}));
+        if (!resposta.ok) throw new Error(dados.detalhe || 'Não foi possível salvar o ponto.');
+
+        dialogo?.close();
+        mostrarToast(editandoId ? 'Ponto atualizado.' : 'Ponto salvo.');
+        await carregarPontos();
+      } catch (falha) {
+        if (erro) {
+          erro.textContent = falha instanceof Error ? falha.message : 'Não foi possível salvar o ponto.';
+          erro.classList.remove('oculto');
+        }
+      } finally {
+        if (botaoSalvar) {
+          botaoSalvar.disabled = false;
+          botaoSalvar.textContent = textoOriginal;
+        }
+      }
+    });
+
+    (async function iniciar() {
+      let checagemOk = false;
+      try {
+        const resposta = await fetch(`${API}/api/auth/me`, { credentials: 'include' });
+        const dados = await resposta.json().catch(() => ({}));
+        autenticado = Boolean(dados.autenticado);
+        checagemOk = true;
+      } catch {
+        autenticado = false;
+      }
+
+      if (checagemOk) {
+        if (autenticado) {
+          localStorage.setItem('fisga:sessao:v1', '1');
+        } else {
+          localStorage.removeItem('fisga:sessao:v1');
+          localStorage.removeItem('fisga:pontos:v1');
+        }
+      } else if (localStorage.getItem('fisga:sessao:v1') === '1') {
+        autenticado = true;
+        mostrarAviso('Sem conexão. Abrindo seus pontos salvos neste aparelho.');
+      }
+
+      atualizarSessao();
+      await carregarPontos();
+
+      const cacheMapa = localStorage.getItem('fisga:mapa:v1');
+      if (cacheMapa) {
+        try {
+          const { lat, lng, zoom } = JSON.parse(cacheMapa);
+          mapa.setView([lat, lng], zoom);
+        } catch {
+          // Mantém a visão do Brasil.
+        }
+      }
+
+      mapa.on('moveend', () => {
+        const centro = mapa.getCenter();
+        localStorage.setItem(
+          'fisga:mapa:v1',
+          JSON.stringify({ lat: centro.lat, lng: centro.lng, zoom: mapa.getZoom() })
+        );
+      });
+    })();
+  </script>
+
+  <style>
+    .mapa-topo {
+      padding: clamp(48px, 7vw, 86px) 0 28px;
+    }
+
+    .mapa-topo h1 {
+      max-width: 760px;
+      font-size: clamp(2.7rem, 6vw, 4.8rem);
+    }
+
+    .mapa-topo p {
+      max-width: 660px;
+      margin-top: 16px;
+      color: var(--tinta-suave);
+    }
+
+    .mapa-topo .hero-acoes {
+      margin-top: 22px;
+    }
+
+    .mapa-aviso-privacidade {
+      margin-top: 14px;
+      color: var(--tinta-suave);
+      font-size: 0.72rem;
+    }
+
+    .mapa-conteudo {
+      padding-bottom: 84px;
+    }
+
+    .mapa-aviso {
+      margin-bottom: 14px;
+      padding: 11px 14px;
+      border: 1px solid var(--acafrao);
+      border-radius: 10px;
+      background: #fff4ea;
+      color: #8a3f1c;
+      font-size: 0.78rem;
+    }
+
+    .mapa-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 340px;
+      gap: 16px;
+      align-items: start;
+    }
+
+    .mapa-painel {
+      overflow: hidden;
+      border: 1px solid var(--linha);
+      border-radius: var(--raio);
+      background: var(--superficie);
+      box-shadow: var(--sombra-suave);
+    }
+
+    #mapa {
+      height: 68vh;
+      min-height: 520px;
+      background: var(--papel-fundo);
+    }
+
+    .mapa-legenda {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 10px 14px;
+      border-top: 1px solid var(--linha);
+      color: var(--tinta-suave);
+      font-size: 0.66rem;
+    }
+
+    .mapa-legenda span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .ponto-legenda {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50% 50% 50% 0;
+      background: var(--terracota);
+      transform: rotate(-45deg);
+    }
+
+    .mapa-lateral {
+      display: grid;
+      gap: 14px;
+    }
+
+    .mapa-lista-ajuda {
+      margin-top: 8px;
+      color: var(--tinta-suave);
+      font-size: 0.7rem;
+      line-height: 1.5;
+    }
+
+    .lista-pontos {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+      max-height: 54vh;
+      overflow-y: auto;
+    }
+
+    .mapa-vazio {
+      padding: 10px 0;
+      color: var(--tinta-suave);
+      font-size: 0.76rem;
+      line-height: 1.5;
+    }
+
+    .ponto-card {
+      display: grid;
+      gap: 3px;
+      padding: 10px;
+      border: 1px solid var(--linha);
+      border-radius: 10px;
+      background: var(--creme);
+    }
+
+    .ponto-card-topo {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .ponto-card-topo strong {
+      font-family: var(--fonte-titulo);
+      font-size: 1.02rem;
+      font-weight: 600;
+    }
+
+    .ponto-tipo {
+      color: var(--terracota);
+      font-size: 0.56rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .ponto-card small {
+      color: var(--tinta-suave);
+      font-size: 0.62rem;
+    }
+
+    .ponto-card p {
+      margin-top: 3px;
+      color: var(--tinta-suave);
+      font-size: 0.7rem;
+      line-height: 1.45;
+    }
+
+    .ponto-acoes {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 6px;
+    }
+
+    .mapa-offline h3,
+    .mapa-privacidade h3 {
+      margin-top: 6px;
+      font-size: 1.15rem;
+    }
+
+    .mapa-offline p,
+    .mapa-privacidade p {
+      margin-top: 5px;
+      color: var(--tinta-suave);
+      font-size: 0.72rem;
+      line-height: 1.5;
+    }
+
+    .dialogo-ponto {
+      width: min(520px, calc(100vw - 32px));
+      padding: 24px;
+      border: 1px solid var(--linha);
+      border-radius: 18px;
+      background: var(--superficie);
+      color: var(--tinta);
+      box-shadow: var(--sombra);
+    }
+
+    .dialogo-ponto::backdrop {
+      background: rgba(16, 56, 63, 0.42);
+    }
+
+    .dialogo-topo {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .dialogo-topo h2 {
+      margin-top: 4px;
+      font-size: 1.5rem;
+    }
+
+    .dialogo-acoes {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 18px;
+    }
+
+    .erro-campo {
+      margin-top: 10px;
+      padding: 8px 10px;
+      border: 1px solid var(--acafrao);
+      border-radius: 8px;
+      background: #fff4ea;
+      color: #8a3f1c;
+      font-size: 0.74rem;
+    }
+
+    .toast {
+      position: fixed;
+      z-index: 80;
+      bottom: 24px;
+      left: 50%;
+      padding: 10px 16px;
+      border-radius: 999px;
+      background: var(--terracota-escura);
+      color: var(--creme);
+      font-size: 0.78rem;
+      transform: translateX(-50%);
+      box-shadow: var(--sombra);
+    }
+
+    :global(.ponto-marker) {
+      background: transparent;
+      border: 0;
+    }
+
+    :global(.ponto-marker span) {
+      display: block;
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--creme);
+      border-radius: 50% 50% 50% 0;
+      background: var(--terracota);
+      box-shadow: 0 4px 12px rgba(23, 42, 45, 0.28);
+      transform: rotate(-45deg);
+    }
+
+    :global(.ponto-marker span::after) {
+      display: block;
+      width: 8px;
+      height: 8px;
+      margin: 6px;
+      border-radius: 999px;
+      background: var(--creme);
+      content: '';
+      transform: rotate(45deg);
+    }
+
+    :global(.ponto-marker.ponto-poita span) { background: #56745c; }
+    :global(.ponto-marker.ponto-estrutura span) { background: #d9773f; }
+    :global(.ponto-marker.ponto-trilha span) { background: #10383f; }
+    :global(.ponto-marker.ponto-rampa span) { background: #e6a15c; }
+
+    :global(.popup-ponto) {
+      display: grid;
+      gap: 3px;
+      min-width: 170px;
+      color: var(--tinta);
+      font-family: var(--fonte-corpo);
+    }
+
+    :global(.popup-ponto strong) {
+      font-family: var(--fonte-titulo);
+      font-size: 1rem;
+    }
+
+    :global(.popup-ponto span) {
+      color: var(--tinta-suave);
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    :global(.popup-ponto p) {
+      margin: 3px 0;
+      color: var(--tinta-suave);
+      font-size: 0.72rem;
+      line-height: 1.4;
+    }
+
+    :global(.popup-ponto code) {
+      color: var(--tinta-suave);
+      font-size: 0.62rem;
+    }
+
+    :global(.leaflet-container) {
+      font-family: var(--fonte-corpo);
+    }
+
+    :global(.leaflet-control-layers) {
+      border: 1px solid var(--linha) !important;
+      border-radius: 10px !important;
+      background: var(--superficie) !important;
+      color: var(--tinta) !important;
+      font-size: 0.72rem;
+      box-shadow: var(--sombra-suave) !important;
+    }
+
+    @media (max-width: 980px) {
+      .mapa-layout {
+        grid-template-columns: 1fr;
+      }
+
+      #mapa {
+        height: 58vh;
+        min-height: 420px;
+      }
+
+      .lista-pontos {
+        max-height: none;
+      }
+    }
+
+    @media (max-width: 640px) {
+      :global(.topo .nav-principal > a.btn--primario) {
+        display: none;
+      }
+
+      .mapa-topo h1 {
+        font-size: clamp(2.4rem, 12vw, 3.4rem);
+      }
+
+      .mapa-topo .hero-acoes .btn {
+        width: 100%;
+      }
+    }
+  </style>
+</Layout>

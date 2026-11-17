@@ -2,8 +2,10 @@ using Fisga.Application.Abstractions;
 using Fisga.Application.Condicoes;
 using Fisga.Application.Identidade;
 using Fisga.Application.Locais;
+using Fisga.Application.Pontos;
 using Fisga.Domain.Identidade;
 using Fisga.Domain.Locais;
+using Fisga.Domain.Pontos;
 using Fisga.Domain.Pescarias;
 
 namespace Fisga.Application.Tests;
@@ -85,6 +87,35 @@ internal sealed class LocalDePescaRepositorioFake : ILocalDePescaRepository
             local.DefinirPadrao(false, DateTimeOffset.UtcNow);
         }
 
+        return Task.CompletedTask;
+    }
+}
+
+internal sealed class PontoPrivadoRepositorioFake : IPontoPrivadoRepository
+{
+    public List<PontoPrivado> Pontos { get; } = [];
+
+    public Task<IReadOnlyList<PontoPrivado>> ListarPorUsuarioAsync(Guid usuarioId, CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<PontoPrivado>>(
+            Pontos.Where(ponto => ponto.UsuarioId == usuarioId).ToList());
+
+    public Task<PontoPrivado?> ObterPorIdAsync(Guid id, CancellationToken ct = default) =>
+        Task.FromResult(Pontos.FirstOrDefault(ponto => ponto.Id == id));
+
+    public Task<int> ContarPorUsuarioAsync(Guid usuarioId, CancellationToken ct = default) =>
+        Task.FromResult(Pontos.Count(ponto => ponto.UsuarioId == usuarioId));
+
+    public Task AdicionarAsync(PontoPrivado ponto, CancellationToken ct = default)
+    {
+        Pontos.Add(ponto);
+        return Task.CompletedTask;
+    }
+
+    public Task SalvarAsync(PontoPrivado ponto, CancellationToken ct = default) => Task.CompletedTask;
+
+    public Task RemoverAsync(PontoPrivado ponto, CancellationToken ct = default)
+    {
+        Pontos.Remove(ponto);
         return Task.CompletedTask;
     }
 }

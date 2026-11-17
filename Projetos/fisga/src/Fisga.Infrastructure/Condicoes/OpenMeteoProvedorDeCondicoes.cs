@@ -46,7 +46,9 @@ public sealed class OpenMeteoProvedorDeCondicoes(
                     NivelDoMarM = dadosMar?.Nivel,
                     TemperaturaDaAguaC = dadosMar?.Temperatura,
                     OndaAlturaM = dadosMar?.Onda,
-                    OndaPeriodoS = dadosMar?.Periodo
+                    OndaPeriodoS = dadosMar?.Periodo,
+                    CorrenteKmh = dadosMar?.Corrente,
+                    CorrenteDirecaoGraus = dadosMar?.CorrenteDirecao
                 };
             })
             .ToList();
@@ -166,7 +168,8 @@ public sealed class OpenMeteoProvedorDeCondicoes(
         var url = "https://marine-api.open-meteo.com/v1/marine"
                   + $"?latitude={latitude.ToString(CultureInfo.InvariantCulture)}"
                   + $"&longitude={longitude.ToString(CultureInfo.InvariantCulture)}"
-                  + "&hourly=sea_level_height_msl,sea_surface_temperature,wave_height,wave_period"
+                  + "&hourly=sea_level_height_msl,sea_surface_temperature,wave_height,wave_period,"
+                  + "ocean_current_velocity,ocean_current_direction"
                   + "&timezone=America%2FSao_Paulo&forecast_days=8";
 
         try
@@ -205,7 +208,9 @@ public sealed class OpenMeteoProvedorDeCondicoes(
                     nivel,
                     NumeroOuNulo(hourly, "sea_surface_temperature", indice),
                     NumeroOuNulo(hourly, "wave_height", indice),
-                    NumeroOuNulo(hourly, "wave_period", indice));
+                    NumeroOuNulo(hourly, "wave_period", indice),
+                    NumeroOuNulo(hourly, "ocean_current_velocity", indice),
+                    NumeroOuNulo(hourly, "ocean_current_direction", indice));
             }
 
             return resultado;
@@ -355,7 +360,9 @@ public sealed class OpenMeteoProvedorDeCondicoes(
         double? Nivel,
         double? Temperatura,
         double? Onda,
-        double? Periodo);
+        double? Periodo,
+        double? Corrente,
+        double? CorrenteDirecao);
 
     private sealed record LuaBruta(
         DateTimeOffset? Nascer,

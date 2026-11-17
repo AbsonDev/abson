@@ -250,10 +250,23 @@ export interface Condicoes {
     sensacaoC: number;
     pressaoHpa: number;
     pressaoTendencia: string;
+    pressaoAlerta: string | null;
+    correnteKmh: number | null;
+    correnteDirecaoGraus: number | null;
+    correnteDirecao: string | null;
     temperaturaDaAguaC: number | null;
     ondaAlturaM: number | null;
     ondaPeriodoS: number | null;
   };
+  linhaDoTempo: Array<{
+    hora: string;
+    alturaM: number | null;
+    ventoKmh: number;
+    chuvaProbabilidade: number;
+    pressaoHpa: number;
+    nota: number;
+    solunar: boolean;
+  }>;
 }
 
 export interface Comparacao {
@@ -264,4 +277,15 @@ export interface Comparacao {
   shareToken: string | null;
   fatores: string[];
   pescariasConsideradas: number;
+}
+
+export interface PontoPrivado {
+  id: string;
+  nome: string;
+  descricao: string | null;
+  latitude: number;
+  longitude: number;
+  tipo: string;
+  criadoEm: string;
+  atualizadoEm: string;
 }

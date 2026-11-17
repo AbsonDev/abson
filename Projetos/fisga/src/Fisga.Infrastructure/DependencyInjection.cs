@@ -6,6 +6,7 @@ using Fisga.Application.Abstractions;
 using Fisga.Application.Condicoes;
 using Fisga.Application.Identidade;
 using Fisga.Application.Locais;
+using Fisga.Application.Pontos;
 using Fisga.Application.Newsletter;
 using Fisga.Infrastructure.Condicoes;
 using Fisga.Infrastructure.Emails;
@@ -65,6 +66,7 @@ public static class DependencyInjection
         services.AddScoped<ISessaoRepository, EfSessaoRepository>();
         services.AddScoped<ITokenDeLoginRepository, EfTokenDeLoginRepository>();
         services.AddScoped<ILocalDePescaRepository, EfLocalDePescaRepository>();
+        services.AddScoped<IPontoPrivadoRepository, EfPontoPrivadoRepository>();
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddScoped<IDomainEventDispatcher, DomainEventDispatcher>();
         services.AddScoped<IMidiaStorage, ArmazenamentoDeMidiaLocal>();

@@ -78,9 +78,23 @@ public sealed class ServicoDeCondicoes(
             horaAtual.SensacaoC,
             horaAtual.PressaoHpa,
             TendenciaDePressao(dados.Horas, horaAtual),
+            AlertaDePressao(dados.Horas, horaAtual),
+            horaAtual.CorrenteKmh,
+            horaAtual.CorrenteDirecaoGraus,
+            horaAtual.CorrenteDirecaoGraus is null
+                ? null
+                : Direcao(horaAtual.CorrenteDirecaoGraus.Value),
             horaAtual.TemperaturaDaAguaC,
             horaAtual.OndaAlturaM,
             horaAtual.OndaPeriodoS);
+
+        var linhaDoTempo = ConstruirLinhaDoTempo(
+            dados.Horas,
+            hoje,
+            solunar.Janelas,
+            nascerHoje,
+            porHoje,
+            temMare);
 
         return new CondicoesDto(
             new LocalDeCondicaoDto(
@@ -101,7 +115,8 @@ public sealed class ServicoDeCondicoes(
             dias,
             mare,
             solunar.Dto,
-            tempo);
+            tempo,
+            linhaDoTempo);
     }
 
     private static (SolunarDto Dto, IReadOnlyList<JanelaSolunar> Janelas) ConstruirSolunar(
@@ -184,6 +199,41 @@ public sealed class ServicoDeCondicoes(
             : ticks - resto;
 
         return new DateTimeOffset(ticks, valor.Offset);
+    }
+
+    private static IReadOnlyList<HoraDoDiaDto> ConstruirLinhaDoTempo(
+        IReadOnlyList<HoraDeCondicoes> horas,
+        DateOnly dia,
+        IReadOnlyList<JanelaSolunar> janelas,
+        DateTimeOffset nascer,
+        DateTimeOffset por,
+        bool temMare)
+    {
+        var doDia = horas
+            .Where(hora => DateOnly.FromDateTime(hora.Hora.DateTime) == dia)
+            .OrderBy(hora => hora.Hora)
+            .ToList();
+
+        return doDia
+            .Select(hora =>
+            {
+                var nota = Math.Clamp(
+                    (int)Math.Round(Pontuar(hora, horas, janelas, nascer, por, temMare) / 20.0),
+                    1,
+                    5);
+                var solunar = janelas.Any(janela =>
+                    hora.Hora < janela.Fim && hora.Hora.AddHours(1) > janela.Inicio);
+
+                return new HoraDoDiaDto(
+                    hora.Hora,
+                    hora.NivelDoMarM is null ? null : Math.Round(hora.NivelDoMarM.Value, 2),
+                    hora.VentoKmh,
+                    hora.ChuvaProbabilidade,
+                    hora.PressaoHpa,
+                    nota,
+                    solunar);
+            })
+            .ToList();
     }
 
     private static IReadOnlyList<DiaDto> ConstruirDias(
@@ -567,6 +617,25 @@ public sealed class ServicoDeCondicoes(
         horas
             .OrderBy(hora => Math.Abs((hora.Hora - agora).TotalMinutes))
             .First();
+
+    private static string? AlertaDePressao(
+        IReadOnlyList<HoraDeCondicoes> horas,
+        HoraDeCondicoes atual)
+    {
+        var indice = IndiceDe(horas, atual);
+        if (indice < 3)
+        {
+            return null;
+        }
+
+        var variacao = atual.PressaoHpa - horas[indice - 3].PressaoHpa;
+        return variacao switch
+        {
+            <= -2 => "Queda brusca de pressão: os peixes tendem a se alimentar antes da mudança.",
+            >= 2 => "Subida brusca de pressão: a atividade pode cair.",
+            _ => null
+        };
+    }
 
     private static string TendenciaDePressao(
         IReadOnlyList<HoraDeCondicoes> horas,

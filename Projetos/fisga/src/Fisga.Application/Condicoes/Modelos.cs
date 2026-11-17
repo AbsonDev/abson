@@ -23,7 +23,9 @@ public sealed record HoraDeCondicoes(
     double? NivelDoMarM,
     double? TemperaturaDaAguaC,
     double? OndaAlturaM,
-    double? OndaPeriodoS);
+    double? OndaPeriodoS,
+    double? CorrenteKmh = null,
+    double? CorrenteDirecaoGraus = null);
 
 public sealed record DiaDeCondicoes(
     DateOnly Data,
@@ -130,6 +132,15 @@ public sealed record SolunarDto(
     double IdadeDias,
     IReadOnlyList<PeriodoSolunarDto> Periodos);
 
+public sealed record HoraDoDiaDto(
+    DateTimeOffset Hora,
+    double? AlturaM,
+    double VentoKmh,
+    double ChuvaProbabilidade,
+    double PressaoHpa,
+    int Nota,
+    bool Solunar);
+
 public sealed record TempoDto(
     double VentoKmh,
     double RajadaKmh,
@@ -140,6 +151,10 @@ public sealed record TempoDto(
     double SensacaoC,
     double PressaoHpa,
     string PressaoTendencia,
+    string? PressaoAlerta,
+    double? CorrenteKmh,
+    double? CorrenteDirecaoGraus,
+    string? CorrenteDirecao,
     double? TemperaturaDaAguaC,
     double? OndaAlturaM,
     double? OndaPeriodoS);
@@ -157,4 +172,5 @@ public sealed record CondicoesDto(
     IReadOnlyList<DiaDto> Dias,
     MareDto? Mare,
     SolunarDto Solunar,
-    TempoDto Tempo);
+    TempoDto Tempo,
+    IReadOnlyList<HoraDoDiaDto> LinhaDoTempo);

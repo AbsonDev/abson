@@ -36,7 +36,9 @@ public sealed class ServicoDeCondicoesTests
                     nivel,
                     26,
                     0.8,
-                    7));
+                    7,
+                    1.2,
+                    190));
             }
 
             dias.Add(new DiaDeCondicoes(
@@ -81,6 +83,9 @@ public sealed class ServicoDeCondicoesTests
         Assert.Equal(7, resultado.Dias.Count);
         Assert.NotNull(resultado.MelhorJanela);
         Assert.Equal("America/Sao_Paulo", resultado.Fuso);
+        Assert.Equal(24, resultado.LinhaDoTempo.Count);
+        Assert.Equal(1.2, resultado.Tempo.CorrenteKmh);
+        Assert.Equal("S", resultado.Tempo.CorrenteDirecao);
     }
 
     [Fact]
@@ -103,6 +108,7 @@ public sealed class ServicoDeCondicoesTests
         Assert.Null(resultado.Mare);
         Assert.NotNull(resultado.Solunar);
         Assert.NotEmpty(resultado.Dias);
+        Assert.All(resultado.LinhaDoTempo, hora => Assert.Null(hora.AlturaM));
     }
 
     [Fact]

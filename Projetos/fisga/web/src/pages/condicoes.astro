@@ -197,6 +197,58 @@ function caminhoCurva(pontos: Array<{ hora: string; alturaM: number }>): string 
     .join(' ');
 }
 
+const linhaDoTempo = condicoes?.linhaDoTempo ?? [];
+const alturasDaMare = linhaDoTempo
+  .map((hora) => hora.alturaM)
+  .filter((valor): valor is number => valor !== null);
+const pressoes = linhaDoTempo.map((hora) => hora.pressaoHpa);
+const minAltura = alturasDaMare.length ? Math.min(...alturasDaMare) : 0;
+const maxAltura = alturasDaMare.length ? Math.max(...alturasDaMare) : 1;
+const minPressao = pressoes.length ? Math.min(...pressoes) : 1000;
+const maxPressao = pressoes.length ? Math.max(...pressoes) : 1020;
+const maxVento = Math.max(...linhaDoTempo.map((hora) => hora.ventoKmh), 1);
+const horaAgora = Number((condicoes?.atualizadoEm ?? 'T00:').slice(11, 13));
+const indiceAgora = Math.min(23, Math.max(0, Number.isFinite(horaAgora) ? horaAgora : 0));
+
+function xHora(indice: number) {
+  return 36 + (indice / Math.max(1, linhaDoTempo.length - 1)) * 888;
+}
+
+function yAltura(valor: number) {
+  const faixa = Math.max(0.2, maxAltura - minAltura);
+  return 28 + (1 - (valor - minAltura) / faixa) * 62;
+}
+
+function yPressao(valor: number) {
+  const faixa = Math.max(0.5, maxPressao - minPressao);
+  return 112 + (1 - (valor - minPressao) / faixa) * 54;
+}
+
+function caminhoDaSerie(
+  valores: Array<number | null>,
+  y: (valor: number) => number
+): string {
+  return valores
+    .map((valor, indice) =>
+      valor === null ? null : `${indice === 0 ? 'M' : 'L'}${xHora(indice).toFixed(1)},${y(valor).toFixed(1)}`
+    )
+    .filter(Boolean)
+    .join(' ');
+}
+
+const caminhoDaMare = caminhoDaSerie(
+  linhaDoTempo.map((hora) => hora.alturaM),
+  yAltura
+);
+const caminhoDaPressao = caminhoDaSerie(
+  linhaDoTempo.map((hora) => hora.pressaoHpa),
+  yPressao
+);
+const larguraHora = 888 / Math.max(1, linhaDoTempo.length - 1);
+const rotulosDeHora = linhaDoTempo
+  .map((hora, indice) => ({ hora, indice }))
+  .filter(({ indice }) => indice % 3 === 0 || indice === linhaDoTempo.length - 1);
+
 function linkDoLocal(local: LocalSalvo): string {
   const consulta = new URLSearchParams({
     lat: String(local.latitude),
@@ -347,6 +399,87 @@ const exemplos = [
                 </button>
               </div>
             )}
+          </article>
+
+          <article class="cartao cartao-linha">
+            <div class="cartao-topo">
+              <span class="eyebrow">Linha do tempo</span>
+              <span class="selo selo--neutro">Hoje · 24 h</span>
+            </div>
+            <h3>Maré, vento e pressão na mesma linha.</h3>
+            <div class="linha-scroll">
+              <svg
+                class="linha-svg"
+                viewBox="0 0 960 250"
+                role="img"
+                aria-label="Linha do tempo de hoje com maré, pressão, vento e períodos solunares"
+              >
+                <g class="linha-solunar">
+                  {linhaDoTempo.map((hora, indice) =>
+                    hora.solunar ? (
+                      <rect
+                        x={xHora(indice) - larguraHora / 2}
+                        y="10"
+                        width={larguraHora}
+                        height="206"
+                        rx="2"
+                      />
+                    ) : null
+                  )}
+                </g>
+                <line x1="36" y1="112" x2="924" y2="112" class="linha-base" />
+                <line x1="36" y1="166" x2="924" y2="166" class="linha-base" />
+                {caminhoDaMare && <path class="linha-mare" d={caminhoDaMare} />}
+                {condicoes.mare?.eventos.map((evento) => {
+                  const parts = evento.hora.slice(11, 16).split(':');
+                  const horaEvento = Number(parts[0]) + Number(parts[1]) / 60;
+                  const xEvento = 36 + (horaEvento / 23) * 888;
+                  const yEvento = yAltura(evento.alturaM);
+                  return (
+                    <g>
+                      <circle cx={xEvento} cy={yEvento} r="3" class="linha-evento-ponto" />
+                      <text x={xEvento} y={yEvento - 7} text-anchor="middle" class="linha-evento">
+                        {evento.tipo === 'Cheia' ? 'PM' : 'BM'} {hora(evento.hora)}
+                      </text>
+                    </g>
+                  );
+                })}
+                <path class="linha-pressao" d={caminhoDaPressao} />
+                <g class="linha-vento">
+                  {linhaDoTempo.map((hora, indice) => {
+                    const alturaBarra = (hora.ventoKmh / maxVento) * 28;
+                    return (
+                      <rect
+                        x={xHora(indice) - 3}
+                        y={214 - alturaBarra}
+                        width="6"
+                        height={alturaBarra}
+                        rx="2"
+                      />
+                    );
+                  })}
+                </g>
+                <line
+                  x1={xHora(indiceAgora)}
+                  y1="12"
+                  x2={xHora(indiceAgora)}
+                  y2="218"
+                  class="linha-agora"
+                />
+                <text x={xHora(indiceAgora) + 4} y="224" class="linha-rotulo-agora">agora</text>
+                {rotulosDeHora.map(({ hora, indice }) => (
+                  <text x={xHora(indice)} y="242" text-anchor="middle" class="linha-rotulo">
+                    {hora.hora.slice(11, 16)}
+                  </text>
+                ))}
+              </svg>
+            </div>
+            <div class="linha-legenda">
+              <span><i class="legenda-mare" /> Maré</span>
+              <span><i class="legenda-pressao" /> Pressão</span>
+              <span><i class="legenda-vento" /> Vento</span>
+              <span><i class="legenda-solunar" /> Solunar</span>
+            </div>
           </article>
 
           <article class:list={['cartao', 'cartao-janela', condicoes.melhorJanela ? `forca-${condicoes.melhorJanela.nota}` : '']}>
@@ -518,8 +651,18 @@ const exemplos = [
               {condicoes.tempo.ondaAlturaM !== null && (
                 <div><span>Ondas</span><strong>{numero(condicoes.tempo.ondaAlturaM, 1)} m</strong></div>
               )}
+              {condicoes.tempo.correnteKmh !== null && (
+                <div>
+                  <span>Corrente</span>
+                  <strong>{numero(condicoes.tempo.correnteKmh, 1)} km/h</strong>
+                  <small>{condicoes.tempo.correnteDirecao ?? ''}</small>
+                </div>
+              )}
             </div>
             <p class="fonte-pequena">Pressão {condicoes.tempo.pressaoTendencia} nas últimas horas.</p>
+            {condicoes.tempo.pressaoAlerta && (
+              <p class="alerta-pressao">{condicoes.tempo.pressaoAlerta}</p>
+            )}
           </article>
 
           <article class="cartao cartao-locais">
@@ -1184,6 +1327,120 @@ const exemplos = [
       margin-top: 14px;
       color: var(--tinta-suave);
       font-size: 0.86rem;
+    }
+
+    .cartao-linha h3 {
+      margin-top: 8px;
+      font-size: clamp(1.4rem, 2.4vw, 1.9rem);
+    }
+
+    .linha-scroll {
+      margin-top: 14px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+    }
+
+    .linha-svg {
+      display: block;
+      width: 100%;
+      min-width: 720px;
+      height: 220px;
+    }
+
+    .linha-base {
+      stroke: var(--linha);
+      stroke-width: 1;
+    }
+
+    .linha-solunar rect {
+      fill: rgba(230, 161, 92, 0.1);
+    }
+
+    .linha-mare {
+      fill: none;
+      stroke: var(--terracota);
+      stroke-width: 2.6;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .linha-pressao {
+      fill: none;
+      stroke: var(--tinta-suave);
+      stroke-width: 1.5;
+      stroke-dasharray: 4 4;
+    }
+
+    .linha-vento rect {
+      fill: var(--terracota-clara);
+    }
+
+    .linha-agora {
+      stroke: var(--acafrao);
+      stroke-width: 1.4;
+      stroke-dasharray: 3 4;
+    }
+
+    .linha-evento {
+      fill: var(--terracota);
+      font-family: var(--fonte-corpo);
+      font-size: 8px;
+      font-weight: 700;
+    }
+
+    .linha-evento-ponto {
+      fill: var(--superficie);
+      stroke: var(--terracota);
+      stroke-width: 1.6;
+    }
+
+    .linha-rotulo,
+    .linha-rotulo-agora {
+      fill: var(--tinta-suave);
+      font-family: var(--fonte-corpo);
+      font-size: 9px;
+    }
+
+    .linha-rotulo-agora {
+      fill: var(--acafrao);
+      font-weight: 700;
+    }
+
+    .linha-legenda {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 8px;
+      color: var(--tinta-suave);
+      font-size: 0.66rem;
+    }
+
+    .linha-legenda span {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .linha-legenda i {
+      display: inline-block;
+      width: 14px;
+      height: 3px;
+      border-radius: 999px;
+    }
+
+    .legenda-mare { background: var(--terracota); }
+    .legenda-pressao { background: var(--tinta-suave); }
+    .legenda-vento { background: var(--terracota-clara); height: 8px !important; }
+    .legenda-solunar { background: rgba(230, 161, 92, 0.35); height: 8px !important; }
+
+    .alerta-pressao {
+      margin-top: 10px;
+      padding: 8px 10px;
+      border-left: 3px solid var(--acafrao);
+      background: #fff4ea;
+      color: #8a3f1c;
+      font-size: 0.72rem;
+      line-height: 1.5;
     }
 
     .cartao-comparacao {

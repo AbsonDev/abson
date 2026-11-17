@@ -276,6 +276,47 @@ namespace Fisga.Infrastructure.Persistence.Migrations
                     b.ToTable("pescarias", "fisga");
                 });
 
+            modelBuilder.Entity("Fisga.Domain.Pontos.PontoPrivado", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("CriadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Descricao")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<double>("Latitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("Longitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("pontos_privados", "fisga");
+                });
+
             modelBuilder.Entity("Fisga.Domain.Identidade.Sessao", b =>
                 {
                     b.HasOne("Fisga.Domain.Identidade.Usuario", null)
@@ -353,6 +394,15 @@ namespace Fisga.Infrastructure.Persistence.Migrations
                         });
 
                     b.Navigation("Capturas");
+                });
+
+            modelBuilder.Entity("Fisga.Domain.Pontos.PontoPrivado", b =>
+                {
+                    b.HasOne("Fisga.Domain.Identidade.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

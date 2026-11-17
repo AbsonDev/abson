@@ -100,6 +100,7 @@ app.MapNewsletterEndpoints();
 app.MapPescariaEndpoints();
 app.MapMidiaEndpoints();
 app.MapCondicoesEndpoints();
+app.MapPontosEndpoints();
 
 await app.Services.InicializarBancoAsync();
 

@@ -13,10 +13,12 @@
   },
   "dependencies": {
     "@astrojs/node": "^11.1.13",
-    "astro": "^7.4.12"
+    "astro": "^7.4.12",
+    "leaflet": "^1.9.4"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.12",
+    "@types/leaflet": "^1.9.22",
     "@types/node": "^26.6.6",
     "pagefind": "^1.6.0",
     "typescript": "^6.0.3"

@@ -30,6 +30,7 @@ flowchart LR
     documentos[Documentos<br/>PDF · QR]
     diario[Diário<br/>read model privado]
     condicoes[Condições e Locais<br/>LocalDePesca · previsão · janela]
+    pontos[Pontos Privados<br/>PontoPrivado · waypoints · notas]
     email[E-mail<br/>Porta IEmailSender]
   end
 
@@ -41,6 +42,7 @@ flowchart LR
   pescarias -->|relatório| documentos
   diario -->|lista e estatísticas| pescarias
   condicoes -->|condições e local padrão| pescarias
+  pontos -->|pontos e notas| pescarias
   assinatura -.->|futuro| documentos
 ```
 
@@ -169,6 +171,9 @@ Contexto genérico, sem dependência de ASP.NET ou do provedor de e-mail.
 - Cache em memória de 20 minutos por coordenada arredondada; a previsão é determinística dentro da
   janela.
 - A maré é **aproximada** e sempre rotulada. Não é tábua oficial e não serve para navegação.
+- A linha do tempo combina maré, pressão, vento e solunar em 24 h. A corrente vem do modelo
+  (`ocean_current_velocity`) e é rotulada como estimativa.
+- Mudanças bruscas de pressão geram um alerta textual, não uma promessa de captura.
 - A janela tem nota 1–5 e motivos explícitos (solunar, direção da maré, vento, chuva, luz do dia e
   tendência de pressão). Não é uma promessa nem um número mágico.
 - `/condicoes` é pública; salvar local, comparação e preenchimento automático exigem conta.
@@ -176,6 +181,19 @@ Contexto genérico, sem dependência de ASP.NET ou do provedor de e-mail.
   menos 3 pescarias com captura; sem dados suficientes, devolve um estado honesto em vez de um
   padrão inventado.
 - Locais salvos são privados. A página pública não expõe a conta de quem consulta.
+
+## Pontos Privados
+
+`PontoPrivado` é um agregado privado do pescador, separado de `LocalDePesca`.
+
+- Nome, tipo (`Ponto`, `Poita`, `Estrutura`, `Trilha`, `Rampa`), notas, latitude e longitude.
+- Limite de 200 por conta; ownership em toda operação.
+- **Nenhum endpoint público** e nenhuma projeção pública. O ponto não entra em link, troféu ou PDF.
+- O mapa é uma ferramenta de leitura/escrita; a camada de mapa não é dado do produto.
+- Cache local dos pontos para consulta offline; ao detectar sessão inválida, o cache é apagado.
+- Trilhas como linha (LineString), raio e clustering exigem PostGIS e ficam para a fase
+  geoespacial.
+- Inteligência coletiva só por macrorregião/quadrante, opt-in e com amostra mínima.
 
 ## Conhecimento (Wiki do Pescador)
 
@@ -277,11 +295,16 @@ lembretes e e-mail.
 11. O cache de condições é em memória e por instância; múltiplas réplicas exigem cache distribuído.
 12. A janela de pesca é uma heurística explicável, não um modelo treinado; precisa de validação com
     pescadores antes de prometer precisão.
+13. Pontos privados usam latitude/longitude simples; consultas por raio, trilhas e clustering
+    dependem de PostGIS.
+14. O mapa usa tiles de terceiros e não funciona offline; mapas offline por área ficam para a
+    próxima fase.
+15. A biblioteca de nós, defeso por bacia e diretório de guias ainda não existe.
 
 ## Testes
 
 `Fisga.Domain.Tests` cobre invariantes, criação, edição, preservação de IDs e ownership.
 `Fisga.Application.Tests` cobre casos de uso, link mágico, expiração, uso único, sessão, logout,
 isolamento entre usuários, exclusão, exportação, locais salvos, agregação de condições, lua/solunar,
-janela e comparação com o histórico. A experiência completa (login, onboarding, registro, foto,
-troféu, PDF, conta, condições, locais e logout) é validada com Playwright.
+janela, comparação com o histórico e pontos privados. A experiência completa (login, onboarding,
+registro, foto, troféu, PDF, conta, condições, locais, mapa e logout) é validada com Playwright.
