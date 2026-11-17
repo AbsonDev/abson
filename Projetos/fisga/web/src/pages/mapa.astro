@@ -1,6 +1,10 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import 'leaflet/dist/leaflet.css';
+
+const abaMapa = ['locais', 'pontos', 'trilhas'].includes(Astro.url.searchParams.get('aba') ?? '')
+  ? Astro.url.searchParams.get('aba')!
+  : 'locais';
 ---
 
 <Layout
@@ -10,28 +14,35 @@ import 'leaflet/dist/leaflet.css';
 >
   <section class="mapa-topo">
     <div class="container">
-      <span class="eyebrow">Mapa privado</span>
-      <h1>Seus pontos, <em>só seus.</em></h1>
+      <span class="eyebrow">Seus lugares</span>
+      <h1>Mapa.</h1>
       <p>
-        Marque poitas, lajes, canais, manguezais e rampas. Nenhuma coordenada é publicada. O mapa
-        usa camadas gratuitas e funciona como caderno pessoal.
+        Locais, pontos e trilhas — privados por padrão. Nenhuma coordenada é publicada. O mapa usa
+        camadas gratuitas e funciona como caderno pessoal.
       </p>
-      <div class="hero-acoes">
-        <button id="adicionar-ponto" class="btn btn--primario" type="button">Adicionar ponto</button>
-        <button id="desenhar-trilha" class="btn btn--contorno" type="button">Desenhar trilha</button>
+      <div class="hero-acoes mapa-acoes">
+        <a id="buscar-local" class="btn btn--primario" href="/condicoes" hidden={abaMapa !== 'locais'}>Buscar local</a>
+        <button id="adicionar-ponto" class="btn btn--primario" type="button" hidden={abaMapa !== 'pontos'}>Adicionar ponto</button>
+        <button id="desenhar-trilha" class="btn btn--primario" type="button" hidden={abaMapa !== 'trilhas'}>Desenhar trilha</button>
         <button id="exportar-gpx" class="btn btn--contorno oculto" type="button">Exportar GPX</button>
-        <button id="usar-localizacao-mapa" class="btn btn--contorno" type="button">Ir para minha localização</button>
+        <button id="usar-localizacao-mapa" class="btn btn--contorno" type="button">Minha localização</button>
         <a id="entrar-mapa" class="btn btn--contorno oculto" href={`/entrar?voltar=${encodeURIComponent('/mapa')}`}>Entrar para salvar</a>
       </div>
       <p class="mapa-aviso-privacidade">
-        Privacidade por padrão: os pontos ficam na sua conta. O Fisga não mostra suas coordenadas
-        para outros pescadores.
+        Privacidade por padrão: locais, pontos e trilhas ficam na sua conta. O Fisga não mostra suas
+        coordenadas para outros pescadores.
       </p>
     </div>
   </section>
 
   <section class="container mapa-conteudo">
     <div id="mapa-aviso" class="mapa-aviso oculto" role="status" aria-live="polite"></div>
+
+    <div class="mapa-abas" role="tablist" aria-label="O que mostrar no mapa">
+      <button type="button" role="tab" data-aba="locais" aria-selected={abaMapa === 'locais'}>Locais</button>
+      <button type="button" role="tab" data-aba="pontos" aria-selected={abaMapa === 'pontos'}>Pontos</button>
+      <button type="button" role="tab" data-aba="trilhas" aria-selected={abaMapa === 'trilhas'}>Trilhas</button>
+    </div>
 
     <div class="mapa-layout">
       <div class="mapa-painel">
@@ -43,7 +54,19 @@ import 'leaflet/dist/leaflet.css';
       </div>
 
       <aside class="mapa-lateral">
-        <article class="cartao mapa-lista">
+        <article class="cartao mapa-locais" data-painel="locais" hidden={abaMapa !== 'locais'}>
+          <div class="cartao-topo">
+            <span class="eyebrow">Locais</span>
+            <span id="contagem-locais" class="selo selo--neutro">0</span>
+          </div>
+          <p class="mapa-lista-ajuda">
+            Áreas que você usa para ver condições e registrar pescarias.
+          </p>
+          <div id="lista-locais" class="lista-locais"></div>
+          <a class="link-seta" href="/condicoes">Buscar e salvar local →</a>
+        </article>
+
+        <article class="cartao mapa-lista" data-painel="pontos" hidden={abaMapa !== 'pontos'}>
           <div class="cartao-topo">
             <span class="eyebrow">Seus pontos</span>
             <span id="contagem-pontos" class="selo selo--neutro">0</span>
@@ -54,7 +77,7 @@ import 'leaflet/dist/leaflet.css';
           <div id="lista-pontos" class="lista-pontos"></div>
         </article>
 
-        <article class="cartao mapa-trilhas">
+        <article class="cartao mapa-trilhas" data-painel="trilhas" hidden={abaMapa !== 'trilhas'}>
           <div class="cartao-topo">
             <span class="eyebrow">Trilhas</span>
             <span id="contagem-trilhas" class="selo selo--neutro">0</span>
@@ -238,12 +261,16 @@ import 'leaflet/dist/leaflet.css';
 
     L.control.scale({ imperial: false }).addTo(mapa);
 
+    const camadaLocais = L.layerGroup().addTo(mapa);
     const camadaPontos = L.layerGroup().addTo(mapa);
     const camadaTrilhas = L.layerGroup().addTo(mapa);
     const camadaDesenho = L.layerGroup().addTo(mapa);
     const lista = document.getElementById('lista-pontos') as HTMLDivElement | null;
     const listaTrilhas = document.getElementById('lista-trilhas') as HTMLDivElement | null;
+    const listaLocais = document.getElementById('lista-locais') as HTMLDivElement | null;
     const contagem = document.getElementById('contagem-pontos');
+    const contagemLocais = document.getElementById('contagem-locais');
+    const buscarLocal = document.getElementById('buscar-local') as HTMLAnchorElement | null;
     const contagemTrilhas = document.getElementById('contagem-trilhas');
     const barraTrilha = document.getElementById('barra-trilha');
     const statusTrilha = document.getElementById('trilha-status');
@@ -260,8 +287,10 @@ import 'leaflet/dist/leaflet.css';
     const toast = document.getElementById('toast');
     const botaoSalvar = document.getElementById('salvar-ponto') as HTMLButtonElement | null;
 
+    let locais: Array<Record<string, any>> = [];
     let pontos: Array<Record<string, any>> = [];
     let trilhas: Array<Record<string, any>> = [];
+    let abaAtual = 'locais';
     let autenticado = false;
     let editandoId: string | null = null;
     let desenhando = false;
@@ -639,6 +668,271 @@ import 'leaflet/dist/leaflet.css';
       }
     }
 
+    function linkDoLocal(local: Record<string, any>) {
+      const params = new URLSearchParams({
+        lat: String(local.latitude),
+        lon: String(local.longitude),
+        nome: local.nome ?? 'Local',
+        cidade: local.cidade ?? '',
+        estado: local.estado ?? '',
+        ambiente: local.ambiente ?? 'Outro'
+      });
+      return `/condicoes?${params.toString()}`;
+    }
+
+    async function acaoLocal(caminho: string, opcoes: RequestInit) {
+      const resposta = await fetch(`${API}${caminho}`, {
+        credentials: 'include',
+        ...opcoes,
+        headers: {
+          ...(opcoes.body ? { 'Content-Type': 'application/json' } : {}),
+          ...(opcoes.headers ?? {})
+        }
+      });
+
+      if (resposta.status === 401) {
+        autenticado = false;
+        atualizarSessao();
+        throw new Error('Entre novamente para gerenciar seus locais.');
+      }
+
+      const corpo = await resposta.json().catch(() => ({}));
+      if (!resposta.ok) throw new Error(corpo.detalhe || 'Não foi possível concluir a ação.');
+      await carregarLocais();
+    }
+
+    function criarCartaoLocal(local: Record<string, any>) {
+      const artigo = document.createElement('article');
+      artigo.className = 'ponto-card local-card';
+
+      const topo = document.createElement('div');
+      topo.className = 'ponto-card-topo';
+      const nome = document.createElement('strong');
+      nome.textContent = local.nome;
+      const tipo = document.createElement('span');
+      tipo.className = 'ponto-tipo';
+      tipo.textContent = local.padrao ? 'Padrão' : 'Local';
+      topo.append(nome, tipo);
+
+      const meta = document.createElement('small');
+      meta.textContent = [local.cidade, local.estado].filter(Boolean).join(' · ') || 'Sem cidade';
+
+      const ambiente = document.createElement('p');
+      ambiente.textContent = local.ambiente ?? 'Ambiente não informado';
+
+      const acoes = document.createElement('div');
+      acoes.className = 'ponto-acoes';
+      const abrir = document.createElement('a');
+      abrir.className = 'btn btn--pequeno btn--primario';
+      abrir.href = linkDoLocal(local);
+      abrir.textContent = 'Abrir condições';
+      acoes.appendChild(abrir);
+
+      if (!local.padrao) {
+        const padrao = document.createElement('button');
+        padrao.className = 'btn btn--pequeno btn--contorno';
+        padrao.type = 'button';
+        padrao.textContent = 'Tornar padrão';
+        padrao.addEventListener('click', async () => {
+          padrao.disabled = true;
+          try {
+            await acaoLocal(`/api/locais/${encodeURIComponent(local.id)}/padrao`, { method: 'POST' });
+            mostrarAviso('Local padrão atualizado.');
+          } catch (erro) {
+            mostrarAviso(erro instanceof Error ? erro.message : 'Não foi possível definir o padrão.');
+            padrao.disabled = false;
+          }
+        });
+        acoes.appendChild(padrao);
+      }
+
+      const excluir = document.createElement('button');
+      excluir.className = 'btn btn--pequeno btn--contorno';
+      excluir.type = 'button';
+      excluir.textContent = 'Excluir';
+      excluir.addEventListener('click', async () => {
+        if (!window.confirm('Excluir este local? As pescarias continuam no diário.')) return;
+        excluir.disabled = true;
+        try {
+          await acaoLocal(`/api/locais/${encodeURIComponent(local.id)}`, { method: 'DELETE' });
+          mostrarAviso('Local excluído.');
+        } catch (erro) {
+          mostrarAviso(erro instanceof Error ? erro.message : 'Não foi possível excluir o local.');
+          excluir.disabled = false;
+        }
+      });
+      acoes.appendChild(excluir);
+
+      const detalhes = document.createElement('details');
+      detalhes.className = 'local-editar';
+      const resumo = document.createElement('summary');
+      resumo.textContent = 'Editar nome e dados';
+      const form = document.createElement('form');
+      form.innerHTML = `
+        <label class="oculto" for="local-nome-${local.id}">Nome</label>
+        <input id="local-nome-${local.id}" name="nome" maxlength="80" required placeholder="Nome do local" />
+        <div class="local-form-duplo">
+          <input name="cidade" maxlength="80" placeholder="Cidade" aria-label="Cidade" />
+          <input name="estado" maxlength="2" placeholder="UF" aria-label="UF" />
+        </div>
+        <select name="ambiente" aria-label="Ambiente">
+          <option value="Rio">Rio</option>
+          <option value="Mar">Mar</option>
+          <option value="Lagoa">Lagoa</option>
+          <option value="Represa">Represa</option>
+          <option value="PesquePague">Pesque-pague</option>
+          <option value="Outro">Outro</option>
+        </select>
+        <p class="local-erro oculto" role="alert"></p>
+        <button class="btn btn--pequeno btn--contorno" type="submit">Salvar alterações</button>
+      `;
+
+      const campoNome = form.querySelector<HTMLInputElement>('[name="nome"]');
+      const campoCidade = form.querySelector<HTMLInputElement>('[name="cidade"]');
+      const campoEstado = form.querySelector<HTMLInputElement>('[name="estado"]');
+      const campoAmbiente = form.querySelector<HTMLSelectElement>('[name="ambiente"]');
+      if (campoNome) campoNome.value = local.nome ?? '';
+      if (campoCidade) campoCidade.value = local.cidade ?? '';
+      if (campoEstado) campoEstado.value = local.estado ?? '';
+      if (campoAmbiente) campoAmbiente.value = local.ambiente ?? 'Outro';
+
+      form.addEventListener('submit', async (evento) => {
+        evento.preventDefault();
+        const erro = form.querySelector<HTMLElement>('.local-erro');
+        const botao = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+        erro?.classList.add('oculto');
+        if (botao) botao.disabled = true;
+
+        try {
+          await acaoLocal(`/api/locais/${encodeURIComponent(local.id)}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+              nome: campoNome?.value.trim() ?? '',
+              cidade: campoCidade?.value.trim() || null,
+              estado: campoEstado?.value.trim().toUpperCase() || null,
+              latitude: Number(local.latitude),
+              longitude: Number(local.longitude),
+              ambiente: campoAmbiente?.value ?? 'Outro',
+              padrao: Boolean(local.padrao)
+            })
+          });
+          mostrarAviso('Local atualizado.');
+        } catch (falha) {
+          if (erro) {
+            erro.textContent = falha instanceof Error ? falha.message : 'Não foi possível salvar.';
+            erro.classList.remove('oculto');
+          }
+          if (botao) botao.disabled = false;
+        }
+      });
+
+      detalhes.append(resumo, form);
+      artigo.append(topo, meta, ambiente, acoes, detalhes);
+      return artigo;
+    }
+
+    function renderizarLocais() {
+      camadaLocais.clearLayers();
+      if (listaLocais) listaLocais.innerHTML = '';
+      if (contagemLocais) contagemLocais.textContent = String(locais.length);
+
+      if (locais.length === 0) {
+        const vazio = document.createElement('p');
+        vazio.className = 'mapa-vazio';
+        vazio.textContent = autenticado
+          ? 'Nenhum local salvo. Busque uma cidade ou praia para começar.'
+          : 'Entre para salvar seus locais e abrir as condições com um toque.';
+        listaLocais?.appendChild(vazio);
+        return;
+      }
+
+      for (const local of locais) {
+        const marcador = L.circleMarker(
+          [Number(local.latitude), Number(local.longitude)],
+          {
+            radius: 6,
+            color: '#56745c',
+            fillColor: '#56745c',
+            fillOpacity: 0.85,
+            weight: 2
+          }
+        )
+          .addTo(camadaLocais)
+          .bindPopup(`<strong>${escaparXml(local.nome)}</strong><br><a href="${linkDoLocal(local)}">Abrir condições</a>`);
+
+        marcador.on('click', () => {
+          mapa.flyTo([Number(local.latitude), Number(local.longitude)], Math.max(mapa.getZoom(), 10), {
+            duration: 0.5
+          });
+        });
+
+        listaLocais?.appendChild(criarCartaoLocal(local));
+      }
+    }
+
+    async function carregarLocais() {
+      if (!autenticado) {
+        locais = [];
+        renderizarLocais();
+        return;
+      }
+
+      try {
+        const resposta = await fetch(`${API}/api/locais`, { credentials: 'include' });
+        if (resposta.status === 401) {
+          autenticado = false;
+          localStorage.removeItem('fisga:locais:v1');
+          atualizarSessao();
+          return;
+        }
+
+        if (!resposta.ok) throw new Error('api');
+        locais = await resposta.json();
+        localStorage.setItem('fisga:locais:v1', JSON.stringify(locais));
+        renderizarLocais();
+      } catch {
+        const cache = localStorage.getItem('fisga:locais:v1');
+        if (cache) {
+          locais = JSON.parse(cache);
+          renderizarLocais();
+          mostrarAviso('Sem conexão. Mostrando os locais salvos neste aparelho.');
+        } else {
+          renderizarLocais();
+        }
+      }
+    }
+
+    function trocarAba(aba: string) {
+      abaAtual = ['locais', 'pontos', 'trilhas'].includes(aba) ? aba : 'locais';
+      const abas = [...document.querySelectorAll<HTMLButtonElement>('[data-aba]')];
+      const paineis = [...document.querySelectorAll<HTMLElement>('[data-painel]')];
+
+      for (const botao of abas) {
+        botao.setAttribute('aria-selected', String(botao.dataset.aba === abaAtual));
+      }
+
+      for (const painel of paineis) {
+        painel.hidden = painel.dataset.painel !== abaAtual;
+      }
+
+      if (buscarLocal) buscarLocal.hidden = abaAtual !== 'locais';
+      const adicionar = document.getElementById('adicionar-ponto');
+      const desenhar = document.getElementById('desenhar-trilha');
+      if (adicionar) adicionar.hidden = abaAtual !== 'pontos';
+      if (desenhar) desenhar.hidden = abaAtual !== 'trilhas';
+
+      const url = new URL(window.location.href);
+      url.searchParams.set('aba', abaAtual);
+      window.history.replaceState({}, '', url);
+
+      if (abaAtual === 'locais' && locais.length > 1 && !desenhando) {
+        const limites = L.latLngBounds(
+          locais.map((local) => [Number(local.latitude), Number(local.longitude)] as L.LatLngTuple)
+        );
+        mapa.fitBounds(limites.pad(0.2), { maxZoom: 10 });
+      }
+    }
+
     function renderizar() {
       camadaPontos.clearLayers();
       if (lista) lista.innerHTML = '';
@@ -687,6 +981,7 @@ import 'leaflet/dist/leaflet.css';
           autenticado = false;
           localStorage.removeItem('fisga:pontos:v1');
           localStorage.removeItem('fisga:trilhas:v1');
+          localStorage.removeItem('fisga:locais:v1');
           atualizarSessao();
           return;
         }
@@ -711,6 +1006,8 @@ import 'leaflet/dist/leaflet.css';
     function atualizarSessao() {
       botaoEntrar?.classList.toggle('oculto', autenticado);
       if (!autenticado) {
+        locais = [];
+        renderizarLocais();
         botaoExportar?.classList.add('oculto');
         dialogo?.close();
         dialogoTrilha?.close();
@@ -804,6 +1101,10 @@ import 'leaflet/dist/leaflet.css';
         return;
       }
       abrirDialogo(null, evento.latlng);
+    });
+
+    document.querySelectorAll<HTMLButtonElement>('[data-aba]').forEach((botao) => {
+      botao.addEventListener('click', () => trocarAba(botao.dataset.aba ?? 'locais'));
     });
 
     document.getElementById('desenhar-trilha')?.addEventListener('click', iniciarDesenho);
@@ -968,8 +1269,10 @@ import 'leaflet/dist/leaflet.css';
       }
 
       atualizarSessao();
+      await carregarLocais();
       await carregarPontos();
       await carregarTrilhas();
+      trocarAba(new URLSearchParams(window.location.search).get('aba') ?? 'locais');
 
       const cacheMapa = localStorage.getItem('fisga:mapa:v1');
       if (cacheMapa) {
@@ -1019,6 +1322,95 @@ import 'leaflet/dist/leaflet.css';
 
     .mapa-conteudo {
       padding-bottom: 84px;
+    }
+
+    .mapa-abas {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-bottom: 14px;
+      border-bottom: 1px solid var(--linha);
+    }
+
+    .mapa-abas button {
+      padding: 10px 12px;
+      border: 0;
+      border-bottom: 2px solid transparent;
+      background: transparent;
+      color: var(--tinta-suave);
+      font: inherit;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .mapa-abas button[aria-selected='true'] {
+      border-bottom-color: var(--terracota);
+      color: var(--tinta);
+    }
+
+    [data-painel][hidden],
+    .mapa-acoes [hidden] {
+      display: none !important;
+    }
+
+    .lista-locais {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+      max-height: 40vh;
+      overflow-y: auto;
+    }
+
+    .local-card {
+      background: var(--superficie);
+    }
+
+    .local-editar {
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px dashed var(--linha);
+    }
+
+    .local-editar summary {
+      color: var(--tinta-suave);
+      font-size: 0.66rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .local-editar form {
+      display: grid;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .local-editar input,
+    .local-editar select {
+      width: 100%;
+      height: 34px;
+      padding: 0 8px;
+      border: 1px solid var(--linha-forte);
+      border-radius: 7px;
+      background: var(--papel);
+      color: var(--tinta);
+      font: inherit;
+      font-size: 0.74rem;
+    }
+
+    .local-form-duplo {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 62px;
+      gap: 6px;
+    }
+
+    .local-editar .local-erro {
+      padding: 6px 8px;
+      border: 1px solid var(--acafrao);
+      border-radius: 6px;
+      background: #fff4ea;
+      color: #8a3f1c;
+      font-size: 0.68rem;
     }
 
     .mapa-aviso {

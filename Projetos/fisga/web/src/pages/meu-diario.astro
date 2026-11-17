@@ -54,6 +54,13 @@ import Layout from '../layouts/Layout.astro';
     </div>
 
     <div id="conteudo-diario" class="oculto">
+      <div class="diario-abas" role="tablist" aria-label="Seções do diário">
+        <button type="button" role="tab" data-diario-aba="visao" aria-selected="true">Visão geral</button>
+        <button type="button" role="tab" data-diario-aba="pescarias" aria-selected="false">Pescarias</button>
+        <button type="button" role="tab" data-diario-aba="insights" aria-selected="false">Insights</button>
+      </div>
+
+      <div data-diario-painel="visao">
       <div class="diario-stats">
         <div class="stat-card"><span>Pescarias</span><strong id="stat-pescarias">0</strong><small>dias registrados</small></div>
         <div class="stat-card"><span>Capturas</span><strong id="stat-capturas">0</strong><small>peixes no diário</small></div>
@@ -84,7 +91,9 @@ import Layout from '../layouts/Layout.astro';
           </div>
         </article>
       </div>
+      </div>
 
+      <div data-diario-painel="insights" hidden>
       <section id="insights-secao" class="oculto" style="margin-bottom: 28px;">
         <div class="cabecalho-secao" style="margin-bottom: 14px;">
           <div>
@@ -119,7 +128,9 @@ import Layout from '../layouts/Layout.astro';
           Sinal, não garantia: são poucas pescarias e muitas variáveis. Use como pista para o próximo teste.
         </p>
       </section>
+      </div>
 
+      <div data-diario-painel="pescarias" hidden>
       <div class="cabecalho-secao" style="margin-bottom: 18px;">
         <div>
           <span class="eyebrow">Histórico</span>
@@ -132,8 +143,13 @@ import Layout from '../layouts/Layout.astro';
       <div id="vazio" class="estado-vazio oculto" style="margin-top: 20px;">
         <span class="eyebrow">Água parada</span>
         <h2>Seu primeiro registro está esperando.</h2>
-        <p>Registre uma pescaria para começar a ver seus padrões, recordes e troféus.</p>
-        <a class="btn btn--primario" href="/registrar" style="margin-top: 20px;">Registrar primeira pescaria</a>
+        <p>Veja as condições de hoje, salve seu local ou registre a primeira pescaria.</p>
+        <div class="hero-acoes" style="justify-content: center; margin-top: 18px;">
+          <a class="btn btn--primario" href="/registrar">Registrar primeira pescaria</a>
+          <a class="btn btn--contorno" href="/hoje">Ver condições de hoje</a>
+          <a class="btn btn--contorno" href="/mapa?aba=locais">Salvar meu local</a>
+        </div>
+      </div>
       </div>
     </div>
   </section>
@@ -150,6 +166,21 @@ import Layout from '../layouts/Layout.astro';
     const acoesLogado = document.getElementById('acoes-logado');
     const acoesDeslogado = document.getElementById('acoes-deslogado');
     const saudacao = document.getElementById('saudacao');
+    const abasDiario = [...document.querySelectorAll('[data-diario-aba]')];
+    const paineisDiario = [...document.querySelectorAll('[data-diario-painel]')];
+
+    function abrirAbaDiario(nome) {
+      for (const aba of abasDiario) {
+        aba.setAttribute('aria-selected', String(aba.dataset.diarioAba === nome));
+      }
+      for (const painel of paineisDiario) {
+        painel.hidden = painel.dataset.diarioPainel !== nome;
+      }
+    }
+
+    for (const aba of abasDiario) {
+      aba.addEventListener('click', () => abrirAbaDiario(aba.dataset.diarioAba));
+    }
     const reais = (valor) =>
       Number(valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
     const escapar = (texto) =>
@@ -265,6 +296,7 @@ import Layout from '../layouts/Layout.astro';
           : '<p style="color: var(--tinta-suave); font-size: 0.74rem;">Adicione a isca nas capturas para descobrir padrões.</p>';
 
         const pescarias = dados.pescarias || [];
+        if (pescarias.length === 0) abrirAbaDiario('pescarias');
         if (pescarias.length === 0) {
           lista.innerHTML = '';
           vazio.classList.remove('oculto');

@@ -50,6 +50,13 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
     <form id="pescaria-form" class="calc-form" novalidate>
       <div id="erro-form" class="erro-caixa" role="alert"></div>
 
+      <nav class="registro-passos" aria-label="Etapas do registro">
+        <button type="button" data-etapa-botao="1" aria-current="step">1 A pescaria</button>
+        <button type="button" data-etapa-botao="2">2 As condições</button>
+        <button type="button" data-etapa-botao="3">3 As capturas</button>
+        <button type="button" data-etapa-botao="4">4 Revisar</button>
+      </nav>
+
       <div id="condicoes-aplicadas" class="condicoes-aplicadas oculto" role="status">
         <div>
           <span class="selo selo--terracota">Condições aplicadas</span>
@@ -73,7 +80,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         {(catalogo?.iscas ?? []).map((isca) => <option value={isca}></option>)}
       </datalist>
 
-      <section class="painel" aria-labelledby="titulo-pescaria">
+      <section class="painel" aria-labelledby="titulo-pescaria" data-etapa="1">
         <div class="painel-cabecalho">
           <span class="passo-etiqueta">01</span>
           <div>
@@ -141,9 +148,14 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
             <option value="Noite">Noite</option>
           </select>
         </div>
+
+        <div class="etapa-acoes">
+          <span></span>
+          <button class="btn btn--primario" type="button" data-avancar>Continuar</button>
+        </div>
       </section>
 
-      <section class="painel" aria-labelledby="titulo-condicoes">
+      <section class="painel" aria-labelledby="titulo-condicoes" data-etapa="2" hidden>
         <div class="painel-cabecalho">
           <span class="passo-etiqueta">02</span>
           <div>
@@ -200,9 +212,14 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         </div>
 
         <div id="defeso-alerta" class="defeso-alerta oculto" role="note"></div>
+
+        <div class="etapa-acoes">
+          <button class="btn btn--contorno" type="button" data-voltar>Voltar</button>
+          <button class="btn btn--primario" type="button" data-avancar>Continuar</button>
+        </div>
       </section>
 
-      <section class="painel" aria-labelledby="titulo-capturas">
+      <section class="painel" aria-labelledby="titulo-capturas" data-etapa="3" hidden>
         <div class="painel-cabecalho">
           <span class="passo-etiqueta">03</span>
           <div>
@@ -229,27 +246,41 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
           Foto opcional, mas é ela que deixa o card do troféu especial. A imagem é comprimida no
           navegador antes do envio.
         </div>
+
+        <div class="etapa-acoes">
+          <button class="btn btn--contorno" type="button" data-voltar>Voltar</button>
+          <button class="btn btn--primario" type="button" data-avancar>Continuar</button>
+        </div>
       </section>
 
-      <section class="painel" aria-labelledby="titulo-observacoes">
+      <section class="painel" aria-labelledby="titulo-revisar" data-etapa="4" hidden>
         <div class="painel-cabecalho">
           <span class="passo-etiqueta">04</span>
           <div>
-            <h2 id="titulo-observacoes">Anotações</h2>
-            <p>O que você quer lembrar na próxima pescaria?</p>
+            <h2 id="titulo-revisar">Revisar</h2>
+            <p>Confira o que vai para o seu diário.</p>
           </div>
         </div>
 
-        <div class="campo">
-          <label for="observacoes">Observações da pescaria</label>
+        <div class="revisao-resumo">
+          <div><span>Local</span><strong id="revisao-local">—</strong></div>
+          <div><span>Data</span><strong id="revisao-data">—</strong></div>
+          <div><span>Condições</span><strong id="revisao-condicoes">—</strong></div>
+          <div><span>Capturas</span><strong id="revisao-capturas">—</strong></div>
+          <div><span>Fotos</span><strong id="revisao-fotos">—</strong></div>
+        </div>
+
+        <div class="campo" style="margin-top: 18px;">
+          <label for="observacoes">Como foi?</label>
           <textarea id="observacoes" rows="4" maxlength="1000" placeholder="Ex.: o peixe bateu no final da manhã, perto da estrutura." style="width: 100%; padding: 11px 12px; border: 1px solid var(--linha-forte); border-radius: 9px; background: var(--papel); color: var(--tinta); font-size: 0.86rem; resize: vertical;"></textarea>
         </div>
-      </section>
 
-      <div class="panel-actions">
-        <button class="btn btn--primario" type="submit" id="btn-salvar">Salvar pescaria</button>
-        <small>Diário privado, card do troféu e PDF gratuitos durante a validação.</small>
-      </div>
+        <div class="etapa-acoes">
+          <button class="btn btn--contorno" type="button" data-voltar>Voltar</button>
+          <button class="btn btn--primario" type="submit" id="btn-salvar">Salvar pescaria</button>
+        </div>
+        <small class="revisao-nota">Diário privado, card do troféu e PDF gratuitos durante a validação.</small>
+      </section>
     </form>
 
     <aside class="cartao-pilha">
@@ -848,14 +879,9 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       return local.toISOString().slice(0, 10);
     }
 
-    function aplicarExemplo() {
-      if (catalogo?.exemplo) {
-        preencher(catalogo.exemplo);
-        document.getElementById('data').value = dataHojeLocal();
-      } else {
-        document.getElementById('data').value = dataHojeLocal();
-        criarLinhaCaptura();
-      }
+    function iniciarFormularioVazio() {
+      document.getElementById('data').value = dataHojeLocal();
+      criarLinhaCaptura();
     }
 
     function aplicarEspecieDaWiki() {
@@ -951,6 +977,116 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       if (autenticado) agendarRascunho();
     });
 
+    let etapaAtual = 1;
+    const etapas = [...formulario.querySelectorAll('[data-etapa]')];
+    const botoesEtapa = [...formulario.querySelectorAll('[data-etapa-botao]')];
+
+    function textoSelecionado(id) {
+      return document.getElementById(id)?.selectedOptions?.[0]?.textContent?.trim() ?? '';
+    }
+
+    function atualizarRevisao() {
+      const entrada = coletar();
+      const local = [entrada.local || 'Sem local', entrada.cidade, entrada.estado]
+        .filter(Boolean)
+        .join(' · ');
+
+      const data = entrada.data
+        ? new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
+            .format(new Date(`${entrada.data}T12:00:00`))
+        : 'Sem data';
+
+      const condicoes = ['mare', 'lua', 'clima', 'clareza']
+        .map(textoSelecionado)
+        .filter((texto) => texto && !/^não (informad|se aplica)/i.test(texto))
+        .join(' · ') || 'Não informadas';
+
+      const totalCapturas = entrada.capturas.length;
+      const especies = [...new Set(entrada.capturas.map((captura) => captura.especie).filter(Boolean))];
+      const capturas = totalCapturas
+        ? `${totalCapturas} ${totalCapturas === 1 ? 'captura' : 'capturas'}${especies.length ? ` · ${especies.slice(0, 3).join(', ')}` : ''}`
+        : 'Nenhuma captura';
+
+      const totalFotos = [...listaCapturas.querySelectorAll('.linha-captura')]
+        .reduce((soma, linha) => soma + fotosDaLinha(linha).length, 0);
+
+      const alvo = (id, texto) => {
+        const elemento = document.getElementById(id);
+        if (elemento) elemento.textContent = texto;
+      };
+      alvo('revisao-local', local);
+      alvo('revisao-data', data);
+      alvo('revisao-condicoes', condicoes);
+      alvo('revisao-capturas', capturas);
+      alvo('revisao-fotos', totalFotos ? `${totalFotos} ${totalFotos === 1 ? 'foto' : 'fotos'}` : 'Sem fotos');
+    }
+
+    function validarEtapa(numeroDaEtapa) {
+      if (numeroDaEtapa === 1) {
+        const local = document.getElementById('local');
+        if (!local.value.trim()) {
+          mostrarErro('Informe o local da pescaria.');
+          mostrarEtapa(1);
+          local.focus();
+          return false;
+        }
+
+        const data = document.getElementById('data');
+        if (!data.value) {
+          mostrarErro('Informe a data da pescaria.');
+          mostrarEtapa(1);
+          data.focus();
+          return false;
+        }
+      }
+
+      mostrarErro('');
+      return true;
+    }
+
+    function mostrarEtapa(numeroDaEtapa) {
+      etapaAtual = Math.min(4, Math.max(1, numeroDaEtapa));
+
+      for (const etapa of etapas) {
+        etapa.hidden = Number(etapa.dataset.etapa) !== etapaAtual;
+      }
+      for (const botao of botoesEtapa) {
+        if (Number(botao.dataset.etapaBotao) === etapaAtual) botao.setAttribute('aria-current', 'step');
+        else botao.removeAttribute('aria-current');
+      }
+
+      if (etapaAtual === 4) atualizarRevisao();
+
+      const topo = formulario.getBoundingClientRect().top + window.scrollY - 84;
+      window.scrollTo({ top: Math.max(0, topo), behavior: 'smooth' });
+    }
+
+    for (const botao of botoesEtapa) {
+      botao.addEventListener('click', () => {
+        const destino = Number(botao.dataset.etapaBotao);
+        if (destino > 1 && !validarEtapa(1)) return;
+        mostrarEtapa(destino);
+      });
+    }
+
+    formulario.querySelectorAll('[data-avancar]').forEach((botao) => {
+      botao.addEventListener('click', () => {
+        if (validarEtapa(etapaAtual)) mostrarEtapa(etapaAtual + 1);
+      });
+    });
+
+    formulario.querySelectorAll('[data-voltar]').forEach((botao) => {
+      botao.addEventListener('click', () => mostrarEtapa(etapaAtual - 1));
+    });
+
+    formulario.addEventListener('input', () => {
+      if (etapaAtual === 4) atualizarRevisao();
+    });
+
+    formulario.addEventListener('change', () => {
+      if (etapaAtual === 4) atualizarRevisao();
+    });
+
     formulario.addEventListener('submit', async (evento) => {
       evento.preventDefault();
 
@@ -1021,7 +1157,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       if (!autenticado) {
         bloquearFormulario();
         const aplicouCondicoes = await aplicarCondicoesDaUrl();
-        if (!aplicouCondicoes) aplicarExemplo();
+        if (!aplicouCondicoes) iniciarFormularioVazio();
         aplicarEspecieDaWiki();
         return;
       }
@@ -1039,7 +1175,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       }
 
       const aplicouCondicoes = await aplicarCondicoesDaUrl();
-      if (!aplicouCondicoes) aplicarExemplo();
+      if (!aplicouCondicoes) iniciarFormularioVazio();
       aplicarEspecieDaWiki();
     })();
   </script>
@@ -1202,8 +1338,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
     filter: saturate(0.7);
   }
 
-  @media (max-width: 760px) {
-    .defeso-alerta {
+  .defeso-alerta {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -1224,7 +1359,91 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
     text-decoration: underline;
   }
 
-  .aviso-acesso {
+  /* Etapas do registro */
+  .registro-passos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 18px;
+    border-bottom: 1px solid var(--linha);
+  }
+
+  .registro-passos button {
+    padding: 10px 12px;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    color: var(--tinta-suave);
+    font: inherit;
+    font-size: 0.76rem;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .registro-passos button[aria-current='step'] {
+    border-bottom-color: var(--terracota);
+    color: var(--tinta);
+  }
+
+  .etapa-acoes {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid var(--linha);
+  }
+
+  .etapa-acoes > span {
+    flex: 1;
+  }
+
+  .revisao-resumo {
+    display: grid;
+    gap: 0;
+    margin-top: 12px;
+    border-top: 1px solid var(--linha);
+  }
+
+  .revisao-resumo div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--linha);
+  }
+
+  .revisao-resumo span {
+    color: var(--tinta-suave);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+  }
+
+  .revisao-resumo strong {
+    font-size: 0.86rem;
+    font-weight: 600;
+    text-align: right;
+  }
+
+  .revisao-nota {
+    display: block;
+    margin-top: 8px;
+    color: var(--tinta-suave);
+    font-size: 0.7rem;
+    line-height: 1.5;
+  }
+
+  [data-etapa][hidden] {
+    display: none !important;
+  }
+
+  @media (max-width: 760px) {
+    .aviso-acesso {
       align-items: stretch;
       flex-direction: column;
       gap: 16px;
@@ -1232,6 +1451,39 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
 
     .aviso-acesso-acoes .btn {
       width: 100%;
+    }
+
+    .registro-passos {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+    }
+
+    .registro-passos button {
+      flex: 0 0 auto;
+      padding: 9px 10px;
+      font-size: 0.7rem;
+      white-space: nowrap;
+    }
+
+    .etapa-acoes .btn {
+      flex: 1;
+    }
+  }
+
+  @media (max-width: 520px) {
+    .registro-passos {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      overflow: visible;
+    }
+
+    .registro-passos button {
+      white-space: normal;
+      border-bottom: 1px solid var(--linha);
+    }
+
+    .registro-passos button[aria-current='step'] {
+      border-bottom-color: var(--terracota);
     }
   }
 </style>

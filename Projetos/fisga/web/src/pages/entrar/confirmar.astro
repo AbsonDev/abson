@@ -28,7 +28,7 @@ const estado = Astro.url.searchParams.get('estado') ?? '';
 
           <div class="confirmar-progresso" aria-hidden="true"><span></span></div>
 
-          <a class="btn btn--primario oculto" id="confirmar-acao" href="/meu-diario">Ir para meu diário</a>
+          <a class="btn btn--primario oculto" id="confirmar-acao" href="/hoje">Abrir Hoje</a>
           <a class="btn btn--contorno oculto" id="confirmar-secundaria" href="/entrar">Pedir um novo link</a>
         </div>
       </div>
@@ -146,7 +146,7 @@ const estado = Astro.url.searchParams.get('estado') ?? '';
         return salvo;
       }
     } catch {}
-    return '/meu-diario';
+    return '/hoje';
   }
 
   if (estado === 'ok' || estado === '') {

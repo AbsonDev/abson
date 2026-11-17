@@ -278,3 +278,52 @@ Não adicionar mais features antes de arrumar a porta de entrada. A ordem recome
 
 O produto já tem profundidade. O que falta é **uma entrada que conte a história certa e uma
 navegação que não esconda o que foi construído**.
+
+## Status de implementação — Sprint UX
+
+Implementado em 17/11/2026, depois da validação do protótipo `fisga-ux` no OpenDesign.
+
+### P0 — entrada e navegação
+
+- [x] `Layout.astro` com **Hoje · Diário · Mapa · Aprender**, CTA Registrar e conta.
+- [x] Bottom nav mobile com 5 itens (Hoje, Diário, Registrar central, Mapa, Aprender) e 3 no modo
+  anônimo.
+- [x] `ContaMenu` alterna `.nav-auth-only`/`.nav-anon-only` via `body[data-auth]`.
+- [x] `/hoje` com gate de sessão, local padrão, condições agora, janela, 7 dias, atalhos e última
+  pescaria.
+- [x] Fluxo de primeiro local em `/hoje`, com busca e GPS.
+- [x] Home pública reescrita em torno de “Vale a pena sair hoje?”, com busca e três trabalhos.
+- [x] Onboarding em 2 etapas (nome/newsletter → local), terminando em `/hoje`.
+- [x] Altura de maré em `/hoje` usa o ponto atual da curva, não o primeiro evento do dia.
+- [x] Saudação dinâmica (Bom dia/Boa tarde/Boa noite).
+
+### P1 — Diário, Mapa e Aprender
+
+- [x] `/mapa` com abas **Locais · Pontos · Trilhas**, `?aba=` e os mesmos dados privados.
+- [x] `/meu-diario` com abas **Visão geral · Pescarias · Insights**.
+- [x] `/aprender` agrupando Ferramentas de campo + Wiki, com busca local e selos offline.
+- [x] Empty state do diário com links para condições, mapa e registro.
+- [x] `/locais` → `/mapa?aba=locais` e `/diario` → `/meu-diario`.
+
+### P2 — Registrar
+
+- [x] Quatro etapas: **A pescaria · As condições · As capturas · Revisar**.
+- [x] Navegação por etapa, validação de local/data e retorno preservando dados.
+- [x] Revisão com local, data, condições, capturas e fotos.
+- [x] Anotações movidas para a revisão.
+- [x] Formulário deixou de abrir preenchido com o exemplo (Campinas/Tucunaré/Tilápia); agora abre
+  vazio, com data de hoje e uma linha de captura.
+
+### Verificação
+
+- Protótipo e aplicação sem overflow em 360, 390, 768, 1024, 1280, 1440 e 1920 px.
+- Fluxo real testado: link mágico → onboarding com local → `/hoje` → mapa com abas → `/aprender` →
+  registrar em 4 etapas → revisão → pescaria salva → diário com abas.
+- Bottom nav autenticada validada em 390 px, com Diário e Registrar visíveis.
+- `astro check`, build, 75 testes .NET e testes Playwright passando.
+
+### Diferença em relação ao protótipo
+
+O protótipo mostra 3 passos de onboarding (nome → local → newsletter). A implementação mantém 2
+passos: nome/newsletter na primeira tela e local na segunda, para reduzir fricção sem perder o
+local padrão.

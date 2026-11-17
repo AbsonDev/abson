@@ -11,7 +11,7 @@ import Layout from '../layouts/Layout.astro';
     <div class="container">
       <div class="boas-progresso">
         <span>Primeiro acesso</span>
-        <span>1 de 1</span>
+        <span id="boas-progresso-numero">1 de 2</span>
       </div>
 
       <div class="boas-cartao">
@@ -47,9 +47,28 @@ import Layout from '../layouts/Layout.astro';
           <p id="boas-erro" class="erro-caixa" role="alert"></p>
 
           <button class="btn btn--primario btn--largo" type="submit" id="boas-salvar">
-            Entrar no meu diário
+            Continuar
           </button>
         </form>
+
+        <section id="boas-local" class="boas-local oculto" aria-labelledby="boas-local-titulo">
+          <span class="eyebrow">Passo 2 de 2</span>
+          <h2 id="boas-local-titulo">Onde você pesca?</h2>
+          <p class="boas-lead">
+            Escolha uma cidade, praia ou represa. O Fisga abre as condições desse lugar e usa o local
+            no seu registro. Dá para trocar depois.
+          </p>
+          <div class="boas-busca">
+            <label class="oculto" for="boas-busca-local">Buscar local</label>
+            <input id="boas-busca-local" type="search" placeholder="Cidade, praia ou represa" autocomplete="off" />
+            <button id="boas-usar-localizacao" class="btn btn--contorno" type="button">Usar minha localização</button>
+            <div id="boas-resultados" class="boas-resultados oculto" role="listbox"></div>
+          </div>
+          <p id="boas-local-status" class="boas-local-status" role="status" aria-live="polite"></p>
+          <div class="boas-local-acoes">
+            <button class="btn btn--primario" type="button" id="boas-local-pular">Agora não</button>
+          </div>
+        </section>
 
         <button class="boas-pular" type="button" id="boas-pular">Pular por agora</button>
 
@@ -231,7 +250,14 @@ import Layout from '../layouts/Layout.astro';
   const erro = document.getElementById('boas-erro');
   const avatar = document.getElementById('boas-avatar');
   const lead = document.getElementById('boas-lead');
+  const passoLocal = document.getElementById('boas-local');
+  const progressoNumero = document.getElementById('boas-progresso-numero');
+  const buscaLocal = document.getElementById('boas-busca-local');
+  const resultadosLocal = document.getElementById('boas-resultados');
+  const statusLocal = document.getElementById('boas-local-status');
+  const localizacaoBotao = document.getElementById('boas-usar-localizacao');
   let usuario = null;
+  let timerLocal = 0;
 
   function destino() {
     try {
@@ -241,7 +267,7 @@ import Layout from '../layouts/Layout.astro';
         return salvo;
       }
     } catch {}
-    return '/meu-diario';
+    return '/hoje';
   }
 
   function iniciais(nome) {
@@ -255,7 +281,7 @@ import Layout from '../layouts/Layout.astro';
       const resposta = await fetch(`${API}/api/auth/me`, { credentials: 'include' });
       const dados = await resposta.json().catch(() => ({}));
       if (!dados.autenticado || !dados.usuario) {
-        window.location.replace('/entrar?voltar=/meu-diario');
+        window.location.replace('/entrar?voltar=/hoje');
         return;
       }
 
@@ -294,13 +320,120 @@ import Layout from '../layouts/Layout.astro';
       const dados = await resposta.json().catch(() => ({}));
       if (!resposta.ok) throw new Error(dados.detalhe || 'Não foi possível salvar suas preferências.');
 
-      window.location.assign(destino());
+      formulario.classList.add('oculto');
+      document.getElementById('boas-pular')?.classList.add('oculto');
+      passoLocal?.classList.remove('oculto');
+      if (progressoNumero) progressoNumero.textContent = '2 de 2';
+      if (lead) lead.textContent = 'Agora escolha o lugar que você mais pesca.';
+      buscaLocal?.focus();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (falha) {
       erro.textContent = falha instanceof Error ? falha.message : 'Não foi possível salvar suas preferências.';
       erro.classList.add('visivel');
       botao.disabled = false;
-      botao.textContent = 'Entrar no meu diário';
+      botao.textContent = 'Continuar';
     }
+  });
+
+  async function salvarLocal(local) {
+    if (statusLocal) statusLocal.textContent = 'Salvando local...';
+    try {
+      const resposta = await fetch(`${API}/api/locais`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nome: local.nome,
+          cidade: local.cidade ?? null,
+          estado: local.estado ?? null,
+          latitude: local.latitude,
+          longitude: local.longitude,
+          ambiente: local.ambiente ?? 'Outro',
+          padrao: true
+        })
+      });
+
+      if (resposta.status === 401) {
+        window.location.assign(`/entrar?voltar=${encodeURIComponent('/hoje')}`);
+        return;
+      }
+
+      const dados = await resposta.json().catch(() => ({}));
+      if (!resposta.ok) throw new Error(dados.detalhe || 'Não foi possível salvar o local.');
+      window.location.assign(destino());
+    } catch (falha) {
+      if (statusLocal) statusLocal.textContent = falha instanceof Error ? falha.message : 'Não foi possível salvar o local.';
+    }
+  }
+
+  async function buscarLocal(termo) {
+    if (!resultadosLocal) return;
+    if (termo.trim().length < 2) {
+      resultadosLocal.classList.add('oculto');
+      return;
+    }
+
+    try {
+      const resposta = await fetch(`${API}/api/locais/buscar?q=${encodeURIComponent(termo.trim())}`);
+      const lista = await resposta.json();
+      resultadosLocal.innerHTML = '';
+      if (!Array.isArray(lista) || lista.length === 0) {
+        resultadosLocal.innerHTML = '<p class="busca-vazia">Nenhum lugar encontrado.</p>';
+        resultadosLocal.classList.remove('oculto');
+        return;
+      }
+
+      for (const item of lista) {
+        const opcao = document.createElement('button');
+        opcao.type = 'button';
+        opcao.className = 'boas-resultado';
+        opcao.textContent = `${item.nome}${item.estado ? ` · ${item.estado}` : ''}`;
+        opcao.addEventListener('click', () => salvarLocal({
+          nome: item.nome ?? item.cidade ?? 'Meu local',
+          cidade: item.cidade ?? item.nome,
+          estado: item.estado,
+          latitude: Number(item.latitude),
+          longitude: Number(item.longitude),
+          ambiente: 'Outro'
+        }));
+        resultadosLocal.appendChild(opcao);
+      }
+      resultadosLocal.classList.remove('oculto');
+    } catch {
+      if (statusLocal) statusLocal.textContent = 'Não foi possível buscar agora.';
+    }
+  }
+
+  buscaLocal?.addEventListener('input', () => {
+    window.clearTimeout(timerLocal);
+    timerLocal = window.setTimeout(() => buscarLocal(buscaLocal.value), 320);
+  });
+
+  localizacaoBotao?.addEventListener('click', () => {
+    if (!navigator.geolocation) {
+      if (statusLocal) statusLocal.textContent = 'Seu navegador não oferece localização.';
+      return;
+    }
+    localizacaoBotao.disabled = true;
+    localizacaoBotao.textContent = 'Localizando...';
+    navigator.geolocation.getCurrentPosition(
+      (posicao) => salvarLocal({
+        nome: 'Minha localização',
+        latitude: Number(posicao.coords.latitude.toFixed(5)),
+        longitude: Number(posicao.coords.longitude.toFixed(5)),
+        ambiente: 'Outro'
+      }),
+      () => {
+        localizacaoBotao.disabled = false;
+        localizacaoBotao.textContent = 'Usar minha localização';
+        if (statusLocal) statusLocal.textContent = 'Não conseguimos usar sua localização. Busque pelo nome.';
+      },
+      { enableHighAccuracy: false, timeout: 12000, maximumAge: 300000 }
+    );
+  });
+
+  document.getElementById('boas-local-pular')?.addEventListener('click', () => {
+    window.location.assign(destino());
   });
 
   document.getElementById('boas-pular')?.addEventListener('click', () => {

@@ -25,6 +25,22 @@ transforma o dia em troféu, PDF e memória.
 O Fisga é **privado por padrão**: o diário é da conta, o local pode ser ocultado e pontos/trilhas
 nunca são publicados.
 
+### Navegação
+
+| Contexto | Itens principais |
+| --- | --- |
+| Desktop autenticado | **Hoje · Diário · Mapa · Aprender** + Registrar pescaria + conta |
+| Desktop anônimo | **Hoje · Mapa · Aprender** + Entrar |
+| Mobile autenticado | Bottom nav: Hoje, Diário, Registrar (central), Mapa, Aprender |
+| Mobile anônimo | Bottom nav: Hoje, Mapa, Aprender |
+
+- `/` é a home pública focada em “Vale a pena sair hoje?”; quem tem sessão vai para `/hoje`.
+- `/hoje` é o cockpit do local padrão, com condições, janela, 7 dias e atalhos.
+- `/aprender` agrupa **Ferramentas de campo + Wiki**.
+- `/mapa` reúne **Locais · Pontos · Trilhas** no mesmo mapa privado.
+- `/meu-diario` separa **Visão geral · Pescarias · Insights**.
+- URLs antigas continuam funcionando: `/locais` → `/mapa?aba=locais` e `/diario` → `/meu-diario`.
+
 ---
 
 ## Funcionalidades
@@ -34,7 +50,7 @@ nunca são publicados.
 - **Login por link mágico**: e-mail, link de uso único (15 min), sem senha.
 - Sessão de 30 dias em cookie `HttpOnly`, `Secure` e `SameSite=Lax`.
 - Tokens de login e sessão armazenados apenas como hash SHA-256.
-- **Boas-vindas** no primeiro acesso, com nome e preferência de e-mail.
+- **Boas-vindas** no primeiro acesso, com nome, preferência de e-mail e local padrão (busca ou GPS).
 - **Minha conta**: perfil, troca de e-mail por novo link, sessões ativas, encerrar sessão/dispositivo,
   exportação JSON e exclusão com confirmação `EXCLUIR`.
 - **Conta obrigatória apenas para o diário e recursos privados**; condições, wiki e ferramentas são
@@ -63,6 +79,7 @@ nunca são publicados.
 ### Condições e cockpit
 
 - **Página pública `/condicoes`**, sem login, com busca por cidade/praia e geolocalização.
+- **`/hoje`** autenticado com o local padrão, condições agora, janela explicável, 7 dias e atalhos.
 - **Maré aproximada** com curva, preamar/baixa-mar, altura e próximo evento.
 - **Corrente oceânica real** do modelo Open-Meteo (`ocean_current_velocity`), em km/h e direção.
 - Vento, rajadas, direção, chuva, temperatura, sensação, pressão e tendência.
@@ -83,6 +100,7 @@ nunca são publicados.
 - **Leaflet** com mapa base, satélite, camada náutica e batimetria, sem token pago.
 - **Pontos privados** com nome, tipo (ponto, poita, estrutura, trilha, rampa), notas e coordenadas.
 - **Trilhas privadas** de corrico/deslocamento, com distância calculada.
+- **Abas Locais/Pontos/Trilhas** no mesmo mapa, sem duplicar dados nem coordenadas.
 - **Exportação GPX** de pontos e trilhas.
 - Nenhum endpoint público de pontos ou trilhas; nenhuma coordenada é publicada.
 - Cache local de pontos/trilhas e dos últimos azulejos visitados.
@@ -94,6 +112,7 @@ nunca são publicados.
   espécie/isca/local que mais aparecem e taxa de soltura.
 - **Insights**: melhor mês, período, lua, maré, clima e água; recordes por espécie; isca que mais
   funcionou por espécie.
+- **Abas Visão geral/Pescarias/Insights** para separar resumo, histórico e padrões.
 - **Sinais comparativos**: “+X% de capturas com lua crescente”, com pelo menos 3 pescarias de cada
   lado, diferença mínima de 15% e aviso “sinal, não garantia”.
 - **EXIF**: lê data/hora e GPS da foto para sugerir data, período e cidade/UF (GPS usado só para a
@@ -109,6 +128,7 @@ nunca são publicados.
 - **Checklists**: caiaque, costeira, embarcado e pesque-pague, com progresso salvo no aparelho.
 - **Defeso por UF**: órgão ambiental, link oficial, checklist do que confirmar e aviso legal.
 - **Guias e piloteiros**: roteiro para escolher, perguntas antes de fechar e diretório em curadoria.
+- **Central `/aprender`** com busca local e selos de conteúdo disponível offline.
 
 ### Wiki e newsletter
 
@@ -124,8 +144,8 @@ nunca são publicados.
 - Manifest, ícones, página offline e service worker.
 - Cache de wiki, ferramentas, condições já visitadas, pontos/trilhas e últimos 600 azulejos do mapa.
 - Rascunho de pescaria em `localStorage`.
-- Rotas privadas (`/locais`, `/conta`, `/meu-diario`, `/registrar`, `/trofeu`) não entram no cache de
-  navegação.
+- Rotas privadas (`/hoje`, `/mapa`, `/conta`, `/meu-diario`, `/registrar`, `/trofeu`) não entram no
+  cache de navegação.
 - Não é um mapa offline completo: baixe a área antes de sair para o mar.
 
 ---
@@ -139,6 +159,7 @@ nunca são publicados.
 | **Sprint 2** | Condições públicas, locais salvos, janela de pesca, prefill e comparação com histórico | No ar |
 | **Sprint 3** | Cockpit de 24 h, corrente, alerta de pressão, mapa privado, pontos e cache offline | No ar |
 | **Sprint 4** | Ferramentas offline, EXIF, defeso, sinais comparativos, sugestão de espécie, trilhas, GPX e cache de azulejos | No ar |
+| **Sprint UX** | Hoje, Aprender, abas de Diário/Mapa, onboarding com local, bottom nav e Registrar em 4 etapas com revisão | No ar |
 
 ---
 
@@ -246,14 +267,14 @@ Abra **`http://localhost:4323`**.
 
 1. Abra `/registrar`; o formulário aparece bloqueado.
 2. Entre com um e-mail e abra o link de desenvolvimento.
-3. Preencha o nome no primeiro acesso.
-4. Abra `/condicoes`, busque uma cidade, veja a janela e salve um local.
-5. Em `/mapa`, crie um ponto, desenhe uma trilha e exporte GPX.
-6. Em `/registrar`, envie uma foto com EXIF e confira data/cidade sugeridas; preencha espécie/UF e
-   veja o lembrete de defeso.
-7. Salve a pescaria, abra o troféu e baixe a imagem/PDF.
-8. Em `/meu-diario`, confira estatísticas, insights e sinais.
-9. Em `/ferramentas`, teste nós, checklists e defeso.
+3. Preencha o nome e escolha um local padrão (busca ou GPS) no primeiro acesso.
+4. Confira `/hoje`: condições do local, janela com gráfico, 7 dias e atalhos.
+5. Em `/mapa`, alterne Locais/Pontos/Trilhas, crie um ponto, desenhe uma trilha e exporte GPX.
+6. Em `/registrar`, percorra as 4 etapas (pescaria, condições, capturas, revisar); envie uma foto com
+   EXIF e confira data/cidade sugeridas e o lembrete de defeso.
+7. Revise o resumo, salve a pescaria, abra o troféu e baixe a imagem/PDF.
+8. Em `/meu-diario`, alterne Visão geral/Pescarias/Insights.
+9. Em `/aprender`, busque “robalo” ou “nó” e confira os selos offline.
 10. Em `/conta`, edite o perfil, veja sessões, exporte os dados e teste a exclusão.
 
 ### Docker Compose
@@ -472,15 +493,13 @@ navegador. Sessões e links mágicos são armazenados apenas como hash SHA-256.
 
 ## Próximos passos
 
-1. **Organização e entrada**: corrigir navegação desktop/mobile, onboarding com local padrão e uma
-   home/Hoje que apresente o copiloto. Auditoria em [`docs/ux-audit.md`](docs/ux-audit.md).
-2. **Maré oficial do CHM** para os 44 portos, com importação anual e atribuição.
-3. **Provedor de visão** para ativar a sugestão automática de espécie.
-4. **PostGIS + inteligência coletiva anonimizada** por macrorregião, com opt-in e amostra mínima.
-5. **Fila offline de pescarias** em IndexedDB e sincronização.
-6. **Mapas offline por área** baixada.
-7. **Diretório de guias** com perfis verificados.
-8. **Alertas** de janela boa e mudança brusca de pressão.
+1. **Maré oficial do CHM** para os 44 portos, com importação anual e atribuição.
+2. **Provedor de visão** para ativar a sugestão automática de espécie.
+3. **PostGIS + inteligência coletiva anonimizada** por macrorregião, com opt-in e amostra mínima.
+4. **Fila offline de pescarias** em IndexedDB e sincronização.
+5. **Mapas offline por área** baixada.
+6. **Diretório de guias** com perfis verificados.
+7. **Alertas** de janela boa e mudança brusca de pressão.
 
 Roadmap completo em [`docs/roadmap.md`](docs/roadmap.md).
 

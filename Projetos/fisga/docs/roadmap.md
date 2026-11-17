@@ -4,17 +4,19 @@ Este documento organiza os quatro módulos pedidos e separa o que já está no a
 o que depende de decisão externa. A regra é entregar valor utilizável a cada fase, sem prometer
 precisão que os dados ainda não sustentam.
 
-## Prioridade atual — organização e entrada
+## Organização e entrada — entregue
 
-Antes de novas features, o produto precisa de uma entrada que conte a história certa:
+A entrada do produto foi reorganizada antes de novas features:
 
-- corrigir o header logado, que hoje esconde Condições, Mapa e Ferramentas;
-- dar navegação real no mobile (bottom nav ou menu);
-- onboarding com local padrão e destino “Hoje”;
-- home/Hoje com condições, janela e atalhos;
-- unificar Locais/Pontos/Trilhas no Mapa e Wiki/Ferramentas em “Aprender”.
+- header autenticado com Hoje, Diário, Mapa, Aprender, Registrar e conta;
+- bottom nav mobile com 5 itens (3 no modo anônimo);
+- onboarding em 2 etapas, com nome/preferência e local padrão por busca ou GPS;
+- `/hoje` com condições, janela, 7 dias, atalhos e última pescaria;
+- `/mapa` com abas Locais/Pontos/Trilhas e `/aprender` agrupando Ferramentas + Wiki;
+- Registrar em 4 etapas com revisão antes de salvar;
+- URLs antigas preservadas por redirect.
 
-Auditoria completa e proposta em [`docs/ux-audit.md`](ux-audit.md).
+Auditoria e decisões em [`docs/ux-audit.md`](ux-audit.md).
 
 ## Módulo A — Cockpit do Pescador
 

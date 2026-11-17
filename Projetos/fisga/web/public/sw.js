@@ -1,10 +1,11 @@
-const VERSAO = 'fisga-v7';
+const VERSAO = 'fisga-v8';
 const CASCA = [
   '/',
   '/entrar',
   '/meu-diario',
   '/registrar',
   '/condicoes',
+  '/aprender',
   '/mapa',
   '/ferramentas',
   '/ferramentas/nos',

@@ -27,7 +27,7 @@
         <strong data-conta-nome-longo>Pescador</strong>
         <small data-conta-email></small>
       </div>
-      <a href="/meu-diario" role="menuitem">Meu diário</a>
+      <a href="/meu-diario" role="menuitem">Diário</a>
       <a href="/registrar" role="menuitem">Registrar pescaria</a>
       <a href="/conta" role="menuitem">Minha conta</a>
       <button type="button" role="menuitem" data-conta-sair>Sair</button>
@@ -208,26 +208,45 @@
       gatilho?.setAttribute('aria-expanded', 'true');
     }
 
+    function marcarAnonimo() {
+      document.body.dataset.auth = 'anon';
+      document.querySelectorAll('.nav-auth-only').forEach((item) => item.classList.add('oculto'));
+      document.querySelectorAll('.nav-anon-only').forEach((item) => item.classList.remove('oculto'));
+      entrar?.classList.remove('oculto');
+      logado?.classList.add('oculto');
+    }
+
+    function marcarAutenticado(usuario) {
+      document.body.dataset.auth = 'auth';
+      document.querySelectorAll('.nav-auth-only').forEach((item) => item.classList.remove('oculto'));
+      document.querySelectorAll('.nav-anon-only').forEach((item) => item.classList.add('oculto'));
+      entrar?.classList.add('oculto');
+      logado?.classList.remove('oculto');
+
+      if (iniciais) iniciais.textContent = iniciaisDe(usuario);
+      if (nomeCurto) nomeCurto.textContent = usuario.nomeExibicao;
+      if (nomeLongo) nomeLongo.textContent = usuario.nomeExibicao;
+      if (email) email.textContent = usuario.email;
+    }
+
     async function carregar() {
       try {
         const resposta = await fetch(`${API}/api/auth/me`, { credentials: 'include' });
-        if (!resposta.ok) return;
+        if (!resposta.ok) {
+          marcarAnonimo();
+          return;
+        }
+
         const dados = await resposta.json();
-        if (!dados.autenticado || !dados.usuario) return;
+        if (!dados.autenticado || !dados.usuario) {
+          marcarAnonimo();
+          return;
+        }
 
-        const usuario = dados.usuario;
-        entrar?.classList.add('oculto');
-        logado?.classList.remove('oculto');
-
-        document.querySelectorAll('.nav-privado').forEach((item) => item.classList.remove('oculto'));
-        document.querySelectorAll('.nav-publico').forEach((item) => item.classList.add('oculto'));
-
-        if (iniciais) iniciais.textContent = iniciaisDe(usuario);
-        if (nomeCurto) nomeCurto.textContent = usuario.nomeExibicao;
-        if (nomeLongo) nomeLongo.textContent = usuario.nomeExibicao;
-        if (email) email.textContent = usuario.email;
+        marcarAutenticado(dados.usuario);
       } catch {
         // Sem sessão/rede: mantém o botão Entrar e a navegação pública.
+        marcarAnonimo();
       }
     }
 

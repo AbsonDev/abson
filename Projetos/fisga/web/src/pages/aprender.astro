@@ -1,0 +1,232 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+const grupos = [
+  {
+    titulo: 'Ferramentas de campo',
+    descricao: 'Para usar no celular, na beira d’água.',
+    itens: [
+      { href: '/ferramentas/nos', nome: 'Nós e montagens', meta: '8 nós', offline: false },
+      { href: '/ferramentas/checklists', nome: 'Checklists', meta: '4 listas', offline: true },
+      { href: '/ferramentas/defeso', nome: 'Defeso', meta: '27 UFs', offline: true },
+      { href: '/ferramentas/guias', nome: 'Guias', meta: 'Em curadoria', offline: false }
+    ]
+  },
+  {
+    titulo: 'Wiki',
+    descricao: 'Para consultar antes e depois.',
+    itens: [
+      { href: '/wiki/especies', nome: 'Espécies', meta: '11 verbetes', offline: true },
+      { href: '/wiki/tecnicas', nome: 'Técnicas', meta: '6 técnicas', offline: false },
+      { href: '/wiki/iscas', nome: 'Iscas', meta: '6 iscas', offline: false },
+      { href: '/wiki/locais', nome: 'Regiões', meta: '5 regiões', offline: false }
+    ]
+  }
+];
+---
+
+<Layout
+  titulo="Aprender — Fisga"
+  descricao="Ferramentas de campo e wiki do pescador: nós, checklists, defeso, espécies, técnicas, iscas e regiões."
+  bodyClass="pagina-aprender"
+>
+  <section class="aprender-topo">
+    <div class="container">
+      <span class="eyebrow">Campo e wiki</span>
+      <h1>Aprender.</h1>
+      <p>O que saber antes, durante e depois — inclusive sem sinal.</p>
+
+      <div class="aprender-busca">
+        <label class="oculto" for="aprender-busca">Buscar</label>
+        <input id="aprender-busca" type="search" placeholder="Busque por nó, espécie ou técnica" />
+        <p id="aprender-meta">8 nós, 11 espécies e 4 checklists disponíveis offline.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="container aprender-conteudo">
+    {grupos.map((grupo) => (
+      <section class="aprender-grupo" data-grupo>
+        <div class="aprender-grupo-topo">
+          <h2>{grupo.titulo}</h2>
+          <span>{grupo.descricao}</span>
+        </div>
+        <div class="aprender-linhas">
+          {grupo.itens.map((item) => (
+            <a class="aprender-linha" href={item.href} data-busca={`${item.nome} ${item.meta}`}>
+              <span class="aprender-nome">{item.nome}</span>
+              <span class="aprender-meta-linha">
+                {item.meta}
+                {item.offline && <span class="selo-offline">Offline</span>}
+              </span>
+              <span class="aprender-seta" aria-hidden="true">→</span>
+            </a>
+          ))}
+        </div>
+      </section>
+    ))}
+
+    <p id="aprender-vazio" class="aprender-vazio oculto">Nada encontrado. Tente “robalo”, “nó” ou “defeso”.</p>
+  </section>
+
+  <script>
+    const busca = document.getElementById('aprender-busca') as HTMLInputElement | null;
+    const linhas = [...document.querySelectorAll<HTMLElement>('.aprender-linha')];
+    const grupos = [...document.querySelectorAll<HTMLElement>('.aprender-grupo')];
+    const vazio = document.getElementById('aprender-vazio');
+
+    busca?.addEventListener('input', () => {
+      const termo = busca.value.trim().toLowerCase();
+      let visiveis = 0;
+
+      for (const linha of linhas) {
+        const corresponde = !termo || (linha.dataset.busca ?? '').toLowerCase().includes(termo);
+        linha.hidden = !corresponde;
+        if (corresponde) visiveis += 1;
+      }
+
+      for (const grupo of grupos) {
+        const temVisivel = [...grupo.querySelectorAll<HTMLElement>('.aprender-linha')].some(
+          (linha) => !linha.hidden
+        );
+        grupo.hidden = !temVisivel;
+      }
+
+      vazio?.classList.toggle('oculto', visiveis > 0);
+    });
+  </script>
+
+  <style>
+    .aprender-topo {
+      padding: clamp(38px, 6vw, 68px) 0 22px;
+    }
+
+    .aprender-topo h1 {
+      margin-top: 4px;
+      font-size: clamp(2.8rem, 6vw, 4.8rem);
+    }
+
+    .aprender-topo > .container > p {
+      margin-top: 6px;
+      color: var(--tinta-suave);
+    }
+
+    .aprender-busca {
+      max-width: 620px;
+      margin-top: 24px;
+    }
+
+    .aprender-busca input {
+      width: 100%;
+      height: 50px;
+      padding: 0 14px;
+      border: 1px solid var(--linha-forte);
+      border-radius: 10px;
+      background: var(--superficie);
+      color: var(--tinta);
+      font: inherit;
+    }
+
+    .aprender-busca p {
+      margin-top: 7px;
+      color: var(--tinta-suave);
+      font-size: 0.7rem;
+    }
+
+    .aprender-conteudo {
+      padding-bottom: 84px;
+    }
+
+    .aprender-grupo {
+      margin-top: 30px;
+    }
+
+    .aprender-grupo-topo {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px 20px;
+      margin-bottom: 8px;
+    }
+
+    .aprender-grupo-topo h2 {
+      font-size: clamp(1.6rem, 2.6vw, 2rem);
+    }
+
+    .aprender-grupo-topo span {
+      color: var(--tinta-suave);
+      font-size: 0.7rem;
+    }
+
+    .aprender-linhas {
+      border-top: 1px solid var(--linha);
+    }
+
+    .aprender-linha {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto 20px;
+      gap: 10px;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--linha);
+      color: var(--tinta);
+      text-decoration: none;
+    }
+
+    .aprender-linha:hover .aprender-nome {
+      color: var(--terracota);
+    }
+
+    .aprender-nome {
+      font-family: var(--fonte-titulo);
+      font-size: 1.15rem;
+      font-weight: 600;
+    }
+
+    .aprender-meta-linha {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--tinta-suave);
+      font-size: 0.66rem;
+    }
+
+    .selo-offline {
+      padding: 2px 5px;
+      border-radius: 4px;
+      background: var(--terracota-clara);
+      color: var(--terracota-escura);
+      font-size: 0.5rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .aprender-seta {
+      color: var(--terracota);
+      text-align: right;
+    }
+
+    .aprender-vazio {
+      margin-top: 24px;
+      color: var(--tinta-suave);
+      font-size: 0.82rem;
+    }
+
+    @media (max-width: 560px) {
+      .aprender-linha {
+        grid-template-columns: minmax(0, 1fr) 20px;
+      }
+
+      .aprender-meta-linha {
+        grid-column: 1;
+      }
+
+      .aprender-seta {
+        grid-column: 2;
+        grid-row: 1 / span 2;
+      }
+    }
+  </style>
+</Layout>

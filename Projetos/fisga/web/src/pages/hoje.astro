@@ -1,0 +1,913 @@
+---
+export const prerender = false;
+
+import Layout from '../layouts/Layout.astro';
+import { apiBase } from '../lib/api';
+import type { Condicoes, Diario, LocalSalvo } from '../lib/tipos';
+
+const cookie = Astro.request.headers.get('cookie') ?? '';
+const fuso = 'America/Sao_Paulo';
+
+async function comSessao<T>(caminho: string): Promise<T | null> {
+  try {
+    const resposta = await fetch(`${apiBase}${caminho}`, { headers: { cookie } });
+    if (!resposta.ok) return null;
+    return (await resposta.json()) as T;
+  } catch {
+    return null;
+  }
+}
+
+const sessao = cookie
+  ? await comSessao<{ autenticado: boolean; usuario?: { nomeExibicao: string; email: string } }>('/api/auth/me')
+  : null;
+
+if (!sessao?.autenticado || !sessao.usuario) {
+  return Astro.redirect('/condicoes');
+}
+
+const locais = (await comSessao<LocalSalvo[]>('/api/locais')) ?? [];
+const localPadrao = locais.find((local) => local.padrao) ?? locais[0] ?? null;
+
+let condicoes: Condicoes | null = null;
+let diario: Diario | null = null;
+
+if (localPadrao) {
+  const consulta = new URLSearchParams({
+    lat: String(localPadrao.latitude),
+    lon: String(localPadrao.longitude),
+    nome: localPadrao.nome,
+    cidade: localPadrao.cidade ?? '',
+    estado: localPadrao.estado ?? '',
+    ambiente: localPadrao.ambiente
+  });
+
+  const [respostaCondicoes, respostaDiario] = await Promise.all([
+    comSessao<Condicoes>(`/api/condicoes?${consulta.toString()}`),
+    comSessao<Diario>('/api/diario')
+  ]);
+
+  condicoes = respostaCondicoes;
+  diario = respostaDiario;
+}
+
+const primeiroNome = (sessao.usuario.nomeExibicao || 'pescador').split(' ')[0];
+const horaLocal = Number(
+  new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', hour12: false, timeZone: fuso }).format(new Date())
+);
+const saudacao = horaLocal < 12 ? 'Bom dia' : horaLocal < 18 ? 'Boa tarde' : 'Boa noite';
+const dataLonga = new Intl.DateTimeFormat('pt-BR', {
+  weekday: 'long',
+  day: '2-digit',
+  month: 'long',
+  timeZone: fuso
+}).format(new Date());
+
+const hora = (valor: string | null | undefined) =>
+  valor
+    ? new Intl.DateTimeFormat('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: fuso
+      }).format(new Date(valor))
+    : '—';
+
+const diaCurto = (valor: string) =>
+  new Intl.DateTimeFormat('pt-BR', { weekday: 'short', timeZone: fuso })
+    .format(new Date(valor.length === 10 ? `${valor}T12:00:00-03:00` : valor))
+    .replace('.', '');
+
+const diaNumero = (valor: string) =>
+  new Intl.DateTimeFormat('pt-BR', { day: '2-digit', timeZone: fuso }).format(
+    new Date(valor.length === 10 ? `${valor}T12:00:00-03:00` : valor)
+  );
+
+const numero = (valor: number | null | undefined, casas = 0) =>
+  valor === null || valor === undefined
+    ? '—'
+    : valor.toLocaleString('pt-BR', {
+        minimumFractionDigits: casas,
+        maximumFractionDigits: casas
+      });
+
+const estrelas = (nota: number) => '●'.repeat(Math.max(0, Math.min(5, nota))) + '○'.repeat(Math.max(0, 5 - nota));
+
+function horaDecimal(iso: string) {
+  return Number(iso.slice(11, 13)) + Number(iso.slice(14, 16)) / 60;
+}
+
+function caminhoDaMare(pontos: Array<{ hora: string; alturaM: number }>) {
+  if (pontos.length < 2) return '';
+  const alturas = pontos.map((ponto) => ponto.alturaM);
+  const minimo = Math.min(...alturas);
+  const maximo = Math.max(...alturas);
+  const faixa = Math.max(0.2, maximo - minimo);
+  return pontos
+    .map((ponto, indice) => {
+      const x = 28 + (indice / (pontos.length - 1)) * 904;
+      const y = 86 - ((ponto.alturaM - minimo) / faixa) * 62;
+      return `${indice === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(' ');
+}
+
+const curva = condicoes?.mare?.curva ?? [];
+const caminhoMare = caminhoDaMare(curva);
+const alturaAgora = (() => {
+  if (curva.length === 0) return condicoes?.mare?.eventos?.[0]?.alturaM ?? null;
+  const referencia = condicoes?.atualizadoEm ? new Date(condicoes.atualizadoEm).getTime() : Date.now();
+  return curva.reduce((melhor, ponto) => {
+    const distancia = Math.abs(new Date(ponto.hora).getTime() - referencia);
+    const distanciaMelhor = Math.abs(new Date(melhor.hora).getTime() - referencia);
+    return distancia < distanciaMelhor ? ponto : melhor;
+  }, curva[0]).alturaM;
+})();
+const janelaInicio = condicoes?.melhorJanela ? horaDecimal(condicoes.melhorJanela.inicio) : 0;
+const janelaFim = condicoes?.melhorJanela ? horaDecimal(condicoes.melhorJanela.fim) : 0;
+const faixaInicio = 28 + (janelaInicio / 24) * 904;
+const faixaFim = 28 + (janelaFim / 24) * 904;
+const ultimaPescaria = diario?.pescarias?.[0] ?? null;
+const urlRegistrar = localPadrao
+  ? `/registrar?${new URLSearchParams({
+      lat: String(localPadrao.latitude),
+      lon: String(localPadrao.longitude),
+      nome: localPadrao.nome,
+      cidade: localPadrao.cidade ?? '',
+      estado: localPadrao.estado ?? '',
+      ambiente: localPadrao.ambiente
+    }).toString()}`
+  : '/registrar';
+
+const exemplos = [
+  { nome: 'Aracaju', cidade: 'Aracaju', estado: 'SE', ambiente: 'Mar', lat: '-10.911', lon: '-37.071' },
+  { nome: 'Ilhabela', cidade: 'Ilhabela', estado: 'SP', ambiente: 'Mar', lat: '-23.778', lon: '-45.358' },
+  { nome: 'Campinas', cidade: 'Campinas', estado: 'SP', ambiente: 'Represa', lat: '-22.905', lon: '-47.060' }
+];
+---
+
+<Layout titulo="Hoje — Fisga" descricao="Seu copiloto de pesca: condições, janela, próximos dias e atalhos." bodyClass="pagina-hoje">
+  <section class="hoje-topo">
+    <div class="container">
+      <span class="eyebrow">{dataLonga}</span>
+      <div class="hoje-titulo">
+        <div>
+          <h1>{saudacao}, {primeiroNome}.</h1>
+          {localPadrao ? (
+            <p class="hoje-local">
+              {localPadrao.nome}{localPadrao.estado ? ` · ${localPadrao.estado}` : ''} ·
+              <a href="/mapa?aba=locais">trocar</a>
+            </p>
+          ) : (
+            <p class="hoje-local">Escolha um local para começar.</p>
+          )}
+        </div>
+        {condicoes && (
+          <div class="hoje-atualizado">
+            <span>Atualizado</span>
+            <strong>{hora(condicoes.atualizadoEm)}</strong>
+            <small>maré e vento</small>
+          </div>
+        )}
+      </div>
+    </div>
+  </section>
+
+  <section class="container hoje-conteudo">
+    {!localPadrao && (
+      <div class="hoje-primeiro-local">
+        <div>
+          <span class="eyebrow">Primeiro local</span>
+          <h2>Onde você pesca?</h2>
+          <p>Escolha uma cidade, praia ou represa. O Fisga usa isso para abrir as condições certas.</p>
+        </div>
+
+        <div class="hoje-busca">
+          <label class="oculto" for="busca-primeiro-local">Buscar local</label>
+          <input id="busca-primeiro-local" type="search" placeholder="Cidade, praia ou represa" autocomplete="off" />
+          <button id="usar-localizacao-hoje" class="btn btn--contorno" type="button">Usar minha localização</button>
+          <div id="resultados-primeiro-local" class="busca-resultados oculto" role="listbox"></div>
+        </div>
+        <p id="status-primeiro-local" class="hoje-status" role="status" aria-live="polite"></p>
+
+        <div class="hoje-exemplos">
+          {exemplos.map((exemplo) => (
+            <a href={`/condicoes?lat=${exemplo.lat}&lon=${exemplo.lon}&nome=${encodeURIComponent(exemplo.nome)}&cidade=${encodeURIComponent(exemplo.cidade)}&estado=${exemplo.estado}&ambiente=${exemplo.ambiente}`}>
+              {exemplo.nome} <span>{exemplo.estado}</span>
+            </a>
+          ))}
+        </div>
+      </div>
+    )}
+
+    {condicoes && (
+      <>
+        <div class="hoje-condicoes" aria-label="Condições agora">
+          <div><span>Maré</span><strong>{condicoes.mare ? `${numero(alturaAgora, 1)} m` : '—'}</strong><small>{condicoes.mare ? `${condicoes.mare.estado} · ${condicoes.agora.proximoEvento ?? ''}` : 'sem maré'}</small></div>
+          <div><span>Vento</span><strong>{numero(condicoes.tempo.ventoKmh)} km/h</strong><small>{condicoes.tempo.direcao} · {condicoes.tempo.rajadaKmh ? `${numero(condicoes.tempo.rajadaKmh)} rajada` : 'sem rajada'}</small></div>
+          <div><span>Chuva</span><strong>{numero(condicoes.tempo.chuvaProbabilidade)}%</strong><small>{condicoes.tempo.chuvaProbabilidade <= 20 ? 'sem previsão' : 'nas próximas horas'}</small></div>
+          <div><span>Lua</span><strong>{numero(condicoes.solunar.iluminacao)}%</strong><small>{condicoes.solunar.faseNome.toLowerCase()}</small></div>
+        </div>
+
+        <section class="hoje-janela" aria-labelledby="janela-titulo">
+          <div class="hoje-janela-topo">
+            <span class="eyebrow" id="janela-titulo">Janela de pesca · hoje</span>
+            {condicoes.melhorJanela && (
+              <span class="hoje-nota" aria-label={`Nota ${condicoes.melhorJanela.nota} de 5`}>
+                <strong>{condicoes.melhorJanela.nota}</strong><small>/5</small>
+              </span>
+            )}
+          </div>
+
+          {condicoes.melhorJanela ? (
+            <div class="hoje-janela-grade">
+              <div>
+                <p class="hoje-horario">{hora(condicoes.melhorJanela.inicio)}–{hora(condicoes.melhorJanela.fim)}</p>
+                <p class="hoje-janela-sub">{condicoes.melhorJanela.forca} · {condicoes.agora.mareEstado ?? 'condições do dia'}</p>
+              </div>
+              <div>
+                <p class="hoje-janela-rotulo">Por que esta janela</p>
+                <ul>
+                  {condicoes.melhorJanela.motivos.map((motivo) => <li>{motivo}</li>)}
+                </ul>
+              </div>
+            </div>
+          ) : (
+            <p class="hoje-vazio">Ainda não há uma janela clara para hoje. Confira os próximos dias.</p>
+          )}
+
+          {curva.length > 1 && (
+            <svg class="hoje-mare" viewBox="0 0 960 120" role="img" aria-label="Curva da maré de hoje com a janela destacada">
+              <rect x={faixaInicio} y="12" width={Math.max(4, faixaFim - faixaInicio)} height="86" rx="2" fill="rgba(217, 119, 63, 0.10)" />
+              <path d={caminhoMare} fill="none" stroke="var(--terracota)" stroke-width="2.2" stroke-linecap="round" />
+              {condicoes.mare?.eventos?.map((evento) => {
+                const x = 28 + (horaDecimal(evento.hora) / 24) * 904;
+                return <circle cx={x} cy="86" r="2.6" fill="var(--terracota)" />;
+              })}
+              <line x1="28" y1="98" x2="932" y2="98" stroke="var(--linha)" />
+              <text x="28" y="114" class="hoje-mare-rotulo">00</text>
+              <text x="480" y="114" text-anchor="middle" class="hoje-mare-rotulo">12</text>
+              <text x="932" y="114" text-anchor="end" class="hoje-mare-rotulo">23</text>
+            </svg>
+          )}
+          <p class="hoje-fonte">
+            {condicoes.mare?.eventos?.length
+              ? `Maré: ${condicoes.mare.eventos.map((evento) => `${evento.tipo === 'Cheia' ? 'cheia' : 'baixa'} ${hora(evento.hora)}`).join(' · ')}.`
+              : 'Sem maré neste local.'}
+            A faixa marca a janela.
+          </p>
+        </section>
+
+        <section class="hoje-semana" aria-labelledby="semana-titulo">
+          <div class="hoje-secao-topo">
+            <span class="eyebrow" id="semana-titulo">Próximos 7 dias</span>
+            <span class="hoje-secao-meta">Nota de 1 a 5 por janela principal</span>
+          </div>
+          <div class="hoje-dias">
+            {condicoes.dias.map((dia, indice) => (
+              <div class:list={['hoje-dia', { hoje: indice === 0 }]}>
+                <span>{indice === 0 ? 'hoje' : diaCurto(dia.data)}</span>
+                <strong>{diaNumero(dia.data)}</strong>
+                <span class="hoje-pontos" aria-label={`Nota ${dia.nota} de 5`}>{estrelas(dia.nota)}</span>
+                <small>{dia.melhorInicio ? `${hora(dia.melhorInicio)}–${hora(dia.melhorFim)}` : 'sem janela'}</small>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section class="hoje-atalhos" aria-labelledby="atalhos-titulo">
+          <span class="eyebrow" id="atalhos-titulo">Atalhos</span>
+          <a href={urlRegistrar}><span>Registrar pescaria</span><span aria-hidden="true">→</span></a>
+          <a href="/mapa"><span>Abrir mapa</span><span aria-hidden="true">→</span></a>
+          <a href="/ferramentas/checklists"><span>Abrir checklist</span><span aria-hidden="true">→</span></a>
+        </section>
+
+        <section class="hoje-ultima" aria-labelledby="ultima-titulo">
+          <div class="hoje-secao-topo">
+            <span class="eyebrow" id="ultima-titulo">Última pescaria</span>
+            <a href="/meu-diario">Ver diário →</a>
+          </div>
+          {ultimaPescaria ? (
+            <a class="hoje-ultima-linha" href={`/p/${ultimaPescaria.shareToken}`}>
+              <span class="hoje-ultima-data">{diaNumero(ultimaPescaria.data)}<small>{diaCurto(ultimaPescaria.data)}</small></span>
+              <span>
+                <strong>{ultimaPescaria.local}</strong>
+                <small>{ultimaPescaria.capturas} {ultimaPescaria.capturas === 1 ? 'captura' : 'capturas'} · {ultimaPescaria.ambienteNome}</small>
+              </span>
+              <span class="hoje-ultima-seta" aria-hidden="true">→</span>
+            </a>
+          ) : (
+            <p class="hoje-vazio">Seu diário ainda está em branco. A primeira pescaria começa no botão Registrar.</p>
+          )}
+        </section>
+      </>
+    )}
+  </section>
+
+  <script>
+    const API = (document.body.dataset.api ?? 'http://localhost:5184').replace(/\/$/, '');
+    const busca = document.getElementById('busca-primeiro-local') as HTMLInputElement | null;
+    const resultados = document.getElementById('resultados-primeiro-local') as HTMLDivElement | null;
+    const status = document.getElementById('status-primeiro-local');
+    const localizacao = document.getElementById('usar-localizacao-hoje') as HTMLButtonElement | null;
+    let timer = 0;
+
+    function aviso(texto: string) {
+      if (status) status.textContent = texto;
+    }
+
+    async function salvarLocal(local: { nome: string; cidade?: string | null; estado?: string | null; latitude: number; longitude: number; ambiente?: string }) {
+      aviso('Salvando local...');
+      try {
+        const resposta = await fetch(`${API}/api/locais`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            nome: local.nome,
+            cidade: local.cidade ?? null,
+            estado: local.estado ?? null,
+            latitude: local.latitude,
+            longitude: local.longitude,
+            ambiente: local.ambiente ?? 'Outro',
+            padrao: true
+          })
+        });
+
+        if (resposta.status === 401) {
+          window.location.href = `/entrar?voltar=${encodeURIComponent('/hoje')}`;
+          return;
+        }
+
+        const corpo = await resposta.json().catch(() => ({}));
+        if (!resposta.ok) throw new Error(corpo.detalhe || 'Não foi possível salvar o local.');
+        window.location.reload();
+      } catch (erro) {
+        aviso(erro instanceof Error ? erro.message : 'Não foi possível salvar o local.');
+      }
+    }
+
+    async function buscar(termo: string) {
+      if (!resultados) return;
+      if (termo.trim().length < 2) {
+        resultados.classList.add('oculto');
+        return;
+      }
+
+      try {
+        const resposta = await fetch(`${API}/api/locais/buscar?q=${encodeURIComponent(termo.trim())}`);
+        const lista = await resposta.json();
+        resultados.innerHTML = '';
+        if (!Array.isArray(lista) || lista.length === 0) {
+          resultados.innerHTML = '<p class="busca-vazia">Nenhum lugar encontrado.</p>';
+          resultados.classList.remove('oculto');
+          return;
+        }
+
+        for (const item of lista) {
+          const botao = document.createElement('button');
+          botao.type = 'button';
+          botao.className = 'busca-item';
+          botao.textContent = `${item.nome}${item.estado ? ` · ${item.estado}` : ''}`;
+          botao.addEventListener('click', () => salvarLocal({
+            nome: item.nome ?? item.cidade ?? 'Meu local',
+            cidade: item.cidade ?? item.nome,
+            estado: item.estado,
+            latitude: Number(item.latitude),
+            longitude: Number(item.longitude),
+            ambiente: 'Outro'
+          }));
+          resultados.appendChild(botao);
+        }
+        resultados.classList.remove('oculto');
+      } catch {
+        aviso('Não foi possível buscar agora.');
+      }
+    }
+
+    busca?.addEventListener('input', () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => buscar(busca.value), 320);
+    });
+
+    localizacao?.addEventListener('click', () => {
+      if (!navigator.geolocation) {
+        aviso('Seu navegador não oferece localização.');
+        return;
+      }
+      localizacao.disabled = true;
+      localizacao.textContent = 'Localizando...';
+      aviso('Buscando sua localização...');
+      navigator.geolocation.getCurrentPosition(
+        (posicao) => {
+          salvarLocal({
+            nome: 'Minha localização',
+            latitude: Number(posicao.coords.latitude.toFixed(5)),
+            longitude: Number(posicao.coords.longitude.toFixed(5)),
+            ambiente: 'Outro'
+          });
+        },
+        () => {
+          localizacao.disabled = false;
+          localizacao.textContent = 'Usar minha localização';
+          aviso('Não conseguimos usar sua localização. Busque pelo nome.');
+        },
+        { enableHighAccuracy: false, timeout: 12000, maximumAge: 300000 }
+      );
+    });
+  </script>
+
+  <style>
+    .hoje-topo {
+      padding: clamp(36px, 5.5vw, 64px) 0 20px;
+    }
+
+    .hoje-titulo {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 24px;
+    }
+
+    .hoje-titulo h1 {
+      margin-top: 4px;
+      font-size: clamp(2.3rem, 5vw, 4rem);
+    }
+
+    .hoje-local {
+      margin-top: 4px;
+      color: var(--tinta-suave);
+      font-size: 0.9rem;
+    }
+
+    .hoje-local a {
+      color: var(--terracota);
+      text-decoration: underline;
+    }
+
+    .hoje-atualizado {
+      display: grid;
+      justify-items: end;
+      color: var(--tinta-suave);
+      font-size: 0.6rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .hoje-atualizado strong {
+      color: var(--tinta);
+      font-family: var(--fonte-titulo);
+      font-size: 1.35rem;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
+    .hoje-atualizado small {
+      font-size: 0.66rem;
+      text-transform: none;
+    }
+
+    .hoje-conteudo {
+      padding-bottom: 84px;
+    }
+
+    .hoje-primeiro-local {
+      display: grid;
+      gap: 18px;
+      max-width: 760px;
+      padding: 24px;
+      border: 1px solid var(--linha);
+      border-radius: var(--raio);
+      background: var(--superficie);
+    }
+
+    .hoje-primeiro-local h2 {
+      margin-top: 6px;
+      font-size: clamp(1.8rem, 3.4vw, 2.4rem);
+    }
+
+    .hoje-primeiro-local p {
+      margin-top: 6px;
+      color: var(--tinta-suave);
+    }
+
+    .hoje-busca {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+    }
+
+    .hoje-busca input {
+      height: 50px;
+      padding: 0 14px;
+      border: 1px solid var(--linha-forte);
+      border-radius: 10px;
+      background: var(--superficie);
+      color: var(--tinta);
+      font: inherit;
+    }
+
+    .hoje-status {
+      min-height: 1.1rem;
+      color: var(--tinta-suave);
+      font-size: 0.72rem;
+    }
+
+    .hoje-exemplos {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .hoje-exemplos a {
+      padding: 6px 10px;
+      border: 1px solid var(--linha);
+      border-radius: 999px;
+      color: var(--tinta-suave);
+      font-size: 0.7rem;
+      text-decoration: none;
+    }
+
+    .hoje-exemplos a:hover {
+      border-color: var(--terracota);
+      color: var(--terracota);
+    }
+
+    .hoje-exemplos span {
+      opacity: 0.7;
+    }
+
+    .hoje-condicoes {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      margin-top: 20px;
+      border-top: 1px solid var(--linha);
+      border-bottom: 1px solid var(--linha);
+    }
+
+    .hoje-condicoes div {
+      padding: 12px 16px 12px 0;
+      border-right: 1px solid var(--linha);
+    }
+
+    .hoje-condicoes div:last-child {
+      border-right: 0;
+    }
+
+    .hoje-condicoes span {
+      display: block;
+      color: var(--tinta-suave);
+      font-size: 0.58rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .hoje-condicoes strong {
+      display: block;
+      margin-top: 2px;
+      font-family: var(--fonte-titulo);
+      font-size: 1.35rem;
+      font-weight: 600;
+    }
+
+    .hoje-condicoes small {
+      display: block;
+      margin-top: 1px;
+      color: var(--tinta-suave);
+      font-size: 0.66rem;
+      line-height: 1.35;
+    }
+
+    .hoje-janela,
+    .hoje-semana,
+    .hoje-atalhos,
+    .hoje-ultima {
+      padding-top: 28px;
+    }
+
+    .hoje-janela-topo,
+    .hoje-secao-topo {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .hoje-nota {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 2px;
+      width: 46px;
+      height: 46px;
+      justify-content: center;
+      border: 1px solid var(--linha-forte);
+      border-radius: 999px;
+      color: var(--terracota);
+      font-family: var(--fonte-titulo);
+      font-size: 1.25rem;
+    }
+
+    .hoje-nota small {
+      color: var(--tinta-suave);
+      font-family: var(--fonte-corpo);
+      font-size: 0.58rem;
+    }
+
+    .hoje-janela-grade {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 28px;
+      margin-top: 10px;
+    }
+
+    .hoje-horario {
+      font-family: var(--fonte-titulo);
+      font-size: clamp(2.6rem, 7vw, 4.2rem);
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      line-height: 1;
+    }
+
+    .hoje-janela-sub {
+      margin-top: 4px;
+      color: var(--tinta-suave);
+      font-size: 0.82rem;
+    }
+
+    .hoje-janela-rotulo {
+      color: var(--tinta-suave);
+      font-size: 0.58rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .hoje-janela-grade ul {
+      display: grid;
+      gap: 5px;
+      margin: 8px 0 0;
+      padding: 0;
+      list-style: none;
+      color: var(--tinta-suave);
+      font-size: 0.8rem;
+      line-height: 1.45;
+    }
+
+    .hoje-janela-grade li::before {
+      margin-right: 7px;
+      color: var(--acafrao);
+      content: '•';
+    }
+
+    .hoje-mare {
+      display: block;
+      width: 100%;
+      height: 120px;
+      margin-top: 16px;
+    }
+
+    .hoje-mare-rotulo {
+      fill: var(--tinta-suave);
+      font-family: var(--fonte-corpo);
+      font-size: 9px;
+    }
+
+    .hoje-fonte {
+      color: var(--tinta-suave);
+      font-size: 0.7rem;
+      line-height: 1.5;
+    }
+
+    .hoje-secao-meta {
+      color: var(--tinta-suave);
+      font-size: 0.66rem;
+    }
+
+    .hoje-dias {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      margin-top: 10px;
+      border-top: 1px solid var(--linha);
+      border-bottom: 1px solid var(--linha);
+    }
+
+    .hoje-dia {
+      display: grid;
+      gap: 2px;
+      padding: 10px 9px;
+      border-right: 1px solid var(--linha);
+    }
+
+    .hoje-dia:last-child {
+      border-right: 0;
+    }
+
+    .hoje-dia > span:first-child {
+      color: var(--tinta-suave);
+      font-size: 0.56rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .hoje-dia strong {
+      font-family: var(--fonte-titulo);
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+
+    .hoje-pontos {
+      color: var(--acafrao);
+      font-size: 0.58rem;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+
+    .hoje-dia small {
+      color: var(--terracota);
+      font-size: 0.62rem;
+      font-weight: 600;
+    }
+
+    .hoje-dia.hoje {
+      background: var(--terracota-clara);
+    }
+
+    .hoje-atalhos {
+      display: grid;
+      gap: 0;
+    }
+
+    .hoje-atalhos > .eyebrow {
+      margin-bottom: 4px;
+    }
+
+    .hoje-atalhos a {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--linha);
+      color: var(--tinta);
+      font-size: 0.9rem;
+      text-decoration: none;
+    }
+
+    .hoje-atalhos a:first-of-type {
+      border-top: 1px solid var(--linha);
+    }
+
+    .hoje-atalhos a span:last-child {
+      color: var(--terracota);
+    }
+
+    .hoje-atalhos a:hover {
+      color: var(--terracota);
+    }
+
+    .hoje-ultima .hoje-secao-topo a {
+      color: var(--terracota);
+      font-size: 0.7rem;
+      text-decoration: none;
+    }
+
+    .hoje-ultima-linha {
+      display: grid;
+      grid-template-columns: 54px minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 0;
+      border-top: 1px solid var(--linha);
+      color: var(--tinta);
+      text-decoration: none;
+    }
+
+    .hoje-ultima-data {
+      display: grid;
+      justify-items: center;
+      color: var(--terracota);
+      font-family: var(--fonte-titulo);
+      font-size: 1.5rem;
+      line-height: 1;
+    }
+
+    .hoje-ultima-data small {
+      color: var(--tinta-suave);
+      font-family: var(--fonte-corpo);
+      font-size: 0.58rem;
+      text-transform: uppercase;
+    }
+
+    .hoje-ultima-linha strong {
+      display: block;
+      font-size: 0.96rem;
+    }
+
+    .hoje-ultima-linha small {
+      display: block;
+      color: var(--tinta-suave);
+      font-size: 0.7rem;
+    }
+
+    .hoje-ultima-seta {
+      color: var(--terracota);
+    }
+
+    .hoje-vazio {
+      margin-top: 10px;
+      color: var(--tinta-suave);
+      font-size: 0.82rem;
+    }
+
+    .busca-resultados {
+      position: absolute;
+      z-index: 20;
+      top: calc(100% + 5px);
+      right: 0;
+      left: 0;
+      overflow: hidden;
+      border: 1px solid var(--linha);
+      border-radius: 10px;
+      background: var(--superficie);
+      box-shadow: var(--sombra-suave);
+    }
+
+    .busca-item {
+      display: block;
+      width: 100%;
+      padding: 11px 13px;
+      border: 0;
+      border-bottom: 1px solid var(--linha);
+      background: transparent;
+      color: var(--tinta);
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .busca-item:hover {
+      background: var(--creme);
+    }
+
+    .busca-vazia {
+      padding: 12px;
+      color: var(--tinta-suave);
+      font-size: 0.76rem;
+    }
+
+    @media (max-width: 760px) {
+      .hoje-titulo {
+        align-items: start;
+      }
+
+      .hoje-atualizado {
+        display: none;
+      }
+
+      .hoje-condicoes {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .hoje-condicoes div:nth-child(2) {
+        border-right: 0;
+      }
+
+      .hoje-condicoes div:nth-child(-n + 2) {
+        border-bottom: 1px solid var(--linha);
+      }
+
+      .hoje-janela-grade {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+
+      .hoje-dias {
+        display: flex;
+        overflow-x: auto;
+        border-bottom: 0;
+      }
+
+      .hoje-dia {
+        min-width: 84px;
+        border-bottom: 1px solid var(--linha);
+      }
+
+      .hoje-busca {
+        grid-template-columns: 1fr;
+      }
+
+      .hoje-primeiro-local {
+        padding: 20px;
+      }
+    }
+
+    @media (max-width: 420px) {
+      .hoje-dia {
+        min-width: 76px;
+      }
+    }
+  </style>
+</Layout>
