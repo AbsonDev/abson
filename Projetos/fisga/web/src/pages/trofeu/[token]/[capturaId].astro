@@ -46,6 +46,8 @@ const mensagem = encodeURIComponent(
 <Layout
   titulo={captura ? `Troféu: ${captura.especie} — ${captura.pesoKg} kg | Fisga` : 'Troféu não encontrado | Fisga'}
   descricao={captura ? `Card do troféu de ${captura.especie}, ${captura.pesoKg} kg, no Fisga.` : 'Troféu não encontrado.'}
+  imagem={foto ?? undefined}
+  tipo="article"
 >
   {!pescaria || !captura ? (
     <section class="erro-pagina">
@@ -94,11 +96,12 @@ const mensagem = encodeURIComponent(
               <span class="selo selo--terracota">Card do troféu</span>
               <h2 style="margin-top: 12px;">Pronto para compartilhar</h2>
               <p>
-                Baixe a imagem quadrada para Instagram/WhatsApp ou envie o link da pescaria com o
-                relatório completo em PDF.
+                Baixe o card quadrado para o feed ou o story 9:16 para os Stories. O link da
+                pescaria e o PDF completam a história.
               </p>
               <div class="trofeu-acoes">
-                <button class="btn btn--primario" type="button" id="baixar-card">Baixar card em imagem</button>
+                <button class="btn btn--primario" type="button" id="baixar-card">Baixar card quadrado 1080×1080</button>
+                <button class="btn btn--contorno" type="button" id="baixar-story">Baixar story 1080×1920</button>
                 <a class="btn btn--contorno" href={`https://wa.me/?text=${mensagem}`} target="_blank" rel="noopener noreferrer">Compartilhar no WhatsApp</a>
                 <button class="btn btn--contorno" type="button" data-copiar-link={linkPescaria}>Copiar link da pescaria</button>
                 <a class="btn btn--contorno" href={`${apiPublica}/api/pescarias/${token}/pdf`}>Baixar PDF da pescaria</a>
@@ -174,99 +177,192 @@ const mensagem = encodeURIComponent(
         return linhas;
       }
 
-      document.getElementById('baixar-card')?.addEventListener('click', async () => {
-        const botao = document.getElementById('baixar-card');
+      async function gerarCard(largura, altura, formato) {
+        await document.fonts.ready;
+        const canvas = document.createElement('canvas');
+        canvas.width = largura;
+        canvas.height = altura;
+        const contexto = canvas.getContext('2d');
+        const story = formato === 'story';
+
+        const gradiente = contexto.createLinearGradient(0, 0, largura, altura);
+        gradiente.addColorStop(0, '#10383f');
+        gradiente.addColorStop(0.62, '#174e57');
+        gradiente.addColorStop(1, '#246a73');
+        contexto.fillStyle = gradiente;
+        contexto.fillRect(0, 0, largura, altura);
+
+        const imagem = await carregarImagem(dados.foto);
+        desenharCapa(contexto, imagem, largura, altura);
+
+        if (!imagem) {
+          contexto.save();
+          contexto.globalAlpha = 0.08;
+          contexto.fillStyle = '#fff9f0';
+          contexto.translate(largura * 0.2, altura * 0.42);
+          contexto.scale(story ? 1.5 : 1.1, story ? 1.5 : 1.1);
+          contexto.beginPath();
+          contexto.moveTo(0, 80);
+          contexto.bezierCurveTo(120, -20, 300, -10, 380, 70);
+          contexto.lineTo(470, 0);
+          contexto.lineTo(470, 160);
+          contexto.lineTo(380, 90);
+          contexto.bezierCurveTo(300, 170, 120, 180, 0, 80);
+          contexto.closePath();
+          contexto.fill();
+          contexto.restore();
+        }
+
+        const topoSombra = contexto.createLinearGradient(0, 0, 0, altura * 0.42);
+        topoSombra.addColorStop(0, 'rgba(8, 30, 34, 0.78)');
+        topoSombra.addColorStop(1, 'rgba(8, 30, 34, 0)');
+        contexto.fillStyle = topoSombra;
+        contexto.fillRect(0, 0, largura, altura * 0.42);
+
+        const sombra = contexto.createLinearGradient(0, 0, 0, altura);
+        sombra.addColorStop(0, 'rgba(8, 30, 34, 0.06)');
+        sombra.addColorStop(story ? 0.38 : 0.42, 'rgba(8, 30, 34, 0.32)');
+        sombra.addColorStop(story ? 0.62 : 0.66, 'rgba(8, 30, 34, 0.72)');
+        sombra.addColorStop(1, 'rgba(8, 30, 34, 0.97)');
+        contexto.fillStyle = sombra;
+        contexto.fillRect(0, 0, largura, altura);
+
+        const margem = 70;
+        const topo = story ? 170 : 100;
+
+        contexto.fillStyle = '#FFF9F0';
+        contexto.font = `700 ${story ? 62 : 54}px Fraunces, Georgia, serif`;
+        contexto.fillText('FISGA', margem, topo);
+        contexto.fillStyle = 'rgba(255, 249, 240, 0.65)';
+        contexto.font = `600 ${story ? 18 : 16}px Inter, sans-serif`;
+        contexto.fillText('DIÁRIO DE PESCA', margem, topo + (story ? 30 : 28));
+
+        const rotulo = dados.solto ? 'SOLTO' : 'CAPTURADO';
+        contexto.font = `700 ${story ? 22 : 20}px Inter, sans-serif`;
+        const larguraRotulo = contexto.measureText(rotulo).width + (story ? 44 : 40);
+        const alturaRotulo = story ? 52 : 46;
+        const xRotulo = largura - margem - larguraRotulo;
+        const yRotulo = topo - (story ? 40 : 36);
+        contexto.beginPath();
+        contexto.roundRect(xRotulo, yRotulo, larguraRotulo, alturaRotulo, 999);
+        contexto.fillStyle = 'rgba(10, 35, 40, 0.34)';
+        contexto.fill();
+        contexto.strokeStyle = 'rgba(255, 249, 240, 0.28)';
+        contexto.lineWidth = 1.5;
+        contexto.stroke();
+        contexto.fillStyle = '#FFF9F0';
+        contexto.textAlign = 'center';
+        contexto.textBaseline = 'middle';
+        contexto.fillText(rotulo, xRotulo + larguraRotulo / 2, yRotulo + alturaRotulo / 2 + 1);
+        contexto.textAlign = 'left';
+        contexto.textBaseline = 'alphabetic';
+
+        const tamanhoEspecie = story ? 126 : 104;
+        contexto.shadowColor = 'rgba(0, 0, 0, 0.42)';
+        contexto.shadowBlur = 26;
+        contexto.shadowOffsetY = 5;
+        contexto.fillStyle = '#FFF9F0';
+        contexto.font = `600 ${tamanhoEspecie}px Fraunces, Georgia, serif`;
+        const linhasEspecie = quebrarTexto(contexto, dados.especie, largura - margem * 2);
+        let y = story ? 1180 : 610;
+        for (const linha of linhasEspecie.slice(-2)) {
+          contexto.fillText(linha, margem, y);
+          y += tamanhoEspecie;
+        }
+
+        contexto.fillStyle = 'rgba(255, 249, 240, 0.9)';
+        contexto.font = `600 ${story ? 38 : 32}px Inter, sans-serif`;
+        const medidas = [
+          `${Number(dados.peso).toLocaleString('pt-BR')} kg`,
+          `${Number(dados.comprimento).toLocaleString('pt-BR')} cm`,
+          dados.isca
+        ].filter(Boolean);
+        contexto.fillText(medidas.join('   ·   '), margem + 2, y + (story ? 4 : 8));
+        contexto.shadowColor = 'rgba(0, 0, 0, 0)';
+        contexto.shadowBlur = 0;
+        contexto.shadowOffsetY = 0;
+
+        if (story) {
+          contexto.fillStyle = 'rgba(255, 249, 240, 0.96)';
+          contexto.font = '600 34px Inter, sans-serif';
+          contexto.fillText(dados.local || 'Local não informado', margem, 1600);
+
+          contexto.fillStyle = 'rgba(255, 249, 240, 0.64)';
+          contexto.font = '400 26px Inter, sans-serif';
+          contexto.fillText(`${dados.data}  ·  ${dados.pescador}`, margem, 1650);
+
+          contexto.fillStyle = 'rgba(255, 249, 240, 0.6)';
+          contexto.font = '400 22px Inter, sans-serif';
+          contexto.fillText('fisga.abson.tech', margem, 1830);
+
+          contexto.textAlign = 'right';
+          contexto.fillStyle = '#E6A15C';
+          contexto.font = '600 20px Inter, sans-serif';
+          contexto.fillText('CADA PEIXE TEM UMA HISTÓRIA', largura - margem, 1830);
+          contexto.textAlign = 'left';
+        } else {
+          contexto.fillStyle = 'rgba(255, 249, 240, 0.95)';
+          contexto.font = '600 27px Inter, sans-serif';
+          contexto.fillText(dados.local || 'Local não informado', margem, 900);
+
+          contexto.fillStyle = 'rgba(255, 249, 240, 0.62)';
+          contexto.font = '400 21px Inter, sans-serif';
+          contexto.fillText(`${dados.data}  ·  ${dados.pescador}`, margem, 938);
+          contexto.fillText('fisga.abson.tech', margem, 1008);
+
+          contexto.textAlign = 'right';
+          contexto.fillStyle = '#E6A15C';
+          contexto.font = '600 19px Inter, sans-serif';
+          contexto.fillText('CADA PEIXE TEM UMA HISTÓRIA', largura - margem, 1008);
+          contexto.textAlign = 'left';
+        }
+
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+        if (!blob) throw new Error('Não foi possível gerar a imagem.');
+
+        const slug = String(dados.especie || 'peixe')
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '');
+
+        return { blob, nome: `fisga-${slug || 'peixe'}-${formato}.png` };
+      }
+
+      function baixar(blob, nome) {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = nome;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      }
+
+      async function exportar(botao, formato, largura, altura) {
         const textoOriginal = botao.textContent;
         botao.disabled = true;
         botao.textContent = 'Gerando imagem...';
 
         try {
-          await document.fonts.ready;
-          const largura = 1080;
-          const altura = 1080;
-          const canvas = document.createElement('canvas');
-          canvas.width = largura;
-          canvas.height = altura;
-          const contexto = canvas.getContext('2d');
-
-          const gradiente = contexto.createLinearGradient(0, 0, largura, altura);
-          gradiente.addColorStop(0, '#10383f');
-          gradiente.addColorStop(0.62, '#174e57');
-          gradiente.addColorStop(1, '#246a73');
-          contexto.fillStyle = gradiente;
-          contexto.fillRect(0, 0, largura, altura);
-
-          const imagem = await carregarImagem(dados.foto);
-          desenharCapa(contexto, imagem, largura, altura);
-
-          const sombra = contexto.createLinearGradient(0, 0, 0, altura);
-          sombra.addColorStop(0, 'rgba(8, 30, 34, 0.18)');
-          sombra.addColorStop(0.45, 'rgba(8, 30, 34, 0.22)');
-          sombra.addColorStop(1, 'rgba(8, 30, 34, 0.94)');
-          contexto.fillStyle = sombra;
-          contexto.fillRect(0, 0, largura, altura);
-
-          contexto.fillStyle = '#FFF9F0';
-          contexto.font = '700 54px Fraunces, Georgia, serif';
-          contexto.fillText('FISGA', 70, 100);
-          contexto.fillStyle = 'rgba(255, 249, 240, 0.65)';
-          contexto.font = '600 16px Inter, sans-serif';
-          contexto.fillText('DIÁRIO DE PESCA', 70, 128);
-
-          contexto.textAlign = 'right';
-          contexto.fillStyle = 'rgba(255, 249, 240, 0.92)';
-          contexto.font = '700 20px Inter, sans-serif';
-          contexto.fillText(dados.solto ? 'SOLTO' : 'CAPTURADO', largura - 70, 100);
-          contexto.textAlign = 'left';
-
-          contexto.font = '600 104px Fraunces, Georgia, serif';
-          const linhasEspecie = quebrarTexto(contexto, dados.especie, largura - 140);
-          let y = 610;
-          for (const linha of linhasEspecie.slice(-2)) {
-            contexto.fillText(linha, 70, y);
-            y += 104;
-          }
-
-          contexto.fillStyle = 'rgba(255, 249, 240, 0.9)';
-          contexto.font = '600 32px Inter, sans-serif';
-          const medidas = [
-            `${Number(dados.peso).toLocaleString('pt-BR')} kg`,
-            `${Number(dados.comprimento).toLocaleString('pt-BR')} cm`,
-            dados.isca
-          ].filter(Boolean);
-          contexto.fillText(medidas.join('   ·   '), 72, y + 8);
-
-          contexto.fillStyle = 'rgba(255, 249, 240, 0.95)';
-          contexto.font = '600 27px Inter, sans-serif';
-          contexto.fillText(dados.local || 'Local não informado', 70, 900);
-
-          contexto.fillStyle = 'rgba(255, 249, 240, 0.62)';
-          contexto.font = '400 21px Inter, sans-serif';
-          contexto.fillText(`${dados.data}  ·  ${dados.pescador}`, 70, 938);
-          contexto.fillText('fisga.abson.tech', 70, 1008);
-
-          contexto.textAlign = 'right';
-          contexto.fillStyle = '#E6A15C';
-          contexto.font = '600 19px Inter, sans-serif';
-          contexto.fillText('CADA PEIXE TEM UMA HISTÓRIA', largura - 70, 1008);
-
-          const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
-          if (!blob) throw new Error('Não foi possível gerar a imagem.');
-
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = `fisga-${String(dados.especie).toLowerCase().replaceAll(' ', '-')}.png`;
-          document.body.appendChild(link);
-          link.click();
-          link.remove();
-          URL.revokeObjectURL(url);
+          const { blob, nome } = await gerarCard(largura, altura, formato);
+          baixar(blob, nome);
         } catch (erro) {
           window.alert(erro instanceof Error ? erro.message : 'Não foi possível gerar a imagem.');
         } finally {
           botao.disabled = false;
           botao.textContent = textoOriginal;
         }
+      }
+
+      document.getElementById('baixar-card')?.addEventListener('click', (evento) => {
+        exportar(evento.currentTarget, 'quadrado', 1080, 1080);
+      });
+
+      document.getElementById('baixar-story')?.addEventListener('click', (evento) => {
+        exportar(evento.currentTarget, 'story', 1080, 1920);
       });
 
       document.querySelectorAll('[data-copiar-link]').forEach((botao) => {

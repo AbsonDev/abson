@@ -18,6 +18,8 @@ if (!pescaria) {
 
 const site = (import.meta.env.PUBLIC_SITE_URL ?? Astro.url.origin).replace(/\/$/, '');
 const apiPublica = (import.meta.env.PUBLIC_API_URL ?? 'http://localhost:5184').replace(/\/$/, '');
+const fotoCompartilhavel = pescaria?.capturas.find((captura) => captura.fotoUrl)?.fotoUrl;
+const imagemCompartilhavel = fotoCompartilhavel ? `${apiPublica}${fotoCompartilhavel}` : undefined;
 const linkCompartilhavel = `${site}/p/${token}`;
 const urlPdf = `${apiPublica}/api/pescarias/${token}/pdf`;
 const maior = pescaria?.capturas
@@ -77,6 +79,8 @@ const rotuloAgua: Record<string, string> = {
 <Layout
   titulo={pescaria ? `${pescaria.entrada.local} — ${pescaria.capturas.length} capturas | Fisga` : 'Pescaria não encontrada | Fisga'}
   descricao={pescaria ? `Diário de pesca em ${pescaria.entrada.local}: capturas, condições e troféus.` : 'Pescaria não encontrada.'}
+  imagem={imagemCompartilhavel}
+  tipo="article"
 >
   {!pescaria ? (
     <section class="erro-pagina">
