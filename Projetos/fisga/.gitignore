@@ -1,0 +1,23 @@
+# dependencies
+node_modules/
+.astro/
+
+# builds
+dist/
+bin/
+obj/
+
+# banco local (SQLite)
+*.db
+*.db-shm
+*.db-wal
+
+# ambiente
+.env
+.env.*
+!.env.example
+
+# tooling
+.vs/
+*.user
+.DS_Store

@@ -1,0 +1,57 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: fisga-postgres
+    environment:
+      POSTGRES_USER: fisga
+      POSTGRES_PASSWORD: fisga
+      POSTGRES_DB: fisga
+    ports:
+      - "5435:5432"
+    volumes:
+      - fisga_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fisga -d fisga"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: src/Fisga.Api/Dockerfile
+    container_name: fisga-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Database__Provider: Postgres
+      Database__ConnectionString: Host=postgres;Port=5432;Database=fisga;Username=fisga;Password=fisga
+      Cors__AllowedOrigins: http://localhost:3002,http://127.0.0.1:3002
+      Web__Url: http://localhost:3002
+      Media__Path: media
+    ports:
+      - "5184:8080"
+    volumes:
+      - fisga_media:/app/media
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./web
+      args:
+        PUBLIC_API_URL: http://localhost:5184
+        PUBLIC_SITE_URL: http://localhost:3002
+    container_name: fisga-web
+    environment:
+      API_URL: http://api:8080
+      PUBLIC_API_URL: http://localhost:5184
+      PUBLIC_SITE_URL: http://localhost:3002
+    ports:
+      - "3002:4323"
+    depends_on:
+      - api
+
+volumes:
+  fisga_pgdata:
+  fisga_media:

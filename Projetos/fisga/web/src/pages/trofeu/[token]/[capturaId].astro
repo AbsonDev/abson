@@ -1,0 +1,289 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import { obterApi } from '../../../lib/api';
+import type { PescariaDetalhada } from '../../../lib/tipos';
+
+const { token, capturaId } = Astro.params;
+
+if (!token || !capturaId) {
+  return Astro.redirect('/registrar');
+}
+
+const pescaria = await obterApi<PescariaDetalhada>(`/api/pescarias/${token}`);
+const captura = pescaria?.capturas.find((item) => item.id === capturaId);
+
+if (!pescaria || !captura) {
+  Astro.response.status = 404;
+}
+
+const apiPublica = (import.meta.env.PUBLIC_API_URL ?? 'http://localhost:5184').replace(/\/$/, '');
+const foto = captura?.fotoUrl ? `${apiPublica}${captura.fotoUrl}` : null;
+const dataFormatada = pescaria
+  ? new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }).format(
+      new Date(`${pescaria.entrada.data}T12:00:00`)
+    )
+  : '';
+const localCompleto = pescaria
+  ? [pescaria.entrada.local, pescaria.entrada.cidade, pescaria.entrada.estado].filter(Boolean).join(' · ')
+  : '';
+const linkPescaria = `${(import.meta.env.PUBLIC_SITE_URL ?? Astro.url.origin).replace(/\/$/, '')}/p/${token}`;
+const trofeuJson = JSON.stringify({
+  especie: captura?.especie ?? '',
+  peso: captura?.pesoKg ?? 0,
+  comprimento: captura?.comprimentoCm ?? 0,
+  isca: captura?.isca ?? '',
+  solto: captura?.solto ?? false,
+  local: localCompleto,
+  data: dataFormatada,
+  pescador: pescaria?.entrada.pescador ?? 'Pescador',
+  foto
+}).replace(/</g, '\\u003c');
+const mensagem = encodeURIComponent(
+  `Olha o troféu: ${captura?.especie ?? 'peixe'} de ${captura?.pesoKg ?? 0} kg. ${linkPescaria}`
+);
+---
+
+<Layout
+  titulo={captura ? `Troféu: ${captura.especie} — ${captura.pesoKg} kg | Fisga` : 'Troféu não encontrado | Fisga'}
+  descricao={captura ? `Card do troféu de ${captura.especie}, ${captura.pesoKg} kg, no Fisga.` : 'Troféu não encontrado.'}
+>
+  {!pescaria || !captura ? (
+    <section class="erro-pagina">
+      <div class="container">
+        <span class="eyebrow">Troféu não encontrado</span>
+        <h1>Esse peixe <em>saiu da rede.</em></h1>
+        <p>O link pode estar incompleto ou a captura foi removida da pescaria.</p>
+        <a class="btn btn--primario" href="/registrar" style="margin-top: 22px;">Registrar pescaria</a>
+      </div>
+    </section>
+  ) : (
+    <section class="secao secao--apertada">
+      <div class="container">
+        <a class="link-seta" href={`/p/${token}`} style="font-size: 0.78rem;">Voltar para a pescaria</a>
+
+        <div class="trofeu-area" style="margin-top: 22px;">
+          <div class="trofeu-preview">
+            {foto && <img class="trofeu-foto" src={foto} alt={`Foto de ${captura.especie}`} crossorigin="anonymous" />}
+            <div class="trofeu-overlay"></div>
+            <div class="trofeu-conteudo">
+              <div class="trofeu-topo">
+                <span class="trofeu-marca">FISGA<small>diário de pesca</small></span>
+                <span class="trofeu-solto">{captura.solto ? 'Solto' : 'Capturado'}</span>
+              </div>
+              <div>
+                <p class="trofeu-especie">{captura.especie}</p>
+                <div class="trofeu-medidas">
+                  <span>{captura.pesoKg.toLocaleString('pt-BR')} kg</span>
+                  <span>{captura.comprimentoCm.toLocaleString('pt-BR')} cm</span>
+                  {captura.isca && <span>{captura.isca}</span>}
+                </div>
+                <div class="trofeu-rodape">
+                  <span>
+                    <strong>{pescaria.entrada.local}</strong>
+                    <small>{[pescaria.entrada.cidade, pescaria.entrada.estado].filter(Boolean).join(' · ')} · {dataFormatada}</small>
+                    <small>{pescaria.entrada.pescador ?? 'Pescador'}</small>
+                  </span>
+                  <span style="font-size: 1.5rem;" aria-hidden="true">🎣</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <aside class="cartao-pilha">
+            <section class="cartao">
+              <span class="selo selo--terracota">Card do troféu</span>
+              <h2 style="margin-top: 12px;">Pronto para compartilhar</h2>
+              <p>
+                Baixe a imagem quadrada para Instagram/WhatsApp ou envie o link da pescaria com o
+                relatório completo em PDF.
+              </p>
+              <div class="trofeu-acoes">
+                <button class="btn btn--primario" type="button" id="baixar-card">Baixar card em imagem</button>
+                <a class="btn btn--contorno" href={`https://wa.me/?text=${mensagem}`} target="_blank" rel="noopener noreferrer">Compartilhar no WhatsApp</a>
+                <button class="btn btn--contorno" type="button" data-copiar-link={linkPescaria}>Copiar link da pescaria</button>
+                <a class="btn btn--contorno" href={`${apiPublica}/api/pescarias/${token}/pdf`}>Baixar PDF da pescaria</a>
+              </div>
+              <p class="trofeu-nota">
+                A imagem é gerada no seu navegador, com a foto e os dados da captura. Nada é enviado
+                para uma rede social sem você compartilhar.
+              </p>
+            </section>
+
+            <section class="cartao" style="background: var(--creme);">
+              <h2>O peixe do dia</h2>
+              <div class="mini-tabela">
+                <div><span>Espécie</span><strong>{captura.especie}</strong></div>
+                <div><span>Peso</span><strong>{captura.pesoKg.toLocaleString('pt-BR')} kg</strong></div>
+                <div><span>Comprimento</span><strong>{captura.comprimentoCm.toLocaleString('pt-BR')} cm</strong></div>
+                <div><span>Isca</span><strong>{captura.isca ?? '—'}</strong></div>
+                <div><span>Destino</span><strong>{captura.solto ? 'Solto' : 'Capturado'}</strong></div>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <script type="application/json" id="trofeu-dados" set:html={trofeuJson}></script>
+
+    <script>
+      // @ts-nocheck
+      const dados = JSON.parse(document.getElementById('trofeu-dados')?.textContent || '{}');
+
+      function carregarImagem(url) {
+        if (!url) return Promise.resolve(null);
+        return new Promise((resolve) => {
+          const imagem = new Image();
+          imagem.crossOrigin = 'anonymous';
+          imagem.onload = () => resolve(imagem);
+          imagem.onerror = () => resolve(null);
+          imagem.src = url;
+        });
+      }
+
+      function desenharCapa(contexto, imagem, largura, altura) {
+        if (!imagem) return;
+        const escala = Math.max(largura / imagem.width, altura / imagem.height);
+        const larguraDesenhada = imagem.width * escala;
+        const alturaDesenhada = imagem.height * escala;
+        contexto.drawImage(
+          imagem,
+          (largura - larguraDesenhada) / 2,
+          (altura - alturaDesenhada) / 2,
+          larguraDesenhada,
+          alturaDesenhada
+        );
+      }
+
+      function quebrarTexto(contexto, texto, larguraMaxima) {
+        const palavras = String(texto).split(' ');
+        const linhas = [];
+        let linha = '';
+
+        for (const palavra of palavras) {
+          const teste = linha ? `${linha} ${palavra}` : palavra;
+          if (contexto.measureText(teste).width > larguraMaxima && linha) {
+            linhas.push(linha);
+            linha = palavra;
+          } else {
+            linha = teste;
+          }
+        }
+
+        if (linha) linhas.push(linha);
+        return linhas;
+      }
+
+      document.getElementById('baixar-card')?.addEventListener('click', async () => {
+        const botao = document.getElementById('baixar-card');
+        const textoOriginal = botao.textContent;
+        botao.disabled = true;
+        botao.textContent = 'Gerando imagem...';
+
+        try {
+          await document.fonts.ready;
+          const largura = 1080;
+          const altura = 1080;
+          const canvas = document.createElement('canvas');
+          canvas.width = largura;
+          canvas.height = altura;
+          const contexto = canvas.getContext('2d');
+
+          const gradiente = contexto.createLinearGradient(0, 0, largura, altura);
+          gradiente.addColorStop(0, '#10383f');
+          gradiente.addColorStop(0.62, '#174e57');
+          gradiente.addColorStop(1, '#246a73');
+          contexto.fillStyle = gradiente;
+          contexto.fillRect(0, 0, largura, altura);
+
+          const imagem = await carregarImagem(dados.foto);
+          desenharCapa(contexto, imagem, largura, altura);
+
+          const sombra = contexto.createLinearGradient(0, 0, 0, altura);
+          sombra.addColorStop(0, 'rgba(8, 30, 34, 0.18)');
+          sombra.addColorStop(0.45, 'rgba(8, 30, 34, 0.22)');
+          sombra.addColorStop(1, 'rgba(8, 30, 34, 0.94)');
+          contexto.fillStyle = sombra;
+          contexto.fillRect(0, 0, largura, altura);
+
+          contexto.fillStyle = '#FFF9F0';
+          contexto.font = '700 54px Fraunces, Georgia, serif';
+          contexto.fillText('FISGA', 70, 100);
+          contexto.fillStyle = 'rgba(255, 249, 240, 0.65)';
+          contexto.font = '600 16px Inter, sans-serif';
+          contexto.fillText('DIÁRIO DE PESCA', 70, 128);
+
+          contexto.textAlign = 'right';
+          contexto.fillStyle = 'rgba(255, 249, 240, 0.92)';
+          contexto.font = '700 20px Inter, sans-serif';
+          contexto.fillText(dados.solto ? 'SOLTO' : 'CAPTURADO', largura - 70, 100);
+          contexto.textAlign = 'left';
+
+          contexto.font = '600 104px Fraunces, Georgia, serif';
+          const linhasEspecie = quebrarTexto(contexto, dados.especie, largura - 140);
+          let y = 610;
+          for (const linha of linhasEspecie.slice(-2)) {
+            contexto.fillText(linha, 70, y);
+            y += 104;
+          }
+
+          contexto.fillStyle = 'rgba(255, 249, 240, 0.9)';
+          contexto.font = '600 32px Inter, sans-serif';
+          const medidas = [
+            `${Number(dados.peso).toLocaleString('pt-BR')} kg`,
+            `${Number(dados.comprimento).toLocaleString('pt-BR')} cm`,
+            dados.isca
+          ].filter(Boolean);
+          contexto.fillText(medidas.join('   ·   '), 72, y + 8);
+
+          contexto.fillStyle = 'rgba(255, 249, 240, 0.95)';
+          contexto.font = '600 27px Inter, sans-serif';
+          contexto.fillText(dados.local || 'Local não informado', 70, 900);
+
+          contexto.fillStyle = 'rgba(255, 249, 240, 0.62)';
+          contexto.font = '400 21px Inter, sans-serif';
+          contexto.fillText(`${dados.data}  ·  ${dados.pescador}`, 70, 938);
+          contexto.fillText('fisga.abson.tech', 70, 1008);
+
+          contexto.textAlign = 'right';
+          contexto.fillStyle = '#E6A15C';
+          contexto.font = '600 19px Inter, sans-serif';
+          contexto.fillText('CADA PEIXE TEM UMA HISTÓRIA', largura - 70, 1008);
+
+          const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+          if (!blob) throw new Error('Não foi possível gerar a imagem.');
+
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `fisga-${String(dados.especie).toLowerCase().replaceAll(' ', '-')}.png`;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          URL.revokeObjectURL(url);
+        } catch (erro) {
+          window.alert(erro instanceof Error ? erro.message : 'Não foi possível gerar a imagem.');
+        } finally {
+          botao.disabled = false;
+          botao.textContent = textoOriginal;
+        }
+      });
+
+      document.querySelectorAll('[data-copiar-link]').forEach((botao) => {
+        botao.addEventListener('click', async () => {
+          const link = botao.getAttribute('data-copiar-link') || '';
+          const textoOriginal = botao.textContent;
+          try {
+            await navigator.clipboard.writeText(link);
+            botao.textContent = 'Link copiado!';
+          } catch {
+            window.prompt('Copie o link:', link);
+          }
+          window.setTimeout(() => {
+            botao.textContent = textoOriginal;
+          }, 2200);
+        });
+      });
+    </script>
+  )}
+</Layout>

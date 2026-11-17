@@ -1,0 +1,268 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { obterApi } from '../../lib/api';
+import { dataCurta } from '../../lib/formato';
+import type { PescariaDetalhada } from '../../lib/tipos';
+
+const { token } = Astro.params;
+
+if (!token) {
+  return Astro.redirect('/registrar');
+}
+
+const pescaria = await obterApi<PescariaDetalhada>(`/api/pescarias/${token}`);
+
+if (!pescaria) {
+  Astro.response.status = 404;
+}
+
+const site = (import.meta.env.PUBLIC_SITE_URL ?? Astro.url.origin).replace(/\/$/, '');
+const apiPublica = (import.meta.env.PUBLIC_API_URL ?? 'http://localhost:5184').replace(/\/$/, '');
+const linkCompartilhavel = `${site}/p/${token}`;
+const urlPdf = `${apiPublica}/api/pescarias/${token}/pdf`;
+const maior = pescaria?.capturas
+  .slice()
+  .sort((a, b) => b.pesoKg - a.pesoKg || b.comprimentoCm - a.comprimentoCm)[0];
+const soltos = pescaria?.capturas.filter((captura) => captura.solto).length ?? 0;
+const especies = new Set(pescaria?.capturas.map((captura) => captura.especie.toLowerCase()) ?? []).size;
+const mensagemWhatsapp = pescaria && maior
+  ? encodeURIComponent(
+      `${pescaria.entrada.local}: ${pescaria.capturas.length} captura(s), maior ${maior.especie} de ` +
+      `${maior.pesoKg.toLocaleString('pt-BR')} kg. Veja a história: ${linkCompartilhavel}`
+    )
+  : '';
+const rotuloAmbiente: Record<string, string> = {
+  Rio: 'Rio',
+  Mar: 'Mar',
+  Lagoa: 'Lagoa',
+  Represa: 'Represa',
+  PesquePague: 'Pesque-pague',
+  Outro: 'Outro'
+};
+const rotuloPeriodo: Record<string, string> = {
+  Madrugada: 'Madrugada',
+  Manha: 'Manhã',
+  Tarde: 'Tarde',
+  Noite: 'Noite'
+};
+const rotuloLua: Record<string, string> = {
+  NaoInformada: 'Lua não informada',
+  Nova: 'Lua nova',
+  Crescente: 'Lua crescente',
+  Cheia: 'Lua cheia',
+  Minguante: 'Lua minguante'
+};
+const rotuloMare: Record<string, string> = {
+  NaoSeAplica: 'Maré não se aplica',
+  Vazante: 'Maré vazante',
+  Enchente: 'Maré enchente',
+  Cheia: 'Maré cheia',
+  Seca: 'Maré seca'
+};
+const rotuloClima: Record<string, string> = {
+  NaoInformado: 'Clima não informado',
+  Sol: 'Sol',
+  Nublado: 'Nublado',
+  Chuva: 'Chuva',
+  Vento: 'Vento'
+};
+const rotuloAgua: Record<string, string> = {
+  NaoInformada: 'Água não informada',
+  Clara: 'Água clara',
+  Turva: 'Água turva',
+  Barrenta: 'Água barrenta'
+};
+---
+
+<Layout
+  titulo={pescaria ? `${pescaria.entrada.local} — ${pescaria.capturas.length} capturas | Fisga` : 'Pescaria não encontrada | Fisga'}
+  descricao={pescaria ? `Diário de pesca em ${pescaria.entrada.local}: capturas, condições e troféus.` : 'Pescaria não encontrada.'}
+>
+  {!pescaria ? (
+    <section class="erro-pagina">
+      <div class="container">
+        <span class="eyebrow">Link não encontrado</span>
+        <h1>Essa pescaria <em>não existe</em> mais.</h1>
+        <p>O link pode ter sido digitado errado ou a pescaria foi removida.</p>
+        <a class="btn btn--primario" href="/registrar" style="margin-top: 22px;">Registrar nova pescaria</a>
+      </div>
+    </section>
+  ) : (
+    <section class="pagina-calculo">
+      <div class="container">
+        <div class="calculo-topo">
+          <div>
+            <a class="link-seta" href="/registrar" style="font-size: 0.78rem;">Nova pescaria</a>
+            <h1>{pescaria.entrada.local}</h1>
+            <div class="calculo-meta">
+              <span>{rotuloAmbiente[pescaria.entrada.ambiente] ?? pescaria.entrada.ambiente}</span>
+              <span>{dataCurta(`${pescaria.entrada.data}T12:00:00`)}</span>
+              <span>{rotuloPeriodo[pescaria.entrada.periodo] ?? pescaria.entrada.periodo}</span>
+              {pescaria.entrada.cidade && <span>{pescaria.entrada.cidade}{pescaria.entrada.estado ? ` · ${pescaria.entrada.estado}` : ''}</span>}
+              <span>{pescaria.capturas.length} {pescaria.capturas.length === 1 ? 'captura' : 'capturas'}</span>
+            </div>
+          </div>
+          <div class="acoes-calculo" style="min-width: 210px; margin-top: 0;">
+            <a class="btn btn--primario btn--pequeno" href={urlPdf}>Baixar PDF</a>
+            <div id="editar-container" class="oculto">
+              <a class="btn btn--contorno btn--pequeno btn--largo" id="btn-editar" href={`/registrar?editar=${token}`}>
+                Editar esta pescaria
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div class="calculo-grid">
+          <div class="cartao-pilha">
+            <section class="cartao-preco">
+              <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px;">
+                <span class="rotulo">{maior ? 'Maior peixe do dia' : 'Pescaria registrada'}</span>
+                <span class="selo selo--terracota">Diário Fisga</span>
+              </div>
+              {maior ? (
+                <>
+                  <p class="preco-destaque">{maior.pesoKg.toLocaleString('pt-BR')} <small>kg</small></p>
+                  <p class="por-unidade">{maior.especie} · {maior.comprimentoCm.toLocaleString('pt-BR')} cm · {maior.solto ? 'solto' : 'capturado'}</p>
+                </>
+              ) : (
+                <p class="preco-destaque" style="font-size: clamp(2rem, 5vw, 3.5rem);">Dia de água</p>
+              )}
+              <div class="preco-estatisticas">
+                <div><span>Capturas</span><strong>{pescaria.capturas.length}</strong></div>
+                <div><span>Soltos</span><strong>{soltos}</strong></div>
+                <div><span>Espécies</span><strong>{especies}</strong></div>
+              </div>
+            </section>
+
+            <section class="cartao">
+              <h2>Condições do dia</h2>
+              <div class="mini-tabela">
+                <div><span>Lua</span><strong>{rotuloLua[pescaria.entrada.lua] ?? pescaria.entrada.lua}</strong></div>
+                <div><span>Maré</span><strong>{rotuloMare[pescaria.entrada.mare] ?? pescaria.entrada.mare}</strong></div>
+                <div><span>Clima</span><strong>{rotuloClima[pescaria.entrada.clima] ?? pescaria.entrada.clima}</strong></div>
+                <div><span>Água</span><strong>{rotuloAgua[pescaria.entrada.clarezaDaAgua] ?? pescaria.entrada.clarezaDaAgua}</strong></div>
+                <div><span>Período</span><strong>{rotuloPeriodo[pescaria.entrada.periodo] ?? pescaria.entrada.periodo}</strong></div>
+              </div>
+            </section>
+
+            <section class="cartao">
+              <h2>Capturas</h2>
+              <p>Clique em um troféu para gerar o card daquele peixe.</p>
+              {pescaria.capturas.length > 0 ? (
+                <div class="grade-2" style="margin-top: 16px;">
+                  {pescaria.capturas.map((captura) => (
+                    <article class="captura-card">
+                      <div class="captura-card-foto">
+                        {captura.fotoUrl ? (
+                          <img src={`${apiPublica}${captura.fotoUrl}`} alt={`Foto de ${captura.especie}`} loading="lazy" />
+                        ) : (
+                          <div class="captura-sem-foto">🐟</div>
+                        )}
+                      </div>
+                      <div class="captura-card-corpo">
+                        <div class="captura-card-topo">
+                          <h3>{captura.especie}</h3>
+                          <span class="selo {captura.solto ? 'selo--terracota' : 'selo--neutro'}">{captura.solto ? 'Solto' : 'Capturado'}</span>
+                        </div>
+                        <div class="captura-card-meta">
+                          <span>{captura.pesoKg.toLocaleString('pt-BR')} kg</span>
+                          <span>{captura.comprimentoCm.toLocaleString('pt-BR')} cm</span>
+                          {captura.isca && <span>{captura.isca}</span>}
+                        </div>
+                        {captura.observacao && <p class="captura-obs">{captura.observacao}</p>}
+                        <div class="captura-card-acoes">
+                          <a class="link-seta" href={`/trofeu/${token}/${captura.id}`}>Card do troféu</a>
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p style="margin-top: 12px; color: var(--tinta-suave); font-size: 0.8rem;">
+                  Nenhuma captura registrada. A pescaria ainda vale como memória do dia.
+                </p>
+              )}
+            </section>
+
+            {pescaria.entrada.observacoes && (
+              <section class="cartao">
+                <h2>Anotações da pescaria</h2>
+                <p>{pescaria.entrada.observacoes}</p>
+              </section>
+            )}
+
+            <section class="cartao">
+              <h2>Compartilhe esta pescaria</h2>
+              <p>O link público mostra esta pescaria, sem abrir o restante do seu diário.</p>
+              <div class="compartilhar">
+                <a class="btn btn--pequeno btn--contorno" href={`https://wa.me/?text=${mensagemWhatsapp}`} target="_blank" rel="noopener noreferrer">Enviar no WhatsApp</a>
+                <button class="btn btn--pequeno btn--contorno" type="button" data-copiar-link={linkCompartilhavel}>Copiar link</button>
+              </div>
+              <div class="campo" style="margin-top: 14px;">
+                <input readonly value={linkCompartilhavel} aria-label="Link compartilhável da pescaria" />
+              </div>
+            </section>
+          </div>
+
+          <aside class="cartao-pilha">
+            <section class="cartao">
+              <h2>Relatório da pescaria</h2>
+              <p>Leve o dia inteiro em PDF: capturas, condições, maior peixe e anotações. Sem marca d'água.</p>
+              <div class="acoes-calculo">
+                <a class="btn btn--primario" href={urlPdf}>Baixar PDF</a>
+                <a class="btn btn--contorno" href="/meu-diario">Ir para meu diário</a>
+              </div>
+            </section>
+
+            <section class="cartao" style="background: var(--creme);">
+              <span class="selo selo--terracota">Fisga</span>
+              <h2 style="margin-top: 12px;">Cada peixe tem uma história</h2>
+              <p>
+                O diário guarda o padrão das suas melhores pescarias. O card do troféu é a parte que
+                o mundo vê.
+              </p>
+            </section>
+
+            <section class="cartao">
+              <h2>O que está na pescaria</h2>
+              <div class="mini-tabela">
+                <div><span>Pescador</span><strong>{pescaria.entrada.pescador ?? 'Pescador'}</strong></div>
+                <div><span>Ambiente</span><strong>{rotuloAmbiente[pescaria.entrada.ambiente] ?? pescaria.entrada.ambiente}</strong></div>
+                <div><span>Data</span><strong>{dataCurta(`${pescaria.entrada.data}T12:00:00`)}</strong></div>
+                <div><span>Condições</span><strong>{rotuloClima[pescaria.entrada.clima] ?? '—'}</strong></div>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <script>
+      // @ts-nocheck
+      const TOKEN = document.querySelector('[data-copiar-link]')?.getAttribute('data-copiar-link')?.split('/p/')[1] || '';
+
+      document.querySelectorAll('[data-copiar-link]').forEach((botao) => {
+        botao.addEventListener('click', async () => {
+          const link = botao.getAttribute('data-copiar-link') || '';
+          const textoOriginal = botao.textContent;
+          try {
+            await navigator.clipboard.writeText(link);
+            botao.textContent = 'Link copiado!';
+          } catch {
+            window.prompt('Copie o link:', link);
+          }
+          window.setTimeout(() => {
+            botao.textContent = textoOriginal;
+          }, 2200);
+        });
+      });
+
+      try {
+        const registro = localStorage.getItem(`fisga:pescaria:${TOKEN}`);
+        if (registro) document.getElementById('editar-container')?.classList.remove('oculto');
+      } catch {
+        // Sem localStorage: a pescaria continua acessível para leitura.
+      }
+    </script>
+  )}
+</Layout>

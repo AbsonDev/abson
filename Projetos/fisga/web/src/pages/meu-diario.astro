@@ -1,0 +1,223 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  titulo="Meu diário — Fisga"
+  descricao="Seu diário privado de pesca, com capturas, troféus, estatísticas e recordes."
+>
+  <section class="calc-topo">
+    <div class="container">
+      <span class="eyebrow">Meu diário</span>
+      <h1>Suas histórias, <em>lado a lado.</em></h1>
+      <p>
+        Recordes, espécies, iscas e locais que funcionaram. O diário é privado por token; cada
+        pescaria tem seu próprio link público.
+      </p>
+      <div class="hero-acoes">
+        <a class="btn btn--primario" href="/registrar">Registrar nova pescaria</a>
+        <button class="btn btn--contorno" type="button" id="copiar-diario">Copiar link do diário</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="container" style="padding-bottom: 80px;">
+    <div id="erro" class="erro-caixa" role="alert"></div>
+
+    <div id="carregando" class="aviso">Carregando seu diário...</div>
+
+    <div id="conteudo-diario" class="oculto">
+      <div class="diario-stats">
+        <div class="stat-card"><span>Pescarias</span><strong id="stat-pescarias">0</strong><small>dias registrados</small></div>
+        <div class="stat-card"><span>Capturas</span><strong id="stat-capturas">0</strong><small>peixes no diário</small></div>
+        <div class="stat-card"><span>Maior peixe</span><strong id="stat-maior">—</strong><small id="stat-maior-especie">maior peso</small></div>
+        <div class="stat-card"><span>Soltos</span><strong id="stat-soltos">0</strong><small>devolvidos à água</small></div>
+      </div>
+
+      <div class="grade-2" style="margin-bottom: 28px;">
+        <article class="cartao">
+          <span class="selo selo--terracota">Seu padrão</span>
+          <div class="mini-tabela" style="margin-top: 12px;">
+            <div><span>Espécie top</span><strong id="stat-especie">—</strong></div>
+            <div><span>Isca top</span><strong id="stat-isca">—</strong></div>
+            <div><span>Local top</span><strong id="stat-local">—</strong></div>
+            <div><span>Maior comprimento</span><strong id="stat-comprimento">—</strong></div>
+          </div>
+        </article>
+
+        <article class="cartao" style="background: var(--creme);">
+          <span class="selo selo--terracota">Diário privado</span>
+          <h2 style="margin-top: 12px;">Guarde o link de backup.</h2>
+          <p>
+            Se você limpar o navegador ou trocar de aparelho, o link abaixo abre o mesmo diário.
+            Quem tiver o link consegue acessá-lo — trate como uma senha.
+          </p>
+          <div class="acoes-calculo">
+            <button class="btn btn--contorno" type="button" id="copiar-diario-2">Copiar link do diário</button>
+          </div>
+        </article>
+      </div>
+
+      <div class="cabecalho-secao" style="margin-bottom: 18px;">
+        <div>
+          <span class="eyebrow">Histórico</span>
+          <h2 style="font-size: clamp(1.7rem, 3vw, 2.3rem);">Pescarias registradas</h2>
+        </div>
+      </div>
+
+      <div id="lista" class="diario-lista"></div>
+
+      <div id="vazio" class="estado-vazio oculto" style="margin-top: 20px;">
+        <span class="eyebrow">Água parada</span>
+        <h2>Seu primeiro registro está esperando.</h2>
+        <p>Registre uma pescaria para começar a ver seus padrões, recordes e troféus.</p>
+        <a class="btn btn--primario" href="/registrar" style="margin-top: 20px;">Registrar primeira pescaria</a>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    // @ts-nocheck
+    const API = (document.body.dataset.api || 'http://localhost:5184').replace(/\/$/, '');
+    const chaveDiario = 'fisga:diario-token';
+    const conteudo = document.getElementById('conteudo-diario');
+    const carregando = document.getElementById('carregando');
+    const erro = document.getElementById('erro');
+    const lista = document.getElementById('lista');
+    const vazio = document.getElementById('vazio');
+    const reais = (valor) =>
+      Number(valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    const escapar = (texto) =>
+      String(texto ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;');
+    const data = (iso) => {
+      if (!iso) return '';
+      return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }).format(
+        new Date(`${iso}T12:00:00`)
+      );
+    };
+
+    function tokenDoDiario() {
+      const parametros = new URLSearchParams(window.location.search);
+      const tokenUrl = parametros.get('token');
+      try {
+        if (tokenUrl) {
+          localStorage.setItem(chaveDiario, tokenUrl);
+          window.history.replaceState({}, '', window.location.pathname);
+        }
+
+        let token = localStorage.getItem(chaveDiario);
+
+        if (!token || token.length < 16) {
+          const bytes = new Uint8Array(24);
+          crypto.getRandomValues(bytes);
+          token = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+          localStorage.setItem(chaveDiario, token);
+        }
+
+        return token;
+      } catch {
+        return tokenUrl || 'diario-temporario-1234567890';
+      }
+    }
+
+    function linkDoDiario() {
+      return `${window.location.origin}/meu-diario?token=${encodeURIComponent(tokenDoDiario())}`;
+    }
+
+    async function copiarLink() {
+      try {
+        await navigator.clipboard.writeText(linkDoDiario());
+        return true;
+      } catch {
+        window.prompt('Copie o link do seu diário:', linkDoDiario());
+        return false;
+      }
+    }
+
+    ['copiar-diario', 'copiar-diario-2'].forEach((id) => {
+      document.getElementById(id)?.addEventListener('click', async () => {
+        const botao = document.getElementById(id);
+        const original = botao.textContent;
+        await copiarLink();
+        botao.textContent = 'Link copiado!';
+        window.setTimeout(() => {
+          botao.textContent = original;
+        }, 2200);
+      });
+    });
+
+    async function carregar() {
+      erro.classList.remove('visivel');
+      try {
+        const resposta = await fetch(`${API}/api/diario`, {
+          headers: { 'X-Diary-Token': tokenDoDiario() }
+        });
+        const dados = await resposta.json().catch(() => ({}));
+        if (!resposta.ok) throw new Error(dados.detalhe || 'Não foi possível carregar o diário.');
+
+        carregando.classList.add('oculto');
+        conteudo.classList.remove('oculto');
+
+        document.getElementById('stat-pescarias').textContent = dados.totalPescarias ?? 0;
+        document.getElementById('stat-capturas').textContent = dados.totalCapturas ?? 0;
+        document.getElementById('stat-soltos').textContent = dados.totalSoltos ?? 0;
+        document.getElementById('stat-maior').textContent = dados.maiorPesoKg ? `${reais(dados.maiorPesoKg)} kg` : '—';
+        document.getElementById('stat-especie').textContent = dados.especieTop || '—';
+        document.getElementById('stat-isca').textContent = dados.iscaTop || '—';
+        document.getElementById('stat-local').textContent = dados.localTop || '—';
+        document.getElementById('stat-comprimento').textContent = dados.maiorComprimentoCm
+          ? `${reais(dados.maiorComprimentoCm)} cm`
+          : '—';
+        document.getElementById('stat-maior-especie').textContent = dados.especieTop
+          ? `maior peso · ${dados.especieTop}`
+          : 'maior peso';
+
+        const pescarias = dados.pescarias || [];
+        if (pescarias.length === 0) {
+          lista.innerHTML = '';
+          vazio.classList.remove('oculto');
+          return;
+        }
+
+        vazio.classList.add('oculto');
+        lista.innerHTML = pescarias
+          .map((pescaria) => {
+            const foto = pescaria.fotoCapa
+              ? `<div class="pescaria-card-foto"><img src="${API}${escapar(pescaria.fotoCapa)}" alt="Foto da pescaria" loading="lazy" /></div>`
+              : '';
+            return `
+              <article class="pescaria-card">
+                ${foto}
+                <div class="pescaria-card-topo">
+                  <div>
+                    <h2>${escapar(pescaria.local)}</h2>
+                    <p>${escapar(pescaria.ambienteNome)} · ${data(pescaria.data)}</p>
+                  </div>
+                  <span class="selo selo--neutro">${pescaria.capturas} ${pescaria.capturas === 1 ? 'peixe' : 'peixes'}</span>
+                </div>
+                <div class="pescaria-card-numeros">
+                  <span>Maior: ${pescaria.maiorPesoKg ? `${reais(pescaria.maiorPesoKg)} kg` : 'sem peso'}</span>
+                  <span>${escapar(pescaria.ambienteNome)}</span>
+                </div>
+                <div class="pescaria-card-acoes">
+                  <a class="link-seta" href="/p/${encodeURIComponent(pescaria.shareToken)}">Abrir pescaria</a>
+                  <span style="color: var(--tinta-suave); font-size: 0.64rem;">${data(pescaria.data)}</span>
+                </div>
+              </article>
+            `;
+          })
+          .join('');
+      } catch (falha) {
+        carregando.classList.add('oculto');
+        erro.textContent = falha instanceof Error ? falha.message : 'Não foi possível carregar o diário.';
+        erro.classList.add('visivel');
+      }
+    }
+
+    carregar();
+  </script>
+</Layout>

@@ -1,0 +1,15 @@
+---
+import Layout from '../layouts/Layout.astro';
+Astro.response.status = 404;
+---
+
+<Layout titulo="Página não encontrada — Fisga" descricao="A página que você procura não existe.">
+  <section class="erro-pagina">
+    <div class="container">
+      <span class="eyebrow">404</span>
+      <h1>Esse caminho <em>não tem peixe.</em></h1>
+      <p>Mas a próxima pescaria pode estar a um clique.</p>
+      <a class="btn btn--primario" href="/registrar" style="margin-top: 22px;">Registrar pescaria</a>
+    </div>
+  </section>
+</Layout>

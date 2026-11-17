@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Fisga.Api/Fisga.Api.csproj" />
+    <Project Path="src/Fisga.Application/Fisga.Application.csproj" />
+    <Project Path="src/Fisga.Domain/Fisga.Domain.csproj" />
+    <Project Path="src/Fisga.Infrastructure/Fisga.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Fisga.Application.Tests/Fisga.Application.Tests.csproj" />
+    <Project Path="tests/Fisga.Domain.Tests/Fisga.Domain.Tests.csproj" />
+  </Folder>
+</Solution>

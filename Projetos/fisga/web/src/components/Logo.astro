@@ -1,0 +1,12 @@
+---
+const { compacto = false } = Astro.props;
+---
+<a href="/" class:list={["logo", { "logo--compacto": compacto }]} aria-label="Fisga — diário de pesca">
+  <span class="logo-marca" aria-hidden="true">
+    <svg viewBox="0 0 24 24" fill="none">
+      <path d="M3 12.2c3.1-4.2 8.1-5.4 12.2-2.8l4.3-3v11.2l-4.3-3c-4.1 2.6-9.1 1.4-12.2-2.4Z" fill="currentColor" />
+      <circle cx="8.6" cy="11" r="1.15" fill="#174E57" />
+    </svg>
+  </span>
+  <span class="logo-texto">fisga<em>diário de pesca</em></span>
+</a>

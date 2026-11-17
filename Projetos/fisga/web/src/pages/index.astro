@@ -1,0 +1,314 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout>
+  <section class="hero">
+    <div class="container hero-grade">
+      <div class="hero-texto">
+        <span class="eyebrow">Para quem vive a pescaria</span>
+        <h1>Cada peixe tem uma história. Agora ela tem <em>lugar.</em></h1>
+        <p class="hero-lead">
+          Registre a pescaria, as capturas, o local, a isca e as condições do dia. Ganhe estatísticas
+          de verdade, um card de troféu para compartilhar e um relatório em PDF.
+        </p>
+        <div class="hero-acoes">
+          <a class="btn btn--primario" href="/registrar">Registrar pescaria</a>
+          <a class="btn btn--contorno" href="#como-funciona">Ver como funciona</a>
+        </div>
+        <div class="hero-prova">
+          <span>100% grátis por enquanto</span>
+          <span>Card do troféu</span>
+          <span>Diário e estatísticas</span>
+        </div>
+      </div>
+
+      <div class="hero-visual" aria-hidden="true">
+        <div class="cartao-exemplo" style="padding: 14px;">
+          <div class="trofeu-preview" style="width: 100%; border-radius: 14px;">
+            <div class="trofeu-overlay"></div>
+            <div class="trofeu-conteudo">
+              <div class="trofeu-topo">
+                <span class="trofeu-marca">FISGA<small>diário de pesca</small></span>
+                <span class="trofeu-solto">Solto</span>
+              </div>
+              <div>
+                <p class="trofeu-especie">Tucunaré</p>
+                <div class="trofeu-medidas">
+                  <span>2,4 kg</span>
+                  <span>48 cm</span>
+                  <span>Popper</span>
+                </div>
+                <div class="trofeu-rodape">
+                  <span><strong>Represa do Lago Azul</strong><small>Campinas · SP · 16/11/2026</small></span>
+                  <span style="font-size: 1.4rem;">🎣</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="selo-pdf">
+          <span class="selo-pdf-icone">PDF</span>
+          <span>
+            <strong>Relatório da pescaria</strong>
+            <small>Capturas, condições e maior peixe do dia.</small>
+          </span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="faixa-nichos">
+    <div class="container nichos nichos--cinco">
+      <a class="nicho-mini" href="/registrar"><span aria-hidden="true">🏞️</span><span><strong>Rio</strong><small>Água doce e correnteza</small></span></a>
+      <a class="nicho-mini" href="/registrar"><span aria-hidden="true">🌊</span><span><strong>Mar</strong><small>Maré, vento e costa</small></span></a>
+      <a class="nicho-mini" href="/registrar"><span aria-hidden="true">🎣</span><span><strong>Pesque-pague</strong><small>Dia garantido com a família</small></span></a>
+      <a class="nicho-mini" href="/registrar"><span aria-hidden="true">🛶</span><span><strong>Represa</strong><small>Tucunaré e estrutura</small></span></a>
+      <a class="nicho-mini" href="/registrar"><span aria-hidden="true">🌅</span><span><strong>Lagoa</strong><small>Águas calmas e pacu</small></span></a>
+    </div>
+  </section>
+
+  <section class="secao">
+    <div class="container">
+      <div class="cabecalho-secao">
+        <div>
+          <span class="eyebrow">O problema não é pescar</span>
+          <h2>É esquecer o que funcionou.</h2>
+        </div>
+        <p>
+          Foto solta na galeria, local no grupo, isca na memória. Sem um diário, cada pescaria começa
+          de novo — e o troféu vira só mais uma foto perdida.
+        </p>
+      </div>
+
+      <div class="grade-3">
+        <article class="argumento">
+          <span class="argumento-numero">01</span>
+          <h3>O peixe vira lembrança</h3>
+          <p>
+            Peso, comprimento, isca e horário ficam na cabeça. Na próxima saída, você não sabe o que
+            repetir nem o que mudar.
+          </p>
+        </article>
+        <article class="argumento">
+          <span class="argumento-numero">02</span>
+          <h3>O padrão desaparece</h3>
+          <p>
+            Maré, lua, vento e água contam uma história. Sem registrar, é impossível descobrir o
+            padrão dos seus melhores dias.
+          </p>
+        </article>
+        <article class="argumento">
+          <span class="argumento-numero">03</span>
+          <h3>O troféu não é compartilhado</h3>
+          <p>
+            O peixe merecia um card bonito, com espécie, medida e local. Não uma foto torta no fundo
+            do celular.
+          </p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="secao secao--apertada" id="como-funciona">
+    <div class="container">
+      <div class="cabecalho-secao">
+        <div>
+          <span class="eyebrow">Três passos</span>
+          <h2>Registre hoje. Compare para sempre.</h2>
+        </div>
+        <a class="link-seta" href="/registrar">Começar agora</a>
+      </div>
+
+      <div class="passos">
+        <article class="passo">
+          <span class="numero-passo">1</span>
+          <h3>Monte a pescaria</h3>
+          <p>
+            Local, data, condições e as capturas. O exemplo já vem preenchido para você ajustar.
+          </p>
+        </article>
+        <article class="passo">
+          <span class="numero-passo">2</span>
+          <h3>Veja seus padrões</h3>
+          <p>
+            Espécies, iscas, locais, soltos e recordes pessoais aparecem no seu diário privado.
+          </p>
+        </article>
+        <article class="passo">
+          <span class="numero-passo">3</span>
+          <h3>Compartilhe o troféu</h3>
+          <p>
+            Baixe o card do troféu e o PDF da pescaria. O link conta a história sem revelar seu
+            diário.
+          </p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="secao">
+    <div class="container">
+      <div class="cabecalho-secao">
+        <div>
+          <span class="eyebrow">Diário que vira estatística</span>
+          <h2>Seus melhores dias deixam de ser coincidência.</h2>
+        </div>
+        <p>
+          O Fisga cruza suas capturas para mostrar o que mais funciona: espécie, isca, local, peso e
+          quantos peixes voltaram para a água.
+        </p>
+      </div>
+
+      <div class="diario-stats">
+        <div class="stat-card"><span>Pescarias</span><strong>18</strong><small>dias registrados</small></div>
+        <div class="stat-card"><span>Capturas</span><strong>43</strong><small>peixes no diário</small></div>
+        <div class="stat-card"><span>Maior peixe</span><strong>8,5 kg</strong><small>Pintado · Rio Tietê</small></div>
+        <div class="stat-card"><span>Soltos</span><strong>31</strong><small>peixes devolvidos</small></div>
+      </div>
+
+      <div class="grade-2" style="margin-top: 22px;">
+        <article class="cartao">
+          <span class="selo selo--terracota">Seu padrão</span>
+          <h2 style="margin-top: 12px;">Tucunaré responde melhor ao Popper</h2>
+          <p>Na represa, as capturas com isca artificial aconteceram no início da manhã, com água turva.</p>
+          <div class="tabela">
+            <div class="tabela-linha"><span>Espécie top</span><strong>Tucunaré</strong></div>
+            <div class="tabela-linha"><span>Isca top</span><strong>Popper</strong></div>
+            <div class="tabela-linha"><span>Local top</span><strong>Represa do Lago Azul</strong></div>
+          </div>
+        </article>
+
+        <article class="cartao">
+          <span class="selo selo--terracota">Troféu pessoal</span>
+          <h2 style="margin-top: 12px;">Pintado de 8,5 kg</h2>
+          <p>Seu maior peixe merece um card à altura — e um lugar no diário para ser lembrado.</p>
+          <div class="tabela">
+            <div class="tabela-linha"><span>Comprimento</span><strong>92 cm</strong></div>
+            <div class="tabela-linha"><span>Isca</span><strong>Lambari</strong></div>
+            <div class="tabela-linha"><span>Destino</span><strong>Capturado</strong></div>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="secao secao-pdf">
+    <div class="container pdf-grade">
+      <div class="pdf-texto">
+        <span class="eyebrow">Card do troféu + relatório</span>
+        <h2>Uma história que dá orgulho de <em>mostrar.</em></h2>
+        <p>
+          O card do troféu é pronto para o Instagram e o WhatsApp. O relatório em PDF guarda a
+          pescaria inteira: condições, capturas, maior peixe e anotações.
+        </p>
+        <ul class="lista-check">
+          <li>Card quadrado com foto, espécie, peso e local</li>
+          <li>PDF com todas as capturas e condições do dia</li>
+          <li>Link compartilhável sem expor seu diário</li>
+          <li>Você escolhe se o peixe foi solto ou capturado</li>
+        </ul>
+        <div class="hero-acoes">
+          <a class="btn btn--primario" href="/registrar">Criar meu primeiro troféu</a>
+        </div>
+      </div>
+
+      <div class="pdf-mock" aria-hidden="true" style="transform: rotate(1.5deg);">
+        <div class="pdf-mock-marca"><strong>FISGA</strong><span>Represa do Lago Azul</span></div>
+        <h3>Tucunaré de 2,4 kg</h3>
+        <div class="pdf-preco">48 cm <small style="font-size: 0.3em; letter-spacing: 0;">comprimento</small></div>
+        <div class="pdf-linhas">
+          <div class="pdf-linha"><span>Isca</span><strong>Popper</strong></div>
+          <div class="pdf-linha"><span>Condição</span><strong>Água turva</strong></div>
+          <div class="pdf-linha"><span>Lua</span><strong>Crescente</strong></div>
+          <div class="pdf-linha"><span>Destino</span><strong>Solto</strong></div>
+          <div class="pdf-linha"><span>Pescador</span><strong>Abson</strong></div>
+        </div>
+        <div class="pdf-rodape"><span>fisga.abson.tech/trofeu/…<br />Card do troféu · grátis na validação.</span><span class="pdf-qr"></span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="secao">
+    <div class="container">
+      <div class="cabecalho-secao">
+        <div>
+          <span class="eyebrow">Grátis por enquanto</span>
+          <h2>Sem cobrança para validar com a comunidade.</h2>
+        </div>
+        <a class="link-seta" href="/precos">Entender</a>
+      </div>
+
+      <div class="grade-3">
+        <article class="argumento"><span class="argumento-numero">01</span><h3>Diário liberado</h3><p>Quantas pescarias e capturas quiser, com fotos e condições.</p></article>
+        <article class="argumento"><span class="argumento-numero">02</span><h3>Troféu e PDF</h3><p>Card compartilhável e relatório completo, sem marca d'água.</p></article>
+        <article class="argumento"><span class="argumento-numero">03</span><h3>Estatísticas reais</h3><p>Espécies, iscas, locais, recordes e taxa de soltura.</p></article>
+      </div>
+
+      <div class="hero-acoes" style="margin-top: 28px;">
+        <a class="btn btn--primario" href="/registrar">Registrar pescaria</a>
+        <a class="btn btn--contorno" href="/precos">Ver o que está incluído</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="secao secao--apertada">
+    <div class="container">
+      <div class="cabecalho-secao">
+        <div><span class="eyebrow">Dúvidas comuns</span><h2>Antes de jogar a linha.</h2></div>
+      </div>
+
+      <div class="faq">
+        <details class="pergunta">
+          <summary>Meu local fica público?</summary>
+          <p>
+            Não. O diário é privado por token. O link compartilhado de uma pescaria mostra apenas
+            aquele dia e o que você escolher; o restante do diário continua fora do link.
+          </p>
+        </details>
+        <details class="pergunta">
+          <summary>Posso registrar mais de um peixe na mesma pescaria?</summary>
+          <p>
+            Sim. Cada pescaria pode ter várias capturas, com espécie, peso, comprimento, isca e foto
+            individual.
+          </p>
+        </details>
+        <details class="pergunta">
+          <summary>O card do troféu é uma imagem?</summary>
+          <p>
+            Sim. A página do troféu tem um botão para baixar a imagem quadrada pronta para redes
+            sociais, além do PDF da pescaria.
+          </p>
+        </details>
+        <details class="pergunta">
+          <summary>Preciso criar conta?</summary>
+          <p>
+            Não. O diário usa um token privado salvo no seu navegador. Você pode guardar o link de
+            backup para abrir em outro dispositivo.
+          </p>
+        </details>
+        <details class="pergunta">
+          <summary>Posso registrar peixe solto?</summary>
+          <p>
+            Sim. Cada captura tem o destino “solto” ou “capturado”, e o diário mostra quantos peixes
+            voltaram para a água.
+          </p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section class="secao secao--apertada">
+    <div class="container">
+      <div class="faixa-cta">
+        <div class="faixa-cta-grade">
+          <div>
+            <h2>O próximo troféu merece mais que uma foto perdida.</h2>
+            <p>Registre a pescaria em menos de três minutos e leve a história com você.</p>
+          </div>
+          <a class="btn" href="/registrar">Registrar pescaria</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</Layout>

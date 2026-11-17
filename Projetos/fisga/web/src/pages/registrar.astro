@@ -1,0 +1,630 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { obterCatalogo } from '../lib/api';
+
+const catalogo = await obterCatalogo();
+const catalogoJson = JSON.stringify(catalogo).replace(/</g, '\\u003c');
+const hoje = new Date().toISOString().slice(0, 10);
+---
+
+<Layout
+  titulo="Registrar pescaria — Fisga"
+  descricao="Registre local, condições, capturas e fotos. Gere o card do troféu e o relatório da pescaria."
+>
+  <section class="calc-topo">
+    <div class="container">
+      <span class="eyebrow">Nova pescaria</span>
+      <h1>O que aconteceu <em>na água?</em></h1>
+      <p>
+        Registre o dia, as condições e cada peixe. Depois o Fisga monta seu diário, o card do troféu
+        e o relatório em PDF.
+      </p>
+    </div>
+  </section>
+
+  <section class="container calc-layout">
+    {!catalogo && (
+      <div class="erro-caixa visivel" style="margin-bottom: 16px;">
+        Não foi possível carregar o catálogo agora. Você ainda pode preencher os campos e salvar.
+      </div>
+    )}
+
+    <form id="pescaria-form" class="calc-form" novalidate>
+      <div id="erro-form" class="erro-caixa" role="alert"></div>
+
+      <datalist id="lista-especies">
+        {(catalogo?.especies ?? []).map((especie) => <option value={especie}></option>)}
+      </datalist>
+      <datalist id="lista-iscas">
+        {(catalogo?.iscas ?? []).map((isca) => <option value={isca}></option>)}
+      </datalist>
+
+      <section class="painel" aria-labelledby="titulo-pescaria">
+        <div class="painel-cabecalho">
+          <span class="passo-etiqueta">01</span>
+          <div>
+            <h2 id="titulo-pescaria">A pescaria</h2>
+            <p>Onde, quando e em que ambiente você pescou.</p>
+          </div>
+        </div>
+
+        <div class="campo">
+          <label for="local">Local</label>
+          <input id="local" type="text" maxlength="120" placeholder="Ex.: Represa do Lago Azul" autocomplete="off" />
+        </div>
+
+        <div class="campo-duplo">
+          <div class="campo">
+            <label for="pescador">Pescador</label>
+            <input id="pescador" type="text" maxlength="80" placeholder="Seu nome" autocomplete="name" />
+          </div>
+          <div class="campo">
+            <label for="data">Data</label>
+            <input id="data" type="date" value={hoje} />
+          </div>
+        </div>
+
+        <div class="campo-triplo">
+          <div class="campo">
+            <label for="cidade">Cidade</label>
+            <input id="cidade" type="text" maxlength="80" placeholder="Ex.: Campinas" autocomplete="address-level2" />
+          </div>
+          <div class="campo">
+            <label for="estado">UF</label>
+            <input id="estado" type="text" maxlength="2" placeholder="SP" autocomplete="address-level1" />
+          </div>
+          <div class="campo">
+            <label for="ambiente">Ambiente</label>
+            <select id="ambiente">
+              <option value="Rio">Rio</option>
+              <option value="Mar">Mar</option>
+              <option value="Lagoa">Lagoa</option>
+              <option value="Represa">Represa</option>
+              <option value="PesquePague">Pesque-pague</option>
+              <option value="Outro">Outro</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="campo" style="margin-top: 15px;">
+          <label for="periodo">Período</label>
+          <select id="periodo">
+            <option value="Madrugada">Madrugada</option>
+            <option value="Manha" selected>Manhã</option>
+            <option value="Tarde">Tarde</option>
+            <option value="Noite">Noite</option>
+          </select>
+        </div>
+      </section>
+
+      <section class="painel" aria-labelledby="titulo-condicoes">
+        <div class="painel-cabecalho">
+          <span class="passo-etiqueta">02</span>
+          <div>
+            <h2 id="titulo-condicoes">As condições</h2>
+            <p>O contexto que transforma uma captura em padrão.</p>
+          </div>
+        </div>
+
+        <div class="condicoes-grid">
+          <div>
+            <label for="lua">Lua</label>
+            <select id="lua">
+              <option value="NaoInformada">Não informada</option>
+              <option value="Nova">Nova</option>
+              <option value="Crescente">Crescente</option>
+              <option value="Cheia">Cheia</option>
+              <option value="Minguante">Minguante</option>
+            </select>
+          </div>
+          <div>
+            <label for="mare">Maré</label>
+            <select id="mare">
+              <option value="NaoSeAplica">Não se aplica</option>
+              <option value="Vazante">Vazante</option>
+              <option value="Enchente">Enchente</option>
+              <option value="Cheia">Cheia</option>
+              <option value="Seca">Seca</option>
+            </select>
+          </div>
+          <div>
+            <label for="clima">Clima</label>
+            <select id="clima">
+              <option value="NaoInformado">Não informado</option>
+              <option value="Sol">Sol</option>
+              <option value="Nublado">Nublado</option>
+              <option value="Chuva">Chuva</option>
+              <option value="Vento">Vento</option>
+            </select>
+          </div>
+          <div>
+            <label for="clareza">Água</label>
+            <select id="clareza">
+              <option value="NaoInformada">Não informada</option>
+              <option value="Clara">Clara</option>
+              <option value="Turva">Turva</option>
+              <option value="Barrenta">Barrenta</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="dica">
+          Maré, lua, vento e água são o que permitem comparar seus melhores dias depois. Vale
+          preencher mesmo quando você “só sabe que estava bom”.
+        </div>
+      </section>
+
+      <section class="painel" aria-labelledby="titulo-capturas">
+        <div class="painel-cabecalho">
+          <span class="passo-etiqueta">03</span>
+          <div>
+            <h2 id="titulo-capturas">As capturas</h2>
+            <p>Adicione cada peixe. Uma pescaria pode ter várias capturas.</p>
+          </div>
+        </div>
+
+        <div class="linha-captura-cabecalho" aria-hidden="true">
+          <span>Espécie</span>
+          <span>Peso kg</span>
+          <span>Comp. cm</span>
+          <span>Isca</span>
+          <span>Solto</span>
+          <span>Foto</span>
+          <span></span>
+        </div>
+        <div id="lista-capturas"></div>
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 11px;">
+          <button type="button" class="botao-adicionar" id="adicionar-captura">Adicionar captura</button>
+          <span class="aviso" id="contador-capturas" style="margin: 0;">0 capturas</span>
+        </div>
+
+        <div class="dica">
+          Foto opcional, mas é ela que deixa o card do troféu especial. A imagem é comprimida no
+          navegador antes do envio.
+        </div>
+      </section>
+
+      <section class="painel" aria-labelledby="titulo-observacoes">
+        <div class="painel-cabecalho">
+          <span class="passo-etiqueta">04</span>
+          <div>
+            <h2 id="titulo-observacoes">Anotações</h2>
+            <p>O que você quer lembrar na próxima pescaria?</p>
+          </div>
+        </div>
+
+        <div class="campo">
+          <label for="observacoes">Observações da pescaria</label>
+          <textarea id="observacoes" rows="4" maxlength="1000" placeholder="Ex.: o peixe bateu no final da manhã, perto da estrutura." style="width: 100%; padding: 11px 12px; border: 1px solid var(--linha-forte); border-radius: 9px; background: var(--papel); color: var(--tinta); font-size: 0.86rem; resize: vertical;"></textarea>
+        </div>
+      </section>
+
+      <div class="panel-actions">
+        <button class="btn btn--primario" type="submit" id="btn-salvar">Salvar pescaria</button>
+        <small>Diário privado, card do troféu e PDF gratuitos durante a validação.</small>
+      </div>
+    </form>
+
+    <aside class="cartao-pilha">
+      <section class="cartao" style="background: var(--creme);">
+        <span class="selo selo--terracota">Diário privado</span>
+        <h2 style="margin-top: 12px;">Só você vê o seu diário.</h2>
+        <p>
+          Cada pescaria tem um link público para compartilhar. O diário completo fica protegido por
+          um token salvo neste navegador.
+        </p>
+        <div class="acoes-calculo">
+          <a class="btn btn--contorno" href="/meu-diario">Abrir meu diário</a>
+        </div>
+      </section>
+
+      <section class="cartao">
+        <h2>O que o Fisga guarda</h2>
+        <div class="mini-tabela">
+          <div><span>Local e data</span><strong>Contexto</strong></div>
+          <div><span>Condições</span><strong>Padrões</strong></div>
+          <div><span>Capturas</span><strong>História</strong></div>
+          <div><span>Fotos</span><strong>Troféu</strong></div>
+          <div><span>Isca</span><strong>Aprendizado</strong></div>
+        </div>
+      </section>
+
+      <section class="cartao">
+        <h2>Dica de troféu</h2>
+        <p>
+          Segure o peixe com as duas mãos, limpe as mãos e procure luz natural. O card usa a foto
+          como fundo e fecha a composição com espécie, peso e local.
+        </p>
+      </section>
+
+      <section class="cartao" id="backup-card">
+        <h2>Backup do diário</h2>
+        <p>
+          Guarde este link para abrir o mesmo diário em outro aparelho. Quem tiver o link consegue
+          acessar o diário — trate como uma senha.
+        </p>
+        <div class="acoes-calculo">
+          <button class="btn btn--contorno" type="button" id="copiar-backup">Copiar link do diário</button>
+        </div>
+      </section>
+    </aside>
+  </section>
+
+  <script type="application/json" id="catalogo-dados" set:html={catalogoJson}></script>
+
+  <script>
+    // @ts-nocheck
+    const API = (document.body.dataset.api || 'http://localhost:5184').replace(/\/$/, '');
+    const catalogo = JSON.parse(document.getElementById('catalogo-dados')?.textContent || 'null');
+    const formulario = document.getElementById('pescaria-form');
+    const listaCapturas = document.getElementById('lista-capturas');
+    const contador = document.getElementById('contador-capturas');
+    const botaoSalvar = document.getElementById('btn-salvar');
+    const erroFormulario = document.getElementById('erro-form');
+    const chaveRascunho = 'fisga:rascunho:v1';
+    const chaveDiario = 'fisga:diario-token';
+    const chavePescaria = (token) => `fisga:pescaria:${token}`;
+    let estadoEdicao = null;
+    let uploadsPendentes = 0;
+
+    const reais = (valor) =>
+      new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(Number(valor || 0));
+
+    function numero(valor) {
+      if (typeof valor === 'number') return Number.isFinite(valor) ? valor : 0;
+      if (valor === null || valor === undefined) return 0;
+      let texto = String(valor).replace(/[^\d,.-]/g, '').trim();
+      if (texto.includes(',') && texto.includes('.')) texto = texto.replace(/\./g, '').replace(',', '.');
+      else if (texto.includes(',')) texto = texto.replace(',', '.');
+      const convertido = Number(texto);
+      return Number.isFinite(convertido) ? convertido : 0;
+    }
+
+    function valor(id) {
+      return document.getElementById(id)?.value ?? '';
+    }
+
+    function tokenDoDiario() {
+      try {
+        let token = localStorage.getItem(chaveDiario);
+        if (!token || token.length < 16) {
+          const bytes = new Uint8Array(24);
+          crypto.getRandomValues(bytes);
+          token = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+          localStorage.setItem(chaveDiario, token);
+        }
+        return token;
+      } catch {
+        return 'diario-temporario-1234567890';
+      }
+    }
+
+    function linkDoDiario() {
+      const token = tokenDoDiario();
+      return `${window.location.origin}/meu-diario?token=${encodeURIComponent(token)}`;
+    }
+
+    document.getElementById('copiar-backup')?.addEventListener('click', async (evento) => {
+      const botao = evento.currentTarget;
+      const texto = linkDoDiario();
+      try {
+        await navigator.clipboard.writeText(texto);
+        botao.textContent = 'Link copiado!';
+      } catch {
+        window.prompt('Copie o link do seu diário:', texto);
+      }
+      window.setTimeout(() => {
+        botao.textContent = 'Copiar link do diário';
+      }, 2200);
+    });
+
+    function atualizarContador() {
+      const total = listaCapturas.querySelectorAll('.linha-captura').length;
+      contador.textContent = `${total} ${total === 1 ? 'captura' : 'capturas'}`;
+    }
+
+    function criarLinhaCaptura(dados = {}) {
+      const linha = document.createElement('div');
+      linha.className = 'linha-captura';
+      linha.dataset.id = dados.id || '';
+      linha.dataset.fotoUrl = dados.fotoUrl || '';
+      linha.innerHTML = `
+        <input class="captura-especie" type="text" list="lista-especies" placeholder="Espécie" autocomplete="off" aria-label="Espécie" />
+        <input class="captura-peso" inputmode="decimal" placeholder="Peso kg" aria-label="Peso em kg" />
+        <input class="captura-comprimento" inputmode="decimal" placeholder="Comp. cm" aria-label="Comprimento em cm" />
+        <input class="captura-isca" type="text" list="lista-iscas" placeholder="Isca" autocomplete="off" aria-label="Isca" />
+        <label class="captura-solto"><input type="checkbox" class="captura-solto-check" /> Solto</label>
+        <div class="captura-foto">
+          <label class="captura-foto-preview">
+            <input type="file" accept="image/jpeg,image/png,image/webp" />
+            <span>Foto</span>
+          </label>
+        </div>
+        <button class="botao-icone remover" type="button" aria-label="Remover captura">×</button>
+      `;
+
+      linha.querySelector('.captura-especie').value = dados.especie || '';
+      linha.querySelector('.captura-peso').value = dados.pesoKg ? reais(dados.pesoKg) : '';
+      linha.querySelector('.captura-comprimento').value = dados.comprimentoCm ? reais(dados.comprimentoCm) : '';
+      linha.querySelector('.captura-isca').value = dados.isca || '';
+      linha.querySelector('.captura-solto-check').checked = Boolean(dados.solto);
+
+      const preview = linha.querySelector('.captura-foto-preview');
+      const inputArquivo = linha.querySelector('input[type="file"]');
+      const mostrarFoto = (url) => {
+        preview.innerHTML = '';
+        const imagem = document.createElement('img');
+        imagem.src = `${API}${url}`;
+        imagem.alt = 'Foto da captura';
+        imagem.crossOrigin = 'anonymous';
+        preview.appendChild(imagem);
+        linha.dataset.fotoUrl = url;
+      };
+
+      if (dados.fotoUrl) mostrarFoto(dados.fotoUrl);
+
+      inputArquivo.addEventListener('change', async () => {
+        const arquivo = inputArquivo.files?.[0];
+        if (!arquivo) return;
+
+        uploadsPendentes += 1;
+        botaoSalvar.disabled = true;
+        preview.innerHTML = '<span>...</span>';
+
+        try {
+          const blob = await comprimirImagem(arquivo);
+          const formularioMidia = new FormData();
+          formularioMidia.append('arquivo', blob, 'foto.jpg');
+
+          const resposta = await fetch(`${API}/api/midia`, { method: 'POST', body: formularioMidia });
+          const dadosMidia = await resposta.json().catch(() => ({}));
+          if (!resposta.ok) throw new Error(dadosMidia.detalhe || 'Não foi possível enviar a foto.');
+          mostrarFoto(dadosMidia.url);
+        } catch (erro) {
+          preview.innerHTML = '<span>Foto</span>';
+          mostrarErro(erro instanceof Error ? erro.message : 'Não foi possível enviar a foto.');
+        } finally {
+          uploadsPendentes -= 1;
+          botaoSalvar.disabled = uploadsPendentes > 0;
+        }
+      });
+
+      linha.querySelector('.remover').addEventListener('click', () => {
+        linha.remove();
+        atualizarContador();
+        agendarRascunho();
+      });
+
+      listaCapturas.appendChild(linha);
+      atualizarContador();
+    }
+
+    async function comprimirImagem(arquivo) {
+      const bitmap = await createImageBitmap(arquivo);
+      const escala = Math.min(1, 1400 / Math.max(bitmap.width, bitmap.height));
+      const largura = Math.max(1, Math.round(bitmap.width * escala));
+      const altura = Math.max(1, Math.round(bitmap.height * escala));
+      const canvas = document.createElement('canvas');
+      canvas.width = largura;
+      canvas.height = altura;
+      const contexto = canvas.getContext('2d');
+      contexto.drawImage(bitmap, 0, 0, largura, altura);
+      bitmap.close?.();
+
+      return new Promise((resolve, reject) => {
+        canvas.toBlob(
+          (blob) => (blob ? resolve(blob) : reject(new Error('Não foi possível processar a foto.'))),
+          'image/jpeg',
+          0.82
+        );
+      });
+    }
+
+    function coletar() {
+      const capturas = [...listaCapturas.querySelectorAll('.linha-captura')]
+        .map((linha) => ({
+          id: linha.dataset.id || null,
+          especie: linha.querySelector('.captura-especie').value.trim(),
+          pesoKg: numero(linha.querySelector('.captura-peso').value),
+          comprimentoCm: numero(linha.querySelector('.captura-comprimento').value),
+          isca: linha.querySelector('.captura-isca').value.trim() || null,
+          solto: linha.querySelector('.captura-solto-check').checked,
+          fotoUrl: linha.dataset.fotoUrl || null,
+          observacao: null
+        }))
+        .filter((captura) => captura.especie || captura.pesoKg || captura.comprimentoCm);
+
+      return {
+        local: valor('local').trim(),
+        pescador: valor('pescador').trim() || null,
+        cidade: valor('cidade').trim() || null,
+        estado: valor('estado').trim().toUpperCase() || null,
+        ambiente: valor('ambiente'),
+        data: valor('data'),
+        periodo: valor('periodo'),
+        mare: valor('mare'),
+        lua: valor('lua'),
+        clima: valor('clima'),
+        clarezaDaAgua: valor('clareza'),
+        observacoes: valor('observacoes').trim() || null,
+        capturas
+      };
+    }
+
+    function preencher(entrada) {
+      if (!entrada) return;
+      document.getElementById('local').value = entrada.local || '';
+      document.getElementById('pescador').value = entrada.pescador || '';
+      document.getElementById('cidade').value = entrada.cidade || '';
+      document.getElementById('estado').value = entrada.estado || '';
+      document.getElementById('ambiente').value = entrada.ambiente || 'Represa';
+      document.getElementById('data').value = entrada.data || new Date().toISOString().slice(0, 10);
+      document.getElementById('periodo').value = entrada.periodo || 'Manha';
+      document.getElementById('mare').value = entrada.mare || 'NaoSeAplica';
+      document.getElementById('lua').value = entrada.lua || 'NaoInformada';
+      document.getElementById('clima').value = entrada.clima || 'NaoInformado';
+      document.getElementById('clareza').value = entrada.clarezaDaAgua || 'NaoInformada';
+      document.getElementById('observacoes').value = entrada.observacoes || '';
+
+      listaCapturas.innerHTML = '';
+      (entrada.capturas || []).forEach((captura) => criarLinhaCaptura(captura));
+      if (!entrada.capturas || entrada.capturas.length === 0) criarLinhaCaptura();
+      atualizarContador();
+    }
+
+    function dataHojeLocal() {
+      const agora = new Date();
+      const local = new Date(agora.getTime() - agora.getTimezoneOffset() * 60000);
+      return local.toISOString().slice(0, 10);
+    }
+
+    function aplicarExemplo() {
+      if (catalogo?.exemplo) {
+        preencher(catalogo.exemplo);
+        document.getElementById('data').value = dataHojeLocal();
+      } else {
+        document.getElementById('data').value = dataHojeLocal();
+        criarLinhaCaptura();
+      }
+    }
+
+    function mostrarErro(mensagem) {
+      erroFormulario.textContent = mensagem;
+      erroFormulario.classList.toggle('visivel', Boolean(mensagem));
+    }
+
+    function salvarRascunho() {
+      try {
+        localStorage.setItem(chaveRascunho, JSON.stringify({ entrada: coletar(), atualizadoEm: new Date().toISOString() }));
+      } catch {
+        // Sem localStorage: o formulário continua funcionando.
+      }
+    }
+
+    let timerRascunho = 0;
+    function agendarRascunho() {
+      window.clearTimeout(timerRascunho);
+      timerRascunho = window.setTimeout(salvarRascunho, 500);
+    }
+
+    function restaurarRascunho() {
+      try {
+        const bruto = localStorage.getItem(chaveRascunho);
+        return bruto ? JSON.parse(bruto)?.entrada : null;
+      } catch {
+        return null;
+      }
+    }
+
+    function iniciarEdicao() {
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get('editar');
+      if (!token) return false;
+
+      try {
+        const registro = JSON.parse(localStorage.getItem(chavePescaria(token)) || 'null');
+        if (!registro?.entrada || !registro.editToken) return false;
+        estadoEdicao = registro;
+        preencher(registro.entrada);
+        botaoSalvar.textContent = 'Salvar alterações';
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    document.getElementById('adicionar-captura').addEventListener('click', () => {
+      criarLinhaCaptura();
+      listaCapturas.lastElementChild?.querySelector('.captura-especie')?.focus();
+    });
+
+    formulario.addEventListener('input', () => {
+      agendarRascunho();
+    });
+
+    formulario.addEventListener('change', () => {
+      agendarRascunho();
+    });
+
+    formulario.addEventListener('submit', async (evento) => {
+      evento.preventDefault();
+
+      if (uploadsPendentes > 0) {
+        mostrarErro('Espere o envio das fotos terminar.');
+        return;
+      }
+
+      const entrada = coletar();
+      if (!entrada.local) {
+        mostrarErro('Informe o local da pescaria.');
+        return;
+      }
+
+      const textoOriginal = botaoSalvar.textContent;
+      botaoSalvar.disabled = true;
+      botaoSalvar.textContent = 'Salvando...';
+      mostrarErro('');
+
+      try {
+        const editando = Boolean(estadoEdicao);
+        const url = editando ? `${API}/api/pescarias/${estadoEdicao.id}` : `${API}/api/pescarias`;
+        const resposta = await fetch(url, {
+          method: editando ? 'PUT' : 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Diary-Token': tokenDoDiario(),
+            ...(editando ? { 'X-Edit-Token': estadoEdicao.editToken } : {})
+          },
+          body: JSON.stringify(entrada)
+        });
+
+        const dados = await resposta.json().catch(() => ({}));
+        if (!resposta.ok) throw new Error(dados.detalhe || 'Não foi possível salvar a pescaria.');
+
+        const shareToken = editando ? estadoEdicao.shareToken : dados.shareToken;
+        const editToken = editando ? estadoEdicao.editToken : dados.editToken;
+        const id = editando ? estadoEdicao.id : dados.id;
+
+        try {
+          localStorage.setItem(chavePescaria(shareToken), JSON.stringify({
+            id,
+            shareToken,
+            editToken,
+            entrada,
+            salvoEm: new Date().toISOString()
+          }));
+        } catch {
+          // A pescaria já está salva no servidor.
+        }
+
+        window.location.href = `/p/${shareToken}?${editando ? 'atualizado' : 'novo'}=1`;
+      } catch (erro) {
+        mostrarErro(erro instanceof Error ? erro.message : 'Não foi possível salvar a pescaria.');
+        botaoSalvar.disabled = false;
+        botaoSalvar.textContent = textoOriginal;
+      }
+    });
+
+    (function iniciar() {
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get('diario');
+      if (token) {
+        try {
+          localStorage.setItem(chaveDiario, token);
+        } catch {
+          // Sem localStorage: o token desta sessão ainda é usado no envio.
+        }
+      }
+
+      if (iniciarEdicao()) return;
+
+      const rascunho = restaurarRascunho();
+      if (rascunho) {
+        preencher(rascunho);
+        return;
+      }
+
+      aplicarExemplo();
+    })();
+  </script>
+</Layout>
