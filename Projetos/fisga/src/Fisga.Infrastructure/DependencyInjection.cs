@@ -71,6 +71,7 @@ public static class DependencyInjection
         services.AddScoped<IUsuarioRepository, EfUsuarioRepository>();
         services.AddScoped<ISessaoRepository, EfSessaoRepository>();
         services.AddScoped<ITokenDeLoginRepository, EfTokenDeLoginRepository>();
+        services.AddScoped<IConsentimentoRepository, EfConsentimentoRepository>();
         services.AddScoped<ILocalDePescaRepository, EfLocalDePescaRepository>();
         services.AddScoped<IPontoPrivadoRepository, EfPontoPrivadoRepository>();
         services.AddScoped<ITrilhaPrivadaRepository, EfTrilhaPrivadaRepository>();
