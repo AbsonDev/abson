@@ -314,8 +314,9 @@ Adicionar o overload de `Sessao.Criar` que recebe `Id`; validar `Id != Guid.Empt
 - gera `var id = Guid.NewGuid()`;
 - cria `Sessao.Criar(id, usuario.Id, TokensSeguros.Hash(id.ToString()), userAgent, ipHash, relogio.Agora, TimeSpan.FromDays(opcoes.DuracaoDaSessaoEmDias))`;
 - adiciona ao repositório e `IUnitOfWork.SalvarAsync`;
-- chama `signIn.SignInWithClaimsAsync(conta, isPersistent: true, [new Claim("sessao_id", id.ToString())])`;
-- publica `SessaoIniciada` (mesmo padrão do serviço atual) e chama `http.DefinirSessao(sessao, usuario)`.
+- chama `signIn.SignInWithClaimsAsync(conta, new AuthenticationProperties { IsPersistent = true }, [new Claim("sessao_id", id.ToString())])`;
+- publica `usuario.Eventos` + `new SessaoIniciada(usuario.Id, sessao.Id, agora)` via `IDomainEventDispatcher`, depois `usuario.LimparEventos()` (mesmo padrão de `ServicoDeAutenticacao.ConfirmarAsync`);
+- chama `http.DefinirSessao(sessao, usuario)`.
 
 `SessaoIdentityMiddleware`, para `/api`:
 - se não houver `HttpContext.User` autenticado, segue;
@@ -324,6 +325,7 @@ Adicionar o overload de `Sessao.Criar` que recebe `Id`; validar `Id != Guid.Empt
 - se válida e `agora - UltimoUsoEm > 5 min` → `RegistrarUso` + salvar;
 - carrega `Usuario` por id (`IUsuarioRepository`) e chama `http.DefinirSessao`.
 - O middleware precisa tolerar `Usuario` ausente sem derrubar a requisição.
+- Nos testes de API, limpar `Sessoes` antes de `Usuarios`/`Users` (o FK de `sessoes` para `usuarios` é cascade, mas a ordem explícita evita depender disso).
 
 Em `Program.cs`, registrar `IdentitySessionService` como scoped e usar `app.UseAuthentication()` seguido de `app.UseMiddleware<SessaoIdentityMiddleware>()` antes do `SessaoMiddleware` legado.
 
