@@ -166,6 +166,7 @@ git commit -m "feat(auth): configure ASP.NET Core Identity and Google"
 ### Task 3: Provisionamento de conta e cadastro por senha
 
 **Files:**
+- Create: `src/Fisga.Application/Identidade/ICadastroDeUsuario.cs`
 - Create: `src/Fisga.Infrastructure/Identity/CadastroDeUsuario.cs`
 - Modify: `src/Fisga.Application/Identidade/Contratos.cs`
 - Modify: `src/Fisga.Api/Endpoints/AuthEndpoints.cs`
@@ -174,7 +175,7 @@ git commit -m "feat(auth): configure ASP.NET Core Identity and Google"
 - Create: `tests/Fisga.Api.Tests/RegistroTests.cs`
 
 **Interfaces:**
-- Produces: `CadastroDeUsuario.GarantirUsuarioAsync(Email, string?, bool, CancellationToken) : Task<Usuario>`, `CriarComSenhaAsync(string email, string? nome, string senha, CancellationToken) : Task<Usuario>`, `GarantirApplicationUserAsync(Usuario, CancellationToken) : Task<ApplicationUser>`, `ObterUsuarioAsync(Guid, CancellationToken)`.
+- Produces: `ICadastroDeUsuario` em Application; `CadastroDeUsuario : ICadastroDeUsuario` em Infrastructure com `GarantirUsuarioAsync(Email, string?, bool, CancellationToken) : Task<Usuario>`, `CriarComSenhaAsync(string email, string? nome, string senha, CancellationToken) : Task<Usuario>`, `GarantirApplicationUserAsync(Usuario, CancellationToken) : Task<ApplicationUser>`, `ObterUsuarioAsync(Guid, CancellationToken)`.
 - Produces: `POST /api/auth/registrar` com `{ nome, email, senha }`.
 
 - [ ] **Step 1: Escrever testes de provisionamento**
@@ -258,13 +259,14 @@ git commit -m "feat(auth): add password login, email confirmation and reset"
 - Modify: `src/Fisga.Application/Identidade/Contratos.cs`
 - Modify: `src/Fisga.Infrastructure/Persistence/Repositories/EfSessaoRepository.cs`
 - Create: `src/Fisga.Api/Middleware/SessaoIdentityMiddleware.cs`
+- Create: `src/Fisga.Api/IdentitySessionService.cs`
 - Modify: `src/Fisga.Api/HttpContextExtensions.cs`
 - Modify: `src/Fisga.Api/Program.cs`
 - Modify: `src/Fisga.Api/Endpoints/AuthEndpoints.cs`
 - Create: `tests/Fisga.Api.Tests/SessaoIdentityTests.cs`
 
 **Interfaces:**
-- Produces: `SessaoIdentityMiddleware`; claim `sessao_id`; `ISessaoRepository.ObterPorIdAsync(Guid, CancellationToken)`.
+- Produces: `IdentitySessionService.AssinarAsync(ApplicationUser, Usuario, HttpContext, CancellationToken) : Task`; `SessaoIdentityMiddleware`; claim `sessao_id`; `ISessaoRepository.ObterPorIdAsync(Guid, CancellationToken)`.
 - Consumes: `SignInManager`/Identity da Task 2.
 
 - [ ] **Step 1: Escrever testes**
@@ -377,7 +379,7 @@ git commit -m "feat(auth): require formal terms and privacy consent"
 ### Task 8: Login com Google
 
 **Files:**
-- Create: `src/Fisga.Application/Identidade/GoogleIdentityService.cs`
+- Create: `src/Fisga.Infrastructure/Identity/GoogleIdentityService.cs`
 - Create: `src/Fisga.Infrastructure/Identity/GoogleIdentityValidator.cs`
 - Modify: `src/Fisga.Api/Endpoints/AuthEndpoints.cs`
 - Modify: `src/Fisga.Api/appsettings.json`
@@ -386,7 +388,7 @@ git commit -m "feat(auth): require formal terms and privacy consent"
 - Modify: `tests/Fisga.Application.Tests/Fakes.cs`
 
 **Interfaces:**
-- Produces: `GoogleIdentityValidator.ValidarAsync(ExternalLoginInfo, CancellationToken) : Task<GoogleUsuario>`; `GoogleIdentityService.EntrarOuCriarAsync(GoogleUsuario, CancellationToken) : Task<Usuario>`.
+- Produces: `GoogleIdentityValidator.ValidarAsync(ExternalLoginInfo, CancellationToken) : Task<GoogleUsuario>`; `GoogleIdentityService.EntrarOuCriarAsync(GoogleUsuario, CancellationToken) : Task<Usuario>` em Infrastructure.
 - Consumes: `CadastroDeUsuario` e `ExternalLoginInfo`/`SignInManager`.
 
 - [ ] **Step 1: Escrever testes de linking**
