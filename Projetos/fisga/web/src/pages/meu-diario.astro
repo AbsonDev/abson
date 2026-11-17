@@ -107,6 +107,19 @@ import Layout from '../layouts/Layout.astro';
         </div>
       </section>
 
+      <section id="sinais-secao" class="oculto" style="margin-bottom: 28px;">
+        <div class="cabecalho-secao" style="margin-bottom: 14px;">
+          <div>
+            <span class="eyebrow">Sinais do seu diário</span>
+            <h2 style="font-size: clamp(1.5rem, 2.6vw, 2rem);">O que os seus dados sugerem</h2>
+          </div>
+        </div>
+        <div class="grade-2" id="sinais"></div>
+        <p class="fonte-pequena" style="margin-top: 10px;">
+          Sinal, não garantia: são poucas pescarias e muitas variáveis. Use como pista para o próximo teste.
+        </p>
+      </section>
+
       <div class="cabecalho-secao" style="margin-bottom: 18px;">
         <div>
           <span class="eyebrow">Histórico</span>
@@ -213,6 +226,22 @@ import Layout from '../layouts/Layout.astro';
               <small>${escapar(item.detalhe)}</small>
             </div>
           `).join('');
+        }
+
+        const sinais = dados.comparacoes || [];
+        if (sinais.length > 0) {
+          document.getElementById('sinais-secao').classList.remove('oculto');
+          document.getElementById('sinais').innerHTML = sinais.map((item) => {
+            const mais = item.diferencaPercentual >= 0;
+            const pct = Math.abs(Math.round(item.diferencaPercentual));
+            return `
+              <article class="cartao sinal-card">
+                <span class="eyebrow">${escapar(item.dimensao)}</span>
+                <h3>${mais ? '+' : '−'}${pct}% de capturas com ${escapar(item.valor.toLowerCase())}</h3>
+                <p>${item.capturasCom} capturas em ${item.pescariasCom} pescarias, contra ${item.capturasSem} em ${item.pescariasSem}.</p>
+              </article>
+            `;
+          }).join('');
         }
 
         const recordes = dados.recordesPorEspecie || [];

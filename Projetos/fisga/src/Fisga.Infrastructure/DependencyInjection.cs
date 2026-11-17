@@ -7,6 +7,8 @@ using Fisga.Application.Condicoes;
 using Fisga.Application.Identidade;
 using Fisga.Application.Locais;
 using Fisga.Application.Pontos;
+using Fisga.Application.Trilhas;
+using Fisga.Application.Vision;
 using Fisga.Application.Newsletter;
 using Fisga.Infrastructure.Condicoes;
 using Fisga.Infrastructure.Emails;
@@ -16,6 +18,7 @@ using Fisga.Infrastructure.Pdf;
 using Fisga.Infrastructure.Persistence;
 using Fisga.Infrastructure.Persistence.Repositories;
 using Fisga.Infrastructure.Time;
+using Fisga.Infrastructure.Vision;
 using Fisga.Infrastructure.Payments;
 
 namespace Fisga.Infrastructure;
@@ -39,6 +42,9 @@ public static class DependencyInjection
 
         services.Configure<CondicoesOptions>(configuration.GetSection("Condicoes"));
         services.AddSingleton(sp => sp.GetRequiredService<IOptions<CondicoesOptions>>().Value);
+
+        services.Configure<VisionOptions>(configuration.GetSection("Vision"));
+        services.AddSingleton(sp => sp.GetRequiredService<IOptions<VisionOptions>>().Value);
 
         var provider = configuration["Database:Provider"] ?? "Postgres";
         var connectionString = configuration["Database:ConnectionString"];
@@ -67,6 +73,7 @@ public static class DependencyInjection
         services.AddScoped<ITokenDeLoginRepository, EfTokenDeLoginRepository>();
         services.AddScoped<ILocalDePescaRepository, EfLocalDePescaRepository>();
         services.AddScoped<IPontoPrivadoRepository, EfPontoPrivadoRepository>();
+        services.AddScoped<ITrilhaPrivadaRepository, EfTrilhaPrivadaRepository>();
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddScoped<IDomainEventDispatcher, DomainEventDispatcher>();
         services.AddScoped<IMidiaStorage, ArmazenamentoDeMidiaLocal>();
@@ -83,6 +90,20 @@ public static class DependencyInjection
         {
             cliente.Timeout = TimeSpan.FromSeconds(10);
             cliente.DefaultRequestHeaders.UserAgent.ParseAdd("Fisga/1.0 (+https://fisga.abson.tech)");
+        });
+        services.AddHttpClient<GeminiReconhecedor>(cliente =>
+        {
+            cliente.Timeout = TimeSpan.FromSeconds(35);
+            cliente.DefaultRequestHeaders.UserAgent.ParseAdd("Fisga/1.0 (+https://fisga.abson.tech)");
+        });
+        services.AddSingleton<ManualReconhecedor>();
+        services.AddScoped<IReconhecedorDeEspecie>(servicos =>
+        {
+            var opcoes = servicos.GetRequiredService<VisionOptions>();
+            return string.Equals(opcoes.Provider, "Gemini", StringComparison.OrdinalIgnoreCase)
+                   && !string.IsNullOrWhiteSpace(opcoes.ApiKey)
+                ? servicos.GetRequiredService<GeminiReconhecedor>()
+                : servicos.GetRequiredService<ManualReconhecedor>();
         });
         services.AddScoped<IProvedorDeCondicoes>(servicos =>
             servicos.GetRequiredService<OpenMeteoProvedorDeCondicoes>());

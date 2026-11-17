@@ -1,4 +1,4 @@
-const VERSAO = 'fisga-v5';
+const VERSAO = 'fisga-v7';
 const CASCA = [
   '/',
   '/entrar',
@@ -6,6 +6,11 @@ const CASCA = [
   '/registrar',
   '/condicoes',
   '/mapa',
+  '/ferramentas',
+  '/ferramentas/nos',
+  '/ferramentas/checklists',
+  '/ferramentas/defeso',
+  '/ferramentas/guias',
   '/precos',
   '/offline',
   '/wiki',
@@ -41,7 +46,11 @@ self.addEventListener('install', (evento) => {
 self.addEventListener('activate', (evento) => {
   evento.waitUntil(
     caches.keys()
-      .then((chaves) => Promise.all(chaves.filter((chave) => chave !== VERSAO).map((chave) => caches.delete(chave))))
+      .then((chaves) => Promise.all(
+        chaves
+          .filter((chave) => chave !== VERSAO && chave !== 'fisga-tiles-v1')
+          .map((chave) => caches.delete(chave))
+      ))
       .then(() => self.clients.claim())
   );
 });
@@ -82,6 +91,36 @@ self.addEventListener('fetch', (evento) => {
           );
         })
     );
+    return;
+  }
+
+  const hostsDeTiles = [
+    'tile.openstreetmap.org',
+    'server.arcgisonline.com',
+    'tiles.openseamap.org',
+    'wms.gebco.net'
+  ];
+
+  if (hostsDeTiles.some((host) => url.hostname.endsWith(host))) {
+    evento.respondWith((async () => {
+      const cache = await caches.open('fisga-tiles-v1');
+      const salvo = await cache.match(evento.request);
+      if (salvo) return salvo;
+
+      try {
+        const resposta = await fetch(evento.request);
+        if (resposta.ok || resposta.type === 'opaque') {
+          await cache.put(evento.request, resposta.clone());
+          const chaves = await cache.keys();
+          if (chaves.length > 600) {
+            await cache.delete(chaves[0]);
+          }
+        }
+        return resposta;
+      } catch {
+        return salvo || new Response('', { status: 504, statusText: 'Offline' });
+      }
+    })());
     return;
   }
 

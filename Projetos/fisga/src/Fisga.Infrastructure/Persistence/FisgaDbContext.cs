@@ -3,6 +3,7 @@ using Fisga.Domain.Identidade;
 using Fisga.Domain.Locais;
 using Fisga.Domain.Pescarias;
 using Fisga.Domain.Pontos;
+using Fisga.Domain.Trilhas;
 
 namespace Fisga.Infrastructure.Persistence;
 
@@ -19,6 +20,8 @@ public sealed class FisgaDbContext(DbContextOptions<FisgaDbContext> options) : D
     public DbSet<LocalDePesca> LocaisDePesca => Set<LocalDePesca>();
 
     public DbSet<PontoPrivado> PontosPrivados => Set<PontoPrivado>();
+
+    public DbSet<TrilhaPrivada> TrilhasPrivadas => Set<TrilhaPrivada>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

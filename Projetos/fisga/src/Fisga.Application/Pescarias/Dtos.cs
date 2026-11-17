@@ -92,6 +92,7 @@ public sealed record DiarioDto(
     IReadOnlyList<InsightDto> Insights,
     IReadOnlyList<RecordePorEspecieDto> RecordesPorEspecie,
     IReadOnlyList<IscaPorEspecieDto> IscasPorEspecie,
+    IReadOnlyList<ComparacaoDeCondicaoDto> Comparacoes,
     IReadOnlyList<PescariaResumoDto> Pescarias);
 
 public sealed record InsightDto(string Rotulo, string Valor, string Detalhe);
@@ -103,6 +104,15 @@ public sealed record RecordePorEspecieDto(
     int Capturas);
 
 public sealed record IscaPorEspecieDto(string Especie, string Isca, int Capturas);
+
+public sealed record ComparacaoDeCondicaoDto(
+    string Dimensao,
+    string Valor,
+    double DiferencaPercentual,
+    int PescariasCom,
+    int CapturasCom,
+    int PescariasSem,
+    int CapturasSem);
 
 public static class PescariaMapper
 {

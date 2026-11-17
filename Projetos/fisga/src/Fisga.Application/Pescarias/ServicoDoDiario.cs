@@ -242,6 +242,8 @@ public sealed class ServicoDoDiario(
             .Select(item => new IscaPorEspecieDto(item.Especie, item.Isca!.Nome, item.Isca.Capturas))
             .ToList();
 
+        var comparacoes = CompararCondicoes(pescarias, catalogo);
+
         return new DiarioDto(
             TotalPescarias: pescarias.Count,
             TotalCapturas: capturas.Count,
@@ -260,7 +262,110 @@ public sealed class ServicoDoDiario(
             Insights: insights,
             RecordesPorEspecie: recordesPorEspecie,
             IscasPorEspecie: iscasPorEspecie,
+            Comparacoes: comparacoes,
             Pescarias: resumos);
+    }
+
+    private static IReadOnlyList<ComparacaoDeCondicaoDto> CompararCondicoes(
+        IReadOnlyList<Pescaria> pescarias,
+        ICatalogoDePesca catalogo)
+    {
+        var comCapturas = pescarias
+            .Where(pescaria => pescaria.Capturas.Count > 0)
+            .ToList();
+
+        var comparacoes = new List<ComparacaoDeCondicaoDto>();
+
+        Avaliar(
+            comparacoes,
+            "Lua",
+            comCapturas,
+            pescaria => pescaria.Lua,
+            pescaria => pescaria.Lua != FaseDaLua.NaoInformada,
+            catalogo.NomeDe);
+
+        Avaliar(
+            comparacoes,
+            "Maré",
+            comCapturas,
+            pescaria => pescaria.Mare,
+            pescaria => pescaria.Mare != FaseDaMare.NaoSeAplica,
+            catalogo.NomeDe);
+
+        Avaliar(
+            comparacoes,
+            "Período",
+            comCapturas,
+            pescaria => pescaria.Periodo,
+            _ => true,
+            catalogo.NomeDe);
+
+        Avaliar(
+            comparacoes,
+            "Clima",
+            comCapturas,
+            pescaria => pescaria.Clima,
+            pescaria => pescaria.Clima != Clima.NaoInformado,
+            catalogo.NomeDe);
+
+        return comparacoes
+            .GroupBy(item => item.Dimensao)
+            .Select(grupo => grupo
+                .OrderByDescending(item => Math.Abs(item.DiferencaPercentual))
+                .First())
+            .OrderByDescending(item => Math.Abs(item.DiferencaPercentual))
+            .ThenBy(item => item.Dimensao)
+            .Take(3)
+            .ToList();
+    }
+
+    private static void Avaliar<T>(
+        List<ComparacaoDeCondicaoDto> destino,
+        string dimensao,
+        IReadOnlyList<Pescaria> pescarias,
+        Func<Pescaria, T> seletor,
+        Func<Pescaria, bool> valido,
+        Func<T, string> nome) where T : notnull
+    {
+        var validas = pescarias.Where(valido).ToList();
+
+        foreach (var grupo in validas.GroupBy(seletor))
+        {
+            var com = grupo.ToList();
+            var sem = validas
+                .Where(pescaria => !EqualityComparer<T>.Default.Equals(seletor(pescaria), grupo.Key))
+                .ToList();
+
+            if (com.Count < 3 || sem.Count < 3)
+            {
+                continue;
+            }
+
+            var capturasCom = com.Sum(pescaria => pescaria.Capturas.Count);
+            var capturasSem = sem.Sum(pescaria => pescaria.Capturas.Count);
+            var mediaCom = (double)capturasCom / com.Count;
+            var mediaSem = (double)capturasSem / sem.Count;
+
+            if (mediaSem <= 0)
+            {
+                continue;
+            }
+
+            var diferenca = (mediaCom / mediaSem - 1) * 100;
+            if (Math.Abs(diferenca) < 15)
+            {
+                continue;
+            }
+
+            destino.Add(new ComparacaoDeCondicaoDto(
+                dimensao,
+                nome(grupo.Key),
+                Math.Round(diferenca, 0),
+                com.Count,
+                capturasCom,
+                sem.Count,
+                capturasSem));
+        }
     }
 
     private static string Capitalizar(string texto) =>

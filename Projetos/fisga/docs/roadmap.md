@@ -33,15 +33,16 @@ precisão que os dados ainda não sustentam.
 - CRUD completo, limite de 200 pontos, ownership por conta.
 - Nenhum endpoint público de pontos; nenhuma coordenada é publicada.
 - Cache local dos pontos para consulta offline; o mapa em si precisa de conexão para os azulejos.
+- Trilhas de corrico/deslocamento como linha, com distância e exportação GPX.
+- Cache dos últimos 600 azulejos visitados no service worker.
 
 **Próximo:**
 
-1. **Trilhas reais** (LineString) para corrico e deslocamento, não apenas pontos do tipo “trilha”.
-2. **PostGIS** para consultas por raio, polígonos de bacia e clustering.
-3. **Inteligência coletiva anonimizada** por macrorregião/quadrante de 5 km, opt-in, com mínimo de
+1. **PostGIS** para consultas por raio, polígonos de bacia e clustering.
+2. **Inteligência coletiva anonimizada** por macrorregião/quadrante de 5 km, opt-in, com mínimo de
    amostras e nunca a coordenada exata.
-4. **Mapas offline** por área baixada (tiles em IndexedDB/Cache Storage).
-5. Importação GPX/KML e exportação dos pontos do usuário.
+3. **Mapas offline** por área baixada (além do cache de azulejos visitados).
+4. Importação GPX/KML (a exportação já existe).
 
 ## Módulo C — Diário Inteligente + IA
 
@@ -50,12 +51,15 @@ precisão que os dados ainda não sustentam.
 - Registro com condições, fotos, espécie, isca, soltura e insights.
 - Comparação com o histórico por lua, maré, clima e período.
 - Pré-preenchimento por condições do local.
+- EXIF de data/hora e GPS para sugerir data, período e cidade.
+- Lembrete de defeso por espécie/UF com link oficial.
+- Insights comparativos com amostra mínima (3 pescarias de cada lado).
 
 **Próximo:**
 
 1. **EXIF**: ler GPS e horário da foto, com consentimento, e anexar condições daquele minuto.
-2. **Reconhecimento de espécie** por foto: sugestão com confiança, confirmação humana, link para a
-   wiki e nenhuma autoridade automática.
+2. **Reconhecimento de espécie** por foto: porta plugável já implementada (Gemini opcional) com
+   confiança, confirmação humana e fallback manual. Falta configurar o provedor.
 3. **Defeso/tamanho mínimo** por espécie e UF, com fonte oficial e alerta no registro.
 4. **Insights comparativos**: “68% mais capturas na maré enchente com pressão acima de 1015 hPa”,
    com amostra mínima e intervalo de confiança.
@@ -66,15 +70,15 @@ privacidade das fotos.
 
 ## Módulo D — Ferramentas, Defeso e Guias
 
-**Status:** não iniciado.
+**Status:** núcleo no ar.
 
-1. **Biblioteca de nós e montagens** offline, com diagramas passo a passo por situação.
-2. **Legislação e defeso** por bacia/estado: piracema, cotas, tamanhos mínimos e fontes.
-3. **Diretório de guias/piloteiros** com perfil, região, modalidade e contato.
-4. **Checklists** por modalidade (caiaque, costeira, embarcado, pesqueiro), editáveis e offline.
+1. **Biblioteca de nós e montagens** offline, com oito nós e diagramas esquemáticos.
+2. **Defeso por UF** com órgão oficial, checklist e lembrete no registro.
+3. **Checklists** por modalidade, salvas no aparelho.
+4. **Diretório de guias** em curadoria, com roteiro de escolha e contato.
 
-**Próximo:** começar por defeso/tamanho mínimo e checklists, que são conteúdo e regra de negócio;
-guia comercial exige moderação e acordo com parceiros.
+**Próximo:** ampliar a biblioteca de nós com fotos/vídeos, adicionar espécies/regras específicas
+quando houver fonte oficial estável e abrir o diretório de guias com perfis verificados.
 
 ## Dados e arquitetura
 
@@ -86,14 +90,14 @@ guia comercial exige moderação e acordo com parceiros.
 | Mapas | Leaflet + OSM/Esri/OpenSeaMap/GEBCO | MapLibre/Mapbox se precisar de vetor e offline |
 | Geoespacial | latitude/longitude | PostgreSQL + PostGIS para raio, bacia e clustering |
 | Offline | PWA + service worker + localStorage | IndexedDB para fila de pescarias e tiles |
-| IA de espécie | — | Provedor com confirmação humana e limite por usuário |
+| IA de espécie | Porta plugável com fallback manual | Gemini ou outro provedor, com confirmação humana |
 
 ## Sequência recomendada
 
 1. **Agora:** cockpit + mapa privado (entregue).
-2. **Sprint 4:** EXIF + defeso/tamanho mínimo + reconhecimento por foto (se houver provedor).
-3. **Sprint 5:** trilhas + PostGIS + inteligência coletiva anonimizada + mapas offline.
-4. **Sprint 6:** nós/montagens, checklists, guias e alertas.
+2. **Sprint 4:** EXIF + defeso + ferramentas + trilhas (entregue; IA depende de provedor).
+3. **Sprint 5:** PostGIS + inteligência coletiva anonimizada + mapas offline por área.
+4. **Sprint 6:** guias verificados, alertas e ampliação da biblioteca de nós.
 
 ## Métricas
 

@@ -148,6 +148,15 @@ export interface Diario {
   insights: Array<{ rotulo: string; valor: string; detalhe: string }>;
   recordesPorEspecie: Array<{ especie: string; pesoKg: number; comprimentoCm: number; capturas: number }>;
   iscasPorEspecie: Array<{ especie: string; isca: string; capturas: number }>;
+  comparacoes: Array<{
+    dimensao: string;
+    valor: string;
+    diferencaPercentual: number;
+    pescariasCom: number;
+    capturasCom: number;
+    pescariasSem: number;
+    capturasSem: number;
+  }>;
   pescarias: PescariaResumo[];
 }
 

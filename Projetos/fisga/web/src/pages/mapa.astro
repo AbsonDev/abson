@@ -18,6 +18,8 @@ import 'leaflet/dist/leaflet.css';
       </p>
       <div class="hero-acoes">
         <button id="adicionar-ponto" class="btn btn--primario" type="button">Adicionar ponto</button>
+        <button id="desenhar-trilha" class="btn btn--contorno" type="button">Desenhar trilha</button>
+        <button id="exportar-gpx" class="btn btn--contorno oculto" type="button">Exportar GPX</button>
         <button id="usar-localizacao-mapa" class="btn btn--contorno" type="button">Ir para minha localização</button>
         <a id="entrar-mapa" class="btn btn--contorno oculto" href={`/entrar?voltar=${encodeURIComponent('/mapa')}`}>Entrar para salvar</a>
       </div>
@@ -52,12 +54,24 @@ import 'leaflet/dist/leaflet.css';
           <div id="lista-pontos" class="lista-pontos"></div>
         </article>
 
+        <article class="cartao mapa-trilhas">
+          <div class="cartao-topo">
+            <span class="eyebrow">Trilhas</span>
+            <span id="contagem-trilhas" class="selo selo--neutro">0</span>
+          </div>
+          <p class="mapa-lista-ajuda">
+            Corrico e deslocamento. Toque em “Desenhar trilha”, clique no mapa e finalize.
+          </p>
+          <div id="lista-trilhas" class="lista-trilhas"></div>
+        </article>
+
         <article class="cartao mapa-offline">
           <span class="eyebrow">No mar, sem sinal</span>
           <h3>O que fica no aparelho</h3>
           <p>
-            Seus pontos ficam salvos localmente para consulta offline. As condições já visitadas
-            também ficam em cache. Os azulejos do mapa precisam de conexão.
+            Seus pontos e trilhas ficam salvos localmente para consulta offline. As condições já
+            visitadas e os últimos azulejos do mapa também ficam em cache. Não é um mapa offline
+            completo: baixe a área antes de sair para o mar.
           </p>
         </article>
 
@@ -72,6 +86,51 @@ import 'leaflet/dist/leaflet.css';
       </aside>
     </div>
   </section>
+
+  <div id="barra-trilha" class="barra-trilha oculto" role="status" aria-live="polite">
+    <span id="trilha-status">Clique no mapa para adicionar pontos</span>
+    <button id="desfazer-trilha" class="btn btn--pequeno btn--contorno" type="button">Desfazer</button>
+    <button id="finalizar-trilha" class="btn btn--pequeno btn--primario" type="button">Finalizar</button>
+    <button id="cancelar-trilha" class="btn btn--pequeno btn--contorno" type="button">Cancelar</button>
+  </div>
+
+  <dialog id="dialogo-trilha" class="dialogo-ponto">
+    <form id="form-trilha">
+      <div class="dialogo-topo">
+        <div>
+          <span class="eyebrow">Trilha privada</span>
+          <h2>Salvar trilha</h2>
+        </div>
+        <button id="fechar-trilha" class="botao-icone" type="button" aria-label="Fechar">×</button>
+      </div>
+
+      <div class="campo">
+        <label for="trilha-nome">Nome</label>
+        <input id="trilha-nome" maxlength="80" required placeholder="Ex.: Corrico da laje" />
+      </div>
+
+      <div class="campo">
+        <label for="trilha-tipo">Tipo</label>
+        <select id="trilha-tipo">
+          <option value="Corrico">Corrico</option>
+          <option value="Deslocamento">Deslocamento</option>
+        </select>
+      </div>
+
+      <div class="campo">
+        <label for="trilha-descricao">Notas privadas</label>
+        <textarea id="trilha-descricao" rows="3" maxlength="1000" placeholder="Profundidade, corrente, isca, cuidado..."></textarea>
+      </div>
+
+      <p id="trilha-resumo" class="trilha-resumo"></p>
+      <p id="trilha-erro" class="erro-campo oculto" role="alert"></p>
+
+      <div class="dialogo-acoes">
+        <button id="cancelar-trilha-dialogo" class="btn btn--contorno" type="button">Cancelar</button>
+        <button id="salvar-trilha" class="btn btn--primario" type="submit">Salvar trilha</button>
+      </div>
+    </form>
+  </dialog>
 
   <dialog id="dialogo-ponto" class="dialogo-ponto">
     <form id="form-ponto">
@@ -180,8 +239,19 @@ import 'leaflet/dist/leaflet.css';
     L.control.scale({ imperial: false }).addTo(mapa);
 
     const camadaPontos = L.layerGroup().addTo(mapa);
+    const camadaTrilhas = L.layerGroup().addTo(mapa);
+    const camadaDesenho = L.layerGroup().addTo(mapa);
     const lista = document.getElementById('lista-pontos') as HTMLDivElement | null;
+    const listaTrilhas = document.getElementById('lista-trilhas') as HTMLDivElement | null;
     const contagem = document.getElementById('contagem-pontos');
+    const contagemTrilhas = document.getElementById('contagem-trilhas');
+    const barraTrilha = document.getElementById('barra-trilha');
+    const statusTrilha = document.getElementById('trilha-status');
+    const dialogoTrilha = document.getElementById('dialogo-trilha') as HTMLDialogElement | null;
+    const formTrilha = document.getElementById('form-trilha') as HTMLFormElement | null;
+    const erroTrilha = document.getElementById('trilha-erro');
+    const botaoSalvarTrilha = document.getElementById('salvar-trilha') as HTMLButtonElement | null;
+    const botaoExportar = document.getElementById('exportar-gpx') as HTMLButtonElement | null;
     const aviso = document.getElementById('mapa-aviso');
     const dialogo = document.getElementById('dialogo-ponto') as HTMLDialogElement | null;
     const form = document.getElementById('form-ponto') as HTMLFormElement | null;
@@ -191,8 +261,11 @@ import 'leaflet/dist/leaflet.css';
     const botaoSalvar = document.getElementById('salvar-ponto') as HTMLButtonElement | null;
 
     let pontos: Array<Record<string, any>> = [];
+    let trilhas: Array<Record<string, any>> = [];
     let autenticado = false;
     let editandoId: string | null = null;
+    let desenhando = false;
+    let pontosDesenho: L.LatLng[] = [];
     let timerToast = 0;
 
     function mostrarToast(mensagem: string) {
@@ -295,6 +368,277 @@ import 'leaflet/dist/leaflet.css';
       return artigo;
     }
 
+    function distanciaEntre(a: L.LatLng, b: L.LatLng) {
+      const raio = 6371;
+      const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+      const dLon = ((b.lng - a.lng) * Math.PI) / 180;
+      const lat1 = (a.lat * Math.PI) / 180;
+      const lat2 = (b.lat * Math.PI) / 180;
+      const h =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      return 2 * raio * Math.asin(Math.sqrt(h));
+    }
+
+    function distanciaDesenho() {
+      let total = 0;
+      for (let indice = 1; indice < pontosDesenho.length; indice++) {
+        total += distanciaEntre(pontosDesenho[indice - 1], pontosDesenho[indice]);
+      }
+      return total;
+    }
+
+    function atualizarBarraTrilha() {
+      if (statusTrilha) {
+        statusTrilha.textContent =
+          pontosDesenho.length === 0
+            ? 'Clique no mapa para adicionar pontos'
+            : `${pontosDesenho.length} pontos · ${distanciaDesenho().toFixed(2).replace('.', ',')} km`;
+      }
+
+      const finalizar = document.getElementById('finalizar-trilha') as HTMLButtonElement | null;
+      if (finalizar) finalizar.disabled = pontosDesenho.length < 2;
+    }
+
+    function redesenharDesenho() {
+      camadaDesenho.clearLayers();
+
+      for (const ponto of pontosDesenho) {
+        L.circleMarker(ponto, {
+          radius: 5,
+          color: '#174E57',
+          fillColor: '#174E57',
+          fillOpacity: 1,
+          weight: 2
+        }).addTo(camadaDesenho);
+      }
+
+      if (pontosDesenho.length > 1) {
+        L.polyline(pontosDesenho, { color: '#174E57', weight: 3 }).addTo(camadaDesenho);
+      }
+
+      atualizarBarraTrilha();
+    }
+
+    function iniciarDesenho() {
+      if (!autenticado) {
+        window.location.href = `/entrar?voltar=${encodeURIComponent('/mapa')}`;
+        return;
+      }
+
+      desenhando = true;
+      pontosDesenho = [];
+      camadaDesenho.clearLayers();
+      mapa.doubleClickZoom.disable();
+      mapa.closePopup();
+      mapa.getContainer().style.cursor = 'crosshair';
+      barraTrilha?.classList.remove('oculto');
+      atualizarBarraTrilha();
+      mostrarToast('Clique no mapa para desenhar. Finalize quando terminar.');
+    }
+
+    function cancelarDesenho() {
+      desenhando = false;
+      pontosDesenho = [];
+      camadaDesenho.clearLayers();
+      barraTrilha?.classList.add('oculto');
+      mapa.getContainer().style.cursor = '';
+      mapa.doubleClickZoom.enable();
+      atualizarBarraTrilha();
+    }
+
+    function adicionarPontoDesenho(latlng: L.LatLng) {
+      pontosDesenho.push(latlng);
+      redesenharDesenho();
+    }
+
+    function atualizarExportacao() {
+      const temDados = pontos.length + trilhas.length > 0;
+      botaoExportar?.classList.toggle('oculto', !temDados);
+    }
+
+    function escaparXml(valor: unknown) {
+      return String(valor ?? '').replace(/[<>&"']/g, (caractere) => {
+        const mapa: Record<string, string> = {
+          '<': '&lt;',
+          '>': '&gt;',
+          '&': '&amp;',
+          '"': '&quot;',
+          "'": '&apos;'
+        };
+        return mapa[caractere] ?? caractere;
+      });
+    }
+
+    function exportarGpx() {
+      if (pontos.length + trilhas.length === 0) {
+        mostrarToast('Nada para exportar ainda.');
+        return;
+      }
+
+      const partes = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<gpx version="1.1" creator="Fisga" xmlns="http://www.topografix.com/GPX/1/1">'
+      ];
+
+      for (const ponto of pontos) {
+        partes.push(
+          `<wpt lat="${Number(ponto.latitude)}" lon="${Number(ponto.longitude)}"><name>${escaparXml(ponto.nome)}</name><desc>${escaparXml(ponto.descricao ?? '')}</desc></wpt>`
+        );
+      }
+
+      for (const trilha of trilhas) {
+        partes.push(`<trk><name>${escaparXml(trilha.nome)}</name><desc>${escaparXml(trilha.descricao ?? '')}</desc><trkseg>`);
+        for (const ponto of trilha.pontos ?? []) {
+          partes.push(`<trkpt lat="${Number(ponto.latitude)}" lon="${Number(ponto.longitude)}"></trkpt>`);
+        }
+        partes.push('</trkseg></trk>');
+      }
+
+      partes.push('</gpx>');
+
+      const blob = new Blob([partes.join('\n')], { type: 'application/gpx+xml' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `fisga-${new Date().toISOString().slice(0, 10)}.gpx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1200);
+      mostrarToast('GPX exportado.');
+    }
+
+    function criarCartaoTrilha(trilha: Record<string, any>) {
+      const artigo = document.createElement('article');
+      artigo.className = 'trilha-card';
+
+      const topo = document.createElement('div');
+      topo.className = 'ponto-card-topo';
+      const nome = document.createElement('strong');
+      nome.textContent = trilha.nome;
+      const tipo = document.createElement('span');
+      tipo.className = 'ponto-tipo';
+      tipo.textContent = `${trilha.tipo} · ${Number(trilha.distanciaKm).toFixed(1).replace('.', ',')} km`;
+      topo.append(nome, tipo);
+
+      const notas = document.createElement('p');
+      notas.textContent = trilha.descricao || 'Sem notas.';
+
+      const acoes = document.createElement('div');
+      acoes.className = 'ponto-acoes';
+
+      const ver = document.createElement('button');
+      ver.type = 'button';
+      ver.className = 'btn btn--pequeno btn--contorno';
+      ver.textContent = 'Ver';
+      ver.addEventListener('click', () => {
+        const linha = L.polyline(
+          (trilha.pontos ?? []).map((ponto: Record<string, number>) => [ponto.latitude, ponto.longitude]),
+          { color: '#d9773f', weight: 3 }
+        );
+        mapa.fitBounds(linha.getBounds(), { padding: [32, 32] });
+      });
+
+      const excluir = document.createElement('button');
+      excluir.type = 'button';
+      excluir.className = 'btn btn--pequeno btn--contorno';
+      excluir.textContent = 'Excluir';
+      excluir.addEventListener('click', () => excluirTrilha(trilha));
+
+      acoes.append(ver, excluir);
+      artigo.append(topo, notas, acoes);
+      return artigo;
+    }
+
+    function renderizarTrilhas() {
+      camadaTrilhas.clearLayers();
+      if (listaTrilhas) listaTrilhas.innerHTML = '';
+      if (contagemTrilhas) contagemTrilhas.textContent = String(trilhas.length);
+
+      if (trilhas.length === 0) {
+        const vazio = document.createElement('p');
+        vazio.className = 'mapa-vazio';
+        vazio.textContent = autenticado
+          ? 'Nenhuma trilha ainda. Desenhe um corrico ou deslocamento.'
+          : 'Entre para desenhar trilhas privadas.';
+        listaTrilhas?.appendChild(vazio);
+        atualizarExportacao();
+        return;
+      }
+
+      for (const trilha of trilhas) {
+        const pontosTrilha = (trilha.pontos ?? []).map((ponto: Record<string, number>) => [
+          Number(ponto.latitude),
+          Number(ponto.longitude)
+        ]) as L.LatLngExpression[];
+
+        if (pontosTrilha.length < 2) continue;
+
+        const linha = L.polyline(pontosTrilha, {
+          color: '#d9773f',
+          weight: 3,
+          opacity: 0.85
+        }).addTo(camadaTrilhas);
+
+        linha.bindPopup(`<strong>${escaparXml(trilha.nome)}</strong><br>${escaparXml(trilha.tipo)} · ${Number(trilha.distanciaKm).toFixed(1)} km`);
+        linha.on('click', () => mapa.fitBounds(linha.getBounds(), { padding: [32, 32] }));
+        listaTrilhas?.appendChild(criarCartaoTrilha(trilha));
+      }
+
+      atualizarExportacao();
+    }
+
+    async function carregarTrilhas() {
+      if (!autenticado) {
+        trilhas = [];
+        renderizarTrilhas();
+        return;
+      }
+
+      try {
+        const resposta = await fetch(`${API}/api/trilhas`, { credentials: 'include' });
+        if (resposta.status === 401) {
+          autenticado = false;
+          localStorage.removeItem('fisga:trilhas:v1');
+          atualizarSessao();
+          return;
+        }
+
+        if (!resposta.ok) throw new Error('api');
+        trilhas = await resposta.json();
+        localStorage.setItem('fisga:trilhas:v1', JSON.stringify(trilhas));
+        renderizarTrilhas();
+      } catch {
+        const cache = localStorage.getItem('fisga:trilhas:v1');
+        if (cache) {
+          trilhas = JSON.parse(cache);
+          renderizarTrilhas();
+          mostrarAviso('Sem conexão. Mostrando as trilhas salvas neste aparelho.');
+        } else {
+          renderizarTrilhas();
+        }
+      }
+    }
+
+    async function excluirTrilha(trilha: Record<string, any>) {
+      if (!window.confirm(`Excluir a trilha “${trilha.nome}”?`)) return;
+
+      try {
+        const resposta = await fetch(`${API}/api/trilhas/${trilha.id}`, {
+          method: 'DELETE',
+          credentials: 'include'
+        });
+        if (!resposta.ok) throw new Error('excluir');
+        trilhas = trilhas.filter((item) => item.id !== trilha.id);
+        localStorage.setItem('fisga:trilhas:v1', JSON.stringify(trilhas));
+        renderizarTrilhas();
+        mostrarToast('Trilha excluída.');
+      } catch {
+        mostrarToast('Não foi possível excluir a trilha.');
+      }
+    }
+
     function renderizar() {
       camadaPontos.clearLayers();
       if (lista) lista.innerHTML = '';
@@ -307,6 +651,7 @@ import 'leaflet/dist/leaflet.css';
           ? 'Nenhum ponto ainda. Clique no mapa para começar.'
           : 'Entre para salvar pontos privados. O mapa continua disponível para explorar.';
         lista?.appendChild(vazio);
+        atualizarExportacao();
         return;
       }
 
@@ -325,6 +670,8 @@ import 'leaflet/dist/leaflet.css';
 
         lista?.appendChild(criarCartao(ponto));
       }
+
+      atualizarExportacao();
     }
 
     async function carregarPontos() {
@@ -339,6 +686,7 @@ import 'leaflet/dist/leaflet.css';
         if (resposta.status === 401) {
           autenticado = false;
           localStorage.removeItem('fisga:pontos:v1');
+          localStorage.removeItem('fisga:trilhas:v1');
           atualizarSessao();
           return;
         }
@@ -362,8 +710,11 @@ import 'leaflet/dist/leaflet.css';
 
     function atualizarSessao() {
       botaoEntrar?.classList.toggle('oculto', autenticado);
-      if (dialogo && !autenticado) {
-        dialogo.close();
+      if (!autenticado) {
+        botaoExportar?.classList.add('oculto');
+        dialogo?.close();
+        dialogoTrilha?.close();
+        cancelarDesenho();
       }
     }
 
@@ -443,11 +794,96 @@ import 'leaflet/dist/leaflet.css';
     });
 
     mapa.on('click', (evento) => {
+      if (desenhando) {
+        adicionarPontoDesenho(evento.latlng);
+        return;
+      }
+
       if (!autenticado) {
         mostrarToast('Entre para salvar pontos privados. O mapa continua livre para explorar.');
         return;
       }
       abrirDialogo(null, evento.latlng);
+    });
+
+    document.getElementById('desenhar-trilha')?.addEventListener('click', iniciarDesenho);
+    document.getElementById('exportar-gpx')?.addEventListener('click', exportarGpx);
+    document.getElementById('desfazer-trilha')?.addEventListener('click', () => {
+      pontosDesenho.pop();
+      redesenharDesenho();
+    });
+    document.getElementById('cancelar-trilha')?.addEventListener('click', cancelarDesenho);
+    document.getElementById('finalizar-trilha')?.addEventListener('click', () => {
+      if (pontosDesenho.length < 2) {
+        mostrarToast('Adicione pelo menos dois pontos para salvar a trilha.');
+        return;
+      }
+
+      const nome = document.getElementById('trilha-nome') as HTMLInputElement | null;
+      const resumo = document.getElementById('trilha-resumo');
+      if (nome) nome.value = `Trilha ${new Date().toLocaleDateString('pt-BR')}`;
+      if (resumo) {
+        resumo.textContent = `${pontosDesenho.length} pontos · ${distanciaDesenho().toFixed(2).replace('.', ',')} km`;
+      }
+      erroTrilha?.classList.add('oculto');
+      dialogoTrilha?.showModal();
+    });
+
+    document.getElementById('fechar-trilha')?.addEventListener('click', () => dialogoTrilha?.close());
+    document.getElementById('cancelar-trilha-dialogo')?.addEventListener('click', () => dialogoTrilha?.close());
+
+    formTrilha?.addEventListener('submit', async (evento) => {
+      evento.preventDefault();
+      if (!autenticado) return;
+
+      const textoOriginal = botaoSalvarTrilha?.textContent ?? 'Salvar trilha';
+      if (botaoSalvarTrilha) {
+        botaoSalvarTrilha.disabled = true;
+        botaoSalvarTrilha.textContent = 'Salvando...';
+      }
+      erroTrilha?.classList.add('oculto');
+
+      const corpo = {
+        nome: (document.getElementById('trilha-nome') as HTMLInputElement).value.trim(),
+        descricao: (document.getElementById('trilha-descricao') as HTMLTextAreaElement).value.trim() || null,
+        tipo: (document.getElementById('trilha-tipo') as HTMLSelectElement).value,
+        pontos: pontosDesenho.map((ponto) => ({
+          latitude: ponto.lat,
+          longitude: ponto.lng
+        }))
+      };
+
+      try {
+        const resposta = await fetch(`${API}/api/trilhas`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(corpo)
+        });
+
+        if (resposta.status === 401) {
+          window.location.href = `/entrar?voltar=${encodeURIComponent('/mapa')}`;
+          return;
+        }
+
+        const dados = await resposta.json().catch(() => ({}));
+        if (!resposta.ok) throw new Error(dados.detalhe || 'Não foi possível salvar a trilha.');
+
+        dialogoTrilha?.close();
+        cancelarDesenho();
+        mostrarToast('Trilha salva.');
+        await carregarTrilhas();
+      } catch (falha) {
+        if (erroTrilha) {
+          erroTrilha.textContent = falha instanceof Error ? falha.message : 'Não foi possível salvar a trilha.';
+          erroTrilha.classList.remove('oculto');
+        }
+      } finally {
+        if (botaoSalvarTrilha) {
+          botaoSalvarTrilha.disabled = false;
+          botaoSalvarTrilha.textContent = textoOriginal;
+        }
+      }
     });
 
     document.getElementById('fechar-ponto')?.addEventListener('click', () => dialogo?.close());
@@ -524,6 +960,7 @@ import 'leaflet/dist/leaflet.css';
         } else {
           localStorage.removeItem('fisga:sessao:v1');
           localStorage.removeItem('fisga:pontos:v1');
+          localStorage.removeItem('fisga:trilhas:v1');
         }
       } else if (localStorage.getItem('fisga:sessao:v1') === '1') {
         autenticado = true;
@@ -532,6 +969,7 @@ import 'leaflet/dist/leaflet.css';
 
       atualizarSessao();
       await carregarPontos();
+      await carregarTrilhas();
 
       const cacheMapa = localStorage.getItem('fisga:mapa:v1');
       if (cacheMapa) {
@@ -665,6 +1103,60 @@ import 'leaflet/dist/leaflet.css';
       color: var(--tinta-suave);
       font-size: 0.76rem;
       line-height: 1.5;
+    }
+
+    .lista-trilhas {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+      max-height: 34vh;
+      overflow-y: auto;
+    }
+
+    .trilha-card {
+      display: grid;
+      gap: 3px;
+      padding: 10px;
+      border: 1px solid var(--linha);
+      border-radius: 10px;
+      background: var(--creme);
+    }
+
+    .trilha-card p {
+      color: var(--tinta-suave);
+      font-size: 0.7rem;
+      line-height: 1.45;
+    }
+
+    .barra-trilha {
+      position: fixed;
+      z-index: 70;
+      bottom: 22px;
+      left: 50%;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      max-width: min(680px, calc(100vw - 24px));
+      padding: 10px 12px;
+      border: 1px solid var(--linha);
+      border-radius: 14px;
+      background: var(--superficie);
+      color: var(--tinta);
+      box-shadow: var(--sombra);
+      transform: translateX(-50%);
+    }
+
+    .barra-trilha span {
+      flex: 1 1 220px;
+      color: var(--tinta-suave);
+      font-size: 0.72rem;
+    }
+
+    .trilha-resumo {
+      margin-top: 8px;
+      color: var(--tinta-suave);
+      font-size: 0.72rem;
     }
 
     .ponto-card {

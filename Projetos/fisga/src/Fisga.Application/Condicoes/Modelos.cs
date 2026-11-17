@@ -68,6 +68,11 @@ public interface IGeocodificador
     Task<IReadOnlyList<ResultadoDeBusca>> BuscarAsync(
         string termo,
         CancellationToken ct = default);
+
+    Task<ResultadoDeBusca?> ReversoAsync(
+        double latitude,
+        double longitude,
+        CancellationToken ct = default);
 }
 
 public sealed record LocalDeCondicaoDto(

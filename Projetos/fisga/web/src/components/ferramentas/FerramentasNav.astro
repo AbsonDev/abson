@@ -1,0 +1,48 @@
+---
+const rota = Astro.url.pathname;
+const itens = [
+  { href: '/ferramentas', nome: 'Ferramentas' },
+  { href: '/ferramentas/nos', nome: 'Nós e montagens' },
+  { href: '/ferramentas/checklists', nome: 'Checklists' },
+  { href: '/ferramentas/defeso', nome: 'Defeso' },
+  { href: '/ferramentas/guias', nome: 'Guias' }
+];
+---
+
+<nav class="ferramentas-nav" aria-label="Ferramentas do pescador">
+  {itens.map((item) => (
+    <a
+      href={item.href}
+      class:list={[{ ativo: rota === item.href }]}
+      aria-current={rota === item.href ? 'page' : undefined}
+    >
+      {item.nome}
+    </a>
+  ))}
+</nav>
+
+<style>
+  .ferramentas-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 24px;
+  }
+
+  .ferramentas-nav a {
+    padding: 7px 12px;
+    border: 1px solid var(--linha);
+    border-radius: 999px;
+    background: var(--superficie);
+    color: var(--tinta-suave);
+    font-size: 0.72rem;
+    text-decoration: none;
+  }
+
+  .ferramentas-nav a:hover,
+  .ferramentas-nav a.ativo {
+    border-color: var(--terracota);
+    background: var(--terracota-clara);
+    color: var(--terracota-escura);
+  }
+</style>

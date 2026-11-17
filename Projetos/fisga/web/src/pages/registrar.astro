@@ -58,6 +58,14 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         <button id="ocultar-condicoes" class="btn btn--pequeno btn--contorno" type="button">Ocultar</button>
       </div>
 
+      <div id="exif-aviso" class="condicoes-aplicadas oculto" role="status">
+        <div>
+          <span class="selo selo--terracota">Dados da foto</span>
+          <p id="exif-texto"></p>
+        </div>
+        <button id="ocultar-exif" class="btn btn--pequeno btn--contorno" type="button">Ocultar</button>
+      </div>
+
       <datalist id="lista-especies">
         {(catalogo?.especies ?? []).map((especie) => <option value={especie}></option>)}
       </datalist>
@@ -190,6 +198,8 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
           Maré, lua, vento e água são o que permitem comparar seus melhores dias depois. Vale
           preencher mesmo quando você “só sabe que estava bom”.
         </div>
+
+        <div id="defeso-alerta" class="defeso-alerta oculto" role="note"></div>
       </section>
 
       <section class="painel" aria-labelledby="titulo-capturas">
@@ -291,6 +301,8 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
 
   <script>
     // @ts-nocheck
+    import exifr from 'exifr';
+
     const API = (document.body.dataset.api || 'http://localhost:5184').replace(/\/$/, '');
     const catalogo = JSON.parse(document.getElementById('catalogo-dados')?.textContent || 'null');
     const formulario = document.getElementById('pescaria-form');
@@ -304,6 +316,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
     let estadoEdicao = null;
     let uploadsPendentes = 0;
     let autenticado = false;
+    let exifAplicado = false;
 
     const reais = (valor) =>
       new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(Number(valor || 0));
@@ -442,6 +455,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
             <span>Foto</span>
           </label>
         </div>
+        <div class="sugestoes-especie" aria-live="polite"></div>
       `;
 
       linha.querySelector('.captura-especie').value = dados.especie || '';
@@ -477,6 +491,10 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         inputArquivo.disabled = true;
 
         try {
+          if (!exifAplicado && paraEnviar[0]) {
+            await aplicarExif(paraEnviar[0]);
+          }
+
           for (const arquivo of paraEnviar) {
             const blob = await comprimirImagem(arquivo);
             const formularioMidia = new FormData();
@@ -501,6 +519,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
             fotos.push(dadosMidia.url);
             definirFotos(linha, fotos, capaDaLinha(linha) || dadosMidia.url);
             agendarRascunho();
+            await sugerirEspecie(linha, blob);
           }
         } catch (erro) {
           mostrarErro(erro instanceof Error ? erro.message : 'Não foi possível enviar a foto.');
@@ -521,6 +540,147 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       renderizarFotos(linha);
       listaCapturas.appendChild(linha);
       atualizarContador();
+    }
+
+    function periodoDaHora(hora) {
+      if (hora < 6) return 'Madrugada';
+      if (hora < 12) return 'Manha';
+      if (hora < 18) return 'Tarde';
+      return 'Noite';
+    }
+
+    async function aplicarExif(arquivo) {
+      if (exifAplicado) return;
+
+      try {
+        const dados = await exifr.parse(arquivo, { pick: ['DateTimeOriginal', 'CreateDate'] }).catch(() => null);
+        const gps = await exifr.gps(arquivo).catch(() => null);
+
+        let data = null;
+        const bruto = dados?.DateTimeOriginal ?? dados?.CreateDate;
+        if (bruto instanceof Date && !Number.isNaN(bruto.getTime())) {
+          data = bruto;
+          const local = new Date(data.getTime() - data.getTimezoneOffset() * 60000);
+          document.getElementById('data').value = local.toISOString().slice(0, 10);
+          document.getElementById('periodo').value = periodoDaHora(local.getHours());
+        }
+
+        let cidade = '';
+        let estado = '';
+        if (gps?.latitude && gps?.longitude) {
+          const resposta = await fetch(
+            `${API}/api/locais/reverso?lat=${gps.latitude}&lon=${gps.longitude}`
+          );
+          if (resposta.ok) {
+            const local = await resposta.json();
+            cidade = local.cidade || local.nome || '';
+            estado = local.estado || '';
+            if (cidade) {
+              const campoCidade = document.getElementById('cidade');
+              const campoEstado = document.getElementById('estado');
+              const campoLocal = document.getElementById('local');
+              if (!campoCidade.value) campoCidade.value = cidade;
+              if (!campoEstado.value) campoEstado.value = estado;
+              if (!campoLocal.value.trim()) campoLocal.value = cidade;
+            }
+          }
+        }
+
+        if (data || cidade) {
+          exifAplicado = true;
+          const partes = [];
+          if (data) partes.push(data.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }));
+          if (cidade) partes.push([cidade, estado].filter(Boolean).join(' · '));
+          const banner = document.getElementById('exif-aviso');
+          const texto = document.getElementById('exif-texto');
+          if (banner && texto) {
+            texto.textContent = `Dados lidos da foto: ${partes.join(' · ')}. Confirme antes de salvar. O GPS é usado apenas para sugerir a cidade.`;
+            banner.classList.remove('oculto');
+          }
+        }
+      } catch {
+        // A foto pode não ter EXIF; o formulário continua manual.
+      }
+    }
+
+    async function sugerirEspecie(linha, blob) {
+      const container = linha.querySelector('.sugestoes-especie');
+      if (!container) return;
+
+      try {
+        const formularioSugestao = new FormData();
+        formularioSugestao.append('arquivo', blob, 'foto.jpg');
+        const resposta = await fetch(`${API}/api/especies/sugerir`, {
+          method: 'POST',
+          credentials: 'include',
+          body: formularioSugestao
+        });
+
+        if (!resposta.ok) return;
+        const dados = await resposta.json();
+        container.innerHTML = '';
+
+        if (!dados.disponivel) {
+          const aviso = document.createElement('span');
+          aviso.className = 'sugestao-aviso';
+          aviso.textContent = dados.mensagem || 'Sugestão automática indisponível. Confirme a espécie.';
+          container.appendChild(aviso);
+          return;
+        }
+
+        if (!Array.isArray(dados.sugestoes) || dados.sugestoes.length === 0) {
+          const aviso = document.createElement('span');
+          aviso.className = 'sugestao-aviso';
+          aviso.textContent = dados.mensagem || 'Nenhuma sugestão segura. Confirme a espécie.';
+          container.appendChild(aviso);
+          return;
+        }
+
+        const rotulo = document.createElement('span');
+        rotulo.textContent = 'Sugestão:';
+        container.appendChild(rotulo);
+
+        for (const sugestao of dados.sugestoes) {
+          const botao = document.createElement('button');
+          botao.type = 'button';
+          botao.className = 'sugestao-chip';
+          botao.textContent = `${sugestao.especie} · ${Math.round(sugestao.confianca * 100)}%`;
+          botao.addEventListener('click', () => {
+            const input = linha.querySelector('.captura-especie');
+            if (input) {
+              input.value = sugestao.especie;
+              input.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            container.innerHTML = '';
+          });
+          container.appendChild(botao);
+        }
+      } catch {
+        // A sugestão é opcional; o preenchimento manual continua.
+      }
+    }
+
+    function atualizarDefeso() {
+      const alerta = document.getElementById('defeso-alerta');
+      if (!alerta) return;
+
+      const especieInput = document.querySelector('.captura-especie');
+      const especie = especieInput?.value.trim() || '';
+      const estado = document.getElementById('estado').value.trim().toUpperCase();
+
+      if (!especie || estado.length !== 2) {
+        alerta.classList.add('oculto');
+        return;
+      }
+
+      alerta.innerHTML = '';
+      const texto = document.createElement('span');
+      texto.textContent = `Antes de manter: confira tamanho mínimo e defeso de ${especie} em ${estado}.`;
+      const link = document.createElement('a');
+      link.href = `/ferramentas/defeso?uf=${encodeURIComponent(estado)}`;
+      link.textContent = 'Abrir órgão oficial';
+      alerta.append(texto, link);
+      alerta.classList.remove('oculto');
     }
 
     async function comprimirImagem(arquivo) {
@@ -597,6 +757,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       (entrada.capturas || []).forEach((captura) => criarLinhaCaptura(captura));
       if (!entrada.capturas || entrada.capturas.length === 0) criarLinhaCaptura();
       atualizarContador();
+      atualizarDefeso();
     }
 
     function periodoDeAgora() {
@@ -756,6 +917,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         }
 
         estadoEdicao = { id: dados.id, shareToken: dados.shareToken };
+        exifAplicado = true;
         preencher(dados.entrada);
         botaoSalvar.textContent = 'Salvar alterações';
         return true;
@@ -768,6 +930,13 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
     document.getElementById('ocultar-condicoes')?.addEventListener('click', () => {
       document.getElementById('condicoes-aplicadas')?.classList.add('oculto');
     });
+
+    document.getElementById('ocultar-exif')?.addEventListener('click', () => {
+      document.getElementById('exif-aviso')?.classList.add('oculto');
+    });
+
+    formulario.addEventListener('input', atualizarDefeso);
+    formulario.addEventListener('change', atualizarDefeso);
 
     document.getElementById('adicionar-captura').addEventListener('click', () => {
       criarLinhaCaptura();
@@ -863,6 +1032,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
 
       const rascunho = restaurarRascunho();
       if (rascunho) {
+        exifAplicado = true;
         preencher(rascunho);
         aplicarEspecieDaWiki();
         return;
@@ -876,6 +1046,42 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
 </Layout>
 
 <style>
+  .sugestoes-especie {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
+    grid-column: 1 / -1;
+    color: var(--tinta-suave);
+    font-size: 0.66rem;
+  }
+
+  .sugestoes-especie:empty {
+    display: none;
+  }
+
+  .sugestao-aviso {
+    color: var(--tinta-suave);
+    font-size: 0.64rem;
+  }
+
+  .sugestao-chip {
+    padding: 4px 8px;
+    border: 1px solid var(--linha);
+    border-radius: 999px;
+    background: var(--creme);
+    color: var(--terracota);
+    font: inherit;
+    font-size: 0.66rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .sugestao-chip:hover {
+    border-color: var(--terracota);
+    background: var(--terracota-clara);
+  }
+
   .condicoes-aplicadas {
     display: flex;
     align-items: center;
@@ -895,10 +1101,67 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
   }
 
   @media (max-width: 640px) {
-    .condicoes-aplicadas {
+    .sugestoes-especie {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
+    grid-column: 1 / -1;
+    color: var(--tinta-suave);
+    font-size: 0.66rem;
+  }
+
+  .sugestoes-especie:empty {
+    display: none;
+  }
+
+  .sugestao-aviso {
+    color: var(--tinta-suave);
+    font-size: 0.64rem;
+  }
+
+  .sugestao-chip {
+    padding: 4px 8px;
+    border: 1px solid var(--linha);
+    border-radius: 999px;
+    background: var(--creme);
+    color: var(--terracota);
+    font: inherit;
+    font-size: 0.66rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .sugestao-chip:hover {
+    border-color: var(--terracota);
+    background: var(--terracota-clara);
+  }
+
+  .condicoes-aplicadas {
       align-items: start;
       flex-direction: column;
     }
+  }
+
+  .defeso-alerta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    margin-top: 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--acafrao);
+    border-radius: 9px;
+    background: #fff4ea;
+    color: #6d3a1f;
+    font-size: 0.74rem;
+    line-height: 1.45;
+  }
+
+  .defeso-alerta a {
+    color: var(--terracota);
+    font-weight: 700;
+    text-decoration: underline;
   }
 
   .aviso-acesso {
@@ -940,7 +1203,28 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
   }
 
   @media (max-width: 760px) {
-    .aviso-acesso {
+    .defeso-alerta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    margin-top: 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--acafrao);
+    border-radius: 9px;
+    background: #fff4ea;
+    color: #6d3a1f;
+    font-size: 0.74rem;
+    line-height: 1.45;
+  }
+
+  .defeso-alerta a {
+    color: var(--terracota);
+    font-weight: 700;
+    text-decoration: underline;
+  }
+
+  .aviso-acesso {
       align-items: stretch;
       flex-direction: column;
       gap: 16px;

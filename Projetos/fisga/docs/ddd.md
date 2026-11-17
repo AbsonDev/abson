@@ -30,7 +30,9 @@ flowchart LR
     documentos[Documentos<br/>PDF · QR]
     diario[Diário<br/>read model privado]
     condicoes[Condições e Locais<br/>LocalDePesca · previsão · janela]
-    pontos[Pontos Privados<br/>PontoPrivado · waypoints · notas]
+    pontos[Pontos Privados<br/>PontoPrivado · TrilhaPrivada · notas]
+    ferramentas[Ferramentas<br/>nós · checklists · defeso]
+    visao[Visão<br/>IReconhecedorDeEspecie]
     email[E-mail<br/>Porta IEmailSender]
   end
 
@@ -42,7 +44,8 @@ flowchart LR
   pescarias -->|relatório| documentos
   diario -->|lista e estatísticas| pescarias
   condicoes -->|condições e local padrão| pescarias
-  pontos -->|pontos e notas| pescarias
+  pontos -->|pontos, trilhas e notas| pescarias
+  visao -->|sugestão de espécie| pescarias
   assinatura -.->|futuro| documentos
 ```
 
@@ -191,9 +194,31 @@ Contexto genérico, sem dependência de ASP.NET ou do provedor de e-mail.
 - **Nenhum endpoint público** e nenhuma projeção pública. O ponto não entra em link, troféu ou PDF.
 - O mapa é uma ferramenta de leitura/escrita; a camada de mapa não é dado do produto.
 - Cache local dos pontos para consulta offline; ao detectar sessão inválida, o cache é apagado.
-- Trilhas como linha (LineString), raio e clustering exigem PostGIS e ficam para a fase
-  geoespacial.
+- Trilhas já são linha (até 500 pontos) com distância e GPX; raio e clustering ainda exigem
+  PostGIS.
 - Inteligência coletiva só por macrorregião/quadrante, opt-in e com amostra mínima.
+
+## Ferramentas e Defeso
+
+As ferramentas são conteúdo estático e offline, não um agregado de domínio.
+
+- Nós e montagens: oito nós com passo a passo, uso e dica.
+- Checklists: caiaque, costeira, embarcado e pesqueiro, com progresso em `localStorage`.
+- Defeso: UF → órgão ambiental, checklist e links oficiais. O Fisga **não** mantém uma tabela
+  própria de tamanhos mínimos nesta fase; a regra muda por bacia, ano e portaria.
+- Registro: lembrete automático “confira tamanho mínimo e defeso de X em UF”, com link para o órgão.
+- Guias: diretório em curadoria, sem cadastro automático nem pagamento.
+
+## Visão Computacional
+
+`IReconhecedorDeEspecie` é uma porta com duas implementações:
+
+- `Manual`: padrão; devolve “confirme manualmente” e nunca inventa.
+- `Gemini`: opcional via `Vision__Provider`, `Vision__ApiKey` e `Vision__Model`.
+
+A resposta é limitada ao catálogo, com confiança e no máximo três sugestões. O pescador confirma ou
+corrige; a IA não tem autoridade para gravar a espécie sozinha. O EXIF da foto é lido no navegador
+para sugerir data/período e cidade (GPS via Nominatim), sem armazenar a coordenada.
 
 ## Conhecimento (Wiki do Pescador)
 
@@ -299,7 +324,10 @@ lembretes e e-mail.
     dependem de PostGIS.
 14. O mapa usa tiles de terceiros e não funciona offline; mapas offline por área ficam para a
     próxima fase.
-15. A biblioteca de nós, defeso por bacia e diretório de guias ainda não existe.
+15. A biblioteca de nós, checklists e defeso por UF existem; o diretório de guias ainda está em
+    curadoria e não há tabela própria de tamanhos mínimos.
+16. A sugestão de espécie depende de provedor externo; sem chave, o fluxo é manual.
+17. O cache de azulejos é limitado e não substitui mapas offline por área.
 
 ## Testes
 

@@ -102,6 +102,45 @@ public sealed class ServicoDePescariasTests
     }
 
     [Fact]
+    public async Task Diario_compara_condicoes_com_amostra_minima()
+    {
+        var repositorio = new PescariaRepositorioFake();
+        var criador = new ServicoDePescarias(repositorio, new RelogioFixo(Agora), new DispatcherFake());
+
+        for (var indice = 0; indice < 3; indice++)
+        {
+            await criador.CriarAsync(
+                Entrada() with { Lua = FaseDaLua.Crescente, Mare = FaseDaMare.Enchente },
+                UsuarioId);
+        }
+
+        for (var indice = 0; indice < 3; indice++)
+        {
+            await criador.CriarAsync(
+                Entrada() with
+                {
+                    Lua = FaseDaLua.Cheia,
+                    Mare = FaseDaMare.Vazante,
+                    Capturas =
+                    [
+                        new EntradaDeCaptura(null, "Tucunaré", 2.4m, 48m, "Popper", true, null, null)
+                    ]
+                },
+                UsuarioId);
+        }
+
+        var diario = new ServicoDoDiario(repositorio, new CatalogoDePesca());
+        var resultado = await diario.ObterAsync(UsuarioId);
+
+        Assert.Contains(resultado.Comparacoes, item =>
+            item.Dimensao == "Lua"
+            && item.Valor == "Crescente"
+            && item.DiferencaPercentual > 0
+            && item.PescariasCom == 3
+            && item.PescariasSem == 3);
+    }
+
+    [Fact]
     public async Task Publico_respeita_privacidade_do_local()
     {
         var repositorio = new PescariaRepositorioFake();

@@ -49,6 +49,14 @@ card de troféu compartilhável + PDF da pescaria.
   oceânica real e alerta de mudança brusca de pressão.
 - **Mapa privado**: Leaflet com mapa, satélite, náutico e batimetria; pontos, poitas, estruturas e
   rampas privados, com notas e cache local.
+- **Trilhas privadas**: corrico e deslocamento desenhados no mapa, distância calculada e exportação
+  GPX.
+- **Ferramentas offline**: oito nós passo a passo, checklists por modalidade, defeso por UF e guia
+  para escolher piloteiro.
+- **Diário inteligente**: leitura de EXIF (data e GPS) para sugerir data, período e cidade; lembrete
+  de defeso por espécie/UF; insights comparativos com amostra mínima.
+- **Sugestão de espécie por foto**: porta plugável (Gemini opcional) com confirmação humana e
+  fallback manual quando não há provedor configurado.
 - Edição de pescaria preservando os IDs das capturas (links de troféu não quebram).
 - **Boas-vindas no primeiro acesso**, com nome e preferência de e-mail.
 - **Conta**: perfil, troca de e-mail via novo link, sessões, exportação e exclusão com confirmação.
@@ -66,6 +74,7 @@ card de troféu compartilhável + PDF da pescaria.
 | PDF | QuestPDF + QRCoder |
 | Dados ambientais | Open-Meteo (tempo, ondas, corrente e nível do mar) + MET Norway (lua) |
 | Mapas | Leaflet + OpenStreetMap + Esri World Imagery + OpenSeaMap + GEBCO (batimetria) |
+| Visão computacional | Porta `IReconhecedorDeEspecie` (Gemini opcional; manual por padrão) |
 | Mídia | upload local + arquivos estáticos com CORS |
 | Card do troféu | Canvas API no navegador (quadrado + story) |
 | PWA | manifest, service worker e página offline |
@@ -149,6 +158,9 @@ docker compose up --build
 | `Newsletter__MaximoPorEnvio` | limite de destinatários por execução |
 | `Condicoes__Fuso` | fuso das condições (padrão `America/Sao_Paulo`) |
 | `Condicoes__CacheMinutos` | validade do cache de condições (padrão 20) |
+| `Vision__Provider` | `Manual` (padrão) ou `Gemini` |
+| `Vision__ApiKey` | chave do provedor de visão (nunca commitar) |
+| `Vision__Model` | modelo de visão (padrão `gemini-2.5-flash`) |
 | `Auth__LinkBaseUrl` | URL pública da API usada no link mágico |
 | `Auth__WebUrl` | URL pública do site para redirecionar após confirmar |
 | `Auth__CookieSecure` | `true` em produção (HTTPS) |
@@ -165,11 +177,11 @@ dotnet test
 cd web && npm run check
 ```
 
-Atualmente: **67 testes de backend** (22 de domínio + 45 de aplicação) e checagem de tipos do
+Atualmente: **75 testes de backend** (25 de domínio + 50 de aplicação) e checagem de tipos do
 Astro. Cobrem criação/edição de pescaria, IDs de captura, validações, isolamento entre usuários,
 link mágico, expiração, uso único, sessão, logout, exclusão de conta, exportação, locais salvos,
-condições, lua/solunar, comparação com o histórico e pontos privados do mapa. O fluxo completo
-também é validado com Playwright.
+condições, lua/solunar, comparação com o histórico, pontos e trilhas privadas, além do fallback
+manual da sugestão de espécie. O fluxo completo também é validado com Playwright.
 
 O build da web gera as páginas da wiki e roda o Pagefind automaticamente:
 
@@ -215,6 +227,12 @@ npm run build   # astro build + pagefind + precache offline
 | `POST` | `/api/pontos` | cria ponto privado (máximo 200); exige sessão |
 | `PUT` | `/api/pontos/{id}` | edita ponto; exige dono |
 | `DELETE` | `/api/pontos/{id}` | exclui ponto; exige dono |
+| `GET` | `/api/trilhas` | trilhas privadas; exige sessão |
+| `POST` | `/api/trilhas` | cria trilha (máximo 100); exige sessão |
+| `PUT` | `/api/trilhas/{id}` | edita trilha; exige dono |
+| `DELETE` | `/api/trilhas/{id}` | exclui trilha; exige dono |
+| `GET` | `/api/locais/reverso?lat=&lon=` | cidade/UF a partir de coordenadas (Nominatim) |
+| `POST` | `/api/especies/sugerir` | sugestão de espécie por foto; exige sessão |
 | `GET` | `/health`, `/ready` | saúde/readiness |
 
 Cada pescaria tem `shareToken` público. O acesso ao diário é pela conta; não existe mais token
@@ -230,10 +248,16 @@ anônimo no navegador. Sessões e links mágicos são armazenados apenas como ha
 - Sessões duram 30 dias e podem ser encerradas no dispositivo ou em todos.
 - Fotos são reencodadas no navegador antes do upload, o que remove metadados EXIF do arquivo.
 - O local da pescaria aparece no link público daquela pescaria; o restante do diário não.
-- Locais salvos e pontos do mapa são privados. As condições públicas usam apenas as coordenadas da
-  URL e não expõem a conta de quem consulta.
+- Locais salvos, pontos e trilhas do mapa são privados. As condições públicas usam apenas as
+  coordenadas da URL e não expõem a conta de quem consulta.
 - O mapa usa camadas de terceiros (OSM, Esri, OpenSeaMap, GEBCO) com atribuição; não substitui carta
-  náutica oficial. Pontos ficam em cache local e são apagados quando a sessão expira.
+  náutica oficial. Pontos, trilhas e últimos azulejos ficam em cache local; dados privados são
+  apagados quando a sessão expira (401).
+- EXIF de foto é usado apenas para sugerir data, período e cidade. O GPS não é armazenado sem ação
+  do usuário; a cidade sugerida pode ser corrigida.
+- A sugestão de espécie é opcional e nunca tem autoridade: o pescador confirma ou corrige. Sem
+  provedor configurado, o fluxo cai no preenchimento manual.
+- Defeso e tamanho mínimo são um lembrete editorial com link para o órgão oficial, não um laudo.
 - A maré é uma **aproximação por modelo global** e é rotulada como tal. Não serve para navegação.
 - O card do troféu é gerado localmente no navegador; o Fisga não publica em rede social.
 - Exportação JSON e exclusão de conta (LGPD) já estão disponíveis em `/conta`.
@@ -246,10 +270,11 @@ anônimo no navegador. Sessões e links mágicos são armazenados apenas como ha
 - **Mais espécies, técnicas e regiões**, com revisão por pescadores locais.
 - **Validação de defeso/tamanho mínimo** no formulário por espécie e UF.
 - **Maré oficial do CHM** para os 44 portos, com importação anual e atribuição.
-- **Identificação de espécie por foto**, com confirmação humana e link para a wiki.
-- **Trilhas reais, PostGIS e inteligência coletiva anonimizada** por macrorregião.
-- **EXIF automático e defeso/tamanho mínimo** por espécie e UF.
-- **Nós, montagens, checklists e diretório de guias** offline.
+- **Provedor de visão** para ativar a sugestão automática de espécie (Gemini ou outro).
+- **PostGIS e inteligência coletiva anonimizada** por macrorregião, com opt-in e amostra mínima.
+- **Tábua oficial do CHM** para os 44 portos.
+- **Diretório de guias** com curadoria e perfis verificados.
+- **Mapas offline por área** baixada (tiles em Cache Storage/IndexedDB).
 - Roadmap completo em [`docs/roadmap.md`](docs/roadmap.md).
 - **Múltiplas fotos por captura** e escolha da capa.
 - **OG image dinâmica** renderizada no servidor, além da foto atual.

@@ -8,6 +8,7 @@ using Fisga.Application.Locais;
 using Fisga.Application.Newsletter;
 using Fisga.Application.Pescarias;
 using Fisga.Application.Pontos;
+using Fisga.Application.Trilhas;
 
 namespace Fisga.Application;
 
@@ -26,6 +27,7 @@ public static class DependencyInjection
         services.AddScoped<ServicoDeCondicoes>();
         services.AddScoped<ServicoDeComparacao>();
         services.AddScoped<ServicoDePontos>();
+        services.AddScoped<ServicoDeTrilhas>();
         return services;
     }
 }

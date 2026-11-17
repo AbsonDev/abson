@@ -1,0 +1,162 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import FerramentasNav from '../../components/ferramentas/FerramentasNav.astro';
+import NoDiagrama from '../../components/ferramentas/NoDiagrama.astro';
+import { categoriaNome, nos } from '../../data/nos';
+
+const categorias = ['todos', 'fluor', 'aco', 'snap', 'jig', 'arremesso'] as const;
+---
+
+<Layout
+  titulo="Nós e montagens de pesca — Fisga"
+  descricao="Oito nós de pesca com passo a passo, uso e dicas para fluorcarbono, aço, snaps, jig heads e carretel."
+>
+  <section class="ferramentas-topo">
+    <div class="container">
+      <span class="eyebrow">Nós e montagens</span>
+      <h1>O nó certo para <em>cada situação.</em></h1>
+      <p>
+        Fluorcarbono, aço, snap, jig head e arremesso. Passo a passo curto, com o erro que mais custa
+        peixe.
+      </p>
+      <FerramentasNav />
+    </div>
+  </section>
+
+  <section class="container ferramentas-conteudo">
+    <div class="ferramentas-filtros" role="group" aria-label="Filtrar nós por situação">
+      {categorias.map((categoria) => (
+        <button type="button" data-filtro={categoria} aria-pressed={categoria === 'todos' ? 'true' : 'false'}>
+          {categoria === 'todos' ? 'Todos' : categoriaNome[categoria]}
+        </button>
+      ))}
+      <button type="button" id="imprimir-nos">Imprimir</button>
+    </div>
+
+    <div class="nos-grade" id="nos-grade">
+      {nos.map((no) => (
+        <article class="no-card" data-categoria={no.categoria}>
+          <NoDiagrama tipo={no.diagrama} />
+          <div class="no-conteudo">
+            <span class="no-categoria">{categoriaNome[no.categoria]} · {no.dificuldade}</span>
+            <h2>{no.nome}</h2>
+            <p class="no-uso">{no.uso}</p>
+            <ol>
+              {no.passos.map((passo) => <li>{passo}</li>)}
+            </ol>
+            <p class="no-dica"><strong>Dica:</strong> {no.dica}</p>
+          </div>
+        </article>
+      ))}
+    </div>
+
+    <div class="ferramentas-nota">
+      Esta página é estática e entra no cache do Fisga depois da primeira visita. Umedeça o nó antes
+      de apertar e teste a resistência antes de arremessar.
+    </div>
+  </section>
+
+  <script>
+    const botoes = [...document.querySelectorAll<HTMLButtonElement>('[data-filtro]')];
+    const cards = [...document.querySelectorAll<HTMLElement>('.no-card')];
+
+    botoes.forEach((botao) => {
+      botao.addEventListener('click', () => {
+        const filtro = botao.dataset.filtro;
+        botoes.forEach((item) => item.setAttribute('aria-pressed', String(item === botao)));
+        cards.forEach((card) => {
+          const mostrar = filtro === 'todos' || card.dataset.categoria === filtro;
+          card.classList.toggle('oculto', !mostrar);
+        });
+      });
+    });
+
+    document.getElementById('imprimir-nos')?.addEventListener('click', () => window.print());
+  </script>
+
+  <style>
+    .nos-grade {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .no-card {
+      display: grid;
+      grid-template-columns: 150px minmax(0, 1fr);
+      gap: 14px;
+      padding: 14px;
+      border: 1px solid var(--linha);
+      border-radius: 14px;
+      background: var(--superficie);
+    }
+
+    .no-conteudo h2 {
+      margin-top: 2px;
+      font-size: 1.35rem;
+    }
+
+    .no-categoria {
+      color: var(--terracota);
+      font-size: 0.58rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .no-uso {
+      margin-top: 4px;
+      color: var(--tinta-suave);
+      font-size: 0.74rem;
+    }
+
+    .no-conteudo ol {
+      display: grid;
+      gap: 3px;
+      margin: 10px 0 0;
+      padding-left: 18px;
+      color: var(--tinta-suave);
+      font-size: 0.72rem;
+      line-height: 1.5;
+    }
+
+    .no-dica {
+      margin-top: 9px;
+      color: var(--tinta);
+      font-size: 0.7rem;
+      line-height: 1.5;
+    }
+
+    .no-dica strong {
+      color: var(--terracota);
+    }
+
+    @media (max-width: 980px) {
+      .nos-grade {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .no-card {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media print {
+      .ferramentas-topo,
+      .ferramentas-nav,
+      .ferramentas-filtros,
+      .ferramentas-nota,
+      .topo,
+      .rodape {
+        display: none !important;
+      }
+
+      .no-card {
+        break-inside: avoid;
+        border-color: #999;
+      }
+    }
+  </style>
+</Layout>

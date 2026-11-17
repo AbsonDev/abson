@@ -1,0 +1,314 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import FerramentasNav from '../../components/ferramentas/FerramentasNav.astro';
+
+const modalidades = [
+  {
+    id: 'caiaque',
+    nome: 'Caiaque',
+    descricao: 'Autonomia curta, exposição ao sol e ao vento. Segurança primeiro.',
+    itens: [
+      { id: 'colete', nome: 'Colete salva-vidas vestido', critico: true },
+      { id: 'leash', nome: 'Leash de pá e de varas', critico: true },
+      { id: 'agua', nome: 'Água e alimento', critico: true },
+      { id: 'protetor', nome: 'Protetor solar, boné e óculos', critico: false },
+      { id: 'comunicacao', nome: 'Rádio ou celular em saco estanque', critico: true },
+      { id: 'previsao', nome: 'Previsão de vento e chuva conferida', critico: true },
+      { id: 'plano', nome: 'Plano de retorno avisado para alguém', critico: true },
+      { id: 'luz', nome: 'Luz de sinalização se sair antes do amanhecer', critico: false },
+      { id: 'varas', nome: 'Varas, linhas e líderes', critico: false },
+      { id: 'iscas', nome: 'Iscas e artificiais', critico: false },
+      { id: 'alicate', nome: 'Alicate, faca e puçá', critico: false },
+      { id: 'reparo', nome: 'Kit de reparo e bomba', critico: false }
+    ]
+  },
+  {
+    id: 'costeira',
+    nome: 'Costeira',
+    descricao: 'Praia, pedra e estuário. Sal, sol e linha leve.',
+    itens: [
+      { id: 'colete', nome: 'Colete se entrar em pedra ou embarcação', critico: true },
+      { id: 'agua', nome: 'Água e alimento', critico: true },
+      { id: 'protetor', nome: 'Protetor, boné e camiseta UV', critico: false },
+      { id: 'licenca', nome: 'Licença/registro de pescador', critico: true },
+      { id: 'varas', nome: 'Vara, carretilha e linha', critico: false },
+      { id: 'lider', nome: 'Líder de fluorcarbono', critico: false },
+      { id: 'iscas', nome: 'Iscas naturais e artificiais', critico: false },
+      { id: 'alicate', nome: 'Alicate, faca e puçá', critico: false },
+      { id: 'saco', nome: 'Saco para lixo e para o peixe', critico: false },
+      { id: 'telefone', nome: 'Celular carregado e protegido', critico: true }
+    ]
+  },
+  {
+    id: 'embarcado',
+    nome: 'Embarcado',
+    descricao: 'Barco, mar aberto ou represa grande. Comunicação e redundância.',
+    itens: [
+      { id: 'colete', nome: 'Colete para todos a bordo', critico: true },
+      { id: 'radio', nome: 'Rádio VHF ou comunicação alternativa', critico: true },
+      { id: 'combustivel', nome: 'Combustível com reserva', critico: true },
+      { id: 'agua', nome: 'Água, comida e gelo', critico: true },
+      { id: 'primeiros', nome: 'Kit de primeiros socorros', critico: true },
+      { id: 'documento', nome: 'Documentos da embarcação e licença', critico: true },
+      { id: 'previsao', nome: 'Previsão de vento, onda e chuva', critico: true },
+      { id: 'plano', nome: 'Plano de navegação avisado', critico: true },
+      { id: 'ancora', nome: 'Âncora, cabo e defensas', critico: false },
+      { id: 'varas', nome: 'Varas, linhas e líderes', critico: false },
+      { id: 'iscas', nome: 'Iscas e artificiais', critico: false },
+      { id: 'alicate', nome: 'Alicate, faca, puçá e boga', critico: false }
+    ]
+  },
+  {
+    id: 'pesqueiro',
+    nome: 'Pesque-pague',
+    descricao: 'Estrutura controlada, mas ainda vale checar equipamento e regras.',
+    itens: [
+      { id: 'colete', nome: 'Colete se houver barco ou plataforma', critico: true },
+      { id: 'licenca', nome: 'Regras e licença do pesqueiro conferidas', critico: true },
+      { id: 'varas', nome: 'Varas e linhas para a espécie', critico: false },
+      { id: 'iscas', nome: 'Iscas permitidas no local', critico: false },
+      { id: 'alicate', nome: 'Alicate, puçá e faca', critico: false },
+      { id: 'protetor', nome: 'Protetor solar e boné', critico: false },
+      { id: 'agua', nome: 'Água e alimento', critico: true },
+      { id: 'dinheiro', nome: 'Dinheiro/Pix para taxas e consumo', critico: false }
+    ]
+  }
+];
+---
+
+<Layout
+  titulo="Checklists de pesca por modalidade — Fisga"
+  descricao="Listas de tralha e segurança para caiaque, costeira, embarcado e pesqueiro. Salvas no aparelho e offline."
+>
+  <section class="ferramentas-topo">
+    <div class="container">
+      <span class="eyebrow">Checklists</span>
+      <h1>Não esqueça <em>o essencial.</em></h1>
+      <p>
+        Marque antes de sair. O progresso fica salvo neste aparelho e a lista funciona offline depois
+        da primeira visita.
+      </p>
+      <FerramentasNav />
+    </div>
+  </section>
+
+  <section class="container ferramentas-conteudo">
+    <div class="checklists-grade">
+      {modalidades.map((modalidade) => (
+        <article class="checklist-card" data-checklist={modalidade.id}>
+          <div class="checklist-topo">
+            <div>
+              <span class="eyebrow">{modalidade.nome}</span>
+              <p>{modalidade.descricao}</p>
+            </div>
+            <strong data-progresso-texto>0%</strong>
+          </div>
+          <div class="checklist-barra" aria-hidden="true">
+            <span data-progresso-barra></span>
+          </div>
+          <ul>
+            {modalidade.itens.map((item) => (
+              <li>
+                <label>
+                  <input type="checkbox" data-item={item.id} />
+                  <span>{item.nome}</span>
+                  {item.critico && <small>essencial</small>}
+                </label>
+              </li>
+            ))}
+          </ul>
+          <div class="checklist-acoes">
+            <button type="button" class="btn btn--pequeno btn--contorno" data-limpar={modalidade.id}>
+              Limpar
+            </button>
+            <button type="button" class="btn btn--pequeno btn--contorno" data-imprimir>
+              Imprimir
+            </button>
+          </div>
+        </article>
+      ))}
+    </div>
+
+    <div class="ferramentas-nota">
+      Checklist não substitui treinamento, colete e bom senso. Em caiaque e barco, avise alguém
+      sobre o plano e confira a previsão antes de sair.
+    </div>
+  </section>
+
+  <script>
+    const chave = 'fisga:checklists:v1';
+    let salvo: Record<string, Record<string, boolean>> = {};
+
+    try {
+      salvo = JSON.parse(localStorage.getItem(chave) || '{}');
+    } catch {
+      salvo = {};
+    }
+
+    function atualizar(secao: HTMLElement) {
+      const id = secao.dataset.checklist;
+      if (!id) return;
+
+      const checks = [...secao.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')];
+      const marcados = checks.filter((check) => check.checked).length;
+      const percentual = checks.length === 0 ? 0 : Math.round((marcados / checks.length) * 100);
+
+      const texto = secao.querySelector<HTMLElement>('[data-progresso-texto]');
+      const barra = secao.querySelector<HTMLElement>('[data-progresso-barra]');
+      if (texto) texto.textContent = `${percentual}%`;
+      if (barra) barra.style.width = `${percentual}%`;
+
+      salvo[id] = {};
+      for (const check of checks) {
+        salvo[id][check.dataset.item ?? ''] = check.checked;
+      }
+      localStorage.setItem(chave, JSON.stringify(salvo));
+    }
+
+    document.querySelectorAll<HTMLElement>('[data-checklist]').forEach((secao) => {
+      const id = secao.dataset.checklist;
+      const checks = [...secao.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')];
+
+      for (const check of checks) {
+        check.checked = Boolean(id && salvo[id]?.[check.dataset.item ?? '']);
+        check.addEventListener('change', () => atualizar(secao));
+      }
+
+      secao.querySelector<HTMLButtonElement>('[data-limpar]')?.addEventListener('click', () => {
+        checks.forEach((check) => {
+          check.checked = false;
+        });
+        atualizar(secao);
+      });
+
+      secao.querySelector<HTMLButtonElement>('[data-imprimir]')?.addEventListener('click', () => {
+        window.print();
+      });
+
+      atualizar(secao);
+    });
+  </script>
+
+  <style>
+    .checklists-grade {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .checklist-card {
+      padding: 18px;
+      border: 1px solid var(--linha);
+      border-radius: 14px;
+      background: var(--superficie);
+    }
+
+    .checklist-topo {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .checklist-topo p {
+      max-width: 360px;
+      margin-top: 4px;
+      color: var(--tinta-suave);
+      font-size: 0.72rem;
+    }
+
+    .checklist-topo strong {
+      color: var(--terracota);
+      font-family: var(--fonte-titulo);
+      font-size: 1.4rem;
+    }
+
+    .checklist-barra {
+      height: 5px;
+      margin-top: 12px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: var(--linha);
+    }
+
+    .checklist-barra span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--terracota);
+      transition: width 180ms ease-out;
+    }
+
+    .checklist-card ul {
+      display: grid;
+      gap: 1px;
+      margin: 14px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .checklist-card li label {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--linha);
+      color: var(--tinta);
+      font-size: 0.78rem;
+      cursor: pointer;
+    }
+
+    .checklist-card li:last-child label {
+      border-bottom: 0;
+    }
+
+    .checklist-card input[type='checkbox'] {
+      width: 17px;
+      height: 17px;
+      accent-color: var(--terracota);
+    }
+
+    .checklist-card li small {
+      margin-left: auto;
+      padding: 2px 5px;
+      border-radius: 4px;
+      background: var(--terracota-clara);
+      color: var(--terracota-escura);
+      font-size: 0.5rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .checklist-acoes {
+      display: flex;
+      gap: 6px;
+      margin-top: 12px;
+    }
+
+    @media (max-width: 820px) {
+      .checklists-grade {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media print {
+      .ferramentas-topo,
+      .ferramentas-nav,
+      .ferramentas-nota,
+      .checklist-acoes,
+      .topo,
+      .rodape {
+        display: none !important;
+      }
+
+      .checklists-grade {
+        grid-template-columns: 1fr;
+      }
+
+      .checklist-card {
+        break-inside: avoid;
+      }
+    }
+  </style>
+</Layout>

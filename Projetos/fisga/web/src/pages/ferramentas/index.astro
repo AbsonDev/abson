@@ -1,0 +1,66 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import FerramentasNav from '../../components/ferramentas/FerramentasNav.astro';
+
+const ferramentas = [
+  {
+    href: '/ferramentas/nos',
+    titulo: 'Nós e montagens',
+    descricao: 'Oito nós passo a passo para fluorcarbono, aço, snaps, jig heads e carretel.',
+    meta: 'Offline · diagramas'
+  },
+  {
+    href: '/ferramentas/checklists',
+    titulo: 'Checklists',
+    descricao: 'Caiaque, costeira, embarcado e pesqueiro. Marque, feche o app e leve no celular.',
+    meta: 'Offline · salvo no aparelho'
+  },
+  {
+    href: '/ferramentas/defeso',
+    titulo: 'Defeso e tamanho mínimo',
+    descricao: 'Órgão ambiental da sua UF, o que confirmar e os links oficiais antes de sair.',
+    meta: '27 UFs · fontes oficiais'
+  },
+  {
+    href: '/ferramentas/guias',
+    titulo: 'Guias e piloteiros',
+    descricao: 'Como escolher um guia, o que perguntar e como indicar um profissional.',
+    meta: 'Diretório em curadoria'
+  }
+];
+---
+
+<Layout
+  titulo="Ferramentas do pescador — Fisga"
+  descricao="Nós e montagens, checklists por modalidade, defeso por estado e guias. Ferramentas gratuitas e offline."
+>
+  <section class="ferramentas-topo">
+    <div class="container">
+      <span class="eyebrow">Caixa de ferramentas</span>
+      <h1>O que você precisa <em>na água.</em></h1>
+      <p>
+        Nós, checklists, defeso e guias em um só lugar. O essencial funciona offline depois da
+        primeira visita.
+      </p>
+      <FerramentasNav />
+    </div>
+  </section>
+
+  <section class="container ferramentas-conteudo">
+    <div class="ferramentas-grade">
+      {ferramentas.map((ferramenta) => (
+        <a class="ferramenta-card" href={ferramenta.href}>
+          <span class="ferramenta-meta">{ferramenta.meta}</span>
+          <h2>{ferramenta.titulo}</h2>
+          <p>{ferramenta.descricao}</p>
+          <span class="link-seta">Abrir →</span>
+        </a>
+      ))}
+    </div>
+
+    <div class="ferramentas-nota">
+      <strong>Antes de sair:</strong> confira a previsão, avise alguém sobre o seu plano, use colete
+      e respeite o defeso. Ferramenta boa é a que volta com você.
+    </div>
+  </section>
+</Layout>

@@ -3,9 +3,11 @@ using Fisga.Application.Condicoes;
 using Fisga.Application.Identidade;
 using Fisga.Application.Locais;
 using Fisga.Application.Pontos;
+using Fisga.Application.Trilhas;
 using Fisga.Domain.Identidade;
 using Fisga.Domain.Locais;
 using Fisga.Domain.Pontos;
+using Fisga.Domain.Trilhas;
 using Fisga.Domain.Pescarias;
 
 namespace Fisga.Application.Tests;
@@ -120,6 +122,35 @@ internal sealed class PontoPrivadoRepositorioFake : IPontoPrivadoRepository
     }
 }
 
+internal sealed class TrilhaPrivadaRepositorioFake : ITrilhaPrivadaRepository
+{
+    public List<TrilhaPrivada> Trilhas { get; } = [];
+
+    public Task<IReadOnlyList<TrilhaPrivada>> ListarPorUsuarioAsync(Guid usuarioId, CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<TrilhaPrivada>>(
+            Trilhas.Where(trilha => trilha.UsuarioId == usuarioId).ToList());
+
+    public Task<TrilhaPrivada?> ObterPorIdAsync(Guid id, CancellationToken ct = default) =>
+        Task.FromResult(Trilhas.FirstOrDefault(trilha => trilha.Id == id));
+
+    public Task<int> ContarPorUsuarioAsync(Guid usuarioId, CancellationToken ct = default) =>
+        Task.FromResult(Trilhas.Count(trilha => trilha.UsuarioId == usuarioId));
+
+    public Task AdicionarAsync(TrilhaPrivada trilha, CancellationToken ct = default)
+    {
+        Trilhas.Add(trilha);
+        return Task.CompletedTask;
+    }
+
+    public Task SalvarAsync(TrilhaPrivada trilha, CancellationToken ct = default) => Task.CompletedTask;
+
+    public Task RemoverAsync(TrilhaPrivada trilha, CancellationToken ct = default)
+    {
+        Trilhas.Remove(trilha);
+        return Task.CompletedTask;
+    }
+}
+
 internal sealed class ProvedorDeCondicoesFake(DadosDeCondicoes dados) : IProvedorDeCondicoes
 {
     public Task<DadosDeCondicoes?> ObterAsync(
@@ -137,6 +168,13 @@ internal sealed class GeocodificadorFake : IGeocodificador
         CancellationToken ct = default) =>
         Task.FromResult<IReadOnlyList<ResultadoDeBusca>>(
             [new ResultadoDeBusca("Aracaju", "Aracaju", "SE", -10.911, -37.071, "Brasil")]);
+
+    public Task<ResultadoDeBusca?> ReversoAsync(
+        double latitude,
+        double longitude,
+        CancellationToken ct = default) =>
+        Task.FromResult<ResultadoDeBusca?>(
+            new ResultadoDeBusca("Aracaju", "Aracaju", "SE", latitude, longitude, "Brasil"));
 }
 
 internal sealed class UsuarioRepositorioFake : IUsuarioRepository

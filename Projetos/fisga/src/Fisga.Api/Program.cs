@@ -101,6 +101,8 @@ app.MapPescariaEndpoints();
 app.MapMidiaEndpoints();
 app.MapCondicoesEndpoints();
 app.MapPontosEndpoints();
+app.MapTrilhasEndpoints();
+app.MapVisionEndpoints();
 
 await app.Services.InicializarBancoAsync();
 

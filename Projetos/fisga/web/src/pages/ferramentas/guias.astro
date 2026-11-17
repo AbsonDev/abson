@@ -1,0 +1,174 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import FerramentasNav from '../../components/ferramentas/FerramentasNav.astro';
+
+const perguntas = [
+  'Você tem licença e seguro para operar a embarcação?',
+  'Qual é a região exata e quanto tempo dura a saída?',
+  'O preço inclui combustível, iscas, equipamento e limpeza do peixe?',
+  'Qual é a política de soltura e de captura?',
+  'Quantas pessoas vão a bordo e qual é o tamanho mínimo/máximo do grupo?',
+  'Como funciona o cancelamento por chuva, vento ou maré?',
+  'Quais espécies são realistas na época e no local?',
+  'Você fornece colete, rádio e kit de segurança?',
+  'Como você se comunica com a família em caso de atraso?',
+  'Você tem referências recentes de outros pescadores?'
+];
+
+const criterios = [
+  { titulo: 'Licença e seguro', texto: 'Embarcação regularizada, seguro e documentação em dia.' },
+  { titulo: 'Segurança', texto: 'Colete para todos, rádio, previsão e plano de retorno.' },
+  { titulo: 'Conhecimento local', texto: 'Rotina na região, espécies da época e respeito ao defeso.' },
+  { titulo: 'Transparência', texto: 'Preço fechado, o que está incluso e política de cancelamento.' },
+  { titulo: 'Manejo', texto: 'Soltura, tempo fora da água e cuidado com o peixe.' }
+];
+---
+
+<Layout
+  titulo="Guias e piloteiros de pesca — Fisga"
+  descricao="Como escolher um guia ou piloteiro de pesca, o que perguntar antes de fechar e como indicar um profissional."
+>
+  <section class="ferramentas-topo">
+    <div class="container">
+      <span class="eyebrow">Guias e piloteiros</span>
+      <h1>Uma boa saída começa <em>antes do barco.</em></h1>
+      <p>
+        O diretório do Fisga está em curadoria. Enquanto isso, use este roteiro para escolher um guia
+        com segurança e transparência — sem pagar por promessa.
+      </p>
+      <FerramentasNav />
+    </div>
+  </section>
+
+  <section class="container ferramentas-conteudo">
+    <div class="guia-grade">
+      {criterios.map((criterio, indice) => (
+        <article class="cartao guia-criterio">
+          <span class="guia-numero">0{indice + 1}</span>
+          <h2>{criterio.titulo}</h2>
+          <p>{criterio.texto}</p>
+        </article>
+      ))}
+    </div>
+
+    <section class="ferramentas-secao">
+      <span class="eyebrow">Antes de fechar</span>
+      <h2>Dez perguntas para o guia.</h2>
+      <ol class="guia-perguntas">
+        {perguntas.map((pergunta) => <li>{pergunta}</li>)}
+      </ol>
+    </section>
+
+    <div class="guia-cta">
+      <div>
+        <span class="eyebrow">Diretório em curadoria</span>
+        <h2>É guia ou piloteiro?</h2>
+        <p>
+          O Fisga não publica cadastros automáticos. Se você quer entrar na lista, envie região,
+          modalidades, licença, seguro e referências. A curadoria é manual.
+        </p>
+      </div>
+      <a class="btn btn--primario" href="/contato">Indicar um guia</a>
+    </div>
+
+    <div class="ferramentas-nota">
+      O Fisga não intermedeia pagamento, não garante a saída e não substitui a sua própria avaliação.
+      Combine preço, segurança e política de soltura por escrito.
+    </div>
+  </section>
+
+  <style>
+    .guia-grade {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .guia-criterio {
+      min-height: 160px;
+    }
+
+    .guia-numero {
+      color: var(--dourado);
+      font-family: var(--fonte-titulo);
+      font-size: 1.8rem;
+      font-weight: 600;
+    }
+
+    .guia-criterio h2 {
+      margin-top: 6px;
+      font-size: 1.2rem;
+    }
+
+    .guia-criterio p {
+      margin-top: 5px;
+      color: var(--tinta-suave);
+      font-size: 0.72rem;
+      line-height: 1.5;
+    }
+
+    .guia-perguntas {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 24px;
+      max-width: 920px;
+      margin: 18px 0 0;
+      padding-left: 20px;
+      color: var(--tinta-suave);
+      font-size: 0.82rem;
+      line-height: 1.55;
+    }
+
+    .guia-cta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      margin-top: 32px;
+      padding: clamp(20px, 4vw, 34px);
+      border-radius: var(--raio);
+      background: var(--terracota-escura);
+      color: var(--creme);
+    }
+
+    .guia-cta .eyebrow {
+      color: var(--dourado);
+    }
+
+    .guia-cta h2 {
+      margin-top: 6px;
+      font-size: clamp(1.7rem, 3vw, 2.3rem);
+    }
+
+    .guia-cta p {
+      max-width: 620px;
+      margin-top: 8px;
+      color: rgba(255, 249, 240, 0.76);
+      font-size: 0.82rem;
+    }
+
+    .guia-cta .btn {
+      flex: 0 0 auto;
+      background: var(--creme);
+      color: var(--terracota-escura);
+    }
+
+    @media (max-width: 980px) {
+      .guia-grade {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 640px) {
+      .guia-grade,
+      .guia-perguntas {
+        grid-template-columns: 1fr;
+      }
+
+      .guia-cta {
+        align-items: start;
+        flex-direction: column;
+      }
+    }
+  </style>
+</Layout>

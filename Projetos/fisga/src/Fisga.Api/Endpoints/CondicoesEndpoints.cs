@@ -89,6 +89,26 @@ public static class CondicoesEndpoints
             })
             .RequireRateLimiting("leitura");
 
+        app.MapGet("/api/locais/reverso", async (
+                double? lat,
+                double? lon,
+                IGeocodificador geocodificador,
+                CancellationToken ct) =>
+            {
+                if (lat is null || lon is null
+                    || double.IsNaN(lat.Value) || double.IsNaN(lon.Value)
+                    || lat is < -90 or > 90 || lon is < -180 or > 180)
+                {
+                    return Results.BadRequest(
+                        new ErroResponse("coordenadas_invalidas", "Informe latitude e longitude válidas."));
+                }
+
+                var resultado = await geocodificador.ReversoAsync(lat.Value, lon.Value, ct);
+                return resultado is null ? Results.NotFound() : Results.Ok(resultado);
+            })
+            .AllowAnonymous()
+            .RequireRateLimiting("leitura");
+
         app.MapGet("/api/locais/buscar", async (
                 string? q,
                 IGeocodificador geocodificador,
