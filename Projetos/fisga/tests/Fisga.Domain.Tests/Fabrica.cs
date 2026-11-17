@@ -38,8 +38,7 @@ internal static class Fabrica
         Fisga.Domain.Pescarias.Pescaria.Criar(
             dados ?? Dados(),
             Guid.NewGuid(),
-            new string('d', 64),
+            Guid.NewGuid(),
             "share-token",
-            new string('e', 64),
             Agora);
 }

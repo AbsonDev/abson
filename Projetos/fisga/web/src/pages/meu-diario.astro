@@ -5,18 +5,23 @@ import Layout from '../layouts/Layout.astro';
 <Layout
   titulo="Meu diário — Fisga"
   descricao="Seu diário privado de pesca, com capturas, troféus, estatísticas e recordes."
+  noindex
 >
   <section class="calc-topo">
     <div class="container">
-      <span class="eyebrow">Meu diário</span>
+      <span class="eyebrow" id="saudacao">Meu diário</span>
       <h1>Suas histórias, <em>lado a lado.</em></h1>
       <p>
-        Recordes, espécies, iscas e locais que funcionaram. O diário é privado por token; cada
+        Recordes, espécies, iscas e locais que funcionaram. O diário é privado na sua conta; cada
         pescaria tem seu próprio link público.
       </p>
-      <div class="hero-acoes">
+      <div class="hero-acoes oculto" id="acoes-logado">
         <a class="btn btn--primario" href="/registrar">Registrar nova pescaria</a>
-        <button class="btn btn--contorno" type="button" id="copiar-diario">Copiar link do diário</button>
+        <a class="btn btn--contorno" href="/conta">Minha conta</a>
+      </div>
+      <div class="hero-acoes" id="acoes-deslogado">
+        <a class="btn btn--primario" href="/entrar?voltar=/meu-diario">Entrar no diário</a>
+        <a class="btn btn--contorno" href="/registrar">Conhecer o registro</a>
       </div>
     </div>
   </section>
@@ -25,6 +30,28 @@ import Layout from '../layouts/Layout.astro';
     <div id="erro" class="erro-caixa" role="alert"></div>
 
     <div id="carregando" class="aviso">Carregando seu diário...</div>
+
+    <div id="acesso" class="estado-vazio oculto" style="margin-top: 10px;">
+      <span class="eyebrow">Diário privado</span>
+      <h2>Entre para abrir seu diário.</h2>
+      <p>
+        Sua conta guarda as pescarias, os troféus e os padrões em qualquer aparelho. O acesso é por
+        e-mail, sem senha, e o diário completo só aparece para você.
+      </p>
+      <div class="diario-stats" style="max-width: 720px; margin: 26px auto 0;">
+        <div class="stat-card"><span>Pescarias</span><strong>—</strong><small>seus dias na água</small></div>
+        <div class="stat-card"><span>Capturas</span><strong>—</strong><small>peixes no diário</small></div>
+        <div class="stat-card"><span>Recorde</span><strong>—</strong><small>seu maior peixe</small></div>
+        <div class="stat-card"><span>Soltos</span><strong>—</strong><small>devolvidos à água</small></div>
+      </div>
+      <div class="hero-acoes" style="justify-content: center; margin-top: 24px;">
+        <a class="btn btn--primario" href="/entrar?voltar=/meu-diario">Entrar com e-mail</a>
+        <a class="btn btn--contorno" href="/registrar">Registrar pescaria</a>
+      </div>
+      <p style="margin-top: 16px; font-size: 0.68rem;">
+        Ainda não tem conta? O primeiro acesso cria a sua automaticamente.
+      </p>
+    </div>
 
     <div id="conteudo-diario" class="oculto">
       <div class="diario-stats">
@@ -46,14 +73,14 @@ import Layout from '../layouts/Layout.astro';
         </article>
 
         <article class="cartao" style="background: var(--creme);">
-          <span class="selo selo--terracota">Diário privado</span>
-          <h2 style="margin-top: 12px;">Guarde o link de backup.</h2>
+          <span class="selo selo--terracota">Sua conta</span>
+          <h2 style="margin-top: 12px;">O diário acompanha você.</h2>
           <p>
-            Se você limpar o navegador ou trocar de aparelho, o link abaixo abre o mesmo diário.
-            Quem tiver o link consegue acessá-lo — trate como uma senha.
+            Entre com o mesmo e-mail em qualquer aparelho e continue de onde parou. Não há link de
+            backup para perder: a sua conta é a chave.
           </p>
           <div class="acoes-calculo">
-            <button class="btn btn--contorno" type="button" id="copiar-diario-2">Copiar link do diário</button>
+            <a class="btn btn--contorno" href="/conta">Ver minha conta</a>
           </div>
         </article>
       </div>
@@ -79,12 +106,15 @@ import Layout from '../layouts/Layout.astro';
   <script>
     // @ts-nocheck
     const API = (document.body.dataset.api || 'http://localhost:5184').replace(/\/$/, '');
-    const chaveDiario = 'fisga:diario-token';
     const conteudo = document.getElementById('conteudo-diario');
     const carregando = document.getElementById('carregando');
+    const acesso = document.getElementById('acesso');
     const erro = document.getElementById('erro');
     const lista = document.getElementById('lista');
     const vazio = document.getElementById('vazio');
+    const acoesLogado = document.getElementById('acoes-logado');
+    const acoesDeslogado = document.getElementById('acoes-deslogado');
+    const saudacao = document.getElementById('saudacao');
     const reais = (valor) =>
       Number(valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
     const escapar = (texto) =>
@@ -100,67 +130,35 @@ import Layout from '../layouts/Layout.astro';
       );
     };
 
-    function tokenDoDiario() {
-      const parametros = new URLSearchParams(window.location.search);
-      const tokenUrl = parametros.get('token');
-      try {
-        if (tokenUrl) {
-          localStorage.setItem(chaveDiario, tokenUrl);
-          window.history.replaceState({}, '', window.location.pathname);
-        }
-
-        let token = localStorage.getItem(chaveDiario);
-
-        if (!token || token.length < 16) {
-          const bytes = new Uint8Array(24);
-          crypto.getRandomValues(bytes);
-          token = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
-          localStorage.setItem(chaveDiario, token);
-        }
-
-        return token;
-      } catch {
-        return tokenUrl || 'diario-temporario-1234567890';
-      }
+    function mostrarAcesso() {
+      carregando.classList.add('oculto');
+      conteudo.classList.add('oculto');
+      acesso.classList.remove('oculto');
+      acoesLogado.classList.add('oculto');
+      acoesDeslogado.classList.remove('oculto');
     }
 
-    function linkDoDiario() {
-      return `${window.location.origin}/meu-diario?token=${encodeURIComponent(tokenDoDiario())}`;
+    function mostrarErro(mensagem) {
+      carregando.classList.add('oculto');
+      erro.textContent = mensagem;
+      erro.classList.add('visivel');
     }
 
-    async function copiarLink() {
-      try {
-        await navigator.clipboard.writeText(linkDoDiario());
-        return true;
-      } catch {
-        window.prompt('Copie o link do seu diário:', linkDoDiario());
-        return false;
-      }
-    }
-
-    ['copiar-diario', 'copiar-diario-2'].forEach((id) => {
-      document.getElementById(id)?.addEventListener('click', async () => {
-        const botao = document.getElementById(id);
-        const original = botao.textContent;
-        await copiarLink();
-        botao.textContent = 'Link copiado!';
-        window.setTimeout(() => {
-          botao.textContent = original;
-        }, 2200);
-      });
-    });
-
-    async function carregar() {
+    async function carregarDiario() {
       erro.classList.remove('visivel');
       try {
-        const resposta = await fetch(`${API}/api/diario`, {
-          headers: { 'X-Diary-Token': tokenDoDiario() }
-        });
+        const resposta = await fetch(`${API}/api/diario`, { credentials: 'include' });
+        if (resposta.status === 401) {
+          mostrarAcesso();
+          return;
+        }
+
         const dados = await resposta.json().catch(() => ({}));
         if (!resposta.ok) throw new Error(dados.detalhe || 'Não foi possível carregar o diário.');
 
         carregando.classList.add('oculto');
         conteudo.classList.remove('oculto');
+        acesso.classList.add('oculto');
 
         document.getElementById('stat-pescarias').textContent = dados.totalPescarias ?? 0;
         document.getElementById('stat-capturas').textContent = dados.totalCapturas ?? 0;
@@ -205,19 +203,48 @@ import Layout from '../layouts/Layout.astro';
                 </div>
                 <div class="pescaria-card-acoes">
                   <a class="link-seta" href="/p/${encodeURIComponent(pescaria.shareToken)}">Abrir pescaria</a>
-                  <span style="color: var(--tinta-suave); font-size: 0.64rem;">${data(pescaria.data)}</span>
+                  <a class="pescaria-editar" href="/registrar?editar=${encodeURIComponent(pescaria.id)}">Editar</a>
                 </div>
               </article>
             `;
           })
           .join('');
       } catch (falha) {
-        carregando.classList.add('oculto');
-        erro.textContent = falha instanceof Error ? falha.message : 'Não foi possível carregar o diário.';
-        erro.classList.add('visivel');
+        mostrarErro(falha instanceof Error ? falha.message : 'Não foi possível carregar o diário.');
       }
     }
 
-    carregar();
+    (async function iniciar() {
+      try {
+        const resposta = await fetch(`${API}/api/auth/me`, { credentials: 'include' });
+        const dados = await resposta.json().catch(() => ({}));
+
+        if (!dados.autenticado || !dados.usuario) {
+          mostrarAcesso();
+          return;
+        }
+
+        acoesLogado.classList.remove('oculto');
+        acoesDeslogado.classList.add('oculto');
+        saudacao.textContent = `Diário de ${dados.usuario.nomeExibicao}`;
+        await carregarDiario();
+      } catch {
+        mostrarAcesso();
+      }
+    })();
   </script>
 </Layout>
+
+<style>
+  .pescaria-editar {
+    color: var(--tinta-suave);
+    font-size: 0.66rem;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .pescaria-editar:hover {
+    color: var(--terracota);
+  }
+</style>

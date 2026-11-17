@@ -1,0 +1,309 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  titulo="Bem-vindo ao Fisga"
+  descricao="Seu primeiro acesso ao Fisga. Seu diário já está pronto e é privado por padrão."
+  noindex
+>
+  <section class="boas-vindas">
+    <div class="container">
+      <div class="boas-progresso">
+        <span>Primeiro acesso</span>
+        <span>1 de 1</span>
+      </div>
+
+      <div class="boas-cartao">
+        <div class="boas-avatar" id="boas-avatar" aria-hidden="true">F</div>
+        <span class="eyebrow">Sua conta está pronta</span>
+        <h1>Bem-vindo ao <em>Fisga.</em></h1>
+        <p class="boas-lead" id="boas-lead">
+          Seu diário já está pronto e é privado por padrão. Nada é publicado até você gerar um link
+          para uma pescaria.
+        </p>
+
+        <form id="boas-form" class="boas-form" novalidate>
+          <div class="campo">
+            <label for="boas-nome">Como quer ser chamado?</label>
+            <input
+              id="boas-nome"
+              type="text"
+              maxlength="80"
+              autocomplete="name"
+              placeholder="Seu nome de pescador"
+            />
+            <small>Opcional. Aparece no diário e nos cards que você compartilhar.</small>
+          </div>
+
+          <label class="boas-check">
+            <input type="checkbox" id="boas-novidades" />
+            <span>
+              <strong>Quero receber dicas de pesca por e-mail</strong>
+              <small>Uma mensagem por mês, no máximo. Você cancela em Minha conta.</small>
+            </span>
+          </label>
+
+          <p id="boas-erro" class="erro-caixa" role="alert"></p>
+
+          <button class="btn btn--primario btn--largo" type="submit" id="boas-salvar">
+            Entrar no meu diário
+          </button>
+        </form>
+
+        <button class="boas-pular" type="button" id="boas-pular">Pular por agora</button>
+
+        <details class="boas-privacidade">
+          <summary>O que fica privado?</summary>
+          <p>
+            O diário completo, as estatísticas e os recordes ficam na sua conta. Uma pescaria só
+            aparece para outra pessoa quando você gera e compartilha o link público dela. O card do
+            troféu e o PDF usam apenas aquela pescaria.
+          </p>
+        </details>
+      </div>
+    </div>
+  </section>
+</Layout>
+
+<style>
+  .boas-vindas {
+    padding: clamp(32px, 5vw, 64px) 0 clamp(60px, 8vw, 96px);
+  }
+
+  .boas-progresso {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: min(100%, 720px);
+    margin: 0 auto 18px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--terracota);
+    color: var(--tinta-suave);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+  }
+
+  .boas-cartao {
+    width: min(100%, 720px);
+    margin: 0 auto;
+    padding: clamp(26px, 5vw, 48px);
+    border: 1px solid var(--linha);
+    border-radius: 22px;
+    background: var(--superficie);
+    box-shadow: var(--sombra);
+  }
+
+  .boas-avatar {
+    display: grid;
+    width: 64px;
+    height: 64px;
+    margin-bottom: 20px;
+    place-items: center;
+    border-radius: 999px;
+    background: var(--terracota);
+    color: var(--creme);
+    font-family: var(--fonte-titulo);
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+
+  .boas-cartao h1 {
+    margin-top: 12px;
+    font-size: clamp(2.3rem, 5vw, 3.6rem);
+  }
+
+  .boas-lead {
+    max-width: 56ch;
+    margin-top: 14px;
+    color: var(--tinta-suave);
+    font-size: 0.94rem;
+    line-height: 1.7;
+  }
+
+  .boas-form {
+    margin-top: 26px;
+  }
+
+  .boas-form .campo input {
+    min-height: 46px;
+    background: var(--papel);
+  }
+
+  .boas-form .campo small {
+    display: block;
+    margin-top: 5px;
+    color: var(--tinta-suave);
+    font-size: 0.66rem;
+  }
+
+  .boas-check {
+    display: flex;
+    align-items: flex-start;
+    gap: 11px;
+    margin-top: 18px;
+    padding: 14px;
+    border: 1px solid var(--linha);
+    border-radius: 12px;
+    background: var(--papel);
+    cursor: pointer;
+  }
+
+  .boas-check input {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+    margin-top: 2px;
+    accent-color: var(--terracota);
+  }
+
+  .boas-check span {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .boas-check strong {
+    font-size: 0.78rem;
+  }
+
+  .boas-check small {
+    color: var(--tinta-suave);
+    font-size: 0.67rem;
+    line-height: 1.5;
+  }
+
+  .boas-form .btn {
+    margin-top: 18px;
+  }
+
+  .boas-form .erro-caixa.visivel {
+    margin-top: 14px;
+  }
+
+  .boas-pular {
+    display: block;
+    width: 100%;
+    margin-top: 12px;
+    padding: 7px;
+    border: 0;
+    background: transparent;
+    color: var(--tinta-suave);
+    font-size: 0.7rem;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .boas-pular:hover {
+    color: var(--tinta);
+  }
+
+  .boas-privacidade {
+    margin-top: 20px;
+    padding-top: 18px;
+    border-top: 1px solid var(--linha);
+  }
+
+  .boas-privacidade summary {
+    color: var(--tinta);
+    font-size: 0.74rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .boas-privacidade p {
+    margin-top: 8px;
+    color: var(--tinta-suave);
+    font-size: 0.7rem;
+    line-height: 1.6;
+  }
+</style>
+
+<script>
+  // @ts-nocheck
+  const API = (document.body.dataset.api || 'http://localhost:5184').replace(/\/$/, '');
+  const formulario = document.getElementById('boas-form');
+  const nomeInput = document.getElementById('boas-nome');
+  const novidades = document.getElementById('boas-novidades');
+  const botao = document.getElementById('boas-salvar');
+  const erro = document.getElementById('boas-erro');
+  const avatar = document.getElementById('boas-avatar');
+  const lead = document.getElementById('boas-lead');
+  let usuario = null;
+
+  function destino() {
+    try {
+      const salvo = sessionStorage.getItem('fisga:retorno');
+      if (salvo && salvo.startsWith('/') && !salvo.startsWith('//')) {
+        sessionStorage.removeItem('fisga:retorno');
+        return salvo;
+      }
+    } catch {}
+    return '/meu-diario';
+  }
+
+  function iniciais(nome) {
+    const partes = String(nome || 'F').trim().split(/\s+/).filter(Boolean);
+    if (partes.length >= 2) return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
+    return String(nome || 'F').slice(0, 2).toUpperCase();
+  }
+
+  (async function iniciar() {
+    try {
+      const resposta = await fetch(`${API}/api/auth/me`, { credentials: 'include' });
+      const dados = await resposta.json().catch(() => ({}));
+      if (!dados.autenticado || !dados.usuario) {
+        window.location.replace('/entrar?voltar=/meu-diario');
+        return;
+      }
+
+      usuario = dados.usuario;
+      avatar.textContent = iniciais(usuario.nome || usuario.nomeExibicao);
+      nomeInput.value = usuario.nome || '';
+      novidades.checked = Boolean(usuario.aceitaNovidades);
+      lead.innerHTML = `${usuario.email} está conectado. Seu diário já está pronto e é privado por padrão.`;
+
+      if (!usuario.nome) nomeInput.focus();
+    } catch {
+      erro.textContent = 'Não foi possível carregar sua conta. Recarregue a página.';
+      erro.classList.add('visivel');
+    }
+  })();
+
+  formulario.addEventListener('submit', async (evento) => {
+    evento.preventDefault();
+    if (!usuario) return;
+
+    erro.classList.remove('visivel');
+    botao.disabled = true;
+    botao.textContent = 'Salvando...';
+
+    try {
+      const resposta = await fetch(`${API}/api/auth/perfil`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nome: nomeInput.value.trim() || null,
+          aceitaNovidades: novidades.checked
+        })
+      });
+
+      const dados = await resposta.json().catch(() => ({}));
+      if (!resposta.ok) throw new Error(dados.detalhe || 'Não foi possível salvar suas preferências.');
+
+      window.location.assign(destino());
+    } catch (falha) {
+      erro.textContent = falha instanceof Error ? falha.message : 'Não foi possível salvar suas preferências.';
+      erro.classList.add('visivel');
+      botao.disabled = false;
+      botao.textContent = 'Entrar no meu diário';
+    }
+  });
+
+  document.getElementById('boas-pular')?.addEventListener('click', () => {
+    window.location.assign(destino());
+  });
+</script>

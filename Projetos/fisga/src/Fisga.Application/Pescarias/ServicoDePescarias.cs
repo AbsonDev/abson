@@ -11,64 +11,90 @@ public sealed class ServicoDePescarias(
 {
     public async Task<PescariaSalvaDto> CriarAsync(
         EntradaDePescaria entrada,
-        string diarioToken,
+        Guid usuarioId,
         CancellationToken ct = default)
     {
-        var diarioHash = HashDoDiario(diarioToken);
+        if (usuarioId == Guid.Empty)
+        {
+            throw new NaoAutenticadoException();
+        }
+
         var shareToken = TokensSeguros.Novo();
-        var editToken = TokensSeguros.Novo(24);
 
         var pescaria = Pescaria.Criar(
             PescariaMapper.ParaDados(entrada),
             Guid.NewGuid(),
-            diarioHash,
+            usuarioId,
             shareToken,
-            TokensSeguros.Hash(editToken),
             relogio.Agora);
 
         await repositorio.AdicionarAsync(pescaria, ct);
         await PublicarEventosAsync(pescaria, ct);
 
-        return new PescariaSalvaDto(pescaria.Id, pescaria.ShareToken, editToken);
+        return new PescariaSalvaDto(pescaria.Id, pescaria.ShareToken);
     }
 
     public async Task<PescariaDetalhadaDto> AtualizarAsync(
         Guid id,
-        string editToken,
+        Guid usuarioId,
         EntradaDePescaria entrada,
         CancellationToken ct = default)
     {
+        if (usuarioId == Guid.Empty)
+        {
+            throw new NaoAutenticadoException();
+        }
+
         var pescaria = await repositorio.ObterPorIdAsync(id, ct)
                        ?? throw new RecursoNaoEncontradoException("pescaria_nao_encontrada", "Pescaria não encontrada.");
 
-        if (!TokensSeguros.Correspondem(editToken, pescaria.EditTokenHash))
+        if (!pescaria.PertenceA(usuarioId))
         {
-            throw new AcessoNegadoException("Você não tem permissão para editar esta pescaria.");
+            throw new RecursoNaoEncontradoException("pescaria_nao_encontrada", "Pescaria não encontrada.");
         }
 
         pescaria.Atualizar(PescariaMapper.ParaDados(entrada), relogio.Agora);
         await repositorio.SalvarAsync(pescaria, ct);
         await PublicarEventosAsync(pescaria, ct);
 
-        return PescariaMapper.ParaDetalhada(pescaria);
+        return PescariaMapper.ParaDetalhada(pescaria, podeEditar: true);
     }
 
-    public async Task<PescariaDetalhadaDto?> ObterPublicoAsync(string shareToken, CancellationToken ct = default)
+    public async Task<PescariaDetalhadaDto> ObterDoUsuarioAsync(
+        Guid id,
+        Guid usuarioId,
+        CancellationToken ct = default)
     {
-        var pescaria = await repositorio.ObterPorShareTokenAsync(shareToken, ct);
-        return pescaria is null ? null : PescariaMapper.ParaDetalhada(pescaria);
-    }
-
-    public static string HashDoDiario(string diarioToken)
-    {
-        if (string.IsNullOrWhiteSpace(diarioToken) || diarioToken.Trim().Length < 16)
+        if (usuarioId == Guid.Empty)
         {
-            throw new Domain.Common.DomainException(
-                "diario_token_invalido",
-                "O diário deste navegador é inválido. Recarregue a página para criar um novo.");
+            throw new NaoAutenticadoException();
         }
 
-        return TokensSeguros.Hash(diarioToken.Trim());
+        var pescaria = await repositorio.ObterPorIdAsync(id, ct)
+                       ?? throw new RecursoNaoEncontradoException("pescaria_nao_encontrada", "Pescaria não encontrada.");
+
+        if (!pescaria.PertenceA(usuarioId))
+        {
+            // Não revelamos se a pescaria existe para outro usuário.
+            throw new RecursoNaoEncontradoException("pescaria_nao_encontrada", "Pescaria não encontrada.");
+        }
+
+        return PescariaMapper.ParaDetalhada(pescaria, podeEditar: true);
+    }
+
+    public async Task<PescariaDetalhadaDto?> ObterPublicoAsync(
+        string shareToken,
+        Guid? usuarioId = null,
+        CancellationToken ct = default)
+    {
+        var pescaria = await repositorio.ObterPorShareTokenAsync(shareToken, ct);
+        if (pescaria is null)
+        {
+            return null;
+        }
+
+        var podeEditar = usuarioId is { } id && pescaria.PertenceA(id);
+        return PescariaMapper.ParaDetalhada(pescaria, podeEditar);
     }
 
     private async Task PublicarEventosAsync(Pescaria pescaria, CancellationToken ct)

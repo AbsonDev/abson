@@ -1,0 +1,261 @@
+---
+// Menu de conta: o estado é resolvido no cliente porque a sessão vive no
+// domínio da API (api.fisga.abson.tech), não no servidor do Astro.
+---
+
+<div class="conta-menu" data-conta-menu>
+  <a class="btn btn--pequeno btn--contorno conta-entrar" href="/entrar" data-conta-entrar>Entrar</a>
+
+  <div class="conta-logado oculto" data-conta-logado>
+    <button
+      class="conta-gatilho"
+      type="button"
+      aria-haspopup="menu"
+      aria-expanded="false"
+      aria-label="Abrir menu da conta"
+      data-conta-gatilho
+    >
+      <span class="conta-avatar" data-conta-iniciais aria-hidden="true">F</span>
+      <span class="conta-nome" data-conta-nome>Minha conta</span>
+      <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+        <path d="m4 6 4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </button>
+
+    <div class="conta-dropdown oculto" role="menu" aria-label="Conta" data-conta-dropdown>
+      <div class="conta-identidade">
+        <strong data-conta-nome-longo>Pescador</strong>
+        <small data-conta-email></small>
+      </div>
+      <a href="/meu-diario" role="menuitem">Meu diário</a>
+      <a href="/registrar" role="menuitem">Registrar pescaria</a>
+      <a href="/conta" role="menuitem">Minha conta</a>
+      <button type="button" role="menuitem" data-conta-sair>Sair</button>
+    </div>
+  </div>
+</div>
+
+<style>
+  .conta-menu {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .conta-entrar {
+    white-space: nowrap;
+  }
+
+  .conta-logado {
+    position: relative;
+  }
+
+  .conta-gatilho {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 10px 5px 5px;
+    border: 1px solid var(--linha);
+    border-radius: 999px;
+    background: var(--superficie);
+    color: var(--tinta);
+    transition: border-color 160ms ease;
+  }
+
+  .conta-gatilho:hover,
+  .conta-gatilho[aria-expanded='true'] {
+    border-color: var(--linha-forte);
+  }
+
+  .conta-avatar {
+    display: grid;
+    width: 30px;
+    height: 30px;
+    place-items: center;
+    border-radius: 999px;
+    background: var(--terracota);
+    color: var(--creme);
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+
+  .conta-nome {
+    max-width: 110px;
+    overflow: hidden;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .conta-dropdown {
+    position: absolute;
+    z-index: 60;
+    top: calc(100% + 10px);
+    right: 0;
+    width: 264px;
+    padding: 8px;
+    border: 1px solid var(--linha);
+    border-radius: 14px;
+    background: var(--superficie);
+    box-shadow: var(--sombra);
+  }
+
+  .conta-identidade {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 10px 11px 12px;
+    border-bottom: 1px solid var(--linha);
+    margin-bottom: 5px;
+  }
+
+  .conta-identidade strong {
+    overflow: hidden;
+    color: var(--tinta);
+    font-size: 0.82rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .conta-identidade small {
+    overflow: hidden;
+    color: var(--tinta-suave);
+    font-size: 0.66rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .conta-dropdown a,
+  .conta-dropdown button {
+    display: block;
+    width: 100%;
+    padding: 9px 11px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--tinta);
+    font-size: 0.78rem;
+    font-weight: 500;
+    text-align: left;
+  }
+
+  .conta-dropdown a:hover,
+  .conta-dropdown button:hover {
+    background: var(--superficie-2);
+  }
+
+  .conta-dropdown button {
+    color: var(--acafrao);
+  }
+
+  @media (max-width: 760px) {
+    .conta-nome {
+      display: none;
+    }
+
+    .conta-gatilho {
+      padding: 4px;
+      gap: 0;
+    }
+
+    .conta-gatilho svg {
+      display: none;
+    }
+
+    .conta-dropdown {
+      position: fixed;
+      top: 76px;
+      right: 14px;
+      left: 14px;
+      width: auto;
+    }
+  }
+</style>
+
+<script>
+  // @ts-nocheck
+  const API = (document.body.dataset.api || 'http://localhost:5184').replace(/\/$/, '');
+  const menu = document.querySelector('[data-conta-menu]');
+
+  if (menu) {
+    const entrar = menu.querySelector('[data-conta-entrar]');
+    const logado = menu.querySelector('[data-conta-logado]');
+    const gatilho = menu.querySelector('[data-conta-gatilho]');
+    const dropdown = menu.querySelector('[data-conta-dropdown]');
+    const iniciais = menu.querySelector('[data-conta-iniciais]');
+    const nomeCurto = menu.querySelector('[data-conta-nome]');
+    const nomeLongo = menu.querySelector('[data-conta-nome-longo]');
+    const email = menu.querySelector('[data-conta-email]');
+
+    function iniciaisDe(usuario) {
+      const base = (usuario.nome || usuario.nomeExibicao || usuario.email || 'F').trim();
+      const partes = base.split(/\s+/).filter(Boolean);
+      if (partes.length >= 2) {
+        return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
+      }
+      return base.slice(0, 2).toUpperCase();
+    }
+
+    function fechar() {
+      dropdown?.classList.add('oculto');
+      gatilho?.setAttribute('aria-expanded', 'false');
+    }
+
+    function abrir() {
+      dropdown?.classList.remove('oculto');
+      gatilho?.setAttribute('aria-expanded', 'true');
+    }
+
+    async function carregar() {
+      try {
+        const resposta = await fetch(`${API}/api/auth/me`, { credentials: 'include' });
+        if (!resposta.ok) return;
+        const dados = await resposta.json();
+        if (!dados.autenticado || !dados.usuario) return;
+
+        const usuario = dados.usuario;
+        entrar?.classList.add('oculto');
+        logado?.classList.remove('oculto');
+
+        document.querySelectorAll('.nav-privado').forEach((item) => item.classList.remove('oculto'));
+        document.querySelectorAll('.nav-publico').forEach((item) => item.classList.add('oculto'));
+
+        if (iniciais) iniciais.textContent = iniciaisDe(usuario);
+        if (nomeCurto) nomeCurto.textContent = usuario.nomeExibicao;
+        if (nomeLongo) nomeLongo.textContent = usuario.nomeExibicao;
+        if (email) email.textContent = usuario.email;
+      } catch {
+        // Sem sessão/rede: mantém o botão Entrar e a navegação pública.
+      }
+    }
+
+    gatilho?.addEventListener('click', () => {
+      if (dropdown?.classList.contains('oculto')) abrir();
+      else fechar();
+    });
+
+    document.addEventListener('click', (evento) => {
+      if (!menu.contains(evento.target)) fechar();
+    });
+
+    document.addEventListener('keydown', (evento) => {
+      if (evento.key === 'Escape') fechar();
+    });
+
+    menu.querySelector('[data-conta-sair]')?.addEventListener('click', async () => {
+      try {
+        await fetch(`${API}/api/auth/sair`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' }
+        });
+      } finally {
+        window.location.href = '/';
+      }
+    });
+
+    carregar();
+  }
+</script>

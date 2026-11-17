@@ -9,6 +9,8 @@ public sealed class RecursoNaoEncontradoException(string codigo, string mensagem
 
 public sealed class AcessoNegadoException(string mensagem) : Exception(mensagem);
 
+public sealed class NaoAutenticadoException(string mensagem = "Entre na sua conta para continuar.") : Exception(mensagem);
+
 public interface IPescariaRepository
 {
     Task AdicionarAsync(Pescaria pescaria, CancellationToken ct = default);
@@ -17,7 +19,9 @@ public interface IPescariaRepository
 
     Task<Pescaria?> ObterPorShareTokenAsync(string shareToken, CancellationToken ct = default);
 
-    Task<IReadOnlyList<Pescaria>> ListarPorDiarioAsync(string diarioTokenHash, CancellationToken ct = default);
+    Task<IReadOnlyList<Pescaria>> ListarPorUsuarioAsync(Guid usuarioId, CancellationToken ct = default);
+
+    Task<IReadOnlyList<string>> RemoverPorUsuarioAsync(Guid usuarioId, CancellationToken ct = default);
 
     Task SalvarAsync(Pescaria pescaria, CancellationToken ct = default);
 }
@@ -25,6 +29,8 @@ public interface IPescariaRepository
 public interface IMidiaStorage
 {
     Task<string> SalvarAsync(Stream conteudo, string contentType, CancellationToken ct = default);
+
+    Task ExcluirAsync(string url, CancellationToken ct = default);
 }
 
 public interface IGeradorDePdf

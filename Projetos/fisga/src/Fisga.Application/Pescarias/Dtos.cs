@@ -41,7 +41,7 @@ public sealed record EntradaDeCaptura(
     string? FotoUrl,
     string? Observacao);
 
-public sealed record PescariaSalvaDto(Guid Id, string ShareToken, string EditToken);
+public sealed record PescariaSalvaDto(Guid Id, string ShareToken);
 
 public sealed record CapturaDto(
     Guid Id,
@@ -59,7 +59,8 @@ public sealed record PescariaDetalhadaDto(
     EntradaDePescaria Entrada,
     IReadOnlyList<CapturaDto> Capturas,
     DateTimeOffset CriadoEm,
-    DateTimeOffset AtualizadoEm);
+    DateTimeOffset AtualizadoEm,
+    bool PodeEditar);
 
 public sealed record PescariaResumoDto(
     Guid Id,
@@ -143,7 +144,7 @@ public static class PescariaMapper
                 .ToList()
         };
 
-    public static PescariaDetalhadaDto ParaDetalhada(Pescaria pescaria) =>
+    public static PescariaDetalhadaDto ParaDetalhada(Pescaria pescaria, bool podeEditar = false) =>
         new(
             pescaria.Id,
             pescaria.ShareToken,
@@ -153,7 +154,8 @@ public static class PescariaMapper
                 .Select(ParaCapturaDto)
                 .ToList(),
             pescaria.CriadoEm,
-            pescaria.AtualizadoEm);
+            pescaria.AtualizadoEm,
+            podeEditar);
 
     public static CapturaDto ParaCapturaDto(Captura captura) =>
         new(

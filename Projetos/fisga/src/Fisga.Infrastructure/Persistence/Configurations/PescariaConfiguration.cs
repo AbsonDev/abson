@@ -13,19 +13,18 @@ public sealed class PescariaConfiguration : IEntityTypeConfiguration<Pescaria>
         builder.HasKey(pescaria => pescaria.Id);
         builder.Property(pescaria => pescaria.Id).ValueGeneratedNever();
 
-        builder.Property(pescaria => pescaria.DiarioTokenHash)
-            .HasMaxLength(64)
-            .IsRequired();
-        builder.HasIndex(pescaria => pescaria.DiarioTokenHash);
+        builder.Property(pescaria => pescaria.UsuarioId).IsRequired();
+        builder.HasIndex(pescaria => pescaria.UsuarioId);
 
         builder.Property(pescaria => pescaria.ShareToken)
             .HasMaxLength(64)
             .IsRequired();
         builder.HasIndex(pescaria => pescaria.ShareToken).IsUnique();
 
-        builder.Property(pescaria => pescaria.EditTokenHash)
-            .HasMaxLength(64)
-            .IsRequired();
+        builder.HasOne<Domain.Identidade.Usuario>()
+            .WithMany()
+            .HasForeignKey(pescaria => pescaria.UsuarioId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         builder.Property(pescaria => pescaria.Local).HasMaxLength(120).IsRequired();
         builder.Property(pescaria => pescaria.Pescador).HasMaxLength(80);

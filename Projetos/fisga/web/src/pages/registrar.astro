@@ -22,6 +22,23 @@ const hoje = new Date().toISOString().slice(0, 10);
     </div>
   </section>
 
+  <section class="container">
+    <div id="acesso-registrar" class="aviso-acesso oculto">
+      <div>
+        <span class="selo selo--terracota">Conta necessária</span>
+        <h2>Entre para salvar esta pescaria.</h2>
+        <p>
+          Seu diário fica na sua conta e abre em qualquer aparelho. O acesso é por e-mail, sem senha.
+          Você pode preencher o formulário agora e entrar quando terminar.
+        </p>
+      </div>
+      <div class="aviso-acesso-acoes">
+        <a class="btn btn--primario" href="/entrar?voltar=/registrar">Entrar com e-mail</a>
+        <a class="btn btn--contorno" href="/precos">É grátis</a>
+      </div>
+    </div>
+  </section>
+
   <section class="container calc-layout">
     {!catalogo && (
       <div class="erro-caixa visivel" style="margin-bottom: 16px;">
@@ -207,11 +224,11 @@ const hoje = new Date().toISOString().slice(0, 10);
 
     <aside class="cartao-pilha">
       <section class="cartao" style="background: var(--creme);">
-        <span class="selo selo--terracota">Diário privado</span>
+        <span class="selo selo--terracota">Sua conta</span>
         <h2 style="margin-top: 12px;">Só você vê o seu diário.</h2>
         <p>
-          Cada pescaria tem um link público para compartilhar. O diário completo fica protegido por
-          um token salvo neste navegador.
+          Cada pescaria tem um link público para compartilhar. O diário completo fica na sua conta,
+          protegido pelo seu acesso por e-mail.
         </p>
         <div class="acoes-calculo">
           <a class="btn btn--contorno" href="/meu-diario">Abrir meu diário</a>
@@ -237,14 +254,14 @@ const hoje = new Date().toISOString().slice(0, 10);
         </p>
       </section>
 
-      <section class="cartao" id="backup-card">
-        <h2>Backup do diário</h2>
+      <section class="cartao" id="conta-card">
+        <h2>Acesso em qualquer aparelho</h2>
         <p>
-          Guarde este link para abrir o mesmo diário em outro aparelho. Quem tiver o link consegue
-          acessar o diário — trate como uma senha.
+          Entre com o mesmo e-mail no celular ou no computador e o diário estará lá. Não há link de
+          backup para guardar.
         </p>
         <div class="acoes-calculo">
-          <button class="btn btn--contorno" type="button" id="copiar-backup">Copiar link do diário</button>
+          <a class="btn btn--contorno" href="/conta">Minha conta</a>
         </div>
       </section>
     </aside>
@@ -261,11 +278,11 @@ const hoje = new Date().toISOString().slice(0, 10);
     const contador = document.getElementById('contador-capturas');
     const botaoSalvar = document.getElementById('btn-salvar');
     const erroFormulario = document.getElementById('erro-form');
+    const acessoRegistrar = document.getElementById('acesso-registrar');
     const chaveRascunho = 'fisga:rascunho:v1';
-    const chaveDiario = 'fisga:diario-token';
-    const chavePescaria = (token) => `fisga:pescaria:${token}`;
     let estadoEdicao = null;
     let uploadsPendentes = 0;
+    let autenticado = false;
 
     const reais = (valor) =>
       new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(Number(valor || 0));
@@ -284,39 +301,32 @@ const hoje = new Date().toISOString().slice(0, 10);
       return document.getElementById(id)?.value ?? '';
     }
 
-    function tokenDoDiario() {
-      try {
-        let token = localStorage.getItem(chaveDiario);
-        if (!token || token.length < 16) {
-          const bytes = new Uint8Array(24);
-          crypto.getRandomValues(bytes);
-          token = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
-          localStorage.setItem(chaveDiario, token);
-        }
-        return token;
-      } catch {
-        return 'diario-temporario-1234567890';
-      }
+    function urlDeRetorno() {
+      return `${window.location.pathname}${window.location.search}`;
     }
 
-    function linkDoDiario() {
-      const token = tokenDoDiario();
-      return `${window.location.origin}/meu-diario?token=${encodeURIComponent(token)}`;
+    function guardarRetorno() {
+      try {
+        sessionStorage.setItem('fisga:retorno', '/registrar');
+      } catch {}
     }
 
-    document.getElementById('copiar-backup')?.addEventListener('click', async (evento) => {
-      const botao = evento.currentTarget;
-      const texto = linkDoDiario();
-      try {
-        await navigator.clipboard.writeText(texto);
-        botao.textContent = 'Link copiado!';
-      } catch {
-        window.prompt('Copie o link do seu diário:', texto);
-      }
-      window.setTimeout(() => {
-        botao.textContent = 'Copiar link do diário';
-      }, 2200);
-    });
+    function irParaEntrar() {
+      guardarRetorno();
+      window.location.href = '/entrar?voltar=/registrar';
+    }
+
+    function bloquearFormulario() {
+      acessoRegistrar.classList.remove('oculto');
+      formulario.classList.add('form-bloqueado');
+      formulario.inert = true;
+    }
+
+    function liberarFormulario() {
+      acessoRegistrar.classList.add('oculto');
+      formulario.classList.remove('form-bloqueado');
+      formulario.inert = false;
+    }
 
     function atualizarContador() {
       const total = listaCapturas.querySelectorAll('.linha-captura').length;
@@ -367,6 +377,11 @@ const hoje = new Date().toISOString().slice(0, 10);
         const arquivo = inputArquivo.files?.[0];
         if (!arquivo) return;
 
+        if (!autenticado) {
+          irParaEntrar();
+          return;
+        }
+
         uploadsPendentes += 1;
         botaoSalvar.disabled = true;
         preview.innerHTML = '<span>...</span>';
@@ -376,7 +391,17 @@ const hoje = new Date().toISOString().slice(0, 10);
           const formularioMidia = new FormData();
           formularioMidia.append('arquivo', blob, 'foto.jpg');
 
-          const resposta = await fetch(`${API}/api/midia`, { method: 'POST', body: formularioMidia });
+          const resposta = await fetch(`${API}/api/midia`, {
+            method: 'POST',
+            credentials: 'include',
+            body: formularioMidia
+          });
+
+          if (resposta.status === 401) {
+            irParaEntrar();
+            return;
+          }
+
           const dadosMidia = await resposta.json().catch(() => ({}));
           if (!resposta.ok) throw new Error(dadosMidia.detalhe || 'Não foi possível enviar a foto.');
           mostrarFoto(dadosMidia.url);
@@ -516,19 +541,33 @@ const hoje = new Date().toISOString().slice(0, 10);
       }
     }
 
-    function iniciarEdicao() {
+    async function iniciarEdicao() {
       const params = new URLSearchParams(window.location.search);
-      const token = params.get('editar');
-      if (!token) return false;
+      const id = params.get('editar');
+      if (!id) return false;
 
       try {
-        const registro = JSON.parse(localStorage.getItem(chavePescaria(token)) || 'null');
-        if (!registro?.entrada || !registro.editToken) return false;
-        estadoEdicao = registro;
-        preencher(registro.entrada);
+        const resposta = await fetch(`${API}/api/pescarias/${encodeURIComponent(id)}/editar`, {
+          credentials: 'include'
+        });
+
+        if (resposta.status === 401) {
+          irParaEntrar();
+          return true;
+        }
+
+        const dados = await resposta.json().catch(() => ({}));
+        if (!resposta.ok) {
+          mostrarErro(dados.detalhe || 'Pescaria não encontrada.');
+          return false;
+        }
+
+        estadoEdicao = { id: dados.id, shareToken: dados.shareToken };
+        preencher(dados.entrada);
         botaoSalvar.textContent = 'Salvar alterações';
         return true;
       } catch {
+        mostrarErro('Não foi possível carregar a pescaria para edição.');
         return false;
       }
     }
@@ -539,15 +578,20 @@ const hoje = new Date().toISOString().slice(0, 10);
     });
 
     formulario.addEventListener('input', () => {
-      agendarRascunho();
+      if (autenticado) agendarRascunho();
     });
 
     formulario.addEventListener('change', () => {
-      agendarRascunho();
+      if (autenticado) agendarRascunho();
     });
 
     formulario.addEventListener('submit', async (evento) => {
       evento.preventDefault();
+
+      if (!autenticado) {
+        irParaEntrar();
+        return;
+      }
 
       if (uploadsPendentes > 0) {
         mostrarErro('Espere o envio das fotos terminar.');
@@ -570,29 +614,23 @@ const hoje = new Date().toISOString().slice(0, 10);
         const url = editando ? `${API}/api/pescarias/${estadoEdicao.id}` : `${API}/api/pescarias`;
         const resposta = await fetch(url, {
           method: editando ? 'PUT' : 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Diary-Token': tokenDoDiario(),
-            ...(editando ? { 'X-Edit-Token': estadoEdicao.editToken } : {})
-          },
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(entrada)
         });
+
+        if (resposta.status === 401) {
+          irParaEntrar();
+          return;
+        }
 
         const dados = await resposta.json().catch(() => ({}));
         if (!resposta.ok) throw new Error(dados.detalhe || 'Não foi possível salvar a pescaria.');
 
         const shareToken = editando ? estadoEdicao.shareToken : dados.shareToken;
-        const editToken = editando ? estadoEdicao.editToken : dados.editToken;
-        const id = editando ? estadoEdicao.id : dados.id;
 
         try {
-          localStorage.setItem(chavePescaria(shareToken), JSON.stringify({
-            id,
-            shareToken,
-            editToken,
-            entrada,
-            salvoEm: new Date().toISOString()
-          }));
+          localStorage.removeItem(chaveRascunho);
         } catch {
           // A pescaria já está salva no servidor.
         }
@@ -605,18 +643,24 @@ const hoje = new Date().toISOString().slice(0, 10);
       }
     });
 
-    (function iniciar() {
-      const params = new URLSearchParams(window.location.search);
-      const token = params.get('diario');
-      if (token) {
-        try {
-          localStorage.setItem(chaveDiario, token);
-        } catch {
-          // Sem localStorage: o token desta sessão ainda é usado no envio.
-        }
+    (async function iniciar() {
+      try {
+        const resposta = await fetch(`${API}/api/auth/me`, { credentials: 'include' });
+        const dados = await resposta.json().catch(() => ({}));
+        autenticado = Boolean(dados.autenticado);
+      } catch {
+        autenticado = false;
       }
 
-      if (iniciarEdicao()) return;
+      if (!autenticado) {
+        bloquearFormulario();
+        aplicarExemplo();
+        return;
+      }
+
+      liberarFormulario();
+
+      if (await iniciarEdicao()) return;
 
       const rascunho = restaurarRascunho();
       if (rascunho) {
@@ -628,3 +672,55 @@ const hoje = new Date().toISOString().slice(0, 10);
     })();
   </script>
 </Layout>
+
+<style>
+  .aviso-acesso {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 28px;
+    margin-bottom: 20px;
+    padding: 22px 24px;
+    border: 1px solid var(--linha-forte);
+    border-radius: 16px;
+    background: var(--creme);
+    box-shadow: var(--sombra-suave);
+  }
+
+  .aviso-acesso h2 {
+    margin-top: 10px;
+    font-size: clamp(1.35rem, 2.4vw, 1.8rem);
+  }
+
+  .aviso-acesso p {
+    max-width: 62ch;
+    margin-top: 6px;
+    color: var(--tinta-suave);
+    font-size: 0.8rem;
+    line-height: 1.6;
+  }
+
+  .aviso-acesso-acoes {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .form-bloqueado {
+    opacity: 0.52;
+    filter: saturate(0.7);
+  }
+
+  @media (max-width: 760px) {
+    .aviso-acesso {
+      align-items: stretch;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .aviso-acesso-acoes .btn {
+      width: 100%;
+    }
+  }
+</style>

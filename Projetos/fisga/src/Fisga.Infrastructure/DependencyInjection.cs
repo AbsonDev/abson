@@ -1,7 +1,10 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
 using Fisga.Application.Abstractions;
+using Fisga.Application.Identidade;
+using Fisga.Infrastructure.Emails;
 using Fisga.Infrastructure.Events;
 using Fisga.Infrastructure.Midia;
 using Fisga.Infrastructure.Pdf;
@@ -19,6 +22,12 @@ public static class DependencyInjection
         IConfiguration configuration)
     {
         services.Configure<WebOptions>(configuration.GetSection("Web"));
+
+        services.Configure<AutenticacaoOptions>(configuration.GetSection("Auth"));
+        services.AddSingleton(sp => sp.GetRequiredService<IOptions<AutenticacaoOptions>>().Value);
+
+        services.Configure<EmailOptions>(configuration.GetSection("Email"));
+        services.AddSingleton(sp => sp.GetRequiredService<IOptions<EmailOptions>>().Value);
 
         var provider = configuration["Database:Provider"] ?? "Postgres";
         var connectionString = configuration["Database:ConnectionString"];
@@ -42,10 +51,25 @@ public static class DependencyInjection
         });
 
         services.AddScoped<IPescariaRepository, EfPescariaRepository>();
+        services.AddScoped<IUsuarioRepository, EfUsuarioRepository>();
+        services.AddScoped<ISessaoRepository, EfSessaoRepository>();
+        services.AddScoped<ITokenDeLoginRepository, EfTokenDeLoginRepository>();
+        services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddScoped<IDomainEventDispatcher, DomainEventDispatcher>();
         services.AddScoped<IMidiaStorage, ArmazenamentoDeMidiaLocal>();
         services.AddSingleton<IRelogio, RelogioDoSistema>();
         services.AddSingleton<IGeradorDePdf, QuestPdfGerador>();
+
+        services.AddSingleton<ConsoleEmailSender>();
+        services.AddHttpClient<ResendEmailSender>();
+        services.AddScoped<IEmailSender>(sp =>
+        {
+            var opcoes = sp.GetRequiredService<EmailOptions>();
+            return string.Equals(opcoes.Provider, "Resend", StringComparison.OrdinalIgnoreCase)
+                   && !string.IsNullOrWhiteSpace(opcoes.ResendApiKey)
+                ? sp.GetRequiredService<ResendEmailSender>()
+                : sp.GetRequiredService<ConsoleEmailSender>();
+        });
 
         return services;
     }

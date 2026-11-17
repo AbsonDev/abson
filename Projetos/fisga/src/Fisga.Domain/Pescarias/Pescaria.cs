@@ -5,7 +5,7 @@ namespace Fisga.Domain.Pescarias;
 
 /// <summary>
 /// Raiz do contexto de Pesca: uma saída de pesca com local, condições e as
-/// capturas daquele dia. O diário é uma leitura agregada por token privado.
+/// capturas daquele dia. Toda pescaria pertence a um usuário.
 /// </summary>
 public sealed class Pescaria : AggregateRoot
 {
@@ -17,26 +17,22 @@ public sealed class Pescaria : AggregateRoot
 
     private Pescaria(
         Guid id,
-        string diarioTokenHash,
+        Guid usuarioId,
         string shareToken,
-        string editTokenHash,
         DateTimeOffset criadoEm)
     {
         Id = id;
-        DiarioTokenHash = diarioTokenHash;
+        UsuarioId = usuarioId;
         ShareToken = shareToken;
-        EditTokenHash = editTokenHash;
         CriadoEm = criadoEm;
         AtualizadoEm = criadoEm;
     }
 
     public Guid Id { get; private set; }
 
-    public string DiarioTokenHash { get; private set; } = string.Empty;
+    public Guid UsuarioId { get; private set; }
 
     public string ShareToken { get; private set; } = string.Empty;
-
-    public string EditTokenHash { get; private set; } = string.Empty;
 
     public string Local { get; private set; } = string.Empty;
 
@@ -71,12 +67,11 @@ public sealed class Pescaria : AggregateRoot
     public static Pescaria Criar(
         DadosDaPescaria dados,
         Guid id,
-        string diarioTokenHash,
+        Guid usuarioId,
         string shareToken,
-        string editTokenHash,
         DateTimeOffset agora)
     {
-        var pescaria = new Pescaria(id, diarioTokenHash, shareToken, editTokenHash, agora);
+        var pescaria = new Pescaria(id, usuarioId, shareToken, agora);
         pescaria.Aplicar(dados, agora);
 
         pescaria.Registrar(new PescariaRegistrada(
@@ -90,6 +85,8 @@ public sealed class Pescaria : AggregateRoot
 
     public void Atualizar(DadosDaPescaria dados, DateTimeOffset agora) =>
         Aplicar(dados, agora);
+
+    public bool PertenceA(Guid usuarioId) => usuarioId != Guid.Empty && UsuarioId == usuarioId;
 
     private void Aplicar(DadosDaPescaria dados, DateTimeOffset agora)
     {
@@ -161,11 +158,14 @@ public sealed class Pescaria : AggregateRoot
             throw new DomainException("pescaria_sem_identidade", "Pescaria sem identificador.");
         }
 
-        if (string.IsNullOrWhiteSpace(DiarioTokenHash)
-            || string.IsNullOrWhiteSpace(ShareToken)
-            || string.IsNullOrWhiteSpace(EditTokenHash))
+        if (UsuarioId == Guid.Empty)
         {
-            throw new DomainException("pescaria_sem_tokens", "Pescaria sem tokens de diário/compartilhamento/edição.");
+            throw new DomainException("pescaria_sem_usuario", "Pescaria precisa pertencer a um usuário.");
+        }
+
+        if (string.IsNullOrWhiteSpace(ShareToken))
+        {
+            throw new DomainException("pescaria_sem_token", "Pescaria sem token de compartilhamento.");
         }
 
         if (string.IsNullOrWhiteSpace(Local))

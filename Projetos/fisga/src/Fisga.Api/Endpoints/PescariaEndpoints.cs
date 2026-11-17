@@ -19,42 +19,70 @@ public static class PescariaEndpoints
 
         grupo.MapPost("", async (
                 EntradaDePescaria entrada,
-                HttpRequest request,
+                HttpContext http,
                 ServicoDePescarias servico,
                 IOptions<WebOptions> web,
                 CancellationToken ct) =>
             {
-                var diarioToken = request.Headers["X-Diary-Token"].ToString();
-                var salva = await servico.CriarAsync(entrada, diarioToken, ct);
+                var usuarioId = http.ExigirUsuarioId();
+                var salva = await servico.CriarAsync(entrada, usuarioId, ct);
                 var url = $"{web.Value.Url.TrimEnd('/')}/p/{salva.ShareToken}";
 
                 return Results.Created(
                     $"/api/pescarias/{salva.ShareToken}",
-                    new PescariaSalvaResponse(salva.Id, salva.ShareToken, salva.EditToken, url));
+                    new PescariaSalvaResponse(salva.Id, salva.ShareToken, url));
             })
             .RequireRateLimiting("escrita");
 
         grupo.MapGet("/{shareToken}", async (
                 string shareToken,
+                HttpContext http,
                 ServicoDePescarias servico,
                 CancellationToken ct) =>
             {
-                var pescaria = await servico.ObterPublicoAsync(shareToken, ct);
+                var pescaria = await servico.ObterPublicoAsync(shareToken, http.UsuarioId(), ct);
                 return pescaria is null
                     ? Results.NotFound(new ErroResponse("pescaria_nao_encontrada", "Pescaria não encontrada."))
                     : Results.Ok(pescaria);
+            })
+            .AllowAnonymous()
+            .RequireRateLimiting("leitura");
+
+        grupo.MapGet("/{shareToken}/permissao", async (
+                string shareToken,
+                HttpContext http,
+                ServicoDePescarias servico,
+                CancellationToken ct) =>
+            {
+                var pescaria = await servico.ObterPublicoAsync(shareToken, http.UsuarioId(), ct);
+                return pescaria is null
+                    ? Results.NotFound(new ErroResponse("pescaria_nao_encontrada", "Pescaria não encontrada."))
+                    : Results.Ok(new PermissaoResponse(pescaria.Id, pescaria.PodeEditar));
+            })
+            .AllowAnonymous()
+            .RequireRateLimiting("leitura");
+
+        grupo.MapGet("/{id:guid}/editar", async (
+                Guid id,
+                HttpContext http,
+                ServicoDePescarias servico,
+                CancellationToken ct) =>
+            {
+                var usuarioId = http.ExigirUsuarioId();
+                var pescaria = await servico.ObterDoUsuarioAsync(id, usuarioId, ct);
+                return Results.Ok(pescaria);
             })
             .RequireRateLimiting("leitura");
 
         grupo.MapPut("/{id:guid}", async (
                 Guid id,
-                HttpRequest request,
+                HttpContext http,
                 EntradaDePescaria entrada,
                 ServicoDePescarias servico,
                 CancellationToken ct) =>
             {
-                var editToken = request.Headers["X-Edit-Token"].ToString();
-                var pescaria = await servico.AtualizarAsync(id, editToken, entrada, ct);
+                var usuarioId = http.ExigirUsuarioId();
+                var pescaria = await servico.AtualizarAsync(id, usuarioId, entrada, ct);
                 return Results.Ok(pescaria);
             })
             .RequireRateLimiting("escrita");
@@ -69,15 +97,16 @@ public static class PescariaEndpoints
                 var arquivo = await pdf.GerarAsync(shareToken, url, ct);
                 return Results.File(arquivo.Conteudo, "application/pdf", arquivo.NomeDoArquivo);
             })
+            .AllowAnonymous()
             .RequireRateLimiting("pdf");
 
         app.MapGet("/api/diario", async (
-                HttpRequest request,
+                HttpContext http,
                 ServicoDoDiario diario,
                 CancellationToken ct) =>
             {
-                var token = request.Headers["X-Diary-Token"].ToString();
-                var resultado = await diario.ObterAsync(token, ct);
+                var usuarioId = http.ExigirUsuarioId();
+                var resultado = await diario.ObterAsync(usuarioId, ct);
                 return Results.Ok(resultado);
             })
             .RequireRateLimiting("leitura");
@@ -88,16 +117,18 @@ public static class PescariaEndpoints
     public static IEndpointRouteBuilder MapMidiaEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapPost("/api/midia", async (
-                HttpRequest request,
+                HttpContext http,
                 IMidiaStorage midia,
                 CancellationToken ct) =>
             {
-                if (!request.HasFormContentType)
+                http.ExigirUsuarioId();
+
+                if (!http.Request.HasFormContentType)
                 {
                     return Results.BadRequest(new ErroResponse("midia_sem_formulario", "Envie a foto como formulário multipart."));
                 }
 
-                var formulario = await request.ReadFormAsync(ct);
+                var formulario = await http.Request.ReadFormAsync(ct);
                 var arquivo = formulario.Files.GetFile("arquivo");
 
                 if (arquivo is null || arquivo.Length == 0)

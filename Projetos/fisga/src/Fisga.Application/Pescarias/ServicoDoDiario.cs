@@ -1,6 +1,5 @@
 using Fisga.Application.Abstractions;
 using Fisga.Application.Catalogo;
-using Fisga.Domain.Common;
 
 namespace Fisga.Application.Pescarias;
 
@@ -8,10 +7,14 @@ public sealed class ServicoDoDiario(
     IPescariaRepository repositorio,
     ICatalogoDePesca catalogo)
 {
-    public async Task<DiarioDto> ObterAsync(string diarioToken, CancellationToken ct = default)
+    public async Task<DiarioDto> ObterAsync(Guid usuarioId, CancellationToken ct = default)
     {
-        var hash = ServicoDePescarias.HashDoDiario(diarioToken);
-        var pescarias = await repositorio.ListarPorDiarioAsync(hash, ct);
+        if (usuarioId == Guid.Empty)
+        {
+            throw new NaoAutenticadoException();
+        }
+
+        var pescarias = await repositorio.ListarPorUsuarioAsync(usuarioId, ct);
 
         var capturas = pescarias
             .SelectMany(pescaria => pescaria.Capturas)

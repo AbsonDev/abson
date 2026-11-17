@@ -34,6 +34,30 @@ public sealed class ArmazenamentoDeMidiaLocal : IMidiaStorage
         return $"/media/{nome}";
     }
 
+    public async Task ExcluirAsync(string url, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(url)
+            || !url.StartsWith("/media/", StringComparison.Ordinal)
+            || url.Contains("..", StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        var nome = Path.GetFileName(url);
+        if (string.IsNullOrWhiteSpace(nome))
+        {
+            return;
+        }
+
+        var caminho = Path.Combine(_pasta, nome);
+        if (File.Exists(caminho))
+        {
+            File.Delete(caminho);
+        }
+
+        await Task.CompletedTask;
+    }
+
     public static string ObterPasta(IConfiguration configuration)
     {
         var relativo = configuration["Media:Path"] ?? "media";

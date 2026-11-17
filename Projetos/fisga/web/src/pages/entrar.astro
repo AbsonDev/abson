@@ -1,0 +1,546 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  titulo="Entrar — Fisga"
+  descricao="Entre no Fisga com seu e-mail, sem senha. Seu diário de pesca em qualquer aparelho."
+  bodyClass="pagina-entrar"
+  noindex
+>
+  <section class="entrar">
+    <div class="container entrar-grade">
+      <div class="entrar-texto">
+        <span class="eyebrow">Acesso ao diário</span>
+        <h1>Cada peixe tem uma história. <em>O Fisga guarda a sua.</em></h1>
+        <p class="entrar-lead">
+          Entre com seu e-mail para abrir o diário, registrar pescarias e levar seus troféus para
+          qualquer aparelho. Sem senha para esquecer.
+        </p>
+
+        <ul class="entrar-lista">
+          <li><strong>Grátis por enquanto</strong><span>Diário, troféu e PDF sem cobrança.</span></li>
+          <li><strong>Privado por padrão</strong><span>Só você vê o diário completo.</span></li>
+          <li><strong>Link de uso único</strong><span>Vale 15 minutos e não serve duas vezes.</span></li>
+        </ul>
+
+        <div class="entrar-frase">
+          <span class="entrar-peixe" aria-hidden="true">
+            <svg viewBox="0 0 48 32" fill="none">
+              <path d="M4 17C12 6 27 4 36 11l8-6v22l-8-6C27 28 12 26 4 18v-1Z" fill="currentColor" opacity=".18" />
+              <path d="M6 17c8-9 21-11 29-4l6-5v20l-6-5C27 30 14 28 6 18v-1Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
+              <circle cx="19" cy="15" r="1.8" fill="currentColor" />
+            </svg>
+          </span>
+          <p>“O troféu é a parte que o mundo vê. O diário é o que faz o próximo peixe maior.”</p>
+        </div>
+      </div>
+
+      <div class="entrar-cartao">
+        <div id="erro-entrada" class="erro-caixa" role="alert"></div>
+        <div id="aviso-entrada" class="aviso oculto" role="status"></div>
+
+        <div id="entrar-formulario">
+          <span class="eyebrow">Entrar ou criar conta</span>
+          <h2>Seu acesso,<br /><em>sem senha.</em></h2>
+          <p class="entrar-descricao">
+            Informe seu e-mail. Enviamos um link de uso único para você entrar direto no diário.
+          </p>
+
+          <form id="entrar-form" novalidate>
+            <div class="campo">
+              <label for="email">E-mail</label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                inputmode="email"
+                autocomplete="email"
+                placeholder="voce@exemplo.com"
+                maxlength="254"
+                required
+              />
+            </div>
+
+            <button class="btn btn--primario btn--largo" type="submit" id="btn-entrar">
+              Receber link de acesso
+            </button>
+          </form>
+
+          <p class="entrar-micro">
+            Sem senha. O link é de uso único e vale por 15 minutos. Ao entrar, você concorda em
+            manter um comportamento responsável na pesca.
+          </p>
+
+          <div class="entrar-divisor"><span>O que você encontra</span></div>
+
+          <div class="entrar-mini">
+            <div><strong>Diário</strong><span>Pescarias, capturas e condições.</span></div>
+            <div><strong>Troféus</strong><span>Cards prontos para compartilhar.</span></div>
+            <div><strong>Padrões</strong><span>Espécies, iscas e recordes.</span></div>
+          </div>
+        </div>
+
+        <div id="entrar-enviado" class="oculto">
+          <div class="entrar-icone" aria-hidden="true">
+            <svg viewBox="0 0 48 48" fill="none">
+              <rect x="6" y="11" width="36" height="26" rx="5" stroke="currentColor" stroke-width="2.2" />
+              <path d="m9 15 15 11 15-11" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </div>
+          <span class="eyebrow">Link enviado</span>
+          <h2>Confira seu <em>e-mail.</em></h2>
+          <p class="entrar-descricao">
+            Se este endereço puder entrar, enviamos um link de acesso para
+            <strong id="email-enviado">seu e-mail</strong>. O link vale por 15 minutos.
+          </p>
+
+          <div class="entrar-passos">
+            <div><span>1</span><p>Abra a caixa de entrada e procure por <strong>Fisga</strong>.</p></div>
+            <div><span>2</span><p>Clique em <strong>Entrar no Fisga</strong>. O link é de uso único.</p></div>
+            <div><span>3</span><p>Você cai direto no seu diário, pronto para registrar.</p></div>
+          </div>
+
+          <a id="link-dev" class="btn btn--primario btn--largo oculto" href="#">Abrir link de acesso (desenvolvimento)</a>
+
+          <button class="btn btn--contorno btn--largo" type="button" id="btn-reenviar" disabled>
+            Reenviar em 0:60
+          </button>
+          <button class="entrar-link-botao" type="button" id="btn-outro-email">Usar outro e-mail</button>
+
+          <p class="entrar-micro">
+            Não chegou? Confira o spam ou aguarde um minuto antes de pedir outro link. Por segurança,
+            só o link mais recente funciona.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+</Layout>
+
+<style>
+  .entrar {
+    padding: clamp(40px, 7vw, 86px) 0 clamp(60px, 8vw, 100px);
+  }
+
+  .entrar-grade {
+    display: grid;
+    align-items: center;
+    gap: clamp(36px, 6vw, 82px);
+    grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.82fr);
+  }
+
+  .entrar-texto h1 {
+    max-width: 13ch;
+    margin-top: 18px;
+    font-size: clamp(2.6rem, 5.2vw, 4.4rem);
+  }
+
+  .entrar-lead {
+    max-width: 52ch;
+    margin-top: 20px;
+    color: var(--tinta-suave);
+    font-size: 1.02rem;
+    line-height: 1.7;
+  }
+
+  .entrar-lista {
+    display: grid;
+    gap: 14px;
+    max-width: 460px;
+    margin: 30px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .entrar-lista li {
+    display: grid;
+    gap: 2px;
+    padding-left: 18px;
+    border-left: 2px solid var(--acafrao);
+  }
+
+  .entrar-lista strong {
+    font-size: 0.84rem;
+    font-weight: 700;
+  }
+
+  .entrar-lista span {
+    color: var(--tinta-suave);
+    font-size: 0.78rem;
+    line-height: 1.5;
+  }
+
+  .entrar-frase {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    max-width: 460px;
+    margin-top: 32px;
+    padding: 15px 17px;
+    border: 1px solid var(--linha);
+    border-radius: 14px;
+    background: rgba(255, 253, 248, 0.55);
+  }
+
+  .entrar-peixe {
+    width: 34px;
+    flex: 0 0 auto;
+    color: var(--terracota);
+  }
+
+  .entrar-frase p {
+    color: var(--tinta-suave);
+    font-family: var(--fonte-titulo);
+    font-size: 0.86rem;
+    font-style: italic;
+    line-height: 1.5;
+  }
+
+  .entrar-cartao {
+    padding: clamp(24px, 4vw, 38px);
+    border: 1px solid var(--linha);
+    border-radius: 22px;
+    background: var(--superficie);
+    box-shadow: var(--sombra);
+  }
+
+  .entrar-cartao h2 {
+    margin-top: 12px;
+    font-size: clamp(1.9rem, 3.2vw, 2.5rem);
+  }
+
+  .entrar-descricao {
+    margin-top: 14px;
+    color: var(--tinta-suave);
+    font-size: 0.86rem;
+    line-height: 1.65;
+  }
+
+  .entrar-descricao strong {
+    color: var(--tinta);
+    word-break: break-word;
+  }
+
+  #entrar-form {
+    margin-top: 22px;
+  }
+
+  #entrar-form .campo input {
+    min-height: 46px;
+    background: var(--papel);
+    font-size: 0.9rem;
+  }
+
+  #entrar-form .btn {
+    margin-top: 12px;
+  }
+
+  .entrar-micro {
+    margin-top: 16px;
+    color: var(--tinta-suave);
+    font-size: 0.67rem;
+    line-height: 1.55;
+  }
+
+  .entrar-divisor {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 26px 0 18px;
+    color: var(--tinta-suave);
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .entrar-divisor::before,
+  .entrar-divisor::after {
+    height: 1px;
+    flex: 1;
+    background: var(--linha);
+    content: '';
+  }
+
+  .entrar-mini {
+    display: grid;
+    gap: 9px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .entrar-mini div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 10px;
+    border-radius: 10px;
+    background: var(--papel);
+  }
+
+  .entrar-mini strong {
+    color: var(--terracota);
+    font-size: 0.68rem;
+    font-weight: 700;
+  }
+
+  .entrar-mini span {
+    color: var(--tinta-suave);
+    font-size: 0.62rem;
+    line-height: 1.4;
+  }
+
+  .entrar-icone {
+    display: grid;
+    width: 58px;
+    height: 58px;
+    margin-bottom: 20px;
+    place-items: center;
+    border-radius: 16px;
+    background: var(--terracota-clara);
+    color: var(--terracota);
+  }
+
+  .entrar-icone svg {
+    width: 30px;
+  }
+
+  .entrar-passos {
+    display: grid;
+    gap: 12px;
+    margin: 22px 0;
+  }
+
+  .entrar-passos div {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .entrar-passos span {
+    display: grid;
+    width: 23px;
+    height: 23px;
+    flex: 0 0 auto;
+    place-items: center;
+    border-radius: 999px;
+    background: var(--terracota-clara);
+    color: var(--terracota);
+    font-size: 0.66rem;
+    font-weight: 700;
+  }
+
+  .entrar-passos p {
+    color: var(--tinta-suave);
+    font-size: 0.76rem;
+    line-height: 1.5;
+  }
+
+  .entrar-passos strong {
+    color: var(--tinta);
+  }
+
+  #btn-reenviar {
+    margin-top: 8px;
+  }
+
+  .entrar-link-botao {
+    width: 100%;
+    margin-top: 8px;
+    padding: 8px;
+    border: 0;
+    background: transparent;
+    color: var(--tinta-suave);
+    font-size: 0.72rem;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .entrar-link-botao:hover {
+    color: var(--tinta);
+  }
+
+  .entrar-cartao .erro-caixa.visivel,
+  .entrar-cartao .aviso:not(.oculto) {
+    margin-bottom: 18px;
+  }
+
+  @media (max-width: 980px) {
+    .entrar-grade {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 34px;
+    }
+
+    .entrar-texto h1 {
+      max-width: 17ch;
+    }
+
+    .entrar-cartao {
+      max-width: 560px;
+    }
+  }
+
+  @media (max-width: 520px) {
+    .entrar-mini {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .entrar-lista,
+    .entrar-frase {
+      max-width: none;
+    }
+  }
+</style>
+
+<script>
+  // @ts-nocheck
+  const API = (document.body.dataset.api || 'http://localhost:5184').replace(/\/$/, '');
+  const parametros = new URLSearchParams(window.location.search);
+  const voltar = parametros.get('voltar');
+  const formulario = document.getElementById('entrar-form');
+  const emailInput = document.getElementById('email');
+  const botao = document.getElementById('btn-entrar');
+  const erro = document.getElementById('erro-entrada');
+  const aviso = document.getElementById('aviso-entrada');
+  const formularioBox = document.getElementById('entrar-formulario');
+  const enviadoBox = document.getElementById('entrar-enviado');
+  const emailEnviado = document.getElementById('email-enviado');
+  const btnReenviar = document.getElementById('btn-reenviar');
+  const btnOutro = document.getElementById('btn-outro-email');
+  const linkDev = document.getElementById('link-dev');
+  let emailAtual = '';
+  let contador = 0;
+  let timer = 0;
+
+  if (voltar && voltar.startsWith('/') && !voltar.startsWith('//')) {
+    try {
+      sessionStorage.setItem('fisga:retorno', voltar);
+    } catch {}
+  }
+
+  const mensagens = {
+    link_expirado: 'Esse link expirou. Peça um novo acesso abaixo.',
+    link_ja_usado: 'Esse link já foi usado. Peça um novo acesso abaixo.',
+    link_invalido: 'Esse link não é válido. Peça um novo acesso abaixo.',
+    sessao_expirada: 'Sua sessão expirou. Entre novamente para continuar.'
+  };
+
+  if (parametros.get('erro')) {
+    erro.textContent = mensagens[parametros.get('erro')] || 'Não foi possível confirmar o acesso. Peça um novo link.';
+    erro.classList.add('visivel');
+  }
+
+  if (parametros.get('saiu') === '1') {
+    aviso.textContent = 'Você saiu da conta. Até a próxima pescaria.';
+    aviso.classList.remove('oculto');
+  }
+
+  function mostrarErro(mensagem) {
+    erro.textContent = mensagem;
+    erro.classList.add('visivel');
+  }
+
+  function limparErro() {
+    erro.textContent = '';
+    erro.classList.remove('visivel');
+  }
+
+  function iniciarContador() {
+    window.clearInterval(timer);
+    contador = 60;
+    btnReenviar.disabled = true;
+    btnReenviar.textContent = `Reenviar em 0:${String(contador).padStart(2, '0')}`;
+    timer = window.setInterval(() => {
+      contador -= 1;
+      btnReenviar.textContent = `Reenviar em 0:${String(Math.max(contador, 0)).padStart(2, '0')}`;
+      if (contador <= 0) {
+        window.clearInterval(timer);
+        btnReenviar.disabled = false;
+        btnReenviar.textContent = 'Reenviar link de acesso';
+      }
+    }, 1000);
+  }
+
+  function mostrarEnviado(email, link) {
+    emailAtual = email;
+    emailEnviado.textContent = email;
+    formularioBox.classList.add('oculto');
+    enviadoBox.classList.remove('oculto');
+    if (link) {
+      linkDev.href = link;
+      linkDev.classList.remove('oculto');
+    }
+    iniciarContador();
+  }
+
+  async function solicitar(email) {
+    limparErro();
+    botao.disabled = true;
+    botao.textContent = 'Enviando...';
+
+    try {
+      const resposta = await fetch(`${API}/api/auth/solicitar`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+
+      const dados = await resposta.json().catch(() => ({}));
+
+      if (!resposta.ok) {
+        throw new Error(dados.detalhe || 'Não foi possível enviar o link agora. Tente novamente.');
+      }
+
+      mostrarEnviado(email, dados.linkDesenvolvimento || null);
+    } catch (falha) {
+      mostrarErro(falha instanceof Error ? falha.message : 'Não foi possível enviar o link agora.');
+    } finally {
+      botao.disabled = false;
+      botao.textContent = 'Receber link de acesso';
+    }
+  }
+
+  formulario?.addEventListener('submit', (evento) => {
+    evento.preventDefault();
+    const email = emailInput.value.trim();
+    if (!email || !email.includes('@')) {
+      mostrarErro('Informe um e-mail válido.');
+      emailInput.focus();
+      return;
+    }
+    solicitar(email);
+  });
+
+  btnReenviar?.addEventListener('click', () => {
+    if (emailAtual) solicitar(emailAtual);
+  });
+
+  btnOutro?.addEventListener('click', () => {
+    window.clearInterval(timer);
+    enviadoBox.classList.add('oculto');
+    formularioBox.classList.remove('oculto');
+    linkDev.classList.add('oculto');
+    emailInput.value = emailAtual;
+    emailInput.focus();
+  });
+
+  (async function iniciar() {
+    try {
+      const resposta = await fetch(`${API}/api/auth/me`, { credentials: 'include' });
+      if (!resposta.ok) return;
+      const dados = await resposta.json();
+      if (dados.autenticado) {
+        let destino = '/meu-diario';
+        try {
+          const salvo = sessionStorage.getItem('fisga:retorno');
+          if (salvo && salvo.startsWith('/') && !salvo.startsWith('//')) destino = salvo;
+          sessionStorage.removeItem('fisga:retorno');
+        } catch {}
+        window.location.replace(destino);
+      }
+    } catch {
+      // Sem rede: o formulário continua disponível.
+    }
+  })();
+</script>

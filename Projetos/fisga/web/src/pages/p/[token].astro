@@ -105,7 +105,7 @@ const rotuloAgua: Record<string, string> = {
           <div class="acoes-calculo" style="min-width: 210px; margin-top: 0;">
             <a class="btn btn--primario btn--pequeno" href={urlPdf}>Baixar PDF</a>
             <div id="editar-container" class="oculto">
-              <a class="btn btn--contorno btn--pequeno btn--largo" id="btn-editar" href={`/registrar?editar=${token}`}>
+              <a class="btn btn--contorno btn--pequeno btn--largo" id="btn-editar" href="#">
                 Editar esta pescaria
               </a>
             </div>
@@ -239,6 +239,7 @@ const rotuloAgua: Record<string, string> = {
 
     <script>
       // @ts-nocheck
+      const API = (document.body.dataset.api || 'http://localhost:5184').replace(/\/$/, '');
       const TOKEN = document.querySelector('[data-copiar-link]')?.getAttribute('data-copiar-link')?.split('/p/')[1] || '';
 
       document.querySelectorAll('[data-copiar-link]').forEach((botao) => {
@@ -257,12 +258,24 @@ const rotuloAgua: Record<string, string> = {
         });
       });
 
-      try {
-        const registro = localStorage.getItem(`fisga:pescaria:${TOKEN}`);
-        if (registro) document.getElementById('editar-container')?.classList.remove('oculto');
-      } catch {
-        // Sem localStorage: a pescaria continua acessível para leitura.
-      }
+      (async function verificarPermissao() {
+        if (!TOKEN) return;
+        try {
+          const resposta = await fetch(`${API}/api/pescarias/${encodeURIComponent(TOKEN)}/permissao`, {
+            credentials: 'include'
+          });
+          if (!resposta.ok) return;
+          const dados = await resposta.json();
+          if (!dados.podeEditar) return;
+
+          const container = document.getElementById('editar-container');
+          const botao = document.getElementById('btn-editar');
+          if (container) container.classList.remove('oculto');
+          if (botao) botao.href = `/registrar?editar=${encodeURIComponent(dados.pescariaId)}`;
+        } catch {
+          // Visitante público: a pescaria continua acessível para leitura.
+        }
+      })();
     </script>
   )}
 </Layout>

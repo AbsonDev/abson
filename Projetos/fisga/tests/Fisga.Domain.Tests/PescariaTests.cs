@@ -39,6 +39,36 @@ public sealed class PescariaTests
     }
 
     [Fact]
+    public void Rejeita_pescaria_sem_usuario()
+    {
+        var excecao = Assert.Throws<DomainException>(() =>
+            Fisga.Domain.Pescarias.Pescaria.Criar(
+                Fabrica.Dados(),
+                Guid.NewGuid(),
+                Guid.Empty,
+                "share-token",
+                Fabrica.Agora));
+
+        Assert.Equal("pescaria_sem_usuario", excecao.Codigo);
+    }
+
+    [Fact]
+    public void Reconhece_o_dono_da_pescaria()
+    {
+        var usuarioId = Guid.NewGuid();
+        var pescaria = Fisga.Domain.Pescarias.Pescaria.Criar(
+            Fabrica.Dados(),
+            Guid.NewGuid(),
+            usuarioId,
+            "share-token",
+            Fabrica.Agora);
+
+        Assert.True(pescaria.PertenceA(usuarioId));
+        Assert.False(pescaria.PertenceA(Guid.NewGuid()));
+        Assert.False(pescaria.PertenceA(Guid.Empty));
+    }
+
+    [Fact]
     public void Rejeita_local_vazio()
     {
         var excecao = Assert.Throws<DomainException>(() =>

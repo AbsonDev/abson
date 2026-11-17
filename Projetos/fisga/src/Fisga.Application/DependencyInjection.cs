@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Fisga.Application.Catalogo;
 using Fisga.Application.Documentos;
+using Fisga.Application.Identidade;
 using Fisga.Application.Pescarias;
 
 namespace Fisga.Application;
@@ -13,6 +14,8 @@ public static class DependencyInjection
         services.AddScoped<ServicoDePescarias>();
         services.AddScoped<ServicoDoDiario>();
         services.AddScoped<ServicoDePdf>();
+        services.AddScoped<ServicoDeAutenticacao>();
+        services.AddScoped<ServicoDeConta>();
         return services;
     }
 }

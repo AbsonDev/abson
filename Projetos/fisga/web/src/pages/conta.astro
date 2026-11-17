@@ -1,0 +1,1897 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  titulo="Sua conta — Fisga"
+  descricao="Gerencie seu perfil, suas sessões e seus dados na conta do Fisga."
+  noindex
+>
+  <section class="calc-topo conta-topo">
+    <div class="container">
+      <span class="eyebrow">Minha conta</span>
+      <h1>Sua história, <em>bem guardada.</em></h1>
+      <p>
+        Perfil, segurança e dados da sua conta. O que você registrou no Fisga fica aqui — e é seu.
+      </p>
+    </div>
+  </section>
+
+  <section class="container conta-pagina">
+    <div id="carregando" class="conta-carregando" role="status" aria-live="polite">
+      <span class="conta-carregando-marca" aria-hidden="true">F</span>
+      <p>Carregando sua conta...</p>
+    </div>
+
+    <div id="falha-carregamento" class="conta-falha oculto">
+      <div class="erro-caixa visivel" role="alert">
+        <span id="falha-texto">Não foi possível carregar sua conta. Confira sua conexão e tente novamente.</span>
+        <button class="btn btn--contorno btn--pequeno" type="button" id="recarregar">Tentar de novo</button>
+      </div>
+    </div>
+
+    <div id="conta-conteudo" class="conta-conteudo oculto">
+      <header class="cartao conta-identidade">
+        <div class="conta-identidade-interno">
+          <div class="conta-avatar" id="avatar-conta" aria-hidden="true">··</div>
+          <div class="conta-identidade-texto">
+            <span class="eyebrow">Pescador</span>
+            <h2 id="nome-conta">Sua conta</h2>
+            <p class="conta-email" id="email-conta"></p>
+            <div class="conta-selos">
+              <span class="selo">Conta gratuita</span>
+              <span class="selo selo--neutro" id="desde-conta">Conta Fisga</span>
+            </div>
+          </div>
+          <a class="btn btn--primario btn--pequeno conta-identidade-acao" href="/registrar">Registrar pescaria</a>
+        </div>
+      </header>
+
+      <div class="conta-grade">
+        <div class="conta-coluna">
+          <section class="cartao conta-secao" aria-labelledby="titulo-perfil">
+            <span class="eyebrow">Perfil</span>
+            <h2 id="titulo-perfil">Seu perfil</h2>
+            <p class="conta-descricao">
+              É assim que você aparece no seu diário e nos cards das suas pescarias.
+            </p>
+
+            <form id="form-perfil" novalidate>
+              <div class="campo conta-campo-nome">
+                <label for="nome-perfil">Nome de exibição</label>
+                <input
+                  id="nome-perfil"
+                  name="nome"
+                  type="text"
+                  maxlength="80"
+                  autocomplete="name"
+                  placeholder="Como podemos te chamar?"
+                  aria-describedby="nome-dica"
+                />
+                <small id="nome-dica">
+                  Até 80 caracteres. <span id="nome-contador" class="conta-contador">0/80</span>
+                </small>
+              </div>
+
+              <div class="conta-check">
+                <input id="aceita-novidades" name="aceitaNovidades" type="checkbox" />
+                <div>
+                  <label for="aceita-novidades">Quero receber dicas de pesca por e-mail</label>
+                  <small>Dicas, novidades e histórias do Fisga. Sem spam.</small>
+                </div>
+              </div>
+
+              <div class="conta-form-acoes">
+                <button class="btn btn--primario" type="submit" id="salvar-perfil">Salvar alterações</button>
+                <p id="perfil-feedback" class="conta-feedback" role="status" aria-live="polite"></p>
+              </div>
+            </form>
+          </section>
+
+          <section class="cartao conta-secao" aria-labelledby="titulo-email">
+            <span class="eyebrow">E-mail</span>
+            <h2 id="titulo-email">Sua chave de acesso</h2>
+            <p class="conta-descricao">
+              É para este endereço que enviamos o link mágico de entrada. Não existe senha.
+            </p>
+
+            <div class="conta-email-caixa">
+              <span class="conta-email-icone" aria-hidden="true">@</span>
+              <div>
+                <span class="conta-rotulo">E-mail da conta</span>
+                <strong id="email-caixa">—</strong>
+              </div>
+            </div>
+
+            <p class="conta-texto">
+              Quem controla este e-mail consegue entrar na sua conta. Por isso, mantenha o endereço
+              sempre atualizado e proteja sua caixa de entrada.
+            </p>
+
+            <button
+              class="btn btn--contorno btn--pequeno"
+              type="button"
+              id="btn-trocar-email"
+              aria-expanded="false"
+              aria-controls="trocar-email"
+            >
+              Trocar e-mail
+            </button>
+
+            <div id="trocar-email" class="conta-explicacao oculto">
+              <p>
+                <strong>Para trocar, basta sair e entrar com o novo e-mail.</strong> O próximo link
+                mágico será enviado para o endereço que você usar na entrada. Ainda não fazemos a
+                troca automática por aqui — assim evitamos que alguém altere seu acesso sem confirmação.
+              </p>
+              <button class="link-seta conta-link-botao" type="button" id="sair-para-trocar">
+                Sair para trocar de e-mail
+              </button>
+            </div>
+          </section>
+        </div>
+
+        <aside class="conta-coluna" aria-label="Plano e segurança">
+          <section class="cartao conta-secao conta-plano" aria-labelledby="titulo-plano">
+            <span class="eyebrow">Plano</span>
+            <h2 id="titulo-plano">Fisga é grátis por enquanto</h2>
+            <p class="conta-descricao">Sem cartão, sem assinatura e sem cobrança automática.</p>
+
+            <div class="conta-preco">
+              <strong>R$ 0</strong>
+              <span>hoje e durante a validação</span>
+            </div>
+
+            <ul class="lista-check conta-lista">
+              <li>Pescarias e capturas ilimitadas</li>
+              <li>Card do troféu em PNG e relatório em PDF</li>
+              <li>Estatísticas, recordes e diário privado</li>
+              <li>Um link público para cada pescaria</li>
+            </ul>
+
+            <p class="conta-nota">
+              Se um dia houver cobrança, avisaremos com antecedência. Nada é cobrado sem sua
+              autorização.
+            </p>
+          </section>
+
+          <section class="cartao conta-secao" aria-labelledby="titulo-sessoes">
+            <span class="eyebrow">Segurança</span>
+            <h2 id="titulo-sessoes">Segurança e sessões</h2>
+            <p class="conta-descricao">
+              Cada link mágico cria uma sessão. Revise os aparelhos com acesso à sua conta.
+            </p>
+
+            <div id="sessoes-carregando" class="conta-sessoes-status" role="status">
+              Carregando sessões...
+            </div>
+
+            <div id="sessoes-erro" class="conta-sessoes-erro oculto">
+              <p id="sessoes-erro-texto" role="alert">Não foi possível carregar suas sessões.</p>
+              <button class="btn btn--contorno btn--pequeno" id="recarregar-sessoes" type="button">
+                Tentar de novo
+              </button>
+            </div>
+
+            <div id="sessoes-lista" class="conta-sessoes"></div>
+
+            <div class="conta-sessoes-acoes">
+              <button class="btn btn--contorno btn--pequeno" id="sair-atual" type="button">
+                Sair deste dispositivo
+              </button>
+              <button class="btn btn--contorno btn--pequeno" id="sair-todos" type="button">
+                Sair de todos os dispositivos
+              </button>
+            </div>
+
+            <p class="conta-nota">Ao sair, você vai precisar de um novo link mágico para entrar.</p>
+          </section>
+        </aside>
+      </div>
+
+      <section class="cartao conta-secao conta-dados" aria-labelledby="titulo-dados">
+        <div class="conta-dados-grade">
+          <div class="conta-dados-coluna">
+            <span class="eyebrow">Seus dados</span>
+            <h2 id="titulo-dados">Privacidade e controle</h2>
+            <p class="conta-descricao">
+              Seus dados são seus. Não vendemos seu perfil, seu e-mail ou suas pescarias. Você pode
+              levar o que registrou quando quiser, em um arquivo aberto e legível.
+            </p>
+
+            <div class="conta-exportar">
+              <button class="btn btn--contorno" id="exportar-dados" type="button">
+                Exportar meus dados (JSON)
+              </button>
+              <p id="exportar-feedback" class="conta-feedback" role="status" aria-live="polite"></p>
+            </div>
+
+            <p class="aviso">
+              O arquivo reúne seu perfil, suas pescarias, capturas e condições registradas. O
+              download é gerado na hora e não fica armazenado em outro lugar.
+            </p>
+
+            <div class="mini-tabela conta-mini">
+              <div><span>O que vai no arquivo</span><strong>Perfil e pescarias</strong></div>
+              <div><span>Formato</span><strong>JSON legível</strong></div>
+              <div><span>Onde fica</span><strong>No seu dispositivo</strong></div>
+            </div>
+          </div>
+
+          <div class="conta-perigo">
+            <span class="conta-perigo-rotulo">Zona de perigo</span>
+            <h3>Excluir minha conta</h3>
+            <p>
+              Apaga permanentemente seu perfil, suas pescarias, capturas e fotos. Não dá para
+              desfazer depois.
+            </p>
+            <button class="btn btn--perigo" id="excluir-conta" type="button">
+              Excluir minha conta
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div id="conta-encerrada" class="conta-encerrada oculto" role="status" aria-live="polite">
+      <span class="conta-encerrada-marca" aria-hidden="true">F</span>
+      <h2 id="conta-encerrada-titulo" tabindex="-1">Conta excluída.</h2>
+      <p>
+        Seu perfil, suas pescarias e suas fotos foram removidos. Estamos te levando para a página
+        inicial...
+      </p>
+      <a class="btn btn--contorno" href="/">Voltar agora</a>
+    </div>
+
+    <noscript>
+      <div class="erro-caixa visivel" style="margin-top: 16px;">
+        Ative o JavaScript no seu navegador para carregar e gerenciar sua conta.
+      </div>
+    </noscript>
+  </section>
+
+  <div id="modal" class="modal-fundo" hidden>
+    <div
+      class="modal-caixa"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-titulo"
+      aria-describedby="modal-descricao"
+      tabindex="-1"
+    >
+      <button class="modal-fechar" type="button" id="modal-fechar" aria-label="Fechar confirmação">
+        ×
+      </button>
+      <span class="modal-simbolo" id="modal-simbolo" aria-hidden="true">!</span>
+      <h2 id="modal-titulo">Confirmar ação</h2>
+      <p id="modal-descricao" class="modal-descricao"></p>
+
+      <div class="campo oculto" id="modal-campo">
+        <label for="modal-confirmacao">Digite <strong>EXCLUIR</strong> para liberar o botão</label>
+        <input
+          id="modal-confirmacao"
+          type="text"
+          autocomplete="off"
+          autocapitalize="characters"
+          spellcheck="false"
+        />
+        <small>Precisa ser exatamente EXCLUIR, em maiúsculas.</small>
+      </div>
+
+      <p id="modal-erro" class="modal-erro oculto" role="alert"></p>
+
+      <div class="modal-acoes">
+        <button class="btn btn--contorno" type="button" id="modal-cancelar">Cancelar</button>
+        <button class="btn btn--primario" type="button" id="modal-confirmar">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true" hidden></div>
+</Layout>
+
+<style>
+  .conta-topo {
+    padding-bottom: 26px;
+  }
+
+  .conta-topo p {
+    max-width: 660px;
+    text-wrap: balance;
+  }
+
+  .conta-pagina {
+    padding-bottom: clamp(60px, 8vw, 100px);
+  }
+
+  .conta-carregando {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-height: 150px;
+    padding: 24px;
+    border: 1px dashed var(--linha-forte);
+    border-radius: var(--raio);
+    background: rgba(255, 253, 249, 0.55);
+    color: var(--tinta-suave);
+    font-size: 0.9rem;
+  }
+
+  .conta-carregando-marca {
+    display: grid;
+    width: 42px;
+    height: 42px;
+    flex: 0 0 auto;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--terracota-clara);
+    color: var(--terracota);
+    font-family: var(--fonte-titulo);
+    font-size: 1.15rem;
+    font-weight: 700;
+    animation: conta-pulso 1.5s ease-in-out infinite;
+  }
+
+  @keyframes conta-pulso {
+    50% {
+      opacity: 0.62;
+      transform: scale(0.94);
+    }
+  }
+
+  .conta-falha .erro-caixa.visivel {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .conta-falha .erro-caixa {
+    margin: 0;
+    font-size: 0.82rem;
+  }
+
+  .conta-conteudo {
+    display: grid;
+    gap: 20px;
+    animation: conta-surgir 340ms ease both;
+  }
+
+  @keyframes conta-surgir {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+  }
+
+  .conta-identidade {
+    position: relative;
+    overflow: hidden;
+    padding: clamp(22px, 3.4vw, 34px);
+    background:
+      radial-gradient(circle at 92% 14%, rgba(217, 119, 63, 0.16), transparent 22rem),
+      var(--superficie);
+  }
+
+  .conta-identidade::after {
+    position: absolute;
+    right: -90px;
+    bottom: -155px;
+    width: 280px;
+    height: 280px;
+    border: 1px solid rgba(23, 78, 87, 0.1);
+    border-radius: 50%;
+    content: '';
+    pointer-events: none;
+  }
+
+  .conta-identidade-interno {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+  }
+
+  .conta-avatar {
+    display: grid;
+    width: 84px;
+    height: 84px;
+    flex: 0 0 auto;
+    place-items: center;
+    border-radius: 50%;
+    background: linear-gradient(145deg, #1d5d66, var(--terracota-escura));
+    box-shadow: 0 14px 30px rgba(16, 56, 63, 0.22);
+    color: var(--creme);
+    font-family: var(--fonte-titulo);
+    font-size: 1.8rem;
+    font-weight: 600;
+    letter-spacing: -0.04em;
+  }
+
+  .conta-identidade-texto {
+    min-width: 0;
+    flex: 1 1 260px;
+  }
+
+  .conta-identidade-texto h2 {
+    margin-top: 10px;
+    overflow-wrap: anywhere;
+    font-family: var(--fonte-titulo);
+    font-size: clamp(1.9rem, 4.2vw, 2.9rem);
+    font-weight: 600;
+    letter-spacing: -0.04em;
+    line-height: 1.03;
+  }
+
+  .conta-email {
+    margin-top: 7px;
+    overflow-wrap: anywhere;
+    color: var(--tinta-suave);
+    font-size: 0.85rem;
+  }
+
+  .conta-selos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 12px;
+  }
+
+  .conta-identidade-acao {
+    flex: 0 0 auto;
+    margin-left: auto;
+  }
+
+  .conta-grade {
+    display: grid;
+    align-items: start;
+    gap: 20px;
+    grid-template-columns: minmax(0, 1.22fr) minmax(0, 1fr);
+  }
+
+  .conta-coluna {
+    display: grid;
+    min-width: 0;
+    gap: 20px;
+  }
+
+  .conta-secao {
+    min-width: 0;
+  }
+
+  .conta-secao .eyebrow {
+    font-size: 0.64rem;
+  }
+
+  .conta-secao h2 {
+    margin-top: 10px;
+    font-family: var(--fonte-titulo);
+    font-size: clamp(1.45rem, 2.4vw, 1.85rem);
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    line-height: 1.08;
+  }
+
+  .conta-secao .conta-descricao {
+    margin-top: 8px;
+    color: var(--tinta-suave);
+    font-size: 0.8rem;
+    line-height: 1.6;
+  }
+
+  .conta-texto {
+    margin-top: 12px;
+    color: var(--tinta-suave);
+    font-size: 0.76rem;
+    line-height: 1.6;
+  }
+
+  .conta-campo-nome {
+    margin-top: 18px;
+  }
+
+  .conta-contador {
+    color: var(--tinta-suave);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .conta-check {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-top: 18px;
+    padding: 13px 14px;
+    border: 1px solid var(--linha);
+    border-radius: 12px;
+    background: var(--papel);
+  }
+
+  .conta-check input {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+    margin: 2px 0 0;
+    accent-color: var(--terracota);
+  }
+
+  .conta-check div {
+    min-width: 0;
+  }
+
+  .conta-check label {
+    display: block;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+
+  .conta-check small {
+    display: block;
+    margin-top: 2px;
+    color: var(--tinta-suave);
+    font-size: 0.68rem;
+    line-height: 1.45;
+  }
+
+  .conta-form-acoes {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+    margin-top: 18px;
+  }
+
+  .conta-feedback {
+    min-height: 1.2em;
+    color: #4b6045;
+    font-size: 0.74rem;
+    line-height: 1.4;
+  }
+
+  .conta-feedback:empty {
+    display: none;
+  }
+
+  .conta-feedback--ok {
+    color: #4b6045;
+  }
+
+  .conta-feedback--erro {
+    color: #8f3419;
+  }
+
+  .conta-email-caixa {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    margin-top: 16px;
+    padding: 13px 14px;
+    border: 1px solid var(--linha);
+    border-radius: 12px;
+    background: var(--creme);
+  }
+
+  .conta-email-icone {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    flex: 0 0 auto;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--terracota-clara);
+    color: var(--terracota);
+    font-weight: 700;
+  }
+
+  .conta-email-caixa > div {
+    min-width: 0;
+  }
+
+  .conta-rotulo {
+    display: block;
+    color: var(--tinta-suave);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .conta-email-caixa strong {
+    display: block;
+    margin-top: 2px;
+    overflow-wrap: anywhere;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  .conta-secao > .btn--contorno {
+    margin-top: 16px;
+  }
+
+  .conta-explicacao {
+    margin-top: 14px;
+    padding: 14px 15px;
+    border-left: 3px solid var(--terracota);
+    border-radius: 0 12px 12px 0;
+    background: var(--terracota-clara);
+  }
+
+  .conta-explicacao p {
+    color: var(--tinta);
+    font-size: 0.78rem;
+    line-height: 1.6;
+  }
+
+  .conta-link-botao {
+    margin-top: 10px;
+    padding: 0;
+    border: 0;
+    background: none;
+  }
+
+  .conta-plano {
+    background:
+      radial-gradient(circle at 100% 0, rgba(217, 119, 63, 0.13), transparent 16rem),
+      var(--creme);
+  }
+
+  .conta-preco {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-top: 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--linha);
+  }
+
+  .conta-preco strong {
+    color: var(--terracota);
+    font-family: var(--fonte-titulo);
+    font-size: 2.6rem;
+    font-weight: 600;
+    letter-spacing: -0.05em;
+    line-height: 1;
+  }
+
+  .conta-preco span {
+    color: var(--tinta-suave);
+    font-size: 0.68rem;
+    line-height: 1.4;
+  }
+
+  .conta-plano .lista-check {
+    gap: 8px;
+    margin-top: 16px;
+  }
+
+  .conta-plano .lista-check li {
+    color: var(--tinta);
+    font-size: 0.78rem;
+    line-height: 1.5;
+  }
+
+  .conta-plano .lista-check li::before {
+    color: var(--terracota);
+  }
+
+  .conta-nota {
+    margin-top: 16px;
+    color: var(--tinta-suave);
+    font-size: 0.66rem;
+    line-height: 1.5;
+  }
+
+  .conta-sessoes-status {
+    margin-top: 16px;
+    color: var(--tinta-suave);
+    font-size: 0.75rem;
+  }
+
+  .conta-sessoes-erro {
+    margin-top: 16px;
+  }
+
+  .conta-sessoes-erro p {
+    color: #8f3419;
+    font-size: 0.75rem;
+    line-height: 1.5;
+  }
+
+  .conta-sessoes-erro .btn {
+    margin-top: 9px;
+  }
+
+  .conta-sessoes {
+    display: grid;
+    gap: 9px;
+    margin-top: 16px;
+  }
+
+  .conta-sessoes :global(.sessao-item) {
+    display: flex;
+    align-items: flex-start;
+    gap: 11px;
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid var(--linha);
+    border-radius: 12px;
+    background: var(--papel);
+  }
+
+  .conta-sessoes :global(.sessao-item--atual) {
+    border-color: rgba(23, 78, 87, 0.42);
+    background: #eef4f3;
+    box-shadow: inset 0 0 0 1px rgba(23, 78, 87, 0.18);
+  }
+
+  .conta-sessoes :global(.sessao-icone) {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    flex: 0 0 auto;
+    place-items: center;
+    border: 1px solid var(--linha);
+    border-radius: 50%;
+    background: var(--superficie);
+    color: var(--terracota);
+    font-size: 0.95rem;
+  }
+
+  .conta-sessoes :global(.sessao-icone svg) {
+    width: 17px;
+    height: 17px;
+  }
+
+  .conta-sessoes :global(.sessao-corpo) {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .conta-sessoes :global(.sessao-topo) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px 8px;
+  }
+
+  .conta-sessoes :global(.sessao-topo strong) {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-size: 0.78rem;
+    font-weight: 600;
+    line-height: 1.35;
+  }
+
+  .conta-sessoes :global(.sessao-topo .selo) {
+    padding: 3px 7px;
+    font-size: 0.58rem;
+  }
+
+  .conta-sessoes :global(.sessao-meta) {
+    margin-top: 2px;
+    overflow-wrap: anywhere;
+    color: var(--tinta-suave);
+    font-size: 0.66rem;
+    line-height: 1.45;
+  }
+
+  .conta-sessoes :global(.conta-sessoes-vazio) {
+    padding: 14px;
+    border: 1px dashed var(--linha-forte);
+    border-radius: 10px;
+    color: var(--tinta-suave);
+    font-size: 0.75rem;
+    text-align: center;
+  }
+
+  .conta-sessoes-acoes {
+    display: grid;
+    gap: 8px;
+    margin-top: 16px;
+  }
+
+  .conta-dados {
+    background:
+      radial-gradient(circle at 0 0, rgba(23, 78, 87, 0.05), transparent 20rem),
+      var(--superficie);
+  }
+
+  .conta-dados-grade {
+    display: grid;
+    align-items: start;
+    gap: 22px;
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  }
+
+  .conta-dados-coluna {
+    min-width: 0;
+  }
+
+  .conta-exportar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 14px;
+    margin-top: 16px;
+  }
+
+  .conta-exportar .btn {
+    flex: 0 1 auto;
+  }
+
+  .conta-mini {
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid var(--linha);
+  }
+
+  .conta-mini div {
+    font-size: 0.72rem;
+  }
+
+  .conta-perigo {
+    min-width: 0;
+    padding: 18px;
+    border: 1px solid #ecc9bb;
+    border-radius: 15px;
+    background: #fdf5f1;
+  }
+
+  .conta-perigo-rotulo {
+    color: #8f3419;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .conta-perigo h3 {
+    margin-top: 8px;
+    font-family: var(--fonte-titulo);
+    font-size: 1.3rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+
+  .conta-perigo p {
+    margin-top: 7px;
+    color: #7a5548;
+    font-size: 0.73rem;
+    line-height: 1.55;
+  }
+
+  .conta-perigo .btn {
+    width: 100%;
+    margin-top: 14px;
+  }
+
+  .btn--perigo {
+    background: #a8452b;
+    box-shadow: 0 8px 20px rgba(168, 69, 43, 0.18);
+    color: var(--creme);
+  }
+
+  .btn--perigo:hover {
+    background: #8f3419;
+  }
+
+  .conta-encerrada {
+    max-width: 560px;
+    margin: 20px auto 0;
+    padding: clamp(28px, 5vw, 44px);
+    border: 1px solid var(--linha);
+    border-radius: var(--raio);
+    background: var(--creme);
+    box-shadow: var(--sombra-suave);
+    scroll-margin-top: 96px;
+    text-align: center;
+  }
+
+  .conta-encerrada-marca {
+    display: grid;
+    width: 46px;
+    height: 46px;
+    margin-inline: auto;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--terracota-clara);
+    color: var(--terracota);
+    font-family: var(--fonte-titulo);
+    font-size: 1.2rem;
+    font-weight: 700;
+  }
+
+  .conta-encerrada h2 {
+    margin-top: 14px;
+    font-family: var(--fonte-titulo);
+    font-size: clamp(1.7rem, 4vw, 2.2rem);
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    line-height: 1.08;
+  }
+
+  .conta-encerrada p {
+    margin-top: 8px;
+    color: var(--tinta-suave);
+    font-size: 0.82rem;
+    line-height: 1.6;
+  }
+
+  .conta-encerrada .btn {
+    margin-top: 18px;
+  }
+
+  .modal-fundo {
+    position: fixed;
+    z-index: 120;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(36, 31, 27, 0.5);
+    backdrop-filter: blur(3px);
+  }
+
+  .modal-fundo[hidden] {
+    display: none;
+  }
+
+  .modal-caixa {
+    position: relative;
+    width: min(100%, 430px);
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    padding: 24px;
+    border-radius: var(--raio);
+    background: var(--superficie);
+    box-shadow: 0 30px 90px rgba(36, 31, 27, 0.3);
+    color: var(--tinta);
+    animation: modal-surgir 180ms ease both;
+  }
+
+  @keyframes modal-surgir {
+    from {
+      opacity: 0;
+      transform: translateY(8px) scale(0.985);
+    }
+  }
+
+  .modal-fechar {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: grid;
+    width: 32px;
+    height: 32px;
+    place-items: center;
+    padding: 0;
+    border: 1px solid var(--linha);
+    border-radius: 50%;
+    background: transparent;
+    color: var(--tinta-suave);
+    font-size: 1.1rem;
+    line-height: 1;
+  }
+
+  .modal-fechar:hover {
+    background: var(--superficie-2);
+  }
+
+  .modal-simbolo {
+    display: grid;
+    width: 38px;
+    height: 38px;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--terracota-clara);
+    color: var(--terracota);
+    font-family: var(--fonte-titulo);
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+
+  .modal-simbolo--perigo {
+    background: #f8e2d9;
+    color: #8f3419;
+  }
+
+  .modal-caixa h2 {
+    margin-top: 14px;
+    padding-right: 28px;
+    font-family: var(--fonte-titulo);
+    font-size: 1.65rem;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    line-height: 1.08;
+  }
+
+  .modal-descricao {
+    margin-top: 8px;
+    color: var(--tinta-suave);
+    font-size: 0.8rem;
+    line-height: 1.6;
+  }
+
+  .modal-caixa .campo {
+    margin-top: 16px;
+  }
+
+  .modal-caixa .campo label {
+    font-size: 0.75rem;
+  }
+
+  .modal-caixa .campo strong {
+    color: #8f3419;
+    letter-spacing: 0.03em;
+  }
+
+  .modal-erro {
+    margin-top: 12px;
+    padding: 9px 11px;
+    border: 1px solid #efc9bb;
+    border-radius: 8px;
+    background: #fdf0ea;
+    color: #8f3419;
+    font-size: 0.74rem;
+    line-height: 1.5;
+  }
+
+  .modal-acoes {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 20px;
+  }
+
+  .modal-acoes .btn {
+    min-height: 44px;
+    padding: 10px 18px;
+    font-size: 0.86rem;
+  }
+
+  .toast {
+    position: fixed;
+    z-index: 110;
+    bottom: 20px;
+    left: 50%;
+    width: fit-content;
+    max-width: min(calc(100% - 28px), 460px);
+    padding: 12px 16px;
+    border: 1px solid var(--linha);
+    border-left: 4px solid var(--verde);
+    border-radius: 12px;
+    background: var(--superficie);
+    box-shadow: var(--sombra);
+    color: var(--tinta);
+    font-size: 0.8rem;
+    line-height: 1.45;
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+    transition:
+      opacity 180ms ease,
+      transform 180ms ease;
+  }
+
+  .toast[hidden] {
+    display: none;
+  }
+
+  .toast.visivel {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  .toast[data-tipo='erro'] {
+    border-left-color: #b7472d;
+  }
+
+  @media (max-width: 900px) {
+    .conta-grade,
+    .conta-dados-grade {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  @media (max-width: 620px) {
+    .conta-identidade-interno {
+      align-items: flex-start;
+    }
+
+    .conta-avatar {
+      width: 68px;
+      height: 68px;
+      font-size: 1.45rem;
+    }
+
+    .conta-identidade-texto {
+      flex-basis: calc(100% - 88px);
+    }
+
+    .conta-identidade-acao {
+      width: 100%;
+      margin-left: 0;
+    }
+
+    .conta-form-acoes .btn {
+      width: 100%;
+    }
+
+    .conta-exportar,
+    .conta-exportar .btn {
+      width: 100%;
+    }
+  }
+
+  @media (max-width: 440px) {
+    .modal-fundo {
+      padding: 12px;
+    }
+
+    .modal-caixa {
+      max-height: calc(100vh - 24px);
+      padding: 20px;
+    }
+
+    .modal-acoes {
+      flex-direction: column;
+    }
+
+    .modal-acoes .btn {
+      width: 100%;
+    }
+
+    .toast {
+      bottom: 12px;
+      max-width: calc(100% - 20px);
+    }
+  }
+</style>
+
+<script>
+  // @ts-nocheck
+  const API = (document.body.dataset.api || 'http://localhost:5184').replace(/\/$/, '');
+  const URL_ENTRAR = '/entrar?voltar=/conta';
+  const MENSAGEM_REDE =
+    'Não foi possível falar com o servidor. Confira sua conexão e tente novamente.';
+
+  const porId = (id) => document.getElementById(id);
+
+  const carregando = porId('carregando');
+  const falhaCarregamento = porId('falha-carregamento');
+  const falhaTexto = porId('falha-texto');
+  const recarregar = porId('recarregar');
+  const conteudo = porId('conta-conteudo');
+  const avatar = porId('avatar-conta');
+  const nomeConta = porId('nome-conta');
+  const emailConta = porId('email-conta');
+  const desdeConta = porId('desde-conta');
+  const emailCaixa = porId('email-caixa');
+  const formPerfil = porId('form-perfil');
+  const nomePerfil = porId('nome-perfil');
+  const nomeContador = porId('nome-contador');
+  const aceitaNovidades = porId('aceita-novidades');
+  const salvarPerfil = porId('salvar-perfil');
+  const perfilFeedback = porId('perfil-feedback');
+  const btnTrocarEmail = porId('btn-trocar-email');
+  const trocarEmail = porId('trocar-email');
+  const sairParaTrocar = porId('sair-para-trocar');
+  const sessoesCarregando = porId('sessoes-carregando');
+  const sessoesErro = porId('sessoes-erro');
+  const sessoesErroTexto = porId('sessoes-erro-texto');
+  const sessoesLista = porId('sessoes-lista');
+  const recarregarSessoes = porId('recarregar-sessoes');
+  const sairAtual = porId('sair-atual');
+  const sairTodos = porId('sair-todos');
+  const exportarDados = porId('exportar-dados');
+  const exportarFeedback = porId('exportar-feedback');
+  const excluirConta = porId('excluir-conta');
+  const contaEncerrada = porId('conta-encerrada');
+  const contaEncerradaTitulo = porId('conta-encerrada-titulo');
+  const modal = porId('modal');
+  const modalCaixa = modal.querySelector('.modal-caixa');
+  const modalTitulo = porId('modal-titulo');
+  const modalDescricao = porId('modal-descricao');
+  const modalSimbolo = porId('modal-simbolo');
+  const modalCampo = porId('modal-campo');
+  const modalConfirmacao = porId('modal-confirmacao');
+  const modalErro = porId('modal-erro');
+  const modalConfirmar = porId('modal-confirmar');
+  const modalCancelar = porId('modal-cancelar');
+  const modalFechar = porId('modal-fechar');
+  const toast = porId('toast');
+
+  const fundoInerte = [
+    document.querySelector('.pular-conteudo'),
+    document.querySelector('.topo'),
+    document.querySelector('.conta-topo'),
+    document.querySelector('.conta-pagina'),
+    document.querySelector('.rodape')
+  ];
+
+  const formatoDataHora = new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
+  const formatoData = new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
+
+  let usuarioAtual = null;
+  let redirecionando = false;
+  let ultimoFoco = null;
+  let acaoConfirmar = null;
+  let textoExigido = null;
+  let modalEmEnvio = false;
+  let overflowAnterior = '';
+  let timerToast = null;
+  let versaoToast = 0;
+
+  class FalhaApi extends Error {
+    constructor(mensagem, status = 0) {
+      super(mensagem);
+      this.name = 'FalhaApi';
+      this.status = status;
+    }
+  }
+
+  function irParaEntrar() {
+    if (redirecionando) return;
+    redirecionando = true;
+    window.location.replace(URL_ENTRAR);
+  }
+
+  function mensagemDoStatus(status) {
+    if (status === 400) return 'Confira os dados e tente novamente.';
+    if (status === 403) return 'Esta ação não foi permitida. Entre novamente na conta.';
+    if (status === 404) return 'Não encontramos o que você procura.';
+    if (status === 429) return 'Muitas tentativas em pouco tempo. Aguarde um minuto e tente de novo.';
+    if (status >= 500) return 'Algo deu errado do nosso lado. Tente novamente em instantes.';
+    return 'Não foi possível concluir a ação. Tente novamente.';
+  }
+
+  async function pedir(caminho, opcoes = {}) {
+    const { metodo = 'GET', corpo, bruto = false } = opcoes;
+    const init = {
+      method: metodo,
+      credentials: 'include',
+      headers: { Accept: 'application/json' }
+    };
+
+    if (corpo !== undefined) {
+      init.headers['Content-Type'] = 'application/json';
+      init.body = JSON.stringify(corpo);
+    }
+
+    let resposta;
+
+    try {
+      resposta = await fetch(`${API}${caminho}`, init);
+    } catch {
+      throw new FalhaApi(MENSAGEM_REDE, 0);
+    }
+
+    if (resposta.status === 401) {
+      irParaEntrar();
+      throw new FalhaApi('Sua sessão expirou. Redirecionando para a entrada...', 401);
+    }
+
+    if (!resposta.ok) {
+      let detalhe = '';
+      try {
+        const dados = await resposta.json();
+        detalhe = dados?.detalhe || dados?.message || '';
+      } catch {
+        detalhe = '';
+      }
+      throw new FalhaApi(detalhe || mensagemDoStatus(resposta.status), resposta.status);
+    }
+
+    if (bruto || resposta.status === 204) {
+      return { resposta, dados: null };
+    }
+
+    const dados = await resposta.json().catch(() => null);
+    return { resposta, dados };
+  }
+
+  function formatarDataHora(iso) {
+    if (!iso) return '';
+    const data = new Date(iso);
+    if (Number.isNaN(data.getTime())) return '';
+    return formatoDataHora.format(data);
+  }
+
+  function formatarData(iso) {
+    if (!iso) return '';
+    const data = new Date(iso);
+    if (Number.isNaN(data.getTime())) return '';
+    return formatoData.format(data);
+  }
+
+  function iniciais(nome, email) {
+    const partes = String(nome || email || '?')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+
+    if (!partes.length) return '?';
+    if (partes.length === 1) {
+      return Array.from(partes[0]).slice(0, 2).join('').toUpperCase();
+    }
+
+    const primeira = Array.from(partes[0])[0] || '';
+    const ultima = Array.from(partes[partes.length - 1])[0] || '';
+    return `${primeira}${ultima}`.toUpperCase();
+  }
+
+  function definirFeedback(elemento, texto, tipo) {
+    if (!elemento) return;
+    elemento.textContent = texto;
+    elemento.classList.remove('conta-feedback--ok', 'conta-feedback--erro');
+    if (tipo === 'ok') elemento.classList.add('conta-feedback--ok');
+    if (tipo === 'erro') elemento.classList.add('conta-feedback--erro');
+  }
+
+  function mostrarToast(mensagem, tipo = 'ok', duracao = 4200) {
+    if (!toast) return;
+
+    const versao = ++versaoToast;
+    window.clearTimeout(timerToast);
+    toast.hidden = false;
+    toast.dataset.tipo = tipo;
+    toast.textContent = mensagem;
+
+    window.requestAnimationFrame(() => toast.classList.add('visivel'));
+
+    timerToast = window.setTimeout(() => {
+      if (versao !== versaoToast) return;
+      toast.classList.remove('visivel');
+      window.setTimeout(() => {
+        if (versao === versaoToast) toast.hidden = true;
+      }, 220);
+    }, duracao);
+  }
+
+  function atualizarContador() {
+    if (!nomeContador || !nomePerfil) return;
+    nomeContador.textContent = `${nomePerfil.value.length}/80`;
+  }
+
+  function preencherIdentidade(usuario) {
+    const nome = usuario.nomeExibicao || usuario.email || 'Pescador';
+
+    avatar.textContent = iniciais(nome, usuario.email);
+    nomeConta.textContent = nome;
+    emailConta.textContent = usuario.email || '';
+    emailCaixa.textContent = usuario.email || '—';
+    nomePerfil.value = usuario.nome ?? '';
+    nomePerfil.placeholder = usuario.nomeExibicao
+      ? `Ex.: ${usuario.nomeExibicao}`
+      : 'Como podemos te chamar?';
+    aceitaNovidades.checked = Boolean(usuario.aceitaNovidades);
+    atualizarContador();
+
+    const desde = formatarData(usuario.criadoEm);
+    desdeConta.textContent = desde ? `No Fisga desde ${desde}` : 'Conta Fisga';
+  }
+
+  function iniciarCarregamento() {
+    falhaCarregamento.classList.add('oculto');
+    conteudo.classList.add('oculto');
+    carregando.classList.remove('oculto');
+  }
+
+  async function carregarConta() {
+    iniciarCarregamento();
+
+    try {
+      const { dados } = await pedir('/api/auth/me');
+
+      if (!dados?.autenticado || !dados?.usuario) {
+        irParaEntrar();
+        return;
+      }
+
+      usuarioAtual = dados.usuario;
+      preencherIdentidade(usuarioAtual);
+      carregando.classList.add('oculto');
+      conteudo.classList.remove('oculto');
+      void carregarSessoes();
+    } catch (erro) {
+      if (erro?.status === 401) return;
+      carregando.classList.add('oculto');
+      falhaTexto.textContent =
+        erro?.message || 'Não foi possível carregar sua conta. Confira sua conexão e tente novamente.';
+      falhaCarregamento.classList.remove('oculto');
+    }
+  }
+
+  function svgDispositivo(tipo) {
+    if (tipo === 'tablet') {
+      return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="2.5" width="14" height="19" rx="2.5"></rect><path d="M11 18.5h2"></path></svg>';
+    }
+
+    if (tipo === 'celular') {
+      return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5"></rect><path d="M11 18.5h2"></path></svg>';
+    }
+
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="12" rx="2"></rect><path d="M2 20h20"></path></svg>';
+  }
+
+  function descreverDispositivo(userAgent) {
+    if (!userAgent) {
+      return { titulo: 'Dispositivo desconhecido', tipo: 'computador' };
+    }
+
+    const ua = String(userAgent);
+    let navegador = '';
+    let sistema = '';
+
+    if (ua.includes('Edg/') || ua.includes('EdgiOS')) navegador = 'Edge';
+    else if (ua.includes('OPR/') || ua.includes('Opera') || ua.includes('OPiOS')) navegador = 'Opera';
+    else if (ua.includes('SamsungBrowser')) navegador = 'Samsung Internet';
+    else if (ua.includes('Firefox/') || ua.includes('FxiOS')) navegador = 'Firefox';
+    else if (ua.includes('CriOS')) navegador = 'Chrome';
+    else if (ua.includes('Chrome/')) navegador = 'Chrome';
+    else if (ua.includes('Safari/')) navegador = 'Safari';
+
+    if (ua.includes('Windows NT')) sistema = 'Windows';
+    else if (ua.includes('Android')) sistema = 'Android';
+    else if (ua.includes('iPad')) sistema = 'iPadOS';
+    else if (ua.includes('iPhone') || ua.includes('iPod')) sistema = 'iOS';
+    else if (ua.includes('Mac OS X')) sistema = 'macOS';
+    else if (ua.includes('CrOS')) sistema = 'ChromeOS';
+    else if (ua.includes('Linux')) sistema = 'Linux';
+
+    const tablet =
+      ua.includes('iPad') ||
+      ua.includes('Tablet') ||
+      ua.includes('PlayBook') ||
+      (ua.includes('Android') && !ua.includes('Mobile'));
+    const celular =
+      ua.includes('Mobi') ||
+      ua.includes('iPhone') ||
+      ua.includes('iPod') ||
+      ua.includes('Windows Phone');
+
+    const tipo = tablet ? 'tablet' : celular ? 'celular' : 'computador';
+    const descricao = [navegador, sistema ? `no ${sistema}` : ''].filter(Boolean).join(' ');
+
+    return {
+      titulo: descricao || 'Dispositivo desconhecido',
+      tipo
+    };
+  }
+
+  function renderizarSessoes(sessoes) {
+    sessoesCarregando.classList.add('oculto');
+    sessoesErro.classList.add('oculto');
+    sessoesLista.innerHTML = '';
+
+    if (!sessoes.length) {
+      const vazio = document.createElement('p');
+      vazio.className = 'conta-sessoes-vazio';
+      vazio.textContent = 'Nenhuma sessão ativa encontrada.';
+      sessoesLista.append(vazio);
+      return;
+    }
+
+    const fragmento = document.createDocumentFragment();
+
+    sessoes.forEach((sessao) => {
+      const dispositivo = descreverDispositivo(sessao.userAgent);
+      const item = document.createElement('article');
+      item.className = `sessao-item${sessao.atual ? ' sessao-item--atual' : ''}`;
+
+      const icone = document.createElement('span');
+      icone.className = 'sessao-icone';
+      icone.setAttribute('aria-hidden', 'true');
+      icone.innerHTML = svgDispositivo(dispositivo.tipo);
+
+      const corpo = document.createElement('div');
+      corpo.className = 'sessao-corpo';
+
+      const topo = document.createElement('div');
+      topo.className = 'sessao-topo';
+
+      const titulo = document.createElement('strong');
+      titulo.textContent = dispositivo.titulo;
+      topo.append(titulo);
+
+      if (sessao.atual) {
+        const selo = document.createElement('span');
+        selo.className = 'selo';
+        selo.textContent = 'Sessão atual';
+        topo.append(selo);
+      }
+
+      corpo.append(topo);
+
+      const criada = formatarDataHora(sessao.criadoEm);
+      if (criada) {
+        const linhaCriada = document.createElement('p');
+        linhaCriada.className = 'sessao-meta';
+        linhaCriada.textContent = `Iniciada em ${criada}`;
+        corpo.append(linhaCriada);
+      }
+
+      const ultimoUso = formatarDataHora(sessao.ultimoUsoEm);
+      const linhaUltimoUso = document.createElement('p');
+      linhaUltimoUso.className = 'sessao-meta';
+      linhaUltimoUso.textContent = ultimoUso
+        ? `Último uso em ${ultimoUso}`
+        : 'Último uso não registrado';
+      corpo.append(linhaUltimoUso);
+
+      const expira = formatarDataHora(sessao.expiraEm);
+      const linhaExpira = document.createElement('p');
+      linhaExpira.className = 'sessao-meta';
+      linhaExpira.textContent = expira ? `Expira em ${expira}` : 'Expiração não informada';
+      corpo.append(linhaExpira);
+
+      item.append(icone, corpo);
+      fragmento.append(item);
+    });
+
+    sessoesLista.append(fragmento);
+  }
+
+  async function carregarSessoes() {
+    sessoesErro.classList.add('oculto');
+    sessoesLista.innerHTML = '';
+    sessoesCarregando.classList.remove('oculto');
+
+    try {
+      const { dados } = await pedir('/api/conta/sessoes');
+      const sessoes = Array.isArray(dados) ? [...dados] : [];
+
+      sessoes.sort((a, b) => {
+        if (Boolean(a.atual) !== Boolean(b.atual)) return a.atual ? -1 : 1;
+        const dataA = new Date(a.ultimoUsoEm || 0).getTime();
+        const dataB = new Date(b.ultimoUsoEm || 0).getTime();
+        return dataB - dataA;
+      });
+
+      renderizarSessoes(sessoes);
+    } catch (erro) {
+      if (erro?.status === 401) return;
+      sessoesCarregando.classList.add('oculto');
+      sessoesErroTexto.textContent =
+        erro?.message || 'Não foi possível carregar suas sessões. Tente novamente.';
+      sessoesErro.classList.remove('oculto');
+    }
+  }
+
+  function abrirModalConfirmacao(opcoes) {
+    ultimoFoco = document.activeElement;
+    modalTitulo.textContent = opcoes.titulo;
+    modalDescricao.textContent = opcoes.descricao;
+    modalSimbolo.textContent = opcoes.simbolo || '!';
+    modalSimbolo.className = `modal-simbolo${opcoes.perigo ? ' modal-simbolo--perigo' : ''}`;
+
+    modalConfirmar.className = `btn ${opcoes.perigo ? 'btn--perigo' : 'btn--primario'}`;
+    modalConfirmar.textContent = opcoes.rotuloConfirmar;
+    modalConfirmar.dataset.texto = opcoes.rotuloConfirmar;
+
+    modalErro.textContent = '';
+    modalErro.classList.add('oculto');
+    modalConfirmacao.value = '';
+    modalCampo.classList.toggle('oculto', !opcoes.exigirTexto);
+    textoExigido = opcoes.exigirTexto || null;
+    modalConfirmar.disabled = Boolean(textoExigido);
+    modalCancelar.disabled = false;
+    modalFechar.disabled = false;
+    modalConfirmacao.disabled = false;
+
+    acaoConfirmar = opcoes.aoConfirmar;
+
+    overflowAnterior = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    fundoInerte.forEach((elemento) => elemento?.setAttribute('inert', ''));
+    modal.hidden = false;
+
+    window.requestAnimationFrame(() => {
+      if (textoExigido) modalConfirmacao.focus();
+      else modalCancelar.focus();
+    });
+  }
+
+  function fecharModal() {
+    if (modal.hidden) return;
+
+    modal.hidden = true;
+    modalEmEnvio = false;
+    acaoConfirmar = null;
+    textoExigido = null;
+    document.body.style.overflow = overflowAnterior;
+    fundoInerte.forEach((elemento) => elemento?.removeAttribute('inert'));
+
+    if (ultimoFoco && typeof ultimoFoco.focus === 'function') {
+      ultimoFoco.focus();
+    }
+    ultimoFoco = null;
+  }
+
+  async function confirmarModal() {
+    if (modalEmEnvio || !acaoConfirmar) return;
+
+    if (textoExigido && modalConfirmacao.value.trim() !== textoExigido) {
+      modalErro.textContent = 'Digite EXCLUIR, em maiúsculas, para confirmar.';
+      modalErro.classList.remove('oculto');
+      modalConfirmacao.focus();
+      return;
+    }
+
+    modalEmEnvio = true;
+    const rotuloOriginal = modalConfirmar.dataset.texto || modalConfirmar.textContent;
+
+    modalConfirmar.disabled = true;
+    modalConfirmar.textContent = 'Processando...';
+    modalCancelar.disabled = true;
+    modalFechar.disabled = true;
+    modalConfirmacao.disabled = true;
+    modalErro.classList.add('oculto');
+
+    try {
+      await acaoConfirmar();
+    } catch (erro) {
+      if (erro?.status !== 401) {
+        modalErro.textContent =
+          erro?.message || 'Não foi possível concluir a ação. Tente novamente.';
+        modalErro.classList.remove('oculto');
+      }
+    } finally {
+      modalEmEnvio = false;
+
+      if (!modal.hidden) {
+        modalCancelar.disabled = false;
+        modalFechar.disabled = false;
+        modalConfirmacao.disabled = false;
+        modalConfirmar.textContent = rotuloOriginal;
+        modalConfirmar.disabled =
+          Boolean(textoExigido) && modalConfirmacao.value.trim() !== textoExigido;
+      }
+    }
+  }
+
+  function abrirModalSairAtual(motivoTroca = false) {
+    const email = usuarioAtual?.email || 'seu e-mail';
+
+    abrirModalConfirmacao({
+      titulo: motivoTroca ? 'Sair para trocar de e-mail?' : 'Sair deste dispositivo?',
+      descricao: motivoTroca
+        ? `Você vai encerrar esta sessão. Depois, é só entrar com o novo e-mail para receber o link mágico no endereço certo.`
+        : `Você vai encerrar a sessão deste dispositivo. Para voltar, será preciso pedir um novo link mágico para ${email}.`,
+      rotuloConfirmar: motivoTroca ? 'Sair da conta' : 'Sair',
+      aoConfirmar: async () => {
+        await pedir('/api/auth/sair', { metodo: 'POST' });
+        fecharModal();
+        mostrarToast('Sessão encerrada. Até a próxima pescaria!', 'ok');
+        window.setTimeout(() => window.location.assign('/'), 1200);
+      }
+    });
+  }
+
+  formPerfil.addEventListener('submit', async (evento) => {
+    evento.preventDefault();
+
+    const nome = nomePerfil.value.trim();
+
+    if (nome.length > 80) {
+      definirFeedback(perfilFeedback, 'O nome deve ter até 80 caracteres.', 'erro');
+      nomePerfil.focus();
+      return;
+    }
+
+    const rotuloOriginal = salvarPerfil.textContent;
+    salvarPerfil.disabled = true;
+    salvarPerfil.textContent = 'Salvando...';
+    definirFeedback(perfilFeedback, '', null);
+
+    try {
+      const { dados } = await pedir('/api/auth/perfil', {
+        metodo: 'PATCH',
+        corpo: {
+          nome: nome || null,
+          aceitaNovidades: aceitaNovidades.checked
+        }
+      });
+
+      if (dados) {
+        usuarioAtual = dados;
+        preencherIdentidade(dados);
+      }
+
+      definirFeedback(perfilFeedback, 'Alterações salvas.', 'ok');
+      mostrarToast('Perfil atualizado.', 'ok');
+    } catch (erro) {
+      if (erro?.status !== 401) {
+        definirFeedback(
+          perfilFeedback,
+          erro?.message || 'Não foi possível salvar suas alterações. Tente novamente.',
+          'erro'
+        );
+      }
+    } finally {
+      salvarPerfil.disabled = false;
+      salvarPerfil.textContent = rotuloOriginal;
+    }
+  });
+
+  nomePerfil.addEventListener('input', atualizarContador);
+
+  btnTrocarEmail.addEventListener('click', () => {
+    const vaiAbrir = trocarEmail.classList.contains('oculto');
+    trocarEmail.classList.toggle('oculto', !vaiAbrir);
+    btnTrocarEmail.setAttribute('aria-expanded', String(vaiAbrir));
+    btnTrocarEmail.textContent = vaiAbrir ? 'Fechar' : 'Trocar e-mail';
+  });
+
+  sairParaTrocar.addEventListener('click', () => abrirModalSairAtual(true));
+
+  sairAtual.addEventListener('click', () => abrirModalSairAtual(false));
+
+  sairTodos.addEventListener('click', () => {
+    abrirModalConfirmacao({
+      titulo: 'Sair de todos os dispositivos?',
+      descricao:
+        'Todos os navegadores e aparelhos conectados à sua conta serão desconectados. Cada um vai precisar de um novo link mágico para entrar.',
+      rotuloConfirmar: 'Sair de todos',
+      aoConfirmar: async () => {
+        await pedir('/api/auth/sair-de-todos', { metodo: 'POST' });
+        fecharModal();
+        mostrarToast('Todas as sessões foram encerradas.', 'ok');
+        window.setTimeout(() => window.location.assign('/'), 1200);
+      }
+    });
+  });
+
+  exportarDados.addEventListener('click', async () => {
+    const rotuloOriginal = exportarDados.textContent;
+    exportarDados.disabled = true;
+    exportarDados.textContent = 'Preparando arquivo...';
+    definirFeedback(exportarFeedback, '', null);
+
+    try {
+      const { resposta } = await pedir('/api/conta/exportar', { bruto: true });
+      const blob = await resposta.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+
+      link.href = url;
+      link.download = `fisga-conta-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+
+      definirFeedback(exportarFeedback, 'Exportação iniciada. Confira seus downloads.', 'ok');
+      mostrarToast('Seus dados estão sendo baixados.', 'ok');
+    } catch (erro) {
+      if (erro?.status !== 401) {
+        definirFeedback(
+          exportarFeedback,
+          erro?.message || 'Não foi possível exportar seus dados. Tente novamente.',
+          'erro'
+        );
+        mostrarToast('Não foi possível exportar seus dados.', 'erro');
+      }
+    } finally {
+      exportarDados.disabled = false;
+      exportarDados.textContent = rotuloOriginal;
+    }
+  });
+
+  excluirConta.addEventListener('click', () => {
+    abrirModalConfirmacao({
+      titulo: 'Excluir sua conta?',
+      descricao:
+        'Esta ação é permanente. Vamos apagar seu perfil, suas pescarias, capturas e fotos. Não é possível recuperar depois.',
+      rotuloConfirmar: 'Excluir minha conta',
+      perigo: true,
+      exigirTexto: 'EXCLUIR',
+      aoConfirmar: async () => {
+        await pedir('/api/conta', {
+          metodo: 'DELETE',
+          corpo: { confirmacao: 'EXCLUIR' }
+        });
+
+        fecharModal();
+        conteudo.classList.add('oculto');
+        falhaCarregamento.classList.add('oculto');
+        contaEncerrada.classList.remove('oculto');
+
+        const comportamentoAnterior = document.documentElement.style.scrollBehavior;
+        document.documentElement.style.scrollBehavior = 'auto';
+        contaEncerrada.scrollIntoView({ block: 'start' });
+        document.documentElement.style.scrollBehavior = comportamentoAnterior;
+        contaEncerradaTitulo.focus({ preventScroll: true });
+
+        window.setTimeout(() => window.location.replace('/'), 2400);
+      }
+    });
+  });
+
+  modalConfirmacao.addEventListener('input', () => {
+    if (modalEmEnvio) return;
+    const podeConfirmar = !textoExigido || modalConfirmacao.value.trim() === textoExigido;
+    modalConfirmar.disabled = !podeConfirmar;
+    if (podeConfirmar) modalErro.classList.add('oculto');
+  });
+
+  modalConfirmacao.addEventListener('keydown', (evento) => {
+    if (evento.key === 'Enter' && !modalConfirmar.disabled) {
+      evento.preventDefault();
+      void confirmarModal();
+    }
+  });
+
+  modalConfirmar.addEventListener('click', () => void confirmarModal());
+
+  modalCancelar.addEventListener('click', () => {
+    if (!modalEmEnvio) fecharModal();
+  });
+
+  modalFechar.addEventListener('click', () => {
+    if (!modalEmEnvio) fecharModal();
+  });
+
+  modal.addEventListener('click', (evento) => {
+    if (evento.target === modal && !modalEmEnvio) fecharModal();
+  });
+
+  document.addEventListener('keydown', (evento) => {
+    if (modal.hidden) return;
+
+    if (evento.key === 'Escape') {
+      evento.preventDefault();
+      if (!modalEmEnvio) fecharModal();
+      return;
+    }
+
+    if (evento.key !== 'Tab') return;
+
+    const focaveis = Array.from(
+      modal.querySelectorAll('button, input, a[href], [tabindex]:not([tabindex="-1"])')
+    ).filter((elemento) => !elemento.disabled && elemento.offsetParent !== null);
+
+    if (!focaveis.length) {
+      evento.preventDefault();
+      modalCaixa.focus();
+      return;
+    }
+
+    const primeiro = focaveis[0];
+    const ultimo = focaveis[focaveis.length - 1];
+
+    if (evento.shiftKey && document.activeElement === primeiro) {
+      evento.preventDefault();
+      ultimo.focus();
+    } else if (!evento.shiftKey && document.activeElement === ultimo) {
+      evento.preventDefault();
+      primeiro.focus();
+    }
+  });
+
+  recarregar.addEventListener('click', () => void carregarConta());
+  recarregarSessoes.addEventListener('click', () => void carregarSessoes());
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => void carregarConta(), { once: true });
+  } else {
+    void carregarConta();
+  }
+</script>

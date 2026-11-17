@@ -1,8 +1,10 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
+using Fisga.Api;
 using Fisga.Api.Endpoints;
 using Fisga.Api.Middleware;
 using Fisga.Application;
@@ -20,6 +22,13 @@ builder.Services.ConfigureHttpJsonOptions(opcoes =>
     opcoes.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
 });
 
+builder.Services.Configure<ForwardedHeadersOptions>(opcoes =>
+{
+    opcoes.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    opcoes.KnownIPNetworks.Clear();
+    opcoes.KnownProxies.Clear();
+});
+
 builder.Services.AdicionarAplicacao();
 builder.Services.AdicionarInfraestrutura(builder.Configuration);
 
@@ -32,14 +41,13 @@ builder.Services.AddCors(opcoes =>
     {
         if (origens.Length == 0)
         {
-            politica.AllowAnyOrigin();
-        }
-        else
-        {
-            politica.WithOrigins(origens);
+            throw new InvalidOperationException("Configure Cors:AllowedOrigins com as origens do site.");
         }
 
-        politica.AllowAnyHeader().AllowAnyMethod();
+        politica.WithOrigins(origens)
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
 });
 
@@ -48,6 +56,7 @@ builder.Services.AddRateLimiter(opcoes =>
     opcoes.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     AdicionarPolitica(opcoes, "leitura", 180);
     AdicionarPolitica(opcoes, "escrita", 40);
+    AdicionarPolitica(opcoes, "auth", 8);
     AdicionarPolitica(opcoes, "pdf", 30);
     AdicionarPolitica(opcoes, "midia", 30);
 });
@@ -57,6 +66,7 @@ var app = builder.Build();
 var pastaMidia = ArmazenamentoDeMidiaLocal.ObterPasta(app.Configuration);
 Directory.CreateDirectory(pastaMidia);
 
+app.UseForwardedHeaders();
 app.UseCors("web");
 app.UseStaticFiles(new StaticFileOptions
 {
@@ -68,6 +78,8 @@ app.UseStaticFiles(new StaticFileOptions
     }
 });
 app.UseMiddleware<ExceptionHandlingMiddleware>();
+app.UseMiddleware<ProtecaoCsrfMiddleware>();
+app.UseMiddleware<SessaoMiddleware>();
 app.UseRateLimiter();
 
 if (app.Environment.IsDevelopment())
@@ -82,6 +94,8 @@ app.MapGet("/ready", async (FisgaDbContext db, CancellationToken ct) =>
             : Results.StatusCode(StatusCodes.Status503ServiceUnavailable))
     .AllowAnonymous();
 
+app.MapAuthEndpoints();
+app.MapContaEndpoints();
 app.MapPescariaEndpoints();
 app.MapMidiaEndpoints();
 

@@ -1,0 +1,182 @@
+---
+import Layout from '../../layouts/Layout.astro';
+
+const estado = Astro.url.searchParams.get('estado') ?? '';
+---
+
+<Layout
+  titulo="Confirmando acesso — Fisga"
+  descricao="Confirmando seu link de acesso ao Fisga."
+  bodyClass="pagina-confirmar"
+>
+  <section class="confirmar">
+    <div class="container">
+      <div class="confirmar-cartao" data-estado={estado ?? ''}>
+        <div id="confirmar-conteudo">
+          <div class="confirmar-icone" id="confirmar-icone" aria-hidden="true">
+            <svg viewBox="0 0 48 48" fill="none">
+              <circle cx="24" cy="24" r="18" stroke="currentColor" stroke-width="2.2" opacity=".35" />
+              <path d="m16 24 5.5 5.5L33 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </div>
+
+          <span class="eyebrow" id="confirmar-eyebrow">Confirmando acesso</span>
+          <h1 id="confirmar-titulo">Tudo certo. <em>Abrindo seu diário.</em></h1>
+          <p id="confirmar-texto">
+            Estamos validando seu link e preparando o seu diário. Você será redirecionado em instantes.
+          </p>
+
+          <div class="confirmar-progresso" aria-hidden="true"><span></span></div>
+
+          <a class="btn btn--primario oculto" id="confirmar-acao" href="/meu-diario">Ir para meu diário</a>
+          <a class="btn btn--contorno oculto" id="confirmar-secundaria" href="/entrar">Pedir um novo link</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</Layout>
+
+<style>
+  .confirmar {
+    display: grid;
+    min-height: 62vh;
+    padding: clamp(48px, 8vw, 96px) 0;
+    place-items: center;
+  }
+
+  .confirmar-cartao {
+    width: min(100%, 560px);
+    margin: 0 auto;
+    padding: clamp(28px, 5vw, 46px);
+    border: 1px solid var(--linha);
+    border-radius: 22px;
+    background: var(--superficie);
+    box-shadow: var(--sombra);
+    text-align: center;
+  }
+
+  .confirmar-icone {
+    display: grid;
+    width: 68px;
+    height: 68px;
+    margin: 0 auto 20px;
+    place-items: center;
+    border-radius: 999px;
+    background: var(--terracota-clara);
+    color: var(--terracota);
+  }
+
+  .confirmar-icone.erro {
+    background: #f7e7de;
+    color: var(--acafrao);
+  }
+
+  .confirmar-icone svg {
+    width: 36px;
+  }
+
+  .confirmar-cartao h1 {
+    margin-top: 12px;
+    font-size: clamp(2rem, 4vw, 2.9rem);
+  }
+
+  .confirmar-cartao p {
+    max-width: 40ch;
+    margin: 14px auto 0;
+    color: var(--tinta-suave);
+    font-size: 0.88rem;
+    line-height: 1.65;
+  }
+
+  .confirmar-cartao .btn {
+    margin-top: 22px;
+  }
+
+  .confirmar-progresso {
+    width: min(100%, 220px);
+    height: 3px;
+    margin: 26px auto 0;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--linha);
+  }
+
+  .confirmar-progresso span {
+    display: block;
+    width: 45%;
+    height: 100%;
+    border-radius: 999px;
+    background: var(--acafrao);
+    animation: confirmar-correr 1.4s ease-in-out infinite;
+  }
+
+  @keyframes confirmar-correr {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(320%);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .confirmar-progresso span {
+      animation: none;
+      width: 100%;
+    }
+  }
+</style>
+
+<script>
+  // @ts-nocheck
+  const estado = document.querySelector('[data-estado]')?.getAttribute('data-estado') || '';
+  const icone = document.getElementById('confirmar-icone');
+  const eyebrow = document.getElementById('confirmar-eyebrow');
+  const titulo = document.getElementById('confirmar-titulo');
+  const texto = document.getElementById('confirmar-texto');
+  const progresso = document.querySelector('.confirmar-progresso');
+  const acao = document.getElementById('confirmar-acao');
+  const secundaria = document.getElementById('confirmar-secundaria');
+
+  function destino() {
+    try {
+      const salvo = sessionStorage.getItem('fisga:retorno');
+      if (salvo && salvo.startsWith('/') && !salvo.startsWith('//')) {
+        sessionStorage.removeItem('fisga:retorno');
+        return salvo;
+      }
+    } catch {}
+    return '/meu-diario';
+  }
+
+  if (estado === 'ok' || estado === '') {
+    const alvo = destino();
+    acao.href = alvo;
+    window.setTimeout(() => {
+      window.location.replace(alvo);
+    }, estado === 'ok' ? 1400 : 900);
+  } else {
+    icone.classList.add('erro');
+    eyebrow.textContent = 'Link não confirmado';
+    progresso.classList.add('oculto');
+    acao.classList.remove('oculto');
+    secundaria.classList.remove('oculto');
+    acao.href = '/meu-diario';
+    acao.textContent = 'Ir para o Fisga';
+    secundaria.classList.remove('oculto');
+
+    if (estado === 'link_expirado') {
+      titulo.innerHTML = 'Esse link <em>expirou.</em>';
+      texto.textContent = 'Links de acesso valem por 15 minutos. Peça um novo para entrar no seu diário.';
+    } else if (estado === 'link_ja_usado') {
+      titulo.innerHTML = 'Esse link <em>já foi usado.</em>';
+      texto.textContent = 'Por segurança, cada link funciona uma única vez. Peça um novo acesso.';
+    } else {
+      titulo.innerHTML = 'Esse link <em>não é válido.</em>';
+      texto.textContent = 'O endereço pode estar incompleto ou ter sido alterado. Peça um novo link para entrar.';
+    }
+
+    secundaria.href = '/entrar';
+    secundaria.textContent = 'Pedir um novo link';
+  }
+</script>

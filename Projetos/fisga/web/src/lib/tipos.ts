@@ -80,13 +80,42 @@ export interface PescariaDetalhada {
   capturas: Captura[];
   criadoEm: string;
   atualizadoEm: string;
+  podeEditar: boolean;
 }
 
 export interface PescariaSalva {
   id: string;
   shareToken: string;
-  editToken: string;
   url: string;
+}
+
+export interface Usuario {
+  id: string;
+  email: string;
+  nome: string | null;
+  nomeExibicao: string;
+  aceitaNovidades: boolean;
+  criadoEm: string;
+  ultimoAcessoEm: string | null;
+}
+
+export interface RespostaSessao {
+  autenticado: boolean;
+  usuario: Usuario | null;
+}
+
+export interface SessaoDaConta {
+  id: string;
+  userAgent: string | null;
+  criadoEm: string;
+  ultimoUsoEm: string;
+  expiraEm: string;
+  atual: boolean;
+}
+
+export interface PermissaoDaPescaria {
+  pescariaId: string;
+  podeEditar: boolean;
 }
 
 export interface PescariaResumo {

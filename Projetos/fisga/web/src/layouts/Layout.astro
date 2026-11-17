@@ -1,17 +1,20 @@
 ---
 import Logo from '../components/Logo.astro';
+import ContaMenu from '../components/ContaMenu.astro';
 import '../styles/global.css';
 
 interface Props {
   titulo?: string;
   descricao?: string;
   bodyClass?: string;
+  noindex?: boolean;
 }
 
 const {
   titulo = 'Fisga — diário de pesca, troféus e estatísticas',
   descricao = 'Registre cada pescaria, as capturas, as condições e gere o card do troféu e um relatório em PDF. Grátis durante a validação.',
-  bodyClass = ''
+  bodyClass = '',
+  noindex = false
 } = Astro.props;
 
 const site = (import.meta.env.PUBLIC_SITE_URL ?? Astro.url.origin).replace(/\/$/, '');
@@ -26,6 +29,7 @@ const api = (import.meta.env.PUBLIC_API_URL ?? 'http://localhost:5184').replace(
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{titulo}</title>
     <meta name="description" content={descricao} />
+    {noindex && <meta name="robots" content="noindex,nofollow" />}
     <link rel="canonical" href={canonical} />
     <meta name="theme-color" content="#F8F4EA" />
     <meta property="og:type" content="website" />
@@ -49,10 +53,12 @@ const api = (import.meta.env.PUBLIC_API_URL ?? 'http://localhost:5184').replace(
       <div class="container topo-interno">
         <Logo />
         <nav class="nav-principal" aria-label="Navegação principal">
-          <a href="/#como-funciona">Como funciona</a>
-          <a href="/meu-diario">Meu diário</a>
-          <a href="/precos">É grátis</a>
-          <a href="/registrar" class="btn btn--pequeno btn--primario">Registrar pescaria</a>
+          <a href="/#como-funciona" class="nav-publico">Como funciona</a>
+          <a href="/precos" class="nav-publico">É grátis</a>
+          <a href="/meu-diario" class="nav-privado oculto">Meu diário</a>
+          <a href="/registrar" class="nav-privado oculto">Registrar</a>
+          <a href="/registrar" class="btn btn--pequeno btn--primario nav-publico">Registrar pescaria</a>
+          <ContaMenu />
         </nav>
       </div>
     </header>
@@ -72,6 +78,7 @@ const api = (import.meta.env.PUBLIC_API_URL ?? 'http://localhost:5184').replace(
             <span class="rodape-titulo">Produto</span>
             <a href="/registrar">Registrar pescaria</a>
             <a href="/meu-diario">Meu diário</a>
+            <a href="/conta">Minha conta</a>
             <a href="/precos">É grátis</a>
             <a href="/#como-funciona">Como funciona</a>
           </div>
@@ -82,6 +89,12 @@ const api = (import.meta.env.PUBLIC_API_URL ?? 'http://localhost:5184').replace(
             <a href="/registrar">Pesque-pague</a>
             <a href="/registrar">Represa</a>
             <a href="/registrar">Lagoa</a>
+          </div>
+          <div>
+            <span class="rodape-titulo">Conta</span>
+            <a href="/entrar">Entrar</a>
+            <a href="/meu-diario">Meu diário</a>
+            <a href="/conta">Minha conta</a>
           </div>
         </div>
       </div>

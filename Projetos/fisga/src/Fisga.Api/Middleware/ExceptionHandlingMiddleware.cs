@@ -17,6 +17,10 @@ public sealed class ExceptionHandlingMiddleware(
         {
             await EscreverAsync(context, StatusCodes.Status400BadRequest, excecao.Codigo, excecao.Message);
         }
+        catch (NaoAutenticadoException excecao)
+        {
+            await EscreverAsync(context, StatusCodes.Status401Unauthorized, "nao_autenticado", excecao.Message);
+        }
         catch (RecursoNaoEncontradoException excecao)
         {
             await EscreverAsync(context, StatusCodes.Status404NotFound, excecao.Codigo, excecao.Message);
