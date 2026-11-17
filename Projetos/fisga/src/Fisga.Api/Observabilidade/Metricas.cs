@@ -1,3 +1,4 @@
+using System.Globalization;
 using Fisga.Application.Pescarias;
 using Fisga.Domain.Pescarias;
 using Sentry;
@@ -94,7 +95,7 @@ public static class Metricas
             "fisga.api.request.duration",
             duracaoMs,
             MeasurementUnit.Duration.Millisecond,
-            Atributos(("rota", rota), ("metodo", metodo), ("status", status)));
+            Atributos(("rota", rota), ("metodo", metodo), ("status", status.ToString(CultureInfo.InvariantCulture))));
 
     private static KeyValuePair<string, object>[] Atributos(params (string Chave, object Valor)[] itens) =>
         itens.Select(item => new KeyValuePair<string, object>(item.Chave, item.Valor)).ToArray();
