@@ -240,7 +240,7 @@ Expected: FAIL.
 
 - [ ] **Step 3: Implementar login e confirmação**
 
-`POST /api/auth/entrar` usa `SignInManager.PasswordSignInAsync`; em sucesso, carrega `Usuario`, cria sessão de dispositivo e assina com claims. `POST /api/auth/confirmar-email` usa `UserManager.ConfirmEmailAsync`, atualiza `Usuario.VerificarEmail` e salva. `RequireConfirmedEmail=true` já está na Task 2.
+`POST /api/auth/entrar` usa `SignInManager.PasswordSignInAsync`; em sucesso, o próprio Identity emite o cookie `fisga_auth`. A sessão de dispositivo/claim `sessao_id` será adicionada na Task 5; não crie `IdentitySessionService` agora. `POST /api/auth/confirmar-email` usa `UserManager.ConfirmEmailAsync`, atualiza `Usuario.VerificarEmail` e salva. `RequireConfirmedEmail=true` já está na Task 2.
 
 - [ ] **Step 4: Implementar reset**
 
