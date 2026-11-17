@@ -26,7 +26,10 @@ card de troféu compartilhável + PDF da pescaria.
   comprimento, espécie/isca/local que mais aparecem.
 - **Link público por pescaria**, sem expor o restante do diário; troféu e PDF também são públicos.
 - **Card do troféu** em PNG, gerado no navegador com foto, espécie, peso, local e data.
+- **Story card 1080×1920** para Instagram/WhatsApp Status, além do card quadrado 1080×1080.
+- **Prévia social (OG)** com a foto da captura para o link render bonito no WhatsApp/Facebook.
 - **PDF da pescaria** com condições, capturas, maior peixe, notas e QR.
+- **PWA instalável** com manifest, ícones, página offline e rascunho local do formulário.
 - Edição de pescaria preservando os IDs das capturas (links de troféu não quebram).
 - **Boas-vindas no primeiro acesso**, com nome e preferência de e-mail.
 - **Conta**: perfil, troca de e-mail via novo link, sessões, exportação e exclusão com confirmação.
@@ -43,7 +46,8 @@ card de troféu compartilhável + PDF da pescaria.
 | E-mail | Resend (produção) e sender de console (desenvolvimento) |
 | PDF | QuestPDF + QRCoder |
 | Mídia | upload local + arquivos estáticos com CORS |
-| Card do troféu | Canvas API no navegador |
+| Card do troféu | Canvas API no navegador (quadrado + story) |
+| PWA | manifest, service worker e página offline |
 | Web | Astro 7 SSR + TypeScript + CSS próprio |
 | Infra local | Docker Compose |
 
@@ -120,9 +124,9 @@ docker compose up --build
 | `Auth__WebUrl` | URL pública do site para redirecionar após confirmar |
 | `Auth__CookieSecure` | `true` em produção (HTTPS) |
 
-Para produção, o domínio precisa estar **verificado no Resend** (registros MX/TXT/DKIM no DNS).
-Enquanto não estiver, use `Email__From=Fisga <onboarding@resend.dev>` apenas para testes com o
-e-mail dono da conta Resend. O link mágico para o público exige o domínio verificado.
+O domínio `abson.tech` está verificado no Resend (DKIM + CNAMEs de envio + DMARC) e o remetente de
+produção é `Fisga <acesso@abson.tech>`. Se trocar de provedor, mantenha a porta `IEmailSender` e
+configure o novo adaptador.
 
 ## Testes
 
@@ -179,9 +183,9 @@ anônimo no navegador. Sessões e links mágicos são armazenados apenas como ha
 
 ## Próximos passos
 
-- **PWA/offline**: registrar pescaria sem sinal e sincronizar depois.
-- **OG image do troféu**: preview bonito no WhatsApp, além do card baixável.
-- **Story card** 1080×1920 e múltiplas fotos por captura.
+- **Sincronização offline real**: fila de pescarias no IndexedDB e envio quando o sinal voltar.
+- **Múltiplas fotos por captura** e escolha da capa.
+- **OG image dinâmica** renderizada no servidor, além da foto atual.
 - Previsão de maré/lua/clima com APIs e sugestão de janela.
 - Catálogo de locais, mapa privado e identificação de espécie por foto.
 - Feed/comunidade, desafios e assinatura após validação.

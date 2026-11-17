@@ -1,0 +1,120 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  titulo="Sem sinal — Fisga"
+  descricao="Você está sem conexão. Suas pescarias em andamento ficam salvas neste aparelho."
+  noindex
+>
+  <section class="offline">
+    <div class="container">
+      <div class="offline-cartao">
+        <div class="offline-icone" aria-hidden="true">
+          <svg viewBox="0 0 64 64" fill="none">
+            <path d="M10 34c6-8 15-12 24-10 8 2 14 7 20 10" stroke="currentColor" stroke-width="3" stroke-linecap="round" opacity=".55" />
+            <path d="M18 44c4-5 9-7 14-6 5 1 9 3 13 6" stroke="currentColor" stroke-width="3" stroke-linecap="round" opacity=".8" />
+            <circle cx="32" cy="52" r="2.6" fill="currentColor" />
+            <path d="m14 14 36 36" stroke="#D9773F" stroke-width="3.2" stroke-linecap="round" />
+          </svg>
+        </div>
+
+        <span class="eyebrow">Sem conexão</span>
+        <h1>O peixe pode esperar. <em>Seu rascunho não se perde.</em></h1>
+        <p>
+          Você está offline ou o sinal caiu. A página do diário precisa de internet para carregar as
+          pescarias da sua conta, mas o formulário de registro mantém o rascunho salvo neste aparelho.
+        </p>
+
+        <div class="offline-acoes">
+          <button class="btn btn--primario" type="button" id="tentar-de-novo">Tentar novamente</button>
+          <a class="btn btn--contorno" href="/registrar">Abrir formulário</a>
+        </div>
+
+        <div class="offline-dica">
+          <strong>Dica para o mato:</strong>
+          <span>Preencha a pescaria e as capturas no formulário. Quando o sinal voltar, é só salvar.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+</Layout>
+
+<style>
+  .offline {
+    display: grid;
+    min-height: 62vh;
+    padding: clamp(44px, 7vw, 86px) 0;
+    place-items: center;
+  }
+
+  .offline-cartao {
+    width: min(100%, 620px);
+    margin: 0 auto;
+    padding: clamp(26px, 5vw, 46px);
+    border: 1px solid var(--linha);
+    border-radius: 22px;
+    background: var(--superficie);
+    box-shadow: var(--sombra);
+  }
+
+  .offline-icone {
+    display: grid;
+    width: 64px;
+    height: 64px;
+    margin-bottom: 20px;
+    place-items: center;
+    border-radius: 16px;
+    background: var(--terracota-clara);
+    color: var(--terracota);
+  }
+
+  .offline-icone svg {
+    width: 40px;
+  }
+
+  .offline-cartao h1 {
+    margin-top: 12px;
+    font-size: clamp(2rem, 4vw, 3rem);
+  }
+
+  .offline-cartao > p {
+    margin-top: 14px;
+    color: var(--tinta-suave);
+    font-size: 0.9rem;
+    line-height: 1.7;
+  }
+
+  .offline-acoes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 22px;
+  }
+
+  .offline-dica {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin-top: 24px;
+    padding: 14px;
+    border: 1px solid var(--linha);
+    border-radius: 12px;
+    background: var(--papel);
+  }
+
+  .offline-dica strong {
+    color: var(--terracota);
+    font-size: 0.74rem;
+  }
+
+  .offline-dica span {
+    color: var(--tinta-suave);
+    font-size: 0.7rem;
+    line-height: 1.55;
+  }
+</style>
+
+<script>
+  document.getElementById('tentar-de-novo')?.addEventListener('click', () => window.location.reload());
+</script>

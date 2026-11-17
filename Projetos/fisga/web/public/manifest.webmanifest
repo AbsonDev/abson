@@ -1,0 +1,24 @@
+{
+  "name": "Fisga — diário de pesca",
+  "short_name": "Fisga",
+  "description": "Registre pescarias, capturas e condições. Veja estatísticas, compartilhe troféus e baixe o PDF.",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "start_url": "/meu-diario",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait-primary",
+  "background_color": "#F8F4EA",
+  "theme_color": "#174E57",
+  "categories": ["lifestyle", "sports", "productivity"],
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Registrar pescaria", "short_name": "Registrar", "url": "/registrar", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Meu diário", "short_name": "Diário", "url": "/meu-diario", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] }
+  ]
+}
