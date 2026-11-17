@@ -6,20 +6,20 @@ const grupos = [
     titulo: 'Ferramentas de campo',
     descricao: 'Para usar no celular, na beira d’água.',
     itens: [
-      { href: '/ferramentas/nos', nome: 'Nós e montagens', meta: '8 nós', offline: false },
-      { href: '/ferramentas/checklists', nome: 'Checklists', meta: '4 listas', offline: true },
-      { href: '/ferramentas/defeso', nome: 'Defeso', meta: '27 UFs', offline: true },
-      { href: '/ferramentas/guias', nome: 'Guias', meta: 'Em curadoria', offline: false }
+      { href: '/ferramentas/nos', nome: 'Nós e montagens', meta: '8 nós', busca: 'nó união alça empate montagem', offline: false },
+      { href: '/ferramentas/checklists', nome: 'Checklists', meta: '4 listas', busca: 'caiaque costeira embarcado pesque-pague lista', offline: true },
+      { href: '/ferramentas/defeso', nome: 'Defeso', meta: '27 UFs', busca: 'defeso tamanho mínimo órgão ambiental lei', offline: true },
+      { href: '/ferramentas/guias', nome: 'Guias', meta: 'Em curadoria', busca: 'piloteiro guia roteiro', offline: false }
     ]
   },
   {
     titulo: 'Wiki',
     descricao: 'Para consultar antes e depois.',
     itens: [
-      { href: '/wiki/especies', nome: 'Espécies', meta: '11 verbetes', offline: true },
-      { href: '/wiki/tecnicas', nome: 'Técnicas', meta: '6 técnicas', offline: false },
-      { href: '/wiki/iscas', nome: 'Iscas', meta: '6 iscas', offline: false },
-      { href: '/wiki/locais', nome: 'Regiões', meta: '5 regiões', offline: false }
+      { href: '/wiki/especies', nome: 'Espécies', meta: '11 verbetes', busca: 'robalo tucunaré tilápia dourado traíra pintado corvina tainha tambaqui pacu truta', offline: true },
+      { href: '/wiki/tecnicas', nome: 'Técnicas', meta: '6 técnicas', busca: 'arremesso artificial baitcasting corrico fly fundo praia', offline: false },
+      { href: '/wiki/iscas', nome: 'Iscas', meta: '6 iscas', busca: 'camarão colher lambari massa minhoca popper', offline: false },
+      { href: '/wiki/locais', nome: 'Regiões', meta: '5 regiões', busca: 'sudeste nordeste sul norte centro-oeste', offline: false }
     ]
   }
 ];
@@ -53,7 +53,7 @@ const grupos = [
         </div>
         <div class="aprender-linhas">
           {grupo.itens.map((item) => (
-            <a class="aprender-linha" href={item.href} data-busca={`${item.nome} ${item.meta}`}>
+            <a class="aprender-linha" href={item.href} data-busca={`${item.nome} ${item.meta} ${item.busca}`}>
               <span class="aprender-nome">{item.nome}</span>
               <span class="aprender-meta-linha">
                 {item.meta}
@@ -135,6 +135,10 @@ const grupos = [
 
     .aprender-conteudo {
       padding-bottom: 84px;
+    }
+
+    .aprender-conteudo [hidden] {
+      display: none !important;
     }
 
     .aprender-grupo {
