@@ -67,7 +67,8 @@ obrigatoriamente a um `Usuario`. O **Diário** é um read model privado por usu�
 pescarias e calcula estatísticas. **Identidade e Acesso** é o contexto genérico de conta, sessão e
 link mágico. Catálogo, mídia e documentos são contextos de apoio.
 
-Detalhes em [`docs/ddd.md`](docs/ddd.md) e [`docs/adr`](docs/adr).
+Detalhes em [`docs/ddd.md`](docs/ddd.md), [`docs/adr`](docs/adr) e
+[`docs/referencias`](docs/referencias).
 
 ## Rodando localmente
 
