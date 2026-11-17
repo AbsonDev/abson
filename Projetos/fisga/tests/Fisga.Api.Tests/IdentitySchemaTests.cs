@@ -4,12 +4,15 @@ using Fisga.Infrastructure.Persistence;
 
 namespace Fisga.Api.Tests;
 
-public sealed class IdentitySchemaTests
+[Collection("api")]
+public sealed class IdentitySchemaTests(ApiTestFixture fixture)
 {
+    private readonly ApiTestFixture _fixture = fixture;
+
     [Fact]
     public async Task Banco_cria_tabelas_da_identity_e_consentimentos()
     {
-        await using var factory = new TestWebApplicationFactory();
+        var factory = _fixture.Factory;
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<FisgaDbContext>();
         await db.Database.EnsureCreatedAsync();

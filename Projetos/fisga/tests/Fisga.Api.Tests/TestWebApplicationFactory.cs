@@ -1,25 +1,20 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Fisga.Application.Identidade;
+using Fisga.Infrastructure.Persistence;
 
 namespace Fisga.Api.Tests;
 
 public sealed class TestWebApplicationFactory : WebApplicationFactory<Program>
 {
-    private readonly string _dbPath =
-        Path.Combine(Path.GetTempPath(), $"fisga-api-tests-{Guid.NewGuid():N}.db");
+    private readonly string _dbPath;
 
-    public TestWebApplicationFactory()
+    public TestWebApplicationFactory(string dbPath)
     {
-        // A API lê Database:* e Sentry durante Program.Main (no CreateBuilder),
-        // antes de o ConfigureAppConfiguration ser aplicado ao host real. Por isso
-        // usamos variáveis de ambiente, que entram na configuração do próprio
-        // CreateBuilder e têm precedência sobre o appsettings*.json.
-        Environment.SetEnvironmentVariable("Database__Provider", "Sqlite");
-        Environment.SetEnvironmentVariable("Database__ConnectionString", $"Data Source={_dbPath}");
-        Environment.SetEnvironmentVariable("Sentry__Dsn", "");
+        _dbPath = dbPath;
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -28,19 +23,15 @@ public sealed class TestWebApplicationFactory : WebApplicationFactory<Program>
 
         builder.ConfigureServices(services =>
         {
+            // Aponta o DbContext para o SQLite temporário do fixture, independentemente
+            // do que o Program.Main leu na configuração durante o CreateBuilder.
+            services.RemoveAll<DbContextOptions<FisgaDbContext>>();
+            services.RemoveAll<FisgaDbContext>();
+            services.AddDbContext<FisgaDbContext>(options => options.UseSqlite($"Data Source={_dbPath}"));
+
             services.RemoveAll<IEmailSender>();
             services.AddScoped<IEmailSender, EmailSenderFake>();
         });
-    }
-
-    protected override void Dispose(bool disposing)
-    {
-        base.Dispose(disposing);
-
-        if (disposing && File.Exists(_dbPath))
-        {
-            File.Delete(_dbPath);
-        }
     }
 }
 
