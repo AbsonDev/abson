@@ -20,8 +20,9 @@ push em main
     └── deploy-web  (Coolify -> aguarda /health com o SHA + smoke)
 ```
 
-O workflow fica em `.github/workflows/fisga-pipeline.yml`. O check obrigatório da `main` é
-**`fisga-pipeline / gate`**.
+O workflow fica em `.github/workflows/fisga-pipeline.yml`. O check obrigatório da `main` é o job
+**`gate`** (a UI pode exibir `fisga-pipeline / gate`; confirme o contexto exato em
+`gh api repos/AbsonDev/abson/commits/<sha>/check-runs`).
 
 ## Jobs de CI
 
@@ -50,7 +51,8 @@ Os resultados TRX são enviados como artifact `fisga-test-results`.
 
 Roda em PR e em `workflow_dispatch`. Constrói as imagens da API e do web sem push, para validar
 Dockerfiles, `.dockerignore` e o secret mount do Sentry. Não recebe `SENTRY_AUTH_TOKEN` em PRs de
-fork; nesse build os source maps ficam desabilitados.
+fork; nesse build os source maps ficam desabilitados. O job também falha se `SENTRY_AUTH_TOKEN`
+aparecer como `ARG`/`ENV` no Dockerfile.
 
 ### `gate`
 
@@ -62,36 +64,40 @@ check que precisa ser obrigatório na proteção da `main`.
 O deploy só roda em:
 
 - push para `main`; ou
-- `workflow_dispatch` com `deploy=true`.
+- `workflow_dispatch` **na branch `main`** com `deploy=true`.
 
-Os apps usados são `fisga-api` e `fisga-web` no Coolify. O CI dispara o webhook autenticado de cada
-app, espera o `/health` retornar o SHA do commit e roda smoke tests.
+Os webhooks e o `COOLIFY_URL` precisam ser HTTPS; o workflow recusa HTTP para não enviar o token em
+claro. O CI dispara o webhook, captura o `deployment_uuid`, acompanha o status no Coolify e só então
+valida `/health` e smoke tests.
 
 ### Ordem
 
-1. `deploy-api`: dispara o Coolify, aguarda `https://api.fisga.abson.tech/health` com
-   `version == github.sha`, valida `/ready`.
-2. `deploy-web`: dispara o Coolify, aguarda `https://fisga.abson.tech/health` com
-   `version == github.sha`, valida `/` e `/condicoes`.
+1. `deploy-api`: dispara o Coolify, acompanha o deployment até `finished`/`success` (até 20 min),
+   aguarda `https://api.fisga.abson.tech/health` com `version == github.sha` e valida `/ready`.
+2. Antes de trocar o web, o job da API valida o **web atual** em `/` e `/condicoes`. Se o web
+   antigo quebrar com a API nova, o deploy do web não acontece e o rollback da API é obrigatório.
+3. `deploy-web`: dispara o Coolify, acompanha o deployment (até 20 min), aguarda o `/health` com
+   `version == github.sha` e valida `/` e `/condicoes`.
 
-Se a API falhar, o web não é deployado. Se o web falhar, a API nova continua no ar; as mudanças
-precisam ser compatíveis com a versão anterior do web.
+Se a API falhar, o web não é deployado. Se o web falhar no smoke, faça rollback do web pelo Coolify;
+a API nova continua no ar e precisa ser compatível com a versão anterior do web.
 
 ### Secrets e variáveis do GitHub
 
-Configurar em **Settings → Secrets and variables → Actions** (repo ou environment `production`):
+Configurar em **Settings → Secrets and variables → Actions** (repositório):
 
 | Nome | Tipo | Uso |
 | --- | --- | --- |
-| `COOLIFY_TOKEN` | secret | Bearer token com permissão `deploy`; `read` se for usar rollback via API |
-| `COOLIFY_WEBHOOK_FISGA_API` | secret | Deploy webhook autenticado do app `fisga-api` |
-| `COOLIFY_WEBHOOK_FISGA_WEB` | secret | Deploy webhook autenticado do app `fisga-web` |
-| `FISGA_PUBLIC_SENTRY_DSN` | variable | DSN público do Sentry usado no build do browser |
+| `COOLIFY_URL` | secret | Base HTTPS do Coolify (ex.: `https://manager.abson.tech`), sem `/api/v1` |
+| `COOLIFY_TOKEN` | secret | Token com permissões `read` + `deploy` (status do deployment, rollback e deploy) |
+| `COOLIFY_WEBHOOK_FISGA_API` | secret | Deploy webhook autenticado do app `fisga-api` (HTTPS) |
+| `COOLIFY_WEBHOOK_FISGA_WEB` | secret | Deploy webhook autenticado do app `fisga-web` (HTTPS) |
+| `FISGA_PUBLIC_SENTRY_DSN` | variable | DSN público do Sentry usado no build do browser; variável de repositório |
 
 Os segredos de runtime (banco, Resend, Sentry server, mídia, newsletter) continuam no Coolify, não
-no GitHub. O `SENTRY_AUTH_TOKEN` é usado no build do web; na Fase A ele fica no Coolify (se o build
-secret estiver disponível) ou os source maps ficam desabilitados. Nunca passar esse token como
-`ARG`/`ENV` de Dockerfile.
+no GitHub. O `SENTRY_AUTH_TOKEN` é usado no build do web; na Fase A ele fica no Coolify como BuildKit
+secret `sentry_auth_token` ou os source maps ficam desabilitados. Nunca passar esse token como
+`ARG`/`ENV` de Dockerfile nem como build variable comum.
 
 ### Configuração do Coolify
 
@@ -104,8 +110,16 @@ Para `fisga-api` e `fisga-web`:
 - **Container name**: não usar nome fixo/consistente, pelo mesmo motivo.
 - **Rolling update**: confirmar no log do deployment que o Coolify iniciou o novo container antes
   de remover o antigo.
-- **Build arg**: confirmar que o Coolify passa `SOURCE_COMMIT`. O Dockerfile mapeia
-  `SOURCE_COMMIT` para `GIT_SHA`; o `/health` usa esse valor.
+- **Source commit**: em **Advanced → Build → Source commit availability**, selecionar
+  **Available during build**. O Dockerfile mapeia `SOURCE_COMMIT` para `GIT_SHA`; o `/health` usa
+  esse valor.
+- **Sentry build secret**: usar BuildKit secret com ID `sentry_auth_token`; nunca configurar
+  `SENTRY_AUTH_TOKEN` como build variable/ARG. No primeiro build de produção, confirmar que o
+  **valor** do token não aparece em `docker history`/provenance; não usar `grep -i sentry`, porque o
+  nome do secret aparece na linha do `RUN`.
+- **Docker da API**: o Dockerfile copia `Directory.Build.props`, `global.json` e os
+  `packages.lock.json` e roda `dotnet restore --locked-mode`, para a imagem usar o mesmo grafo de
+  dependências do CI.
 - **Volume**: manter o volume de mídia do Fisga; ele não é afetado pelo deploy.
 
 O Coolify atualiza a imagem a partir do commit; o health check precisa retornar o SHA exato. Se
@@ -127,19 +141,22 @@ O token precisa de `read` para listar e `deploy` para executar.
 
 ```bash
 # Listar imagens disponíveis para rollback
-curl -fsS "$COOLIFY_URL/api/v1/applications/$APP_UUID/rollback-images" \
+curl -fsS --proto '=https' "$COOLIFY_URL/api/v1/applications/$APP_UUID/rollback-images" \
   -H "Authorization: Bearer $COOLIFY_TOKEN"
 
 # Voltar para uma tag/commit anterior
-curl --fail-with-body -sS -X POST \
+curl --fail-with-body -sS --proto '=https' -X POST \
   "$COOLIFY_URL/api/v1/applications/$APP_UUID/rollback" \
   -H "Authorization: Bearer $COOLIFY_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"commit":"sha-<commit-anterior>"}'
 ```
 
-Rollback de imagem **não** desfaz migrations, volumes ou variáveis. Para mudanças de schema, usar
-expand/contract e backup.
+`COOLIFY_URL` é a base HTTPS, sem `/api/v1`. Rollback de imagem **não** desfaz migrations, volumes
+ou variáveis. Para mudanças de schema, usar expand/contract e backup.
+
+Se o smoke do web falhar, faça rollback do web. Se o web atual falhar depois do deploy da API, faça
+rollback da API antes de tentar o web de novo.
 
 ## Migrations na Fase A
 
@@ -199,34 +216,73 @@ Depois que o workflow estiver na `main` e tiver rodado pelo menos uma vez:
 1. Abrir **Settings → Rules → Rulesets → New branch ruleset**.
 2. Target: `main`.
 3. Ativar **Require a pull request before merging**.
-4. Ativar **Require status checks to pass** e selecionar `fisga-pipeline / gate`.
+4. Ativar **Require status checks to pass** e selecionar o check **`gate`** (a UI pode exibir
+   `fisga-pipeline / gate`).
 5. Ativar **Require branches to be up to date before merging**.
 6. Ativar **Block force pushes**.
 7. Salvar.
 
-O check precisa existir no repositório antes de ser exigido. Se o GitHub não listar
-`fisga-pipeline / gate`, rodar o workflow em um PR primeiro.
+O check precisa existir no repositório antes de ser exigido. Rode o workflow em um PR e confirme o
+nome real:
+
+```bash
+gh api "repos/AbsonDev/abson/commits/$(git rev-parse HEAD)/check-runs" \
+  --jq '.check_runs[] | "\(.name)\t\(.app.slug)"' | sort -u
+```
+
+Use exatamente o `name` retornado (`gate`, salvo se o job for renomeado).
 
 ## Checklist de ativação (primeira vez)
 
-- [ ] Configurar `COOLIFY_TOKEN`, `COOLIFY_WEBHOOK_FISGA_API`, `COOLIFY_WEBHOOK_FISGA_WEB` e a
-  variável `FISGA_PUBLIC_SENTRY_DSN`.
-- [ ] No Coolify, desligar auto deploy, configurar health checks, remover portas no host e confirmar
-  que `SOURCE_COMMIT` chega ao build.
+- [ ] Configurar `COOLIFY_URL` (HTTPS), `COOLIFY_TOKEN` (read+deploy),
+  `COOLIFY_WEBHOOK_FISGA_API`, `COOLIFY_WEBHOOK_FISGA_WEB` e a variável
+  `FISGA_PUBLIC_SENTRY_DSN`.
+- [ ] No Coolify, desligar auto deploy, configurar health checks, remover portas no host, ativar
+  **Source commit availability = Available during build** e configurar o BuildKit secret
+  `sentry_auth_token`.
 - [ ] Fazer push do branch e abrir PR.
-- [ ] Confirmar que `fisga-pipeline / gate` aparece e passa.
+- [ ] Confirmar que o check `gate` aparece e passa.
 - [ ] Mergear o PR.
-- [ ] Criar a proteção da `main` exigindo `fisga-pipeline / gate`.
-- [ ] Rodar `workflow_dispatch` com `deploy=true`.
-- [ ] Confirmar `/health` com o SHA do commit e smoke tests.
+- [ ] Criar a proteção da `main` exigindo `gate`.
+- [ ] Rodar `workflow_dispatch` na `main` com `deploy=true`.
+- [ ] Confirmar `/health` com o SHA do commit, status `finished` no Coolify e smoke tests.
 - [ ] Testar rollback uma vez e registrar o tempo.
 
 ## Troubleshooting
 
 ### `/health` retorna `dev`
 
-O build não recebeu `SOURCE_COMMIT`/`GIT_SHA`. Conferir o build arg no Coolify ou o `ARG` no
-Dockerfile. O deploy job vai falhar no poll de versão até isso ser corrigido.
+O build não recebeu `SOURCE_COMMIT`/`GIT_SHA`. No Coolify, conferir
+**Advanced → Build → Source commit availability = Available during build**. O deploy job vai
+falhar no poll de versão até isso ser corrigido.
+
+### Check obrigatório fica “Expected / Waiting” mesmo com jobs verdes
+
+O nome exigido precisa ser exatamente o `name` do job (`gate`). `fisga-pipeline / gate` é apenas o
+rótulo visual do workflow. Confira o contexto real:
+
+```bash
+gh api "repos/AbsonDev/abson/commits/$(git rev-parse HEAD)/check-runs" \
+  --jq '.check_runs[] | "\(.name)\t\(.app.slug)"' | sort -u
+```
+
+Se a regra estiver com `fisga-pipeline / gate`, remova e selecione `gate`.
+
+### Deploy falha com 403 ao consultar o status
+
+O `COOLIFY_TOKEN` precisa de `read` **e** `deploy`. Token só com `deploy` consegue disparar o
+webhook, mas não consultar `/api/v1/deployments/{uuid}` nem listar rollback.
+
+### Webhook recusado por HTTP
+
+O workflow exige HTTPS para `COOLIFY_URL` e para os dois webhooks. Use o domínio HTTPS do Coolify
+(ex.: `https://manager.abson.tech`), não o IP/porta HTTP.
+
+### Deploy fica em timeout
+
+O workflow acompanha o deployment por até 20 minutos e depois o `/health` por até 5 minutos.
+Conferir o log do deployment no Coolify, o build do Dockerfile e se o health check está em
+`/ready` (API) ou `/health` (web).
 
 ### Deploy passou, mas o site não atualizou
 
@@ -238,15 +294,11 @@ Conferir:
 - se o Traefik está roteando para o container novo;
 - se o `version` no `/health` mudou.
 
-### Check obrigatório não aparece no PR
-
-O workflow precisa rodar em todo PR (sem `paths:` no gatilho) e o job `gate` precisa executar
-sempre. Se o workflow foi pulado, o required check fica pendente.
-
 ### Docker build falhou no PR
 
 Conferir o log do job `docker`. O build da API usa contexto `Projetos/fisga`; o do web usa
 `Projetos/fisga/web`. O `.dockerignore` do web precisa excluir `node_modules`, `dist` e `.astro`.
+O job também falha se `SENTRY_AUTH_TOKEN` aparecer como `ARG`/`ENV` no Dockerfile.
 
 ### Rollback não volta o banco
 

@@ -44,13 +44,13 @@
 - Generate: `Projetos/fisga/**/packages.lock.json`
 - Create: `.github/dependabot.yml`
 
-- [ ] Criar `global.json` com SDK `10.0.100` e `rollForward: latestPatch`.
+- [ ] Criar `global.json` com SDK `10.0.100` e `rollForward: latestFeature` (o host tem 10.0.403).
 - [ ] Criar `Directory.Build.props` com `RestorePackagesWithLockFile`, `ContinuousIntegrationBuild`, `Deterministic` e `TreatWarningsAsErrors`.
 - [ ] Rodar `dotnet restore Fisga.slnx` e commitar os `packages.lock.json`.
 - [ ] Rodar `dotnet build Fisga.slnx -c Release` e `dotnet test Fisga.slnx -c Release`.
 - [ ] Se `TreatWarningsAsErrors` quebrar, corrigir os warnings ou listar exceções justificadas em `WarningsNotAsErrors`.
 - [ ] Rodar `dotnet format Fisga.slnx` uma vez, commitar o baseline e validar `dotnet format Fisga.slnx --verify-no-changes`.
-- [ ] Criar `.github/dependabot.yml` para `github-actions`, `nuget` em `/Projetos/fisga`, `npm` em `/Projetos/fisga/web` e `docker` nos dois diretórios.
+- [ ] Criar `.github/dependabot.yml` para `github-actions`, `nuget` em `/Projetos/fisga`, `npm` em `/Projetos/fisga/web` e `docker` em `/Projetos/fisga`, `/Projetos/fisga/src/Fisga.Api` e `/Projetos/fisga/web`.
 - [ ] Commit: `chore(fisga): add reproducible dotnet build baseline`.
 
 **Verificação:** `dotnet restore Fisga.slnx --locked-mode`, build e os 82 testes passam; `dotnet format --verify-no-changes` passa.
@@ -89,7 +89,8 @@
 - [ ] Adicionar `# syntax=docker/dockerfile:1` no topo.
 - [ ] Remover `ARG SENTRY_AUTH_TOKEN` e `ENV SENTRY_AUTH_TOKEN`.
 - [ ] Usar `RUN --mount=type=secret,id=sentry_auth_token,env=SENTRY_AUTH_TOKEN npm run build`.
-- [ ] Testar com e sem token e confirmar que `docker history --no-trunc fisga-web:test | grep -i sentry` não retorna nada.
+- [ ] Confirmar que o Dockerfile não tem `ARG`/`ENV SENTRY_AUTH_TOKEN` e usa `RUN --mount=type=secret,id=sentry_auth_token,env=SENTRY_AUTH_TOKEN`.
+- [ ] Quando houver Docker, confirmar que o **valor** do token não aparece em `docker history`/provenance; não usar `grep -i sentry`, porque o nome do secret aparece na linha do `RUN`.
 - [ ] Commit: `fix(fisga): mount sentry token as build secret`.
 
 ---
@@ -99,13 +100,13 @@
 **Files:**
 - Create: `.github/workflows/fisga-pipeline.yml`
 
-- [ ] Criar jobs `changes`, `api`, `web` e `gate`.
+- [ ] Criar jobs `changes`, `api`, `web`, `docker` e `gate`.
 - [ ] Não usar `paths:` no gatilho; o job `changes` decide o que executa.
 - [ ] `permissions: contents: read` no topo; `concurrency` cancela runs antigos só em PR.
 - [ ] Usar `actions/checkout@v7`, `actions/setup-dotnet@v6`, `actions/setup-node@v7`, `actions/upload-artifact@v7`.
 - [ ] No `api`: `dotnet restore Fisga.slnx --locked-mode`, `dotnet format Fisga.slnx --verify-no-changes --no-restore`, `dotnet build Fisga.slnx -c Release --no-restore -warnaserror`, `dotnet test Fisga.slnx -c Release --no-build --logger "trx;LogFileName=fisga-tests.trx" --results-directory artifacts/test-results`.
 - [ ] No `web`: `npm ci`, `npm run check`, `npm run build`.
-- [ ] No `gate`: `if: always()`, `needs: [changes, api, web]`, falhar em `failure` ou `cancelled`.
+- [ ] No `gate`: `if: always()`, `needs: [changes, api, web, docker]`, falhar em `failure` ou `cancelled`.
 - [ ] Adicionar `workflow_dispatch` com input booleano `deploy` default `false`.
 - [ ] Validar com `actionlint`.
 - [ ] Abrir PR de teste: mudança no Fisga roda tudo; mudança fora do Fisga skipa `api`/`web` e o `gate` passa.
@@ -118,22 +119,23 @@
 **Files:**
 - Modify: `.github/workflows/fisga-pipeline.yml`
 
-- [ ] Adicionar `deploy-api` e `deploy-web`, só em `main` ou `workflow_dispatch` com `deploy=true`.
-- [ ] Usar `environment: production`, `concurrency: fisga-production` e `cancel-in-progress: false`.
-- [ ] Secrets: `COOLIFY_TOKEN`, `COOLIFY_WEBHOOK_FISGA_API`, `COOLIFY_WEBHOOK_FISGA_WEB`, `SENTRY_AUTH_TOKEN`.
-- [ ] Var: `FISGA_PUBLIC_SENTRY_DSN`.
-- [ ] Disparar webhook com `POST` e `Authorization: Bearer`.
-- [ ] Pollar `https://api.fisga.abson.tech/health` e `https://fisga.abson.tech/health` até `version == github.sha`.
-- [ ] Smoke: `/ready`, `/`, `/condicoes`.
-- [ ] No Coolify: desligar deploy on push, health check `/ready` na API e `/health` no web, remover portas no host, desligar consistent container names, confirmar rolling update e `SOURCE_COMMIT`.
-- [ ] Testar com `workflow_dispatch` e `deploy=true`.
+- [ ] Adicionar `deploy-api` e `deploy-web`, só em `main` (push ou `workflow_dispatch` na `main` com `deploy=true`).
+- [ ] Usar `environment: production`, `concurrency: fisga-production`, `cancel-in-progress: false` e timeout de 30 min.
+- [ ] Secrets: `COOLIFY_URL` (HTTPS), `COOLIFY_TOKEN` (read+deploy), `COOLIFY_WEBHOOK_FISGA_API`, `COOLIFY_WEBHOOK_FISGA_WEB`.
+- [ ] Var: `FISGA_PUBLIC_SENTRY_DSN` (variável de repositório).
+- [ ] Exigir HTTPS nos webhooks e no `COOLIFY_URL`; usar `curl --proto '=https'`.
+- [ ] Disparar webhook com `POST`, capturar `deployment_uuid` e pollar o status do deployment no Coolify (até 20 min).
+- [ ] Depois do deployment, pollar `/health` até `version == github.sha` (até 5 min).
+- [ ] Smoke: `/ready`, `/`, `/condicoes`; após a API, validar o web atual antes de trocar o web.
+- [ ] No Coolify: desligar deploy on push, health check `/ready` na API e `/health` no web, remover portas no host, desligar consistent container names, confirmar rolling update e **Source commit availability = Available during build**. O secret do Sentry deve ser BuildKit secret `sentry_auth_token`, nunca build variable.
+- [ ] Testar com `workflow_dispatch` na `main` e `deploy=true`.
 - [ ] Commit: `ci(fisga): deploy to coolify after ci`.
 
 ---
 
 ### Task 5: Proteção da main + primeiro deploy real
 
-- [ ] Criar ruleset na `main`: require PR, require check `fisga-pipeline / gate`, require branches up to date, block force pushes, delete head branches.
+- [ ] Criar ruleset na `main`: require PR, require check `gate`, require branches up to date, block force pushes, delete head branches. Confirmar o contexto exato em `gh api repos/AbsonDev/abson/commits/<sha>/check-runs`.
 - [ ] Testar PR pequeno: merge bloqueado até o gate verde.
 - [ ] Fazer o primeiro merge real e acompanhar o deploy.
 - [ ] Registrar duração do CI e do deploy.

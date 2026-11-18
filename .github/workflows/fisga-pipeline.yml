@@ -155,6 +155,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
 
+      - name: Verificar token do Sentry no Dockerfile
+        run: |
+          set -euo pipefail
+          if grep -qE '^(ARG|ENV) SENTRY_AUTH_TOKEN' Projetos/fisga/web/Dockerfile; then
+            echo "SENTRY_AUTH_TOKEN não pode ser ARG/ENV; use BuildKit secret."
+            exit 1
+          fi
+          grep -q 'type=secret,id=sentry_auth_token' Projetos/fisga/web/Dockerfile
+
       - name: Setup Buildx
         uses: docker/setup-buildx-action@v4.4.1
 
@@ -214,12 +223,10 @@ jobs:
       - gate
     if: |
       needs.changes.outputs.fisga == 'true' &&
-      (
-        (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-        (github.event_name == 'workflow_dispatch' && inputs.deploy)
-      )
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy))
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     environment:
       name: production
       url: https://api.fisga.abson.tech
@@ -227,23 +234,64 @@ jobs:
       group: fisga-production
       cancel-in-progress: false
     steps:
-      - name: Validar secrets
+      - name: Validar secrets e HTTPS
         env:
+          COOLIFY_URL: ${{ secrets.COOLIFY_URL }}
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
           COOLIFY_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK_FISGA_API }}
         run: |
           set -euo pipefail
-          : "${COOLIFY_TOKEN:?Configure o secret COOLIFY_TOKEN}"
+          : "${COOLIFY_URL:?Configure o secret COOLIFY_URL (ex.: https://manager.abson.tech)}"
+          : "${COOLIFY_TOKEN:?Configure o secret COOLIFY_TOKEN com read+deploy}"
           : "${COOLIFY_WEBHOOK:?Configure o secret COOLIFY_WEBHOOK_FISGA_API}"
+          case "$COOLIFY_URL" in https://*) ;; *) echo "COOLIFY_URL deve usar HTTPS"; exit 1 ;; esac
+          case "$COOLIFY_WEBHOOK" in https://*) ;; *) echo "COOLIFY_WEBHOOK_FISGA_API deve usar HTTPS"; exit 1 ;; esac
 
       - name: Disparar deploy da API
+        id: deploy
         env:
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
           COOLIFY_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK_FISGA_API }}
         run: |
           set -euo pipefail
-          curl --fail-with-body -sS --max-time 30 -X POST "$COOLIFY_WEBHOOK" \
-            -H "Authorization: Bearer $COOLIFY_TOKEN"
+          RESPONSE="$(curl --fail-with-body -sS --max-time 30 --proto '=https' -X POST "$COOLIFY_WEBHOOK" \
+            -H "Authorization: Bearer $COOLIFY_TOKEN")"
+          DEPLOYMENT_UUID="$(printf '%s' "$RESPONSE" | jq -r '.deployments[0].deployment_uuid // .deployment_uuid // empty' 2>/dev/null || true)"
+          if [ -z "$DEPLOYMENT_UUID" ]; then
+            echo "Coolify não retornou deployment_uuid. Resposta:"
+            printf '%s\n' "$RESPONSE"
+            exit 1
+          fi
+          echo "deployment_uuid=$DEPLOYMENT_UUID" >> "$GITHUB_OUTPUT"
+
+      - name: Aguardar deployment da API
+        env:
+          COOLIFY_URL: ${{ secrets.COOLIFY_URL }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+          DEPLOYMENT_UUID: ${{ steps.deploy.outputs.deployment_uuid }}
+        run: |
+          set -euo pipefail
+          API="${COOLIFY_URL%/}"
+          API="${API%/api/v1}"
+          for i in $(seq 1 120); do
+            STATUS="$(curl -fsS --max-time 15 --proto '=https' \
+              "$API/api/v1/deployments/$DEPLOYMENT_UUID" \
+              -H "Authorization: Bearer $COOLIFY_TOKEN" | jq -r '.status // empty' | tr '[:upper:]' '[:lower:]' || true)"
+            case "$STATUS" in
+              finished|success)
+                echo "Deployment $DEPLOYMENT_UUID concluído ($STATUS)"
+                exit 0
+                ;;
+              failed|cancelled)
+                echo "Deployment $DEPLOYMENT_UUID terminou com status $STATUS"
+                exit 1
+                ;;
+            esac
+            echo "Aguardando deployment: status=${STATUS:-indisponível} (tentativa $i/120)"
+            sleep 10
+          done
+          echo "Timeout aguardando o deployment $DEPLOYMENT_UUID"
+          exit 1
 
       - name: Aguardar a versão da API
         env:
@@ -267,15 +315,27 @@ jobs:
           set -euo pipefail
           curl -fsS --max-time 10 https://api.fisga.abson.tech/ready
 
+      - name: Smoke do web atual antes do deploy do web
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 10 https://fisga.abson.tech/ >/dev/null || {
+            echo "O web atual não respondeu com a API nova. Faça rollback da API no Coolify antes de continuar."
+            exit 1
+          }
+          curl -fsS --max-time 10 https://fisga.abson.tech/condicoes >/dev/null || {
+            echo "O web atual não respondeu em /condicoes com a API nova. Faça rollback da API no Coolify antes de continuar."
+            exit 1
+          }
+
   deploy-web:
     name: deploy-web
     needs:
       - deploy-api
     if: |
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'workflow_dispatch' && inputs.deploy)
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy))
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     environment:
       name: production
       url: https://fisga.abson.tech
@@ -283,23 +343,64 @@ jobs:
       group: fisga-production
       cancel-in-progress: false
     steps:
-      - name: Validar secrets
+      - name: Validar secrets e HTTPS
         env:
+          COOLIFY_URL: ${{ secrets.COOLIFY_URL }}
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
           COOLIFY_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK_FISGA_WEB }}
         run: |
           set -euo pipefail
-          : "${COOLIFY_TOKEN:?Configure o secret COOLIFY_TOKEN}"
+          : "${COOLIFY_URL:?Configure o secret COOLIFY_URL (ex.: https://manager.abson.tech)}"
+          : "${COOLIFY_TOKEN:?Configure o secret COOLIFY_TOKEN com read+deploy}"
           : "${COOLIFY_WEBHOOK:?Configure o secret COOLIFY_WEBHOOK_FISGA_WEB}"
+          case "$COOLIFY_URL" in https://*) ;; *) echo "COOLIFY_URL deve usar HTTPS"; exit 1 ;; esac
+          case "$COOLIFY_WEBHOOK" in https://*) ;; *) echo "COOLIFY_WEBHOOK_FISGA_WEB deve usar HTTPS"; exit 1 ;; esac
 
       - name: Disparar deploy do web
+        id: deploy
         env:
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
           COOLIFY_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK_FISGA_WEB }}
         run: |
           set -euo pipefail
-          curl --fail-with-body -sS --max-time 30 -X POST "$COOLIFY_WEBHOOK" \
-            -H "Authorization: Bearer $COOLIFY_TOKEN"
+          RESPONSE="$(curl --fail-with-body -sS --max-time 30 --proto '=https' -X POST "$COOLIFY_WEBHOOK" \
+            -H "Authorization: Bearer $COOLIFY_TOKEN")"
+          DEPLOYMENT_UUID="$(printf '%s' "$RESPONSE" | jq -r '.deployments[0].deployment_uuid // .deployment_uuid // empty' 2>/dev/null || true)"
+          if [ -z "$DEPLOYMENT_UUID" ]; then
+            echo "Coolify não retornou deployment_uuid. Resposta:"
+            printf '%s\n' "$RESPONSE"
+            exit 1
+          fi
+          echo "deployment_uuid=$DEPLOYMENT_UUID" >> "$GITHUB_OUTPUT"
+
+      - name: Aguardar deployment do web
+        env:
+          COOLIFY_URL: ${{ secrets.COOLIFY_URL }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+          DEPLOYMENT_UUID: ${{ steps.deploy.outputs.deployment_uuid }}
+        run: |
+          set -euo pipefail
+          API="${COOLIFY_URL%/}"
+          API="${API%/api/v1}"
+          for i in $(seq 1 120); do
+            STATUS="$(curl -fsS --max-time 15 --proto '=https' \
+              "$API/api/v1/deployments/$DEPLOYMENT_UUID" \
+              -H "Authorization: Bearer $COOLIFY_TOKEN" | jq -r '.status // empty' | tr '[:upper:]' '[:lower:]' || true)"
+            case "$STATUS" in
+              finished|success)
+                echo "Deployment $DEPLOYMENT_UUID concluído ($STATUS)"
+                exit 0
+                ;;
+              failed|cancelled)
+                echo "Deployment $DEPLOYMENT_UUID terminou com status $STATUS"
+                exit 1
+                ;;
+            esac
+            echo "Aguardando deployment: status=${STATUS:-indisponível} (tentativa $i/120)"
+            sleep 10
+          done
+          echo "Timeout aguardando o deployment $DEPLOYMENT_UUID"
+          exit 1
 
       - name: Aguardar a versão do web
         env:
@@ -321,5 +422,11 @@ jobs:
       - name: Smoke do web
         run: |
           set -euo pipefail
-          curl -fsS --max-time 10 https://fisga.abson.tech/ >/dev/null
-          curl -fsS --max-time 10 https://fisga.abson.tech/condicoes >/dev/null
+          curl -fsS --max-time 10 https://fisga.abson.tech/ >/dev/null || {
+            echo "Smoke do web falhou em /. Faça rollback do web no Coolify (runbook em docs/ci-cd.md)."
+            exit 1
+          }
+          curl -fsS --max-time 10 https://fisga.abson.tech/condicoes >/dev/null || {
+            echo "Smoke do web falhou em /condicoes. Faça rollback do web no Coolify (runbook em docs/ci-cd.md)."
+            exit 1
+          }

@@ -330,8 +330,9 @@ Nunca commite chaves, tokens ou senhas. Use variáveis de ambiente do provedor.
 | `Auth__DuracaoDaSessaoEmDias` | padrão 30 |
 | `SENTRY_DSN` | DSN do projeto `fisga-api` |
 | `SENTRY_ENVIRONMENT` | `production` ou `development` |
-| `SENTRY_RELEASE` | commit/deploy para agrupar erros e traces |
+| `SENTRY_RELEASE` | não usado diretamente pela API; o release vem de `GIT_SHA`/`SOURCE_COMMIT` |
 | `SENTRY_TRACES_SAMPLE_RATE` | amostragem de traces (padrão 0.1 em produção) |
+| `SOURCE_COMMIT` | commit passado pelo Coolify no build; vira `GIT_SHA` e release do Sentry |
 
 ### Web (build/SSR)
 
@@ -343,8 +344,9 @@ Nunca commite chaves, tokens ou senhas. Use variáveis de ambiente do provedor.
 | `SENTRY_DSN` | DSN do projeto `fisga-web` no SSR |
 | `PUBLIC_SENTRY_DSN` | DSN do navegador (build) |
 | `SENTRY_ENVIRONMENT` | `production` ou `development` (build e runtime) |
-| `SENTRY_RELEASE` | commit/deploy (build e runtime) |
-| `SENTRY_AUTH_TOKEN` | token de upload de source maps (somente build; opcional) |
+| `SENTRY_RELEASE` | runtime; o Dockerfile define a partir de `GIT_SHA` |
+| `PUBLIC_SENTRY_RELEASE` | release do navegador (build arg; fallback para `SENTRY_RELEASE`) |
+| `SENTRY_AUTH_TOKEN` | token de upload de source maps; usar BuildKit secret `sentry_auth_token`, nunca ARG/ENV |
 
 ### E-mail e newsletter
 
@@ -428,12 +430,15 @@ todo PR e em push para `main`, detecta mudanças em `Projetos/fisga/**` e execut
 - `gate`: job obrigatório; falha se qualquer job necessário falhar.
 
 No push para `main`, após o `gate`, o pipeline dispara o deploy do `fisga-api` e depois do
-`fisga-web` no Coolify, aguarda o `/health` retornar o SHA do commit e roda smoke tests.
+`fisga-web` no Coolify, acompanha o deployment, aguarda o `/health` retornar o SHA do commit e roda
+smoke tests. O `workflow_dispatch` de deploy só é aceito na branch `main`.
 
-O check obrigatório da `main` é **`fisga-pipeline / gate`**.
+O check obrigatório da `main` é o job **`gate`** (a UI pode exibir `fisga-pipeline / gate`). Confirme
+o contexto exato com `gh api repos/AbsonDev/abson/commits/<sha>/check-runs`.
 
-Segredos e variáveis necessários no GitHub: `COOLIFY_TOKEN`, `COOLIFY_WEBHOOK_FISGA_API`,
-`COOLIFY_WEBHOOK_FISGA_WEB` e a variável `FISGA_PUBLIC_SENTRY_DSN`.
+Segredos e variáveis necessários no GitHub: `COOLIFY_URL`, `COOLIFY_TOKEN` (read+deploy),
+`COOLIFY_WEBHOOK_FISGA_API`, `COOLIFY_WEBHOOK_FISGA_WEB` e a variável `FISGA_PUBLIC_SENTRY_DSN`.
+Os webhooks e o `COOLIFY_URL` precisam ser HTTPS.
 
 Runbook completo, configuração do Coolify e rollback: [docs/ci-cd.md](docs/ci-cd.md).
 
