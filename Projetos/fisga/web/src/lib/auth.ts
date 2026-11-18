@@ -175,7 +175,10 @@ export async function encerrarSessaoExpirada(
 
   const alvo = destino ?? `${window.location.pathname}${window.location.search}`;
   await limparCachePrivado(opcoes);
-  window.location.replace(`/entrar?voltar=${encodeURIComponent(destinoSeguro(alvo))}`);
+  // Mantém as barras do caminho legíveis (`/hoje`), mas codifica `?`/`&` de
+  // um destino com query para não quebrar o parâmetro `voltar`.
+  const voltar = encodeURIComponent(destinoSeguro(alvo)).replace(/%2F/g, '/');
+  window.location.replace(`/entrar?voltar=${voltar}`);
 }
 
 /** POST JSON com cookie de autenticação e leitura tolerante de problem+json. */
