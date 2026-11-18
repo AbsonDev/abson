@@ -83,9 +83,16 @@ public sealed class GoogleIdentityService(
         }
         catch (Exception excecao) when (excecao is not OperationCanceledException)
         {
-            // O subject pode ter sido vinculado a outro usuário entre a leitura e
-            // a escrita (store lança em chave duplicada). Recusamos — nunca trocamos
-            // de conta nem sobrescrevemos um vínculo alheio.
+            // Só traduzimos quando o subject PASSOU a existir na base — assinatura de
+            // que outro request venceu a corrida. Falhas genuínas de infraestrutura
+            // (conexão, disco, bug) não acham login e propagam para o middleware.
+            var dono = await usuarios.FindByLoginAsync(GoogleIdentityValidator.Provider, subject);
+            if (dono is null)
+            {
+                throw;
+            }
+
+            // Nunca trocamos de conta nem sobrescrevemos um vínculo alheio.
             throw new DomainException(
                 "google_vinculo_falhou",
                 "Esta conta do Google já está associada a outro usuário.");

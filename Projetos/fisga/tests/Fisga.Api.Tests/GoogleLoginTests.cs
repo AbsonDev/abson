@@ -96,6 +96,45 @@ public sealed class GoogleLoginTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Subject_da_conta_A_com_email_da_conta_B_entra_na_conta_A()
+    {
+        var emailA = $"{Guid.NewGuid():N}@exemplo.com";
+        var emailB = $"outro-{Guid.NewGuid():N}@exemplo.com";
+        const string senhaB = "senha-segura-123";
+        var subject = NovoSubject();
+
+        var contaA = await _cadastro.GarantirUsuarioAsync(
+            Email.Criar(emailA), "Conta A", emailVerificado: true);
+        var contaB = await _cadastro.CriarComSenhaAsync(emailB, "Conta B", senhaB);
+        var usuarioA = await _usuarios.FindByIdAsync(contaA.Id.ToString());
+        var usuarioB = await _usuarios.FindByIdAsync(contaB.Id.ToString());
+        Assert.NotNull(usuarioA);
+        Assert.NotNull(usuarioB);
+        Assert.True((await _usuarios.AddLoginAsync(usuarioA!, Login(subject))).Succeeded);
+        var stampAntes = usuarioB!.SecurityStamp;
+
+        // O subject decide a identidade: o e-mail da conta B não pode sequer ser
+        // considerado, muito menos promover ou alterar a conta B.
+        var entrado = await _servico.EntrarOuCriarAsync(
+            new GoogleUsuario(subject, Email.Criar(emailB), "Nome do Google"));
+
+        Assert.Equal(contaA.Id, entrado.Id);
+        Assert.NotEqual(contaB.Id, entrado.Id);
+        Assert.Equal(1, await _db.UserLogins.CountAsync(l =>
+            l.LoginProvider == "Google" && l.ProviderKey == subject));
+        Assert.Equal(0, await _db.UserLogins.CountAsync(l => l.UserId == contaB.Id));
+
+        // Conta B permanece intacta: não verificada, sem login e com a mesma senha.
+        var contaBDepois = await _usuarios.FindByIdAsync(contaB.Id.ToString());
+        Assert.NotNull(contaBDepois);
+        Assert.False(contaBDepois!.EmailConfirmed);
+        Assert.Equal(stampAntes, contaBDepois.SecurityStamp);
+        Assert.Empty(await _usuarios.GetLoginsAsync(contaBDepois));
+        Assert.True(await _usuarios.CheckPasswordAsync(contaBDepois, senhaB));
+        Assert.Null((await _db.Usuarios.SingleAsync(u => u.Id == contaB.Id)).EmailVerificadoEm);
+    }
+
+    [Fact]
     public async Task Email_verificado_existente_e_vinculado_sem_promover_nem_duplicar()
     {
         var email = $"{Guid.NewGuid():N}@exemplo.com";
@@ -218,11 +257,12 @@ public sealed class GoogleLoginTests : IAsyncLifetime
         var subject = NovoSubject();
         var usuario = await _cadastro.GarantirUsuarioAsync(
             Email.Criar(email), "Pescador", emailVerificado: true);
+        var outro = new ApplicationUser { Id = Guid.NewGuid(), Email = "outro@exemplo.com" };
 
-        // Simula a corrida em que outro usuário acabou de vincular o mesmo subject:
-        // FindByLoginAsync não o vê, mas a store recusa o AddLoginAsync.
+        // Corrida: a 1ª leitura não vê dono, o AddLogin falha (outro request venceu)
+        // e a 2ª leitura já encontra o subject na conta alheia.
         var sp = _scope.ServiceProvider;
-        var store = new StoreQueFalhaAoVincular(_db, new IdentityErrorDescriber());
+        var store = new StoreQuePerdeuACorrida(_db, new IdentityErrorDescriber(), outro);
         var usuariosComFalha = new UserManager<ApplicationUser>(
             store,
             sp.GetRequiredService<IOptions<IdentityOptions>>(),
@@ -244,6 +284,26 @@ public sealed class GoogleLoginTests : IAsyncLifetime
         var conta = await _usuarios.FindByIdAsync(usuario.Id.ToString());
         Assert.NotNull(conta);
         Assert.True(conta!.EmailConfirmed);
+
+        // Uma falha de infraestrutura sem dono para o subject NÃO é traduzida.
+        var storeSemDono = new StoreQueFalhaSemDono(_db, new IdentityErrorDescriber());
+        var usuariosSemDono = new UserManager<ApplicationUser>(
+            storeSemDono,
+            sp.GetRequiredService<IOptions<IdentityOptions>>(),
+            sp.GetRequiredService<IPasswordHasher<ApplicationUser>>(),
+            sp.GetRequiredService<IEnumerable<IUserValidator<ApplicationUser>>>(),
+            sp.GetRequiredService<IEnumerable<IPasswordValidator<ApplicationUser>>>(),
+            sp.GetRequiredService<ILookupNormalizer>(),
+            new IdentityErrorDescriber(),
+            sp,
+            sp.GetRequiredService<ILogger<UserManager<ApplicationUser>>>());
+        var servicoSemDono = new GoogleIdentityService(usuariosSemDono, _repositorio, _cadastro);
+
+        var infra = await Assert.ThrowsAsync<DbUpdateException>(
+            () => servicoSemDono.EntrarOuCriarAsync(
+                new GoogleUsuario(NovoSubject(), Email.Criar(email), null)));
+
+        Assert.Contains("infra", infra.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     // ---------------------------------------------------------------------
@@ -263,10 +323,31 @@ public sealed class GoogleLoginTests : IAsyncLifetime
         Assert.Equal("Pescador", google.Nome);
     }
 
-    [Fact]
-    public async Task Validador_recusa_email_nao_verificado_pelo_google()
+    // O MapJsonKey do ASP.NET Core converte o boolean do userinfo do Google com
+    // JsonElement.ToString(): "True"/"False" (capitalizado). Os dois casos precisam
+    // ser aceitos/recusados para uma futura regressão case-sensitive ser detectada.
+    [Theory]
+    [InlineData("true")]
+    [InlineData("True")]
+    public async Task Validador_aceita_email_verificado_em_qualquer_caixa(string claimVerificado)
     {
-        var info = NovaInfo("Google", NovoSubject(), "usuario@exemplo.com", emailVerificado: false);
+        var info = NovaInfo(
+            "Google", NovoSubject(), "usuario@exemplo.com",
+            emailVerificado: true, claimVerificado: claimVerificado);
+
+        var google = await _validator.ValidarAsync(info);
+
+        Assert.Equal("usuario@exemplo.com", google.Email.Valor);
+    }
+
+    [Theory]
+    [InlineData("false")]
+    [InlineData("False")]
+    public async Task Validador_recusa_email_nao_verificado_pelo_google(string claimVerificado)
+    {
+        var info = NovaInfo(
+            "Google", NovoSubject(), "usuario@exemplo.com",
+            emailVerificado: false, claimVerificado: claimVerificado);
 
         var excecao = await Assert.ThrowsAsync<DomainException>(() => _validator.ValidarAsync(info));
 
@@ -382,12 +463,13 @@ public sealed class GoogleLoginTests : IAsyncLifetime
         string subject,
         string? email,
         bool emailVerificado,
-        string? nome = null)
+        string? nome = null,
+        string? claimVerificado = null)
     {
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, subject),
-            new("email_verified", emailVerificado ? "true" : "false")
+            new("email_verified", claimVerificado ?? (emailVerificado ? "true" : "false"))
         };
         if (email is not null)
         {
@@ -403,15 +485,48 @@ public sealed class GoogleLoginTests : IAsyncLifetime
             new ClaimsPrincipal(new ClaimsIdentity(claims, "Google")), provider, subject, "Google");
     }
 
-    private sealed class StoreQueFalhaAoVincular(
+    // A 1ª consulta não encontra dono; depois que o AddLogin falha, o subject já
+    // pertence a outro usuário — exatamente a corrida que o serviço precisa recusar.
+    private sealed class StoreQuePerdeuACorrida(
+        FisgaDbContext db,
+        IdentityErrorDescriber describer,
+        ApplicationUser novoDono)
+        : UserStore<ApplicationUser, IdentityRole<Guid>, FisgaDbContext, Guid>(db, describer)
+    {
+        private bool _jaTentouVincular;
+
+        public override Task<ApplicationUser?> FindByLoginAsync(
+            string loginProvider,
+            string providerKey,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(_jaTentouVincular ? novoDono : null);
+
+        public override Task AddLoginAsync(
+            ApplicationUser user,
+            UserLoginInfo login,
+            CancellationToken cancellationToken = default)
+        {
+            _jaTentouVincular = true;
+            return Task.FromException(new DbUpdateException("Subject duplicado."));
+        }
+    }
+
+    // Falha de infraestrutura sem dono para o subject: deve propagar, não virar
+    // google_vinculo_falhou.
+    private sealed class StoreQueFalhaSemDono(
         FisgaDbContext db,
         IdentityErrorDescriber describer)
         : UserStore<ApplicationUser, IdentityRole<Guid>, FisgaDbContext, Guid>(db, describer)
     {
+        public override Task<ApplicationUser?> FindByLoginAsync(
+            string loginProvider,
+            string providerKey,
+            CancellationToken cancellationToken = default) => Task.FromResult<ApplicationUser?>(null);
+
         public override Task AddLoginAsync(
             ApplicationUser user,
             UserLoginInfo login,
             CancellationToken cancellationToken = default) =>
-            Task.FromException(new DbUpdateException("Subject já vinculado a outro usuário."));
+            Task.FromException(new DbUpdateException("Falha de infraestrutura no banco."));
     }
 }
