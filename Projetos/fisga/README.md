@@ -480,7 +480,8 @@ O CI roda em todo PR e em push para `main`, detecta mudanças em `Projetos/fisga
 No push para `main`, quando o `fisga-pipeline` conclui verde, o `fisga-deploy` roda por
 `workflow_run`: dispara o `fisga-api`, depois o `fisga-web`, acompanha o deployment, aguarda o
 `/health` retornar o SHA do commit e roda smoke tests. O `workflow_dispatch` na `main` roda o CI e,
-ao concluir, o deploy. Validação ponta a ponta: 18/11/2026, commit `725afd5`, deploy `44338998771`.
+ao concluir, o deploy. Validação ponta a ponta: 18/11/2026, commit `725afd5`, deploy `44338998771`;
+revalidada no deploy dos docs em `f50560a` (`44348792718`).
 
 O check obrigatório da `main` é o job **`gate`** (a UI pode exibir `fisga-pipeline / gate`). Confirme
 o contexto exato com `gh api repos/AbsonDev/abson/commits/<sha>/check-runs`.

@@ -197,13 +197,14 @@
 
 ## Resultado (18/11/2026)
 
-**Fase A concluída e validada em produção no commit `725afd5`.**
+**Fase A concluída e validada em produção no commit `725afd5`; revalidada em `f50560a`.**
 
 - CI: `fisga-pipeline` com `changes`, `api` (250 testes), `web` (61 Playwright mockados), `docker`
   e `gate`; PR #14 com todos os checks verdes no run `44338126881`.
 - CD: `fisga-deploy` via `workflow_run`; deploy automático `44338998771` verde (`changes` 12s,
   `deploy-api` 2m03s, `deploy-web` 2m46s).
-- Produção: API e web em `725afd5`; `/health` com o SHA, `/ready`, `/` e `/condicoes` 200.
+- Produção na primeira validação: API e web em `725afd5`; `/health` com o SHA, `/ready`, `/` e
+  `/condicoes` 200. O deploy dos docs (`44348792718`) repetiu o fluxo em `f50560a`.
 - Proteção: ruleset `main-protection` (id `27557615`) exigindo `gate`, sem aprovação extra.
 - Coolify: auto deploy off, source commit no build, retenção 10, stop grace 30s, rolling drain 30s.
 - Segurança: `COOLIFY_TOKEN` escopado aos dois apps (read+deploy, 90 dias); token de setup e chave
