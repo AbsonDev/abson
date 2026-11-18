@@ -57,7 +57,8 @@ public sealed record UsuarioResponse(
 public sealed record MeResponse(
     bool Autenticado,
     UsuarioResponse? Usuario,
-    bool ConsentimentoPendente);
+    bool ConsentimentoPendente,
+    bool GoogleConectado);
 
 public sealed record SessaoResponse(
     Guid Id,

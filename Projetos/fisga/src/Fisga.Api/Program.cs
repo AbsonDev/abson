@@ -13,6 +13,7 @@ using Fisga.Api.Observabilidade;
 using Fisga.Application;
 using Fisga.Application.Identidade;
 using Fisga.Infrastructure;
+using Fisga.Infrastructure.Identity;
 using Fisga.Infrastructure.Midia;
 using Fisga.Infrastructure.Persistence;
 using Microsoft.Extensions.Logging;
@@ -51,6 +52,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(opcoes =>
 builder.Services.AdicionarAplicacao();
 builder.Services.AdicionarInfraestrutura(builder.Configuration);
 builder.Services.AddScoped<IdentitySessionService>();
+builder.Services.AddScoped<ConexaoGoogleService>();
 
 // Versões vigentes vêm da configuração (Legal); o aceite do usuário é lido do
 // banco a cada requisição, sem claims de versão no cookie e sem reemissão de cookie.

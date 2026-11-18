@@ -7,9 +7,15 @@ namespace Fisga.Infrastructure.Identity;
 
 /// <summary>
 /// Identidade já validada pelo handler do Google. Carrega apenas o subject, o
-/// e-mail e o nome — nenhum token ou dado sensível é repassado adiante.
+/// e-mail, o nome e o sinal de que o e-mail foi verificado — nenhum token ou
+/// dado sensível é repassado adiante. O padrão <c>true</c> preserva os chamadores
+/// que já recebem uma identidade validada pelo <see cref="GoogleIdentityValidator"/>.
 /// </summary>
-public sealed record GoogleUsuario(string Subject, Email Email, string? Nome);
+public sealed record GoogleUsuario(
+    string Subject,
+    Email Email,
+    string? Nome,
+    bool EmailVerified = true);
 
 /// <summary>
 /// Valida o <see cref="ExternalLoginInfo"/> produzido pelo handler OAuth do
@@ -65,6 +71,7 @@ public sealed class GoogleIdentityValidator
         return Task.FromResult(new GoogleUsuario(
             subject.Trim(),
             Email.Criar(emailBruto),
-            string.IsNullOrWhiteSpace(nome) ? null : nome.Trim()));
+            string.IsNullOrWhiteSpace(nome) ? null : nome.Trim(),
+            emailVerificado));
     }
 }

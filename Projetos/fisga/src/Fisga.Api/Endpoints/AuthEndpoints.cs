@@ -411,13 +411,147 @@ public static class AuthEndpoints
             .AllowAnonymous()
             .RequireRateLimiting("auth");
 
-        app.MapGet("/api/auth/me", (HttpContext http) =>
+        // Conectar Google em /conta: fluxo SEPARADO do login da Task 8. A conta
+        // é a da sessão atual — nunca trocamos de usuário, nunca emitimos cookie.
+        // Sem credenciais o comportamento espelha /google/iniciar (503).
+        app.MapGet("/api/auth/google/conectar", async (
+                HttpContext http,
+                IConfiguration configuration,
+                ConexaoGoogleService conexao,
+                AutenticacaoOptions opcoes,
+                CancellationToken ct) =>
+            {
+                if (!GoogleConfigurado(configuration))
+                {
+                    Metricas.LoginFalhou("google_indisponivel");
+                    return Results.Json(
+                        new ErroResponse(
+                            "google_indisponivel",
+                            "A conexão com Google não está configurada."),
+                        statusCode: StatusCodes.Status503ServiceUnavailable,
+                        contentType: "application/problem+json");
+                }
+
+                var usuarioId = http.ExigirUsuarioId();
+                var valor = await conexao.CriarIntencaoAsync(usuarioId);
+                http.Response.Cookies.Append(ConexaoGoogleService.IntencaoCookie, valor, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = opcoes.CookieSecure,
+                    SameSite = SameSiteMode.Lax,
+                    MaxAge = TimeSpan.FromMinutes(ConexaoGoogleService.ValidadeIntencaoEmMinutos),
+                    Path = "/",
+                    IsEssential = true
+                });
+
+                var propriedades = new AuthenticationProperties
+                {
+                    RedirectUri = "/api/auth/google/conectar/concluir"
+                };
+                propriedades.Items[ChaveProvedorExterno] = GoogleIdentityValidator.Provider;
+                return Results.Challenge(propriedades, [GoogleDefaults.AuthenticationScheme]);
+            })
+            .RequireRateLimiting("auth");
+
+        app.MapGet("/api/auth/google/conectar/concluir", async (
+                HttpContext http,
+                ConexaoGoogleService conexao,
+                GoogleIdentityValidator validator,
+                UserManager<ApplicationUser> usuarios,
+                AutenticacaoOptions opcoes,
+                CancellationToken ct) =>
+            {
+                var web = opcoes.WebUrl.TrimEnd('/');
+
+                // A intenção é apagada em SUCESSO e em FALHA, antes de qualquer
+                // validação — nenhum desfecho deixa o cookie para uma segunda tentativa.
+                http.Response.Cookies.Delete(ConexaoGoogleService.IntencaoCookie, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = opcoes.CookieSecure,
+                    SameSite = SameSiteMode.Lax,
+                    Path = "/"
+                });
+
+                var usuarioId = http.UsuarioId();
+                if (usuarioId is null)
+                {
+                    return Results.Redirect($"{web}/conta?estado=google_conexao_nao_autenticado");
+                }
+
+                var intencao = http.Request.Cookies[ConexaoGoogleService.IntencaoCookie];
+                if (string.IsNullOrWhiteSpace(intencao))
+                {
+                    return Results.Redirect($"{web}/conta?estado=google_intencao_invalida");
+                }
+
+                try
+                {
+                    await conexao.ValidarIntencaoAsync(intencao, usuarioId.Value);
+
+                    // A sessão externa é a prova de posse da conta Google. Não
+                    // há aqui SignInAsync nem criação de Sessao: só o vínculo.
+                    var autenticacao = await http.AuthenticateAsync(IdentityConstants.ExternalScheme);
+                    if (autenticacao is null || !autenticacao.Succeeded || autenticacao.Principal is null)
+                    {
+                        return Results.Redirect($"{web}/conta?estado=google_sessao_externa_invalida");
+                    }
+
+                    var provedor = GoogleIdentityValidator.Provider;
+                    if (autenticacao.Properties?.Items.TryGetValue(ChaveProvedorExterno, out var salvo) == true
+                        && !string.IsNullOrWhiteSpace(salvo))
+                    {
+                        provedor = salvo;
+                    }
+
+                    var subject = autenticacao.Principal.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                                  ?? autenticacao.Principal.FindFirst("sub")?.Value
+                                  ?? string.Empty;
+                    var info = new ExternalLoginInfo(
+                        autenticacao.Principal, provedor, subject, GoogleIdentityValidator.Provider);
+
+                    var google = await validator.ValidarAsync(info, ct);
+                    var conta = await usuarios.FindByIdAsync(usuarioId.Value.ToString())
+                                ?? throw new DomainException(
+                                    "google_conta_inconsistente",
+                                    "Não foi possível localizar a sua conta.");
+
+                    await conexao.ConectarAsync(conta, google, ct);
+                    await http.SignOutAsync(IdentityConstants.ExternalScheme);
+
+                    return Results.Redirect($"{web}/conta?estado=google_conectado");
+                }
+                catch (DomainException excecao)
+                {
+                    await http.SignOutAsync(IdentityConstants.ExternalScheme);
+                    Metricas.LoginFalhou(excecao.Codigo);
+                    return Results.Redirect(
+                        $"{web}/conta?estado={Uri.EscapeDataString(excecao.Codigo)}");
+                }
+            })
+            .RequireRateLimiting("auth");
+
+        app.MapGet("/api/auth/me", async (
+                HttpContext http,
+                UserManager<ApplicationUser> usuarios,
+                CancellationToken ct) =>
             {
                 var usuario = http.UsuarioAtual();
+                if (usuario is null)
+                {
+                    return Results.Ok(new MeResponse(false, null, http.ConsentimentoPendente(), false));
+                }
+
+                var conta = await usuarios.FindByIdAsync(usuario.Id.ToString());
+                var googleConectado = conta is not null
+                    && (await usuarios.GetLoginsAsync(conta))
+                        .Any(login => login.LoginProvider == GoogleIdentityValidator.Provider);
+
                 return Results.Ok(new MeResponse(
-                    usuario is not null,
-                    usuario is null ? null : UsuarioResponse.De(usuario),
-                    http.ConsentimentoPendente()));
+                    true,
+                    UsuarioResponse.De(usuario),
+                    http.ConsentimentoPendente(),
+                    googleConectado));
             })
             .AllowAnonymous()
             .RequireRateLimiting("leitura");
