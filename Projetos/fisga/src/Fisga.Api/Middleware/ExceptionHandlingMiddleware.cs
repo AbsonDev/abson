@@ -1,4 +1,5 @@
 using Fisga.Application.Abstractions;
+using Fisga.Application.Common;
 using Fisga.Domain.Common;
 
 namespace Fisga.Api.Middleware;
@@ -31,7 +32,9 @@ public sealed class ExceptionHandlingMiddleware(
         }
         catch (Exception excecao)
         {
-            logger.LogError(excecao, "Erro não tratado em {Metodo} {Caminho}", context.Request.Method, context.Request.Path);
+            logger.LogError(excecao, "Erro não tratado em {Metodo} {Caminho}",
+                LogSeguro.ParaLog(context.Request.Method),
+                LogSeguro.ParaLog(context.Request.Path.Value));
             await EscreverAsync(
                 context,
                 StatusCodes.Status500InternalServerError,
