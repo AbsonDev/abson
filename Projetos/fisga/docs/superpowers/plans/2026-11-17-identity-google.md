@@ -716,14 +716,23 @@ git commit -m "feat(account): manage password, Google and devices"
 ### Task 13: Migração, E2E e rollout
 
 **Files:**
-- Create: `Projetos/fisga/docs/superpowers/runbooks/2026-11-17-identity-rollout.md`
+- Create: `docs/superpowers/runbooks/2026-11-17-identity-rollout.md`
 - Modify: `README.md`
 - Modify: `docs/ux-audit.md`
+- Modify: `docker-compose.yml`
 - Create: `web/tests/identity-e2e.spec.ts`
 
 **Interfaces:**
 - Consumes: todas as tasks anteriores.
-- Produces: runbook de migração/rollback e evidência de teste.
+- Produces: runbook de migração/rollback, volume persistente de Data Protection e evidência de teste.
+
+**Decisões de implementação (vinculantes):**
+- **Data Protection é pré-requisito de rollout.** `DataProtection:KeysPath` (`data/keys`) precisa de volume persistente; sem isso, todo deploy invalida `fisga_auth`, o cookie externo do Google e os links de reset. Adicionar volume `fisga_keys:/app/data/keys` no `docker-compose.yml` e exigir o mesmo mount na produção.
+- O teste de migration roda contra um **Postgres local** via `docker compose up -d postgres` (porta 5435), nunca contra produção. Comparar contagens de `usuarios`, `pescarias` e `AspNetUsers` antes/depois; registrar o resultado no runbook. A execução em produção fica condicionada a backup e janela, descritas no runbook.
+- E2E sem credenciais Google reais cobre todo o resto (link mágico, senha, confirmação, reset, consentimento, sessões, `/conta`) com backend real e banco limpo. O fluxo OAuth real fica como checklist pós-credenciais no runbook — não inventar que rodou.
+- `Auth:CookieName` é legado (`fisga_sessao`), usado apenas para apagar o cookie obsoleto. Renomear a chave para `Auth:LegacyCookieName` (ou documentar explicitamente no appsettings) para não confundir operação.
+- Rollback oficial: imagem anterior + backup. Nenhuma operação destrutiva de schema; a migration é aditiva.
+- Verificação de saúde usa `GET /health` (API) e `GET /health` (web), ambos públicos.
 
 - [ ] **Step 1: Rodar a verificação completa**
 
@@ -734,24 +743,24 @@ cd web && npm run check && npm run build
 cd web && npx playwright test
 ```
 
-Expected: tudo PASS.
+Expected: tudo PASS. Registrar se o Chromium do Playwright já estava instalado.
 
-- [ ] **Step 2: Testar a migration em cópia do Postgres**
+- [ ] **Step 2: Testar a migration no Postgres local**
 
-Criar uma cópia do banco de produção, rodar `dotnet ef database update`, conferir contagens de `usuarios`/`pescarias` e que `AspNetUsers` tem o mesmo número de linhas. Registrar o resultado no runbook.
+`docker compose up -d postgres`, apontar `Database__Provider=Postgres` para `localhost:5435`, rodar `dotnet ef database update`, conferir contagens de `usuarios`, `pescarias` e `AspNetUsers` e que os dados existentes sobreviveram. Registrar no runbook. Não usar produção.
 
-- [ ] **Step 3: Escrever o runbook**
+- [ ] **Step 3: Persistir chaves e escrever o runbook**
 
-Incluir: backup, janela, variáveis Google, volume persistente para `DataProtection:KeysPath` (`data/keys`), ordem do deploy, verificação de `/health` e `/ready`, login de teste, rollback por imagem anterior, comunicação de re-login e limpeza de artefatos.
+Adicionar o volume de `data/keys` no compose. O runbook inclui: backup, janela, variáveis Google (ClientId/ClientSecret e redirects `/signin-google`), volume de chaves, ordem do deploy, verificação de `/health` (API e web), login de teste, rollback por imagem anterior, comunicação de re-login e limpeza de artefatos.
 
-- [ ] **Step 4: E2E final**
+- [ ] **Step 4: E2E final com backend real**
 
-Fluxos: usuário antigo via link mágico → consentimento → diário; novo usuário por senha → confirmação → consentimento; Google novo; Google existente; conectar Google; reset; sessões. Verificar Sentry sem PII.
+Fluxos: usuário antigo via link mágico → consentimento → diário; novo usuário por senha → confirmação → consentimento; reset de senha; sessões (“sair desta” e “sair de todos”); `/conta` com senha e Google. Google real apenas se credenciais existirem; caso contrário, registrar o bloqueio e manter o checklist. Verificar Sentry sem PII.
 
 - [ ] **Step 5: Commit final**
 
 ```bash
-git add Projetos/fisga/README.md Projetos/fisga/docs/ux-audit.md web/tests/identity-e2e.spec.ts
+git add Projetos/fisga/README.md Projetos/fisga/docs/ux-audit.md Projetos/fisga/docker-compose.yml web/tests/identity-e2e.spec.ts docs/superpowers/runbooks
 git commit -m "test(auth): verify identity migration end to end"
 ```
 
