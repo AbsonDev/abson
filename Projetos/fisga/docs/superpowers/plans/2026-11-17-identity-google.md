@@ -485,36 +485,46 @@ git commit -m "feat(auth): require formal terms and privacy consent"
 - Create: `src/Fisga.Infrastructure/Identity/GoogleIdentityValidator.cs`
 - Modify: `src/Fisga.Api/Endpoints/AuthEndpoints.cs`
 - Modify: `src/Fisga.Api/appsettings.json`
-- Modify: `src/Fisga.Infrastructure/Fisga.Infrastructure.csproj`
 - Create: `tests/Fisga.Api.Tests/GoogleLoginTests.cs`
-- Modify: `tests/Fisga.Application.Tests/Fakes.cs`
 
 **Interfaces:**
-- Produces: `GoogleIdentityValidator.ValidarAsync(ExternalLoginInfo, CancellationToken) : Task<GoogleUsuario>`; `GoogleIdentityService.EntrarOuCriarAsync(GoogleUsuario, CancellationToken) : Task<Usuario>` em Infrastructure.
-- Consumes: `CadastroDeUsuario` e `ExternalLoginInfo`/`SignInManager`.
+- Produces: `GoogleIdentityValidator.ValidarAsync(ExternalLoginInfo, CancellationToken) : Task<GoogleUsuario>`, com `GoogleUsuario(string Subject, Email Email, string? Nome)`.
+- Produces: `GoogleIdentityService.EntrarOuCriarAsync(GoogleUsuario, CancellationToken) : Task<Usuario>` em Infrastructure.
+- Produces: `GET /api/auth/google/disponivel`, `GET /api/auth/google/iniciar`, `GET /api/auth/google/concluir`.
+- Consumes: `ICadastroDeUsuario`, `UserManager<ApplicationUser>` e `IdentitySessionService`.
+
+**Decisões de implementação (vinculantes):**
+- **Não adicionar `Google.Apis.Auth`.** O handler `AddGoogle` já valida o token com `ClientId`/`ClientSecret` e produz um `ExternalLoginInfo` confiável. O validator apenas verifica `Provider == "Google"`, `ProviderKey` (subject) não vazio, e-mail presente e `EmailVerified == true`.
+- Sem `Google:ClientId`/`Google:ClientSecret`, o handler não é registrado (Task 2); `/api/auth/google/disponivel` retorna `{ disponivel: false }` e `/iniciar` retorna 503 com código `google_indisponivel`. O app continua bootando.
+- Ordem de resolução: (1) `UserManager.FindByLoginAsync("Google", subject)` → entra na mesma conta; (2) e-mail já existe: **só vincula** se `Usuario.EmailVerificadoEm != null` **e** `ApplicationUser.EmailConfirmed == true`; (3) e-mail existente mas não verificado em qualquer dos lados → recusa com `google_email_nao_verificado_localmente`, sem criar conta e sem alterar o estado local; (4) e-mail novo → `GarantirUsuarioAsync(email, nome, emailVerificado: true)` e `AddLoginAsync`.
+- **Nunca** chamar `GarantirUsuarioAsync(..., emailVerificado: true)` antes da checagem (2)/(3): desde a Task 6 isso promoveria `EmailConfirmed` de uma conta de senha não confirmada e permitiria tomada de conta.
+- `AddLoginAsync` falhando (subject já vinculado a outro usuário) → recusa, nunca troca a conta.
+- O callback `/signin-google` é interceptado pelo handler; `/api/auth/google/concluir` lê `AuthenticateAsync(IdentityConstants.ExternalScheme)`, monta o `ExternalLoginInfo`, chama o serviço e assina com `IdentitySessionService.AssinarAsync`.
+- Redirecionamentos de sucesso seguem o link mágico; falhas vão para `/entrar/confirmar?estado=<codigo>`.
+- Testes sem credenciais reais constroem `ExternalLoginInfo` diretamente e exercitam o serviço; o fluxo OAuth real fica para o E2E com credenciais na Task 13.
 
 - [ ] **Step 1: Escrever testes de linking**
 
-Testar quatro caminhos: vínculo Google existente entra na mesma conta; e-mail verificado existente é vinculado; e-mail local não verificado é recusado; e-mail novo cria usuário. Verificar que o `subject` do Google fica em `AspNetUserLogins`.
+Quatro caminhos: vínculo Google existente entra na mesma conta; e-mail verificado existente é vinculado; e-mail local não verificado é recusado (e `EmailConfirmed` continua `false`); e-mail novo cria `Usuario` + `ApplicationUser`. Verificar que o `subject` fica em `AspNetUserLogins` e que um `subject` já vinculado a outro usuário é recusado. Testar também `ValidarAsync` com `EmailVerified=false` e `/api/auth/google/disponivel` com/sem configuração.
 
 - [ ] **Step 2: Rodar e ver falhar**
 
-Run: `dotnet test tests/Fisga.Api.Tests --filter GoogleLogin`
+Run: `dotnet test --filter GoogleLogin`
 Expected: FAIL.
 
 - [ ] **Step 3: Implementar**
 
-Adicionar `Google.Apis.Auth` e validar o `id_token` de `ExternalLoginInfo.AuthenticationTokens` com audiência do ClientId. Exigir `EmailVerified`. Implementar linking por `AspNetUserLogins` e auto-link só com conta local verificada. Endpoint `/api/auth/google/iniciar` desafia; `/signin-google` é o callback do handler; `/api/auth/google/concluir` assina via Identity.
+Validator + serviço + endpoints conforme as decisões. Registrar o serviço em DI. Sem novos pacotes NuGet.
 
 - [ ] **Step 4: Rodar e ver passar**
 
-Run: `dotnet test tests/Fisga.Api.Tests --filter GoogleLogin`
+Run: `dotnet test`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/Fisga.Application/Identidade src/Fisga.Infrastructure src/Fisga.Api tests
+git add src/Fisga.Infrastructure/Identity src/Fisga.Api tests/Fisga.Api.Tests
 git commit -m "feat(auth): add Google sign-in and account linking"
 ```
 
