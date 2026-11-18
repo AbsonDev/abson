@@ -1,0 +1,120 @@
+---
+import AuthLayout from '../layouts/AuthLayout.astro';
+---
+
+<AuthLayout
+  titulo="Esqueci a senha"
+  descricao="Receba um link para escolher uma nova senha no Fisga."
+>
+  <section class="screen">
+    <div class="screen-inner">
+      <div id="forgot-main">
+        <header class="screen-head">
+          <p class="eyebrow">Recuperar acesso</p>
+          <h1 tabindex="-1">Vamos te ajudar a entrar.</h1>
+          <p class="sub">Informe o e-mail da sua conta. Enviamos um link para você escolher uma nova senha.</p>
+        </header>
+
+        <form id="forgot-form" class="auth-form" novalidate>
+          <div class="field">
+            <label class="label" for="forgot-email">E-mail</label>
+            <div class="control">
+              <input class="input" id="forgot-email" name="email" type="email" autocomplete="email" inputmode="email" spellcheck="false" maxlength="254" required aria-describedby="forgot-email-error" />
+            </div>
+            <p class="field-error" id="forgot-email-error" role="alert" hidden>
+              <svg class="od-icon od-icon--sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5"></path><path d="M12 16h.01"></path></svg>
+              <span data-err-text></span>
+            </p>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block" id="forgot-submit">
+            <span class="spinner" hidden></span>
+            <span data-btn-label>Enviar link de redefinição</span>
+          </button>
+        </form>
+
+        <div class="link-row link-row--start" style="margin-top: 20px;">
+          <a class="linkish" href="/entrar">Voltar para entrar</a>
+        </div>
+      </div>
+
+      <div id="forgot-response" class="swap" hidden>
+        <header class="screen-head">
+          <p class="eyebrow">Recuperar acesso</p>
+          <h1 tabindex="-1">Confira sua caixa de entrada.</h1>
+        </header>
+        <div class="note note--success" role="status">
+          <svg class="od-icon od-icon--md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="m8.5 12 2.5 2.5 4.5-5"></path></svg>
+          <span>Se este e-mail puder entrar, enviamos um link. Confira sua caixa de entrada e o spam.</span>
+        </div>
+        <div class="stack-actions">
+          <button type="button" class="btn btn-ghost btn-block" id="forgot-retry">Enviar para outro e-mail</button>
+          <a class="btn btn-primary btn-block" href="/entrar">Voltar para entrar</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</AuthLayout>
+
+<script>
+  import { apiBase, postJson } from '../lib/auth';
+
+  const API = apiBase();
+  const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  const email = document.getElementById('forgot-email') as HTMLInputElement;
+
+  function setLoading(botao: HTMLButtonElement, ocupado: boolean, rotulo?: string) {
+    const label = botao.querySelector('[data-btn-label]') as HTMLElement | null;
+    const spinner = botao.querySelector('.spinner') as HTMLElement | null;
+    if (label && !botao.dataset.idleLabel) botao.dataset.idleLabel = label.textContent ?? '';
+    if (spinner) spinner.hidden = !ocupado;
+    if (label) label.textContent = ocupado ? rotulo ?? botao.dataset.idleLabel ?? '' : botao.dataset.idleLabel ?? '';
+    botao.disabled = ocupado;
+    botao.setAttribute('aria-busy',ocupado ? 'true' : 'false');
+  }
+
+  function erroCampo(mensagem: string) {
+    email.setAttribute('aria-invalid', 'true');
+    const bloco = document.getElementById('forgot-email-error') as HTMLElement;
+    (bloco.querySelector('[data-err-text]') as HTMLElement).textContent = mensagem;
+    bloco.hidden = false;
+    email.focus();
+  }
+
+  email.addEventListener('input', () => {
+    email.removeAttribute('aria-invalid');
+    document.getElementById('forgot-email-error')!.hidden = true;
+  });
+
+  document.getElementById('forgot-form')!.addEventListener('submit', async (evento) => {
+    evento.preventDefault();
+    const valor = email.value.trim();
+    if (!EMAIL.test(valor)) {
+      erroCampo(valor ? 'Esse e-mail parece incompleto. Confira o endereço.' : 'Informe seu e-mail.');
+      return;
+    }
+
+    const botao = document.getElementById('forgot-submit') as HTMLButtonElement;
+    setLoading(botao, true, 'Enviando…');
+    const resposta = await postJson('/api/auth/esqueci-senha', { email: valor }, API);
+    setLoading(botao, false);
+
+    if (!resposta.ok) {
+      erroCampo(resposta.mensagem ?? 'Não foi possível enviar o link agora. Tente novamente.');
+      return;
+    }
+
+    document.getElementById('forgot-main')!.hidden = true;
+    document.getElementById('forgot-response')!.hidden = false;
+    (document.querySelector('#forgot-response h1') as HTMLElement)?.focus();
+  });
+
+  document.getElementById('forgot-retry')!.addEventListener('click', () => {
+    document.getElementById('forgot-response')!.hidden = true;
+    document.getElementById('forgot-main')!.hidden = false;
+    email.value = '';
+    email.removeAttribute('aria-invalid');
+    document.getElementById('forgot-email-error')!.hidden = true;
+    email.focus();
+  });
+</script>

@@ -1,0 +1,108 @@
+---
+import AuthLayout from '../layouts/AuthLayout.astro';
+---
+
+<AuthLayout
+  titulo="Confirmar e-mail"
+  descricao="Confirmando seu e-mail no Fisga."
+>
+  <section class="screen">
+    <div class="screen-inner">
+      <div id="confirm-loading" role="status" aria-live="polite">
+        <header class="screen-head">
+          <p class="eyebrow">Confirmação de e-mail</p>
+          <h1 tabindex="-1">Confirmando seu e-mail…</h1>
+          <p class="sub">Isso leva só um instante.</p>
+        </header>
+        <div class="progress" role="progressbar" aria-label="Confirmando e-mail"><span></span></div>
+      </div>
+
+      <div id="confirm-success" class="swap" hidden>
+        <header class="screen-head">
+          <p class="eyebrow">Confirmação de e-mail</p>
+          <h1 tabindex="-1">E-mail confirmado.</h1>
+          <p class="sub">Sua conta está pronta. Bem-vindo ao seu diário.</p>
+        </header>
+        <div class="stack-actions">
+          <a class="btn btn-primary btn-block" href="/entrar">Entrar</a>
+          <a class="btn btn-ghost btn-block" href="/conta">Ir para a conta</a>
+        </div>
+      </div>
+
+      <div id="confirm-fail" class="swap" hidden>
+        <header class="screen-head">
+          <p class="eyebrow">Confirmação de e-mail</p>
+          <h1 tabindex="-1">Não conseguimos confirmar seu e-mail.</h1>
+          <p class="sub">O link pode ter expirado ou já ter sido usado. Você pode pedir um novo.</p>
+        </header>
+        <div class="stack-actions">
+          <button type="button" class="btn btn-primary btn-block" id="confirm-resend">
+            <span class="spinner" hidden></span>
+            <span data-btn-label>Pedir novo link</span>
+          </button>
+          <a class="btn btn-ghost btn-block" href="/entrar">Voltar para entrar</a>
+        </div>
+        <p class="note note--success" id="confirm-resend-note" role="status" hidden style="margin-top: 16px;">
+          <svg class="od-icon od-icon--md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="m8.5 12 2.5 2.5 4.5-5"></path></svg>
+          <span>Enviamos um novo link de confirmação. Confira a caixa de entrada e o spam.</span>
+        </p>
+      </div>
+    </div>
+  </section>
+</AuthLayout>
+
+<script>
+  import { apiBase, obterSessao, postJson } from '../lib/auth';
+
+  const API = apiBase();
+  const parametros = new URLSearchParams(window.location.search);
+  const uid = parametros.get('uid') ?? '';
+  const token = parametros.get('token') ?? '';
+
+  function mostrar(id: string) {
+    ['confirm-loading', 'confirm-success', 'confirm-fail'].forEach((view) => {
+      const bloco = document.getElementById(view);
+      if (bloco) bloco.hidden = view !== id;
+    });
+    (document.querySelector(`#${id} h1`) as HTMLElement)?.focus();
+  }
+
+  function setLoading(botao: HTMLButtonElement, ocupado: boolean, rotulo?: string) {
+    const label = botao.querySelector('[data-btn-label]') as HTMLElement | null;
+    const spinner = botao.querySelector('.spinner') as HTMLElement | null;
+    if (label && !botao.dataset.idleLabel) botao.dataset.idleLabel = label.textContent ?? '';
+    if (spinner) spinner.hidden = !ocupado;
+    if (label) label.textContent = ocupado ? rotulo ?? botao.dataset.idleLabel ?? '' : botao.dataset.idleLabel ?? '';
+    botao.disabled = ocupado;
+    botao.setAttribute('aria-busy',ocupado ? 'true' : 'false');
+  }
+
+  (async () => {
+    if (!uid || !token) {
+      mostrar('confirm-fail');
+      return;
+    }
+    const resposta = await postJson('/api/auth/confirmar-email', { uid, token }, API);
+    mostrar(resposta.ok ? 'confirm-success' : 'confirm-fail');
+  })();
+
+  document.getElementById('confirm-resend')!.addEventListener('click', async () => {
+    const botao = document.getElementById('confirm-resend') as HTMLButtonElement;
+    const sessao = await obterSessao(API);
+    const email = sessao?.usuario?.email;
+    if (!email) {
+      window.location.assign('/entrar?erro=confirmacao_pendente');
+      return;
+    }
+    setLoading(botao, true, 'Enviando…');
+    const resposta = await postJson('/api/auth/solicitar', { email }, API);
+    setLoading(botao, false);
+    const nota = document.getElementById('confirm-resend-note') as HTMLElement;
+    if (!resposta.ok) {
+      nota.classList.remove('note--success');
+      nota.classList.add('note--error');
+      nota.textContent = 'Não foi possível enviar agora. Tente de novo em instantes.';
+    }
+    nota.hidden = false;
+  });
+</script>

@@ -1,0 +1,124 @@
+---
+import AuthLayout from '../layouts/AuthLayout.astro';
+---
+
+<AuthLayout
+  titulo="Aceite de termos"
+  descricao="Leia e aceite os Termos de Uso e a Política de Privacidade para continuar no Fisga."
+>
+  <section class="screen">
+    <div class="screen-inner">
+      <header class="screen-head">
+        <p class="eyebrow">Termos · versão 2026-11-17</p>
+        <h1 tabindex="-1">Antes de continuar.</h1>
+        <p class="sub">Antes de continuar, leia e aceite os Termos de Uso e a Política de Privacidade.</p>
+      </header>
+
+      <form id="accept-form" class="auth-form" novalidate>
+        <div class="consent-group">
+          <div class="consent">
+            <input type="checkbox" id="accept-terms" required aria-describedby="accept-error" />
+            <div class="consent-body">
+              <label class="consent-label" for="accept-terms">Li e aceito os Termos de Uso.</label>
+              <a class="consent-link" href="/termos">Ler os Termos de Uso</a>
+            </div>
+          </div>
+          <div class="consent">
+            <input type="checkbox" id="accept-privacy" required aria-describedby="accept-error" />
+            <div class="consent-body">
+              <label class="consent-label" for="accept-privacy">Li e aceito a Política de Privacidade.</label>
+              <a class="consent-link" href="/privacidade">Ler a Política de Privacidade</a>
+            </div>
+          </div>
+        </div>
+
+        <p class="help" id="accept-hint">Marque os dois aceites para continuar.</p>
+        <p class="help">Aceites anteriores não valem para esta versão. O registro do aceite fica salvo com data e hora.</p>
+
+        <p class="note note--error" id="accept-error" role="alert" hidden>
+          <svg class="od-icon od-icon--md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5"></path><path d="M12 16h.01"></path></svg>
+          <span id="accept-error-texto">Marque os dois aceites para continuar.</span>
+        </p>
+
+        <button type="submit" class="btn btn-primary btn-block" id="accept-submit" disabled aria-describedby="accept-hint">
+          <span class="spinner" hidden></span>
+          <span data-btn-label>Aceitar e continuar</span>
+        </button>
+      </form>
+
+      <div class="link-row link-row--start" style="margin-top: 20px;">
+        <a class="linkish" href="/entrar">Sair</a>
+      </div>
+    </div>
+  </section>
+</AuthLayout>
+
+<script>
+  import { apiBase, postJson } from '../lib/auth';
+
+  const API = apiBase();
+  const TERMOS_VERSAO = '2026-11-17';
+  const PRIVACIDADE_VERSAO = '2026-11-17';
+  const termos = document.getElementById('accept-terms') as HTMLInputElement;
+  const privacidade = document.getElementById('accept-privacy') as HTMLInputElement;
+  const botao = document.getElementById('accept-submit') as HTMLButtonElement;
+  const dica = document.getElementById('accept-hint') as HTMLElement;
+  const erro = document.getElementById('accept-error') as HTMLElement;
+  const erroTexto = document.getElementById('accept-error-texto') as HTMLElement;
+  const parametros = new URLSearchParams(window.location.search);
+
+  const destinoRaw = parametros.get('destino');
+  const destino = destinoRaw && destinoRaw.startsWith('/') && !destinoRaw.startsWith('//')
+    ? destinoRaw
+    : '/hoje';
+
+  function sincronizar() {
+    const ambos = termos.checked && privacidade.checked;
+    botao.disabled = ambos ? false : true;
+    dica.textContent = ambos ? 'Pronto para continuar.' : 'Marque os dois aceites para continuar.';
+    if (ambos) erro.hidden = true;
+  }
+
+  termos.addEventListener('change', sincronizar);
+  privacidade.addEventListener('change', sincronizar);
+  sincronizar();
+
+  function setLoading(ocupado: boolean, rotulo?: string) {
+    const label = botao.querySelector('[data-btn-label]') as HTMLElement | null;
+    const spinner = botao.querySelector('.spinner') as HTMLElement | null;
+    if (label && !botao.dataset.idleLabel) botao.dataset.idleLabel = label.textContent ?? '';
+    if (spinner) spinner.hidden = !ocupado;
+    if (label) label.textContent = ocupado ? rotulo ?? botao.dataset.idleLabel ?? '' : botao.dataset.idleLabel ?? '';
+    botao.disabled = ocupado || !(termos.checked && privacidade.checked);
+    botao.setAttribute('aria-busy',ocupado ? 'true' : 'false');
+  }
+
+  document.getElementById('accept-form')!.addEventListener('submit', async (evento) => {
+    evento.preventDefault();
+    if (!termos.checked || !privacidade.checked) {
+      erro.hidden = false;
+      (termos.checked ? privacidade : termos).focus();
+      return;
+    }
+
+    erro.hidden = true;
+    setLoading(true, 'Registrando aceite…');
+    const resposta = await postJson(
+      '/api/conta/consentimento',
+      { termosVersao: TERMOS_VERSAO, privacidadeVersao: PRIVACIDADE_VERSAO },
+      API
+    );
+
+    if (!resposta.ok) {
+      setLoading(false);
+      erroTexto.textContent =
+        resposta.status === 401
+          ? 'Sua sessão expirou. Entre novamente para aceitar.'
+          : resposta.mensagem ?? 'Não foi possível registrar seu aceite. Tente novamente.';
+      erro.hidden = false;
+      return;
+    }
+
+    window.location.replace(destino);
+  });
+</script>

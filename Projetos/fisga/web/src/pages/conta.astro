@@ -1405,6 +1405,13 @@ import Layout from '../layouts/Layout.astro';
         return;
       }
 
+      if (dados.consentimentoPendente) {
+        window.location.replace(
+          '/aceite?destino=' + encodeURIComponent(window.location.pathname + window.location.search)
+        );
+        return;
+      }
+
       usuarioAtual = dados.usuario;
       preencherIdentidade(usuarioAtual);
       carregando.classList.add('oculto');

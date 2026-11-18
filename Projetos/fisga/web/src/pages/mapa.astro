@@ -1251,6 +1251,12 @@ const abaMapa = ['locais', 'pontos', 'trilhas'].includes(Astro.url.searchParams.
         const dados = await resposta.json().catch(() => ({}));
         autenticado = Boolean(dados.autenticado);
         checagemOk = true;
+        if (autenticado && dados.consentimentoPendente) {
+          window.location.replace(
+            '/aceite?destino=' + encodeURIComponent(window.location.pathname + window.location.search)
+          );
+          return;
+        }
       } catch {
         autenticado = false;
       }

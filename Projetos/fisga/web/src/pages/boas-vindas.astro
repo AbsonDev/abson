@@ -285,6 +285,13 @@ import Layout from '../layouts/Layout.astro';
         return;
       }
 
+      if (dados.consentimentoPendente) {
+        window.location.replace(
+          '/aceite?destino=' + encodeURIComponent(window.location.pathname + window.location.search)
+        );
+        return;
+      }
+
       usuario = dados.usuario;
       avatar.textContent = iniciais(usuario.nome || usuario.nomeExibicao);
       nomeInput.value = usuario.nome || '';
