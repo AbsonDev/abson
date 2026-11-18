@@ -97,12 +97,15 @@ export async function exigirConsentimento(
 }
 
 /**
- * Apaga do aparelho o que é privado antes de encerrar a sessão: todos os
- * caches `fisga-*` (menos os tiles do mapa, que são conteúdo público) e as
- * chaves `fisga:*` do localStorage (rascunho, locais, trilhas e pontos).
+ * Apaga do aparelho o que é privado antes de encerrar a sessão: os caches
+ * `fisga-private-*` (e versões antigas, anteriores à separação público/privado)
+ * e as chaves `fisga:*` do localStorage (rascunho, locais, trilhas e pontos).
  *
- * Nunca rejeita: Cache Storage ou localStorage indisponíveis não podem
- * impedir o logout. Outras chaves do mesmo domínio são preservadas.
+ * `fisga-public-*` e `fisga-tiles-v1` são preservados: só contêm o que passou em
+ * `podeCachear` (wiki, ferramentas, offline e o shell anônimo de `/` e
+ * `/condicoes`), então logout não pode quebrar o modo offline. Nunca rejeita:
+ * Cache Storage ou localStorage indisponíveis não podem impedir o logout.
+ * Outras chaves do mesmo domínio são preservadas.
  */
 export async function limparCachePrivado(): Promise<void> {
   if (typeof window === 'undefined') return;
@@ -112,7 +115,12 @@ export async function limparCachePrivado(): Promise<void> {
       const chaves = await caches.keys();
       await Promise.all(
         chaves
-          .filter((chave) => chave.startsWith('fisga-') && chave !== 'fisga-tiles-v1')
+          .filter(
+            (chave) =>
+              chave.startsWith('fisga-')
+              && !chave.startsWith('fisga-public-')
+              && chave !== 'fisga-tiles-v1'
+          )
           .map((chave) => caches.delete(chave))
       );
     }
@@ -130,6 +138,25 @@ export async function limparCachePrivado(): Promise<void> {
   } catch {
     // Sem localStorage (modo privado): não há o que limpar.
   }
+}
+
+let encerrandoSessaoExpirada = false;
+
+/**
+ * Encerra uma sessão expirada de forma consistente: apaga o estado privado do
+ * aparelho e manda para `/entrar`, preservando o destino. É diferente do logout
+ * explícito (que vai para `/entrar?saiu=1`), mas usa a mesma limpeza.
+ *
+ * O guard evita dois redirecionamentos quando a página faz mais de uma chamada
+ * que descobre o 401 (ex.: carregamento inicial e uma ação do usuário).
+ */
+export async function encerrarSessaoExpirada(destino?: string): Promise<void> {
+  if (typeof window === 'undefined' || encerrandoSessaoExpirada) return;
+  encerrandoSessaoExpirada = true;
+
+  const alvo = destino ?? `${window.location.pathname}${window.location.search}`;
+  await limparCachePrivado();
+  window.location.replace(`/entrar?voltar=${encodeURIComponent(destinoSeguro(alvo))}`);
 }
 
 /** POST JSON com cookie de autenticação e leitura tolerante de problem+json. */

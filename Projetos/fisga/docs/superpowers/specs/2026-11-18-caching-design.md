@@ -265,10 +265,13 @@ Adicionar o pacote `Microsoft.Extensions.Caching.Hybrid` (linha 10.x) e registra
 ```csharp
 builder.Services.AddHybridCache(options =>
 {
+    // Sem L2 na fase 1, o cache local precisa durar o mesmo que a entrada.
+    options.MaximumPayloadBytes = 256 * 1024;
+    options.MaximumKeyLength = 200;
     options.DefaultEntryOptions = new HybridCacheEntryOptions
     {
         Expiration = TimeSpan.FromMinutes(20),
-        LocalCacheExpiration = TimeSpan.FromMinutes(5),
+        LocalCacheExpiration = TimeSpan.FromMinutes(20),
     };
 });
 ```
@@ -283,17 +286,19 @@ builder.Services.AddHybridCache(options =>
 | Reverso | `geocode:reverse:v1:{lat:F3}:{lon:F3}` | 12 h (negativo: 10 min) |
 
 **Condições:**
-- usar `GetOrCreateAsync`; o HybridCache garante single-flight por chave na instância;
+- usar `GetOrCreateAsync` com o TTL completo já na criação; o HybridCache garante single-flight por chave na instância;
 - buscar clima e mar em paralelo; lua em cache separado;
-- se o mar falhar, **não** cachear o resultado parcial por 20 min: usar `SetAsync` com 2–5 min ou não armazenar;
+- se o mar falhar, **não** cachear o resultado parcial por 20 min: reaplicar a política (2 min) com `SetAsync` sempre que o valor devolvido for parcial, inclusive quando quem executou a factory foi cancelado;
 - se o clima falhar, cachear um sentinela de indisponibilidade por 30 s para não martelar o provedor;
+- a reaplicação usa `CancellationToken.None` (contabilidade de cache) e calcula o tempo restante pela idade do cálculo; assim uma leitura não estende o TTL curto indefinidamente;
 - incluir `diaLocal` na chave para não servir lua de ontem depois da meia-noite;
 - remover o `CacheEmMemoriaDeCondicoes` e o dicionário estático do geocodificador.
 
 **Busca de geocoding:**
-- normalizar termo (trim, lower-case, colapsar espaços, limite de 80 caracteres);
-- cachear resultados vazios por 10 min;
-- limitar o número de entradas (HybridCache já tem `MaximumPayloadBytes`/`MaximumKeyLength`; configurar também o cache local);
+- normalizar termo (trim, lower-case, colapsar espaços, limite de 80 caracteres sem cortar par substituto);
+- não criar chave quando o termo normalizado tiver menos de 2 caracteres;
+- cachear resultados vazios por 10 min, reaplicando a política pelo valor devolvido (inclusive com factory de outro chamador cancelada);
+- limitar o tamanho por entrada (`MaximumPayloadBytes = 256 KB`) e a chave (`MaximumKeyLength = 200`); o número de entradas não tem teto próprio no HybridCache e fica limitado pela cardinalidade da chave (lat/lon com 2–3 casas, termo normalizado a 80) e pelo rate limit de leitura. Revisitar com L2/Redis, que traz política de eviction;
 - não usar o termo cru sem normalização.
 
 **Reverso:**
@@ -367,17 +372,17 @@ Separar caches:
 
 | Cache | Conteúdo | Limpeza |
 |---|---|---|
-| `fisga-public-vN` | wiki, ferramentas, Pagefind, offline, shell público | troca de versão |
-| `fisga-tiles-v1` | até 600 tiles | LRU |
-| `fisga-private-vN` | **não usar** para HTML; se existir, só dados efêmeros e limpar no logout | logout/401 |
+| `fisga-public-vN` | wiki, ferramentas, Pagefind, offline, shell público aprovado por `podeCachear` | troca de versão; **sobrevive ao logout** |
+| `fisga-tiles-v1` | até 600 tiles | LRU; **sobrevive ao logout** |
+| `fisga-private-vN` | **não usar** para HTML; se existir, só dados efêmeros | logout/401 |
 
 Regras:
 
-1. **Precache apenas público:** remover `/`, `/meu-diario` e `/mapa` do `CASCA`; manter wiki, ferramentas, offline, manifest e ícones.
+1. **Precache apenas público:** remover `/`, `/meu-diario` e `/mapa` do `CASCA`; manter wiki, ferramentas, offline, manifest e ícones. O install busca cada URL sem credenciais e só grava se `podeCachear` aprovar (não `cache.addAll`).
 2. **Navegação:** network-first; cachear somente se a resposta tiver `Cache-Control` público e não tiver `Set-Cookie`.
 3. **Rotas privadas:** `['/hoje','/mapa','/conta','/meu-diario','/registrar','/trofeu','/aceite','/boas-vindas']` — sempre `fetch` direto, sem `cache.put`.
 4. **`/condicoes`:** não decidir pelo path; ler o header. Anônimo (`public`) pode cachear; autenticado (`private`) não.
-5. **Logout:** apagar `fisga-public-*` e `fisga-private-*` (manter tiles se desejado) e remover chaves `fisga:*` do `localStorage`. Opcional: `Clear-Site-Data: "cache"` na resposta de logout da API para limpar a mídia.
+5. **Logout/expiração:** apagar `fisga-private-*` e caches legados `fisga-*` que não sejam `fisga-public-*`/`fisga-tiles-v1`, e remover chaves `fisga:*` do `localStorage`. **Preservar** `fisga-public-*` e `fisga-tiles-v1`: só contêm conteúdo aprovado por `podeCachear`, e mantê-los é o que faz `/offline`, wiki, ferramentas e Pagefind continuarem funcionando depois de sair. A limpeza é a mesma na sessão expirada (200 anônimo/401), via `encerrarSessaoExpirada`; quando a tela continua pública, como `/mapa` anônimo, basta `limparCachePrivado`.
 6. **Tamanho:** limite de entradas/bytes por cache; remover os mais antigos.
 7. **Versão:** bump explícito de `VERSAO` em cada deploy que mude conteúdo não hasheado; documentar no checklist de release.
 
@@ -389,8 +394,8 @@ Adicionar um teste Playwright que:
 2. visita `/hoje` e `/condicoes`;
 3. verifica que o Cache Storage **não** contém essas respostas;
 4. faz logout;
-5. verifica que `fisga-public-*`/`fisga-private-*` e `localStorage` privados foram limpos;
-6. recarrega offline e confirma que só conteúdo público aparece.
+5. verifica que `fisga-private-*` e `localStorage` privados foram limpos, e que `fisga-public-*`/`fisga-tiles-v1` continuam presentes;
+6. recarrega offline e confirma que `/offline`, wiki e ferramentas continuam servindo do cache público.
 
 ---
 
@@ -408,7 +413,7 @@ Adicionar métricas de baixa cardinalidade (Sentry/OpenTelemetry):
 - `http.304` por rota;
 - chamadas Open-Meteo/dia vs. limite de 10.000.
 
-Não enviar coordenadas, termos de busca, e-mail, cookie ou token para o Sentry. O scrubber existente deve continuar cobrindo query string e corpo.
+Não enviar coordenadas, termos de busca, e-mail, cookie ou token para o Sentry. O scrubber existente deve continuar cobrindo query string, corpo e URL, com `q`, `busca` e `termo` na lista de sensíveis. Para reduzir o risco de um parâmetro novo vazar, a query usa allowlist: chave desconhecida é filtrada por padrão.
 
 **Critério de sucesso:** hit ratio de condições > 80% após warm-up; hit ratio de geocoding > 80% para termos repetidos; chamadas Open-Meteo/dia < 50% do limite no tráfego atual.
 
@@ -454,11 +459,12 @@ Cada fase é independente e pode ser revertida sem as seguintes.
 ## 12. Critérios de aceite
 
 - [ ] `/api/auth/me`, `/api/locais`, `/api/diario`, `/api/pontos`, `/api/trilhas`, `/api/conta/*` respondem `Cache-Control: private, no-store`.
+- [ ] Respostas de erro (`>= 400`, inclusive 404 e 429) respondem `private, no-store` mesmo em endpoint com política positiva; o mesmo vale para o HTML do Astro.
 - [ ] `/api/catalogo` e `/api/legal/versoes` respondem `public, max-age=86400` e ETag.
 - [ ] `/api/condicoes` responde `private, max-age=300, stale-while-revalidate=600`.
 - [ ] PDF responde ETag e `304` em `If-None-Match`.
-- [ ] `/hoje` e `/condicoes` autenticados não aparecem no Cache Storage após logout.
-- [ ] `/condicoes` anônimo pode ser cacheado; autenticado, não.
+- [ ] `/hoje` e `/condicoes` autenticados não aparecem no Cache Storage após logout; `fisga-public-*` e tiles sobrevivem para manter o offline.
+- [ ] `/condicoes` anônimo pode ser cacheado; autenticado, não — inclusive quando a sessão expira em `/meu-diario`, `/mapa`, `/registrar` ou `/boas-vindas`.
 - [ ] Cache de condições não perde maré por falha transitória do provedor marítimo.
 - [ ] Busca de local repetida não chama Open-Meteo novamente dentro de 24 h.
 - [ ] Nenhuma chamada ao Nominatim acima de 1 req/s.

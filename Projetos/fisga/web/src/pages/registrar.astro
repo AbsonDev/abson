@@ -333,6 +333,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
   <script>
     // @ts-nocheck
     import exifr from 'exifr';
+    import { encerrarSessaoExpirada } from '../lib/auth';
 
     const API = (document.body.dataset.api || 'http://localhost:5184').replace(/\/$/, '');
     const catalogo = JSON.parse(document.getElementById('catalogo-dados')?.textContent || 'null');
@@ -538,7 +539,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
             });
 
             if (resposta.status === 401) {
-              irParaEntrar();
+              await encerrarSessaoExpirada(urlDeRetorno());
               return;
             }
 
@@ -932,7 +933,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         });
 
         if (resposta.status === 401) {
-          irParaEntrar();
+          await encerrarSessaoExpirada(urlDeRetorno());
           return true;
         }
 
@@ -1122,7 +1123,10 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         });
 
         if (resposta.status === 401) {
-          irParaEntrar();
+          // Sessão expirada: aqui sim o rascunho privado é apagado. A navegação
+          // explícita para /registrar sem sessão (200 anônimo) mantém o rascunho
+          // para o pescador continuar depois de entrar.
+          await encerrarSessaoExpirada(urlDeRetorno());
           return;
         }
 
@@ -1148,6 +1152,11 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
     (async function iniciar() {
       try {
         const resposta = await fetch(`${API}/api/auth/me`, { credentials: 'include' });
+        if (resposta.status === 401) {
+          await encerrarSessaoExpirada(urlDeRetorno());
+          return;
+        }
+
         const dados = await resposta.json().catch(() => ({}));
         autenticado = Boolean(dados.autenticado);
         if (autenticado && dados.consentimentoPendente) {
@@ -1161,6 +1170,9 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       }
 
       if (!autenticado) {
+        // Navegação explícita sem sessão: o formulário fica bloqueado, mas o
+        // rascunho em `fisga:*` é preservado para o pescador entrar e continuar.
+        // Só a sessão expirada (401) limpa o rascunho, via encerrarSessaoExpirada.
         bloquearFormulario();
         const aplicouCondicoes = await aplicarCondicoesDaUrl();
         if (!aplicouCondicoes) iniciarFormularioVazio();

@@ -79,10 +79,10 @@ public sealed class GeocodificadorCacheTests
         Assert.Empty(primeira);
         Assert.Empty(segunda);
         Assert.Equal(1, handler.ChamadasBusca);
-        Assert.Contains(cache.Gravacoes, gravacao =>
-            gravacao.Chave == ChavesDeCache.BuscaDeLocal("Atlantida")
-            && gravacao.Expiration == TimeSpan.FromMinutes(10)
-            && gravacao.LocalCacheExpiration == TimeSpan.FromMinutes(10));
+        AssertGravacoes(
+            cache.Gravacoes,
+            ChavesDeCache.BuscaDeLocal("Atlantida"),
+            TimeSpan.FromMinutes(10));
     }
 
     [Fact]
@@ -94,7 +94,7 @@ public sealed class GeocodificadorCacheTests
         var geocoder = new OpenMeteoGeocodificador(
             http, cache, new NominatimThrottle(), new CacheObservabilidadeNula());
 
-        string[] termos = ["", " ", "a", " a "];
+        string[] termos = ["", " ", "a", " a ", "\u0301\u0301", "\u0301a"];
         foreach (var termo in termos)
         {
             Assert.Empty(await geocoder.BuscarAsync(termo));
@@ -103,6 +103,58 @@ public sealed class GeocodificadorCacheTests
         Assert.Equal(0, handler.ChamadasBusca);
         Assert.Empty(cache.Criacoes);
         Assert.Empty(cache.Gravacoes);
+    }
+
+    [Fact]
+    public async Task Observador_corrige_ttl_negativo_quando_o_calculador_e_cancelado()
+    {
+        var handler = new ContadorHandler { ResultadoVazio = true };
+        using var http = new HttpClient(handler);
+        var chave = ChavesDeCache.BuscaDeLocal("Atlantida");
+        var cache = new CacheDeCorrida(chave);
+        var geocoder = new OpenMeteoGeocodificador(
+            http, cache, new NominatimThrottle(), new CacheObservabilidadeNula());
+
+        using var cancelamento = new CancellationTokenSource();
+        var calculador = geocoder.BuscarAsync("Atlantida", cancelamento.Token);
+        await cache.ValorArmazenado;
+
+        // O observador recebe o valor negativo que a factory já gravou e é ele
+        // quem aplica os 10 min, mesmo com o calculador prestes a ser cancelado.
+        var observador = await geocoder.BuscarAsync("Atlantida");
+
+        Assert.Empty(observador);
+        var gravacao = Assert.Single(cache.Gravacoes, g => g.Chave == chave);
+        AssertTtlAproximado(gravacao.Expiration, TimeSpan.FromMinutes(10));
+
+        cancelamento.Cancel();
+        cache.Liberar();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => calculador);
+    }
+
+    [Fact]
+    public async Task Observador_corrige_reverso_negativo_quando_o_calculador_e_cancelado()
+    {
+        var handler = new ContadorHandler { FalharReverso = true };
+        using var http = new HttpClient(handler);
+        var chave = ChavesDeCache.Reverso(-23.2178, -44.7131);
+        var cache = new CacheDeCorrida(chave);
+        var geocoder = new OpenMeteoGeocodificador(
+            http, cache, new NominatimThrottle(), new CacheObservabilidadeNula());
+
+        using var cancelamento = new CancellationTokenSource();
+        var calculador = geocoder.ReversoAsync(-23.2178, -44.7131, cancelamento.Token);
+        await cache.ValorArmazenado;
+
+        var observador = await geocoder.ReversoAsync(-23.2178, -44.7131);
+
+        Assert.Null(observador);
+        var gravacao = Assert.Single(cache.Gravacoes, g => g.Chave == chave);
+        AssertTtlAproximado(gravacao.Expiration, TimeSpan.FromMinutes(10));
+
+        cancelamento.Cancel();
+        cache.Liberar();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => calculador);
     }
 
     [Fact]
@@ -144,10 +196,10 @@ public sealed class GeocodificadorCacheTests
         Assert.Null(primeira);
         Assert.Null(segunda);
         Assert.Equal(1, handler.ChamadasReverso);
-        Assert.Contains(cache.Gravacoes, gravacao =>
-            gravacao.Chave == ChavesDeCache.Reverso(-23.2178, -44.7131)
-            && gravacao.Expiration == TimeSpan.FromMinutes(10)
-            && gravacao.LocalCacheExpiration == TimeSpan.FromMinutes(10));
+        AssertGravacoes(
+            cache.Gravacoes,
+            ChavesDeCache.Reverso(-23.2178, -44.7131),
+            TimeSpan.FromMinutes(10));
     }
 
     [Fact]
@@ -251,6 +303,29 @@ public sealed class GeocodificadorCacheTests
         var segundo = provedor.GetRequiredService<NominatimThrottle>();
 
         Assert.Same(primeiro, segundo);
+    }
+
+    private static void AssertGravacoes(
+        IReadOnlyCollection<ChamadaDeCache> gravacoes,
+        string chave,
+        TimeSpan esperado)
+    {
+        var daChave = gravacoes.Where(g => g.Chave == chave).ToArray();
+        Assert.NotEmpty(daChave);
+        Assert.All(daChave, gravacao =>
+        {
+            AssertTtlAproximado(gravacao.Expiration, esperado);
+            Assert.Equal(gravacao.Expiration, gravacao.LocalCacheExpiration);
+        });
+    }
+
+    private static void AssertTtlAproximado(TimeSpan? ttl, TimeSpan esperado)
+    {
+        Assert.NotNull(ttl);
+        Assert.True(ttl <= esperado, $"TTL {ttl} maior que o esperado {esperado}");
+        Assert.True(
+            ttl >= esperado - TimeSpan.FromSeconds(5),
+            $"TTL {ttl} muito menor que o esperado {esperado}");
     }
 
     private static HybridCache CriarHybridCache()

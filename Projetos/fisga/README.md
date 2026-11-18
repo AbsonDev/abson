@@ -155,7 +155,7 @@ nunca são publicados.
 ### Offline e PWA
 
 - Manifest, ícones, página offline e service worker.
-- Cache de wiki, ferramentas, condições já visitadas, pontos/trilhas e últimos 600 azulejos do mapa.
+- Cache de wiki, ferramentas, shell anônimo de `/condicoes` e `/`, pontos/trilhas e últimos 600 azulejos do mapa.
 - Rascunho de pescaria em `localStorage`.
 - Rotas privadas (`/hoje`, `/mapa`, `/conta`, `/meu-diario`, `/registrar`, `/trofeu`) não entram no
   cache de navegação.
@@ -399,7 +399,7 @@ Nunca commite chaves, tokens ou senhas. Use variáveis de ambiente do provedor.
 | Variável | Descrição |
 | --- | --- |
 | `Condicoes__Fuso` | padrão `America/Sao_Paulo` |
-| `Condicoes__CacheMinutos` | validade do cache (padrão 20) |
+| `Condicoes__CacheMinutos` | validade do cache (padrão 20; mínimo 1, máximo 20) |
 | `Vision__Provider` | `Manual` (padrão) ou `Gemini` |
 | `Vision__ApiKey` | chave do provedor de visão |
 | `Vision__Model` | padrão `gemini-2.5-flash` |
@@ -577,8 +577,10 @@ navegador. Sessões e links mágicos são armazenados apenas como hash SHA-256.
 - A sugestão de espécie nunca tem autoridade: o pescador confirma ou corrige. Sem provedor, o fluxo
   é manual.
 - Defeso e tamanho mínimo são um lembrete editorial com link para o órgão oficial, não um laudo.
-- Rotas privadas não entram no cache de navegação do service worker; dados privados em cache são
-  apagados ao detectar sessão expirada (401).
+- Rotas privadas não entram no cache de navegação do service worker; `/condicoes` autenticado também não
+  é cacheado offline (só o shell anônimo, com `Cache-Control: public`, entra). O logout e a sessão
+  expirada apagam `fisga-private-*` e o `localStorage` privado, mas preservam `fisga-public-*` e os
+  tiles para manter `/offline`, wiki, ferramentas e Pagefind funcionando.
 - Exportação JSON e exclusão de conta (LGPD) estão em `/conta`.
 - O mapa usa camadas de terceiros com atribuição e não substitui carta náutica oficial.
 
@@ -590,7 +592,7 @@ navegador. Sessões e links mágicos são armazenados apenas como hash SHA-256.
 
 - wiki e busca Pagefind;
 - ferramentas (nós, checklists, defeso, guias);
-- condições já visitadas (HTML em cache);
+- condições do shell anônimo de `/condicoes` e `/` (a versão autenticada não é cacheada offline);
 - pontos e trilhas já carregados (`localStorage`);
 - rascunho de pescaria;
 - últimos 600 azulejos de mapa visitados.
@@ -614,7 +616,7 @@ navegador. Sessões e links mágicos são armazenados apenas como hash SHA-256.
 - **Diretório de guias em curadoria**: sem cadastro automático nem pagamento.
 - **Sem PostGIS/clustering**: raio, bacia e inteligência coletiva anonimizada ainda não existem.
 - **Sem mapa offline por área**: só cache de azulejos visitados.
-- **Cache de condições em memória**: múltiplas réplicas exigem cache distribuído.
+- **Cache de condições em memória**: múltiplas réplicas exigem cache distribuído. Cada entrada é limitada a 256 KB e a chave a 200 caracteres; não há teto próprio de quantidade no HybridCache — o crescimento fica limitado pela cardinalidade (lat/lon com 2–3 casas, termo de busca normalizado a 80) e pelo rate limit de leitura.
 - **Newsletter sem idempotência por mês**: o cron deve rodar uma vez.
 - **Mídia em volume local**: escala maior pede object storage/CDN.
 

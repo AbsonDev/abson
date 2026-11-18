@@ -22,3 +22,9 @@ test('hoje redireciona com header privado', async ({ request }) => {
   expect(r.status()).toBe(302);
   expect(r.headers()['cache-control']).toBe('private, no-store');
 });
+
+test('404 responde no-store', async ({ request }) => {
+  const r = await request.get('/caminho-que-nao-existe');
+  expect(r.status()).toBe(404);
+  expect(r.headers()['cache-control']).toBe('private, no-store');
+});

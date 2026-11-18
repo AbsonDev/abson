@@ -4,6 +4,11 @@ const VERSAO = 'fisga-v9';
 const CACHE_PUBLICO = `fisga-public-${VERSAO.replace(/^fisga-/, '')}`;
 const CACHE_TILES = 'fisga-tiles-v1';
 
+// Políticas compartilhadas com os testes (`podeCachear`, `rotaPrivada`,
+// `paginaPublica`). `importScripts` é síncrono e precisa ficar no topo.
+importScripts('/sw-politicas.js');
+const { rotaPrivada, paginaPublica, podeCachear, PAGINAS_PUBLICAS } = self.FisgaSWPoliticas;
+
 // Só conteúdo público e estável entra na instalação. `/`, `/condicoes`,
 // `/meu-diario` e `/mapa` dependem da sessão e são tratados em runtime.
 const CASCA = [
@@ -25,59 +30,12 @@ const CASCA = [
   '/og-fisga.png'
 ];
 
-// Shell anônimo: muda com a sessão, então é aquecido sem cookie e só entra no
-// cache se a resposta se declarar pública.
-const PAGINAS_PUBLICAS = ['/', '/condicoes'];
-
-// HTML que nunca pode ser gravado nem lido do cache. `/locais` é um link
-// antigo para o mapa e segue a mesma política do middleware.
-const ROTAS_PRIVADAS = [
-  '/hoje',
-  '/mapa',
-  '/conta',
-  '/meu-diario',
-  '/registrar',
-  '/trofeu',
-  '/aceite',
-  '/boas-vindas',
-  '/locais'
-];
-
 const HOSTS_DE_TILES = [
   'tile.openstreetmap.org',
   'server.arcgisonline.com',
   'tiles.openseamap.org',
   'wms.gebco.net'
 ];
-
-function combina(caminho, rota) {
-  return caminho === rota || caminho.startsWith(`${rota}/`);
-}
-
-function rotaPrivada(caminho) {
-  return ROTAS_PRIVADAS.some((rota) => combina(caminho, rota));
-}
-
-/** `/condicoes/` e `/` são as únicas páginas com cache de runtime. */
-function paginaPublica(caminho) {
-  const limpo = caminho.length > 1 && caminho.endsWith('/') ? caminho.slice(0, -1) : caminho;
-  return PAGINAS_PUBLICAS.includes(limpo);
-}
-
-/**
- * A decisão é pelo header, não só pelo path: `/condicoes` e `/` são públicos
- * para quem não tem sessão e privados para quem tem. `Set-Cookie` também
- * impede o cache, mesmo quando o `Cache-Control` não vem explícito.
- */
-function podeCachear(resposta) {
-  if (!resposta || !resposta.ok) return false;
-
-  const controle = (resposta.headers.get('Cache-Control') || '').toLowerCase();
-  if (controle.includes('no-store') || controle.includes('private')) return false;
-  if (resposta.headers.get('Set-Cookie')) return false;
-
-  return true;
-}
 
 /** Grava em segundo plano; a resposta original segue para a página. */
 function guardarNoCache(requisicao, resposta) {
@@ -100,7 +58,19 @@ async function paginaOffline() {
 self.addEventListener('install', (evento) => {
   evento.waitUntil((async () => {
     const cache = await caches.open(CACHE_PUBLICO);
-    await cache.addAll(CASCA);
+
+    // Instala só o que se declara público. `cache.addAll` gravaria qualquer
+    // resposta, inclusive uma página personalizada por cookie; o fetch sem
+    // credenciais + podeCachear mantém a mesma regra do runtime e preserva a
+    // invariante de que `fisga-public-*` só tem conteúdo aprovado.
+    await Promise.allSettled(
+      CASCA.map(async (url) => {
+        const resposta = await fetch(url, { credentials: 'omit', cache: 'no-cache' });
+        if (podeCachear(resposta)) {
+          await cache.put(url, resposta);
+        }
+      })
+    );
 
     // A wiki é estática e feita para ser lida offline. O build gera a lista
     // de páginas e arquivos do Pagefind; se falhar, o app continua online.
@@ -108,7 +78,14 @@ self.addEventListener('install', (evento) => {
       const resposta = await fetch('/wiki-precache.json', { cache: 'no-cache' });
       if (resposta.ok) {
         const urls = await resposta.json();
-        await Promise.allSettled(urls.map((url) => cache.add(url)));
+        await Promise.allSettled(
+          urls.map(async (url) => {
+            const pagina = await fetch(url, { credentials: 'omit', cache: 'no-cache' });
+            if (podeCachear(pagina)) {
+              await cache.put(url, pagina);
+            }
+          })
+        );
       }
     } catch {
       // Sem precache da wiki nesta instalação.

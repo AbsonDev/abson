@@ -29,47 +29,56 @@ public sealed class OpenMeteoProvedorDeCondicoes(
         CancellationToken ct = default)
     {
         var chave = ChavesDeCache.Condicoes(latitude, longitude, diaLocal);
-        ResultadoDeCondicoes? recemCalculado = null;
 
         var resultado = await cache.GetOrCreateAsync(
             chave,
             async token =>
             {
                 observabilidade.CondicoesUpstream();
-                var calculado = await CalcularAsync(latitude, longitude, diaLocal, token);
-                recemCalculado = calculado;
-                return calculado;
+                return await CalcularAsync(latitude, longitude, diaLocal, token);
             },
+            Opcoes(TtlCompleto),
             cancellationToken: ct);
 
-        // O TTL é escolhido antes da factory rodar; quando o resultado é parcial ou
-        // indisponível, a entrada recém-criada é substituída pela validade curta.
-        if (recemCalculado is not null)
+        // O TTL efetivo depende do valor devolvido, não de quem executou a
+        // factory: se o chamador que calculou for cancelado depois de o
+        // HybridCache gravar a entrada, um observador ainda corrige o TTL.
+        // A escrita usa CancellationToken.None porque é contabilidade de cache,
+        // não trabalho do chamador.
+        var politica = PoliticaDeCacheDeCondicoes.Ttl(resultado.Dados);
+        if (politica < TtlMaximo)
         {
-            var ttl = PoliticaDeCacheDeCondicoes.Ttl(recemCalculado.Dados);
+            var restante = Restante(politica, resultado.CalculadoEmTicks);
 
-            // Só o resultado completo usa CacheMinutos; parcial e indisponível
-            // mantêm os 2 min e os 30 s definidos pela política.
-            if (ttl == TtlMaximo)
+            if (restante <= TimeSpan.Zero)
             {
-                ttl = TtlCompleto;
+                await cache.RemoveAsync(chave, CancellationToken.None);
             }
-
-            if (ttl < TtlMaximo)
+            else
             {
                 await cache.SetAsync(
                     chave,
-                    recemCalculado,
-                    new HybridCacheEntryOptions
-                    {
-                        Expiration = ttl,
-                        LocalCacheExpiration = ttl,
-                    },
-                    cancellationToken: ct);
+                    resultado,
+                    Opcoes(restante),
+                    cancellationToken: CancellationToken.None);
             }
         }
 
         return resultado.Dados;
+    }
+
+    private static HybridCacheEntryOptions Opcoes(TimeSpan ttl) => new()
+    {
+        Expiration = ttl,
+        LocalCacheExpiration = ttl,
+    };
+
+    // Idade desde o cálculo: evita que uma leitura reaplique o TTL curto e
+    // estenda indefinidamente um resultado parcial/negativo sob tráfego.
+    private static TimeSpan Restante(TimeSpan politica, long calculadoEmTicks)
+    {
+        var idade = DateTimeOffset.UtcNow.UtcTicks - calculadoEmTicks;
+        return idade <= 0 ? politica : politica - TimeSpan.FromTicks(idade);
     }
 
     private async Task<ResultadoDeCondicoes> CalcularAsync(
@@ -86,7 +95,7 @@ public sealed class OpenMeteoProvedorDeCondicoes(
         var clima = await climaTask;
         if (clima is null)
         {
-            return new ResultadoDeCondicoes(null, Indisponivel: true);
+            return new ResultadoDeCondicoes(null, Indisponivel: true, CalculadoEmTicks: DateTimeOffset.UtcNow.UtcTicks);
         }
 
         var mar = await marTask;
@@ -114,7 +123,10 @@ public sealed class OpenMeteoProvedorDeCondicoes(
             horas.Any(hora => hora.NivelDoMarM is not null),
             lua is null ? Fonte : $"{Fonte} + MET Norway");
 
-        return new ResultadoDeCondicoes(dados, Indisponivel: false);
+        return new ResultadoDeCondicoes(
+            dados,
+            Indisponivel: false,
+            CalculadoEmTicks: DateTimeOffset.UtcNow.UtcTicks);
     }
 
     private async Task<DadosDaLua?> ObterLuaAsync(
@@ -124,27 +136,23 @@ public sealed class OpenMeteoProvedorDeCondicoes(
         CancellationToken ct)
     {
         var chave = ChavesDeCache.Lua(latitude, longitude, dia);
-        LuaEmCache? recemLua = null;
 
         var emCache = await cache.GetOrCreateAsync(
             chave,
             async token =>
             {
                 var calculado = new LuaEmCache(await BuscarLuaAsync(latitude, longitude, dia, token));
-                recemLua = calculado;
                 return calculado;
             },
-            new HybridCacheEntryOptions
-            {
-                Expiration = TtlDaLua,
-                LocalCacheExpiration = TtlDaLua,
-            },
+            Opcoes(TtlDaLua),
             cancellationToken: ct);
 
-        // Falha do MET Norway não fica presa por 12 h: a próxima recomputação tenta de novo.
-        if (recemLua is not null && recemLua.Dados is null)
+        // Falha do MET Norway não fica presa por 12 h: a decisão é pelo valor
+        // devolvido, então um observador também remove a entrada quando a
+        // factory rodou em outro chamador que foi cancelado.
+        if (emCache.Dados is null)
         {
-            await cache.RemoveAsync(chave, ct);
+            await cache.RemoveAsync(chave, CancellationToken.None);
         }
 
         return emCache.Dados;
@@ -469,7 +477,10 @@ public sealed class OpenMeteoProvedorDeCondicoes(
         DateTimeOffset? TransitoOposto,
         double FaseAngulo);
 
-    private sealed record ResultadoDeCondicoes(DadosDeCondicoes? Dados, bool Indisponivel);
+    private sealed record ResultadoDeCondicoes(
+        DadosDeCondicoes? Dados,
+        bool Indisponivel,
+        long CalculadoEmTicks);
 
     private sealed record LuaEmCache(DadosDaLua? Dados);
 }

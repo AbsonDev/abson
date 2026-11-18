@@ -79,17 +79,86 @@ async function mockSessao(page: Page) {
 }
 
 /**
+ * `/api/auth/me` responde 200 anônimo quando não há sessão (inclusive cookie
+ * expirado). É diferente de 401, que só endpoints autenticados devolvem.
+ */
+async function mockAnonimo(page: Page) {
+  await page.route(`${API}/api/auth/me`, (route) =>
+    route.fulfill({
+      status: 200,
+      headers: { ...CORS, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        autenticado: false,
+        usuario: null,
+        consentimentoPendente: false,
+        googleConectado: false,
+        temSenha: false
+      })
+    })
+  );
+}
+
+/**
  * Semeia o estado privado em uma página da origem. Roda antes da navegação
  * para a tela testada, já que o cache/localStorage são da origem e sobrevivem
  * à troca de documento.
+ *
+ * `fisga-public-*` guarda só conteúdo aprovado por `podeCachear` (offline, wiki,
+ * ferramentas); `fisga-private-*` guarda o que precisa sumir no logout/expiração.
  */
 async function semearEstadoPrivado(page: Page) {
   await page.goto(`${ORIGEM}/offline`);
   await page.evaluate(async () => {
     localStorage.setItem('fisga:diario:v1', 'rascunho privado');
-    const cache = await caches.open('fisga-public-v9');
-    await cache.put('/hoje', new Response('html privado'));
+
+    const publico = await caches.open('fisga-public-v9');
+    await publico.put('/offline', new Response('offline público'));
+
+    const privado = await caches.open('fisga-private-v9');
+    await privado.put('/hoje', new Response('html privado'));
+    await privado.put('/conta', new Response('html privado'));
   });
+}
+
+async function chavesDeCache(page: Page): Promise<string[]> {
+  return page.evaluate(() => caches.keys());
+}
+
+async function caminhosNoCache(page: Page): Promise<string[]> {
+  return page.evaluate(async () => {
+    const todos: string[] = [];
+    for (const nome of await caches.keys()) {
+      const cache = await caches.open(nome);
+      for (const requisicao of await cache.keys()) {
+        todos.push(new URL(requisicao.url).pathname);
+      }
+    }
+    return todos;
+  });
+}
+
+/** O cache público e os tiles sobrevivem; o privado e o localStorage somem. */
+async function expectPublicoPreservadoEPrivadoRemovido(page: Page) {
+  const chaves = await chavesDeCache(page);
+  expect(chaves).toContain('fisga-public-v9');
+  expect(chaves.some((chave) => chave.startsWith('fisga-private-'))).toBe(false);
+
+  const caminhos = await caminhosNoCache(page);
+  expect(caminhos).toContain('/offline');
+  expect(caminhos).not.toContain('/conta');
+  expect(caminhos).not.toContain('/hoje');
+
+  expect(await page.evaluate(() => localStorage.getItem('fisga:diario:v1'))).toBeNull();
+}
+
+async function mockEntrar(page: Page) {
+  await page.route('**/entrar**', (route) =>
+    route.fulfill({
+      status: 200,
+      headers: { 'content-type': 'text/html', 'cache-control': 'no-store' },
+      body: '<!doctype html><h1>Entrar</h1>'
+    })
+  );
 }
 
 async function mockEntrarVoltarConta(page: Page) {
@@ -109,7 +178,7 @@ test.describe('logout sem service worker', () => {
   // teste de rota privada offline.
   test.use({ serviceWorkers: 'block' });
 
-  test('sair limpa caches fisga e chaves fisga: do localStorage', async ({ page }) => {
+  test('sair limpa caches privados e chaves fisga: mas preserva o cache público', async ({ page }) => {
     await mockSessao(page);
     await page.goto(`${ORIGEM}/conta`);
     await expect(page.locator('#conta-content')).toBeVisible();
@@ -120,10 +189,15 @@ test.describe('logout sem service worker', () => {
       localStorage.setItem('outro:app', 'mantém');
 
       const publico = await caches.open('fisga-public-v9');
+      await publico.put('/offline', new Response('offline público'));
       await publico.put(
-        '/conta',
-        new Response('html privado', { headers: { 'content-type': 'text/html' } })
+        '/ferramentas',
+        new Response('página pública', { headers: { 'content-type': 'text/html' } })
       );
+
+      const privado = await caches.open('fisga-private-v9');
+      await privado.put('/conta', new Response('html privado'));
+      await privado.put('/hoje', new Response('html privado'));
 
       const antigo = await caches.open('fisga-v8');
       await antigo.put('/meu-diario', new Response('html antigo'));
@@ -145,23 +219,18 @@ test.describe('logout sem service worker', () => {
     await page.locator('#sair-confirmar').click();
     await expect(page).toHaveURL(/\/entrar\?saiu=1$/);
 
-    const chaves = await page.evaluate(() => caches.keys());
-    expect(chaves.some((c) => c.startsWith('fisga-public-'))).toBe(false);
+    const chaves = await chavesDeCache(page);
+    expect(chaves).toContain('fisga-public-v9');
+    expect(chaves.some((chave) => chave.startsWith('fisga-private-'))).toBe(false);
     expect(chaves).not.toContain('fisga-v8');
     expect(chaves).toContain('fisga-tiles-v1');
 
-    const caminhos = await page.evaluate(async () => {
-      const todos: string[] = [];
-      for (const nome of await caches.keys()) {
-        const cache = await caches.open(nome);
-        for (const requisicao of await cache.keys()) {
-          todos.push(new URL(requisicao.url).pathname);
-        }
-      }
-      return todos;
-    });
+    const caminhos = await caminhosNoCache(page);
+    expect(caminhos).toContain('/offline');
+    expect(caminhos).toContain('/ferramentas');
     expect(caminhos).not.toContain('/conta');
     expect(caminhos).not.toContain('/meu-diario');
+    expect(caminhos).not.toContain('/hoje');
 
     expect(await page.evaluate(() => localStorage.getItem('fisga:diario:v1'))).toBeNull();
     expect(await page.evaluate(() => localStorage.getItem('fisga:locais:v1'))).toBeNull();
@@ -178,9 +247,7 @@ test.describe('logout sem service worker', () => {
     await page.goto(`${ORIGEM}/conta`);
     await expect(page).toHaveURL(/\/entrar\?voltar=\/conta$/);
 
-    const chaves = await page.evaluate(() => caches.keys());
-    expect(chaves.some((c) => c.startsWith('fisga-public-'))).toBe(false);
-    expect(await page.evaluate(() => localStorage.getItem('fisga:diario:v1'))).toBeNull();
+    await expectPublicoPreservadoEPrivadoRemovido(page);
   });
 
   test('sessão expirada (200 anônimo) também limpa os caches privados', async ({ page }) => {
@@ -203,9 +270,135 @@ test.describe('logout sem service worker', () => {
     await page.goto(`${ORIGEM}/conta`);
     await expect(page).toHaveURL(/\/entrar\?voltar=\/conta$/);
 
-    const chaves = await page.evaluate(() => caches.keys());
-    expect(chaves.some((c) => c.startsWith('fisga-public-'))).toBe(false);
-    expect(await page.evaluate(() => localStorage.getItem('fisga:diario:v1'))).toBeNull();
+    await expectPublicoPreservadoEPrivadoRemovido(page);
+  });
+
+  test('meu-diario anônimo limpa estado privado e manda para entrar', async ({ page }) => {
+    await page.route(`${API}/api/auth/me`, (route) =>
+      route.fulfill({
+        status: 200,
+        headers: { ...CORS, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          autenticado: false,
+          usuario: null,
+          consentimentoPendente: false,
+          googleConectado: false,
+          temSenha: false
+        })
+      })
+    );
+    await mockEntrar(page);
+
+    await semearEstadoPrivado(page);
+    await page.goto(`${ORIGEM}/meu-diario`);
+
+    await expect(page).toHaveURL(
+      (url) => url.pathname === '/entrar' && url.searchParams.get('voltar') === '/meu-diario'
+    );
+    await expectPublicoPreservadoEPrivadoRemovido(page);
+  });
+
+  test('meu-diario com 401 limpa estado privado e manda para entrar', async ({ page }) => {
+    await page.route(`${API}/api/auth/me`, (route) =>
+      route.fulfill({ status: 401, headers: CORS, body: '' })
+    );
+    await mockEntrar(page);
+
+    await semearEstadoPrivado(page);
+    await page.goto(`${ORIGEM}/meu-diario`);
+
+    await expect(page).toHaveURL(
+      (url) => url.pathname === '/entrar' && url.searchParams.get('voltar') === '/meu-diario'
+    );
+    await expectPublicoPreservadoEPrivadoRemovido(page);
+  });
+
+  test('mapa com 401 limpa estado privado e manda para entrar', async ({ page }) => {
+    await page.route(`${API}/api/auth/me`, (route) =>
+      route.fulfill({ status: 401, headers: CORS, body: '' })
+    );
+    await mockEntrar(page);
+
+    await semearEstadoPrivado(page);
+    await page.goto(`${ORIGEM}/mapa`);
+
+    await expect(page).toHaveURL(
+      (url) => url.pathname === '/entrar' && url.searchParams.get('voltar') === '/mapa'
+    );
+    await expectPublicoPreservadoEPrivadoRemovido(page);
+  });
+
+  test('mapa anônimo limpa estado privado sem tirar o mapa do ar', async ({ page }) => {
+    await mockAnonimo(page);
+    await semearEstadoPrivado(page);
+    await page.goto(`${ORIGEM}/mapa`);
+
+    await expect(page).toHaveURL((url) => url.pathname === '/mapa');
+    await expect(page.locator('#mapa')).toBeVisible();
+    await expectPublicoPreservadoEPrivadoRemovido(page);
+  });
+
+  test('registrar anônimo preserva o rascunho e bloqueia o formulário', async ({ page }) => {
+    await page.route(`${API}/api/auth/me`, (route) =>
+      route.fulfill({
+        status: 200,
+        headers: { ...CORS, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          autenticado: false,
+          usuario: null,
+          consentimentoPendente: false,
+          googleConectado: false,
+          temSenha: false
+        })
+      })
+    );
+    await semearEstadoPrivado(page);
+    await page.goto(`${ORIGEM}/registrar`);
+
+    await expect(page.locator('#acesso-registrar')).toBeVisible();
+    expect(await page.evaluate(() => localStorage.getItem('fisga:diario:v1'))).toBe(
+      'rascunho privado'
+    );
+  });
+
+  test('registrar com 401 limpa o rascunho e manda para entrar', async ({ page }) => {
+    await page.route(`${API}/api/auth/me`, (route) =>
+      route.fulfill({ status: 401, headers: CORS, body: '' })
+    );
+    await mockEntrar(page);
+
+    await semearEstadoPrivado(page);
+    await page.goto(`${ORIGEM}/registrar`);
+
+    await expect(page).toHaveURL(
+      (url) => url.pathname === '/entrar' && url.searchParams.get('voltar') === '/registrar'
+    );
+    await expectPublicoPreservadoEPrivadoRemovido(page);
+  });
+
+  test('boas-vindas anônimo limpa estado privado e manda para hoje', async ({ page }) => {
+    await page.route(`${API}/api/auth/me`, (route) =>
+      route.fulfill({
+        status: 200,
+        headers: { ...CORS, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          autenticado: false,
+          usuario: null,
+          consentimentoPendente: false,
+          googleConectado: false,
+          temSenha: false
+        })
+      })
+    );
+    await mockEntrar(page);
+
+    await semearEstadoPrivado(page);
+    await page.goto(`${ORIGEM}/boas-vindas`);
+
+    await expect(page).toHaveURL(
+      (url) => url.pathname === '/entrar' && url.searchParams.get('voltar') === '/hoje'
+    );
+    await expectPublicoPreservadoEPrivadoRemovido(page);
   });
 
   test('aceite com consentimento 401 limpa caches e mostra sessão expirada', async ({ page }) => {
@@ -251,9 +444,7 @@ test.describe('logout sem service worker', () => {
     await expect(page.locator('#accept-error')).toBeVisible();
     await expect(page.locator('#accept-error')).toContainText('Sua sessão expirou');
 
-    const chaves = await page.evaluate(() => caches.keys());
-    expect(chaves.some((c) => c.startsWith('fisga-public-'))).toBe(false);
-    expect(await page.evaluate(() => localStorage.getItem('fisga:diario:v1'))).toBeNull();
+    await expectPublicoPreservadoEPrivadoRemovido(page);
   });
 });
 

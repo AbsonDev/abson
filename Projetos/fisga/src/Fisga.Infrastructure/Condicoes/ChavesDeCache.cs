@@ -18,7 +18,10 @@ public static class ChavesDeCache
             $"lua:v1:{lat:F2}:{lon:F2}:{dia:yyyy-MM-dd}");
 
     public static string BuscaDeLocal(string termo) =>
-        $"geocode:search:v1:{NormalizarTermo(termo)}";
+        BuscaDeLocalNormalizada(NormalizarTermo(termo));
+
+    public static string BuscaDeLocalNormalizada(string termoNormalizado) =>
+        $"geocode:search:v1:{termoNormalizado}";
 
     public static string Reverso(double lat, double lon) =>
         string.Create(
@@ -48,8 +51,17 @@ public static class ChavesDeCache
                 .ToLowerInvariant()
                 .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
 
-        return normalizado.Length <= LimiteDoTermo
-            ? normalizado
-            : normalizado[..LimiteDoTermo];
+        if (normalizado.Length <= LimiteDoTermo)
+        {
+            return normalizado;
+        }
+
+        // Não cortar um par substituto no meio: o emoji é um caractere lógico e
+        // uma metade órfã gera chave inválida para logs/Sentry.
+        var corte = char.IsHighSurrogate(normalizado[LimiteDoTermo - 1])
+            ? LimiteDoTermo - 1
+            : LimiteDoTermo;
+
+        return normalizado[..corte];
     }
 }

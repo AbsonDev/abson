@@ -21,43 +21,47 @@ public sealed class OpenMeteoGeocodificador(
         CancellationToken ct = default)
     {
         // Um termo curto compartilharia a chave "geocode:search:v1:" e cachearia
-        // um resultado que não pertence a nenhuma busca real.
+        // um resultado que não pertence a nenhuma busca real. A checagem é pelo
+        // termo normalizado: acentos combinantes podem reduzir o texto a menos
+        // de dois caracteres depois da normalização.
         if (string.IsNullOrWhiteSpace(termo) || termo.Trim().Length < 2)
         {
             return [];
         }
 
-        var chave = ChavesDeCache.BuscaDeLocal(termo);
-        List<ResultadoDeBusca>? recemCalculado = null;
+        var termoNormalizado = ChavesDeCache.NormalizarTermo(termo);
+        if (termoNormalizado.Length < 2)
+        {
+            return [];
+        }
 
-        var resultados = await cache.GetOrCreateAsync(
+        var chave = ChavesDeCache.BuscaDeLocalNormalizada(termoNormalizado);
+
+        var emCache = await cache.GetOrCreateAsync(
             chave,
             async token =>
             {
                 observabilidade.GeocodingUpstream("busca");
                 var lista = await BuscarNoUpstreamAsync(termo.Trim(), token);
-                recemCalculado = lista;
                 if (lista.Count == 0)
                 {
                     observabilidade.GeocodingNegativo("busca");
                 }
 
-                return lista;
+                return new BuscaEmCache(lista, DateTimeOffset.UtcNow.UtcTicks);
             },
             Opcoes(TtlDaBusca),
             cancellationToken: ct);
 
         // Busca sem resultados (ou com falha no upstream) não fica 24 h no cache.
-        if (recemCalculado is { Count: 0 })
+        // A política é aplicada pelo valor devolvido; um observador de uma factory
+        // cancelada também corrige a entrada.
+        if (emCache.Resultados.Count == 0)
         {
-            await cache.SetAsync(
-                chave,
-                recemCalculado,
-                Opcoes(TtlNegativo),
-                cancellationToken: ct);
+            await ReaplicarTtlCurto(chave, emCache, TtlNegativo, emCache.CalculadoEmTicks);
         }
 
-        return resultados;
+        return emCache.Resultados;
     }
 
     public async Task<ResultadoDeBusca?> ReversoAsync(
@@ -66,7 +70,6 @@ public sealed class OpenMeteoGeocodificador(
         CancellationToken ct = default)
     {
         var chave = ChavesDeCache.Reverso(latitude, longitude);
-        ResultadoDeReverso? recemCalculado = null;
 
         var emCache = await cache.GetOrCreateAsync(
             chave,
@@ -76,27 +79,22 @@ public sealed class OpenMeteoGeocodificador(
                 // nem consome a cota de 1 req/s do Nominatim.
                 await throttle.AguardarAsync(token);
                 observabilidade.GeocodingUpstream("reverso");
-                var calculado = new ResultadoDeReverso(
-                    await BuscarReversoNoUpstreamAsync(latitude, longitude, token));
-                recemCalculado = calculado;
-                if (calculado.Dados is null)
+                var resultado = await BuscarReversoNoUpstreamAsync(latitude, longitude, token);
+                if (resultado is null)
                 {
                     observabilidade.GeocodingNegativo("reverso");
                 }
 
-                return calculado;
+                return new ResultadoDeReverso(resultado, DateTimeOffset.UtcNow.UtcTicks);
             },
             Opcoes(TtlDoReverso),
             cancellationToken: ct);
 
-        // Endereço não resolvido não fica 12 h no cache.
-        if (recemCalculado is { Dados: null })
+        // Endereço não resolvido não fica 12 h no cache. A política é aplicada
+        // pelo valor devolvido, não por quem executou a factory.
+        if (emCache.Dados is null)
         {
-            await cache.SetAsync(
-                chave,
-                recemCalculado,
-                Opcoes(TtlNegativo),
-                cancellationToken: ct);
+            await ReaplicarTtlCurto(chave, emCache, TtlNegativo, emCache.CalculadoEmTicks);
         }
 
         return emCache.Dados;
@@ -107,6 +105,31 @@ public sealed class OpenMeteoGeocodificador(
         Expiration = ttl,
         LocalCacheExpiration = ttl,
     };
+
+    // Reaplica a validade curta a partir da idade do cálculo. Sem isso, uma
+    // leitura a cada poucos segundos renovaria o TTL curto para sempre.
+    private async ValueTask ReaplicarTtlCurto<T>(
+        string chave,
+        T valor,
+        TimeSpan politica,
+        long calculadoEmTicks)
+    {
+        var idade = DateTimeOffset.UtcNow.UtcTicks - calculadoEmTicks;
+        var restante = idade <= 0 ? politica : politica - TimeSpan.FromTicks(idade);
+
+        if (restante <= TimeSpan.Zero)
+        {
+            await cache.RemoveAsync(chave, CancellationToken.None);
+        }
+        else
+        {
+            await cache.SetAsync(
+                chave,
+                valor,
+                Opcoes(restante),
+                cancellationToken: CancellationToken.None);
+        }
+    }
 
     private async Task<List<ResultadoDeBusca>> BuscarNoUpstreamAsync(
         string termo,
@@ -237,5 +260,7 @@ public sealed class OpenMeteoGeocodificador(
             ? valor.GetString()
             : null;
 
-    private sealed record ResultadoDeReverso(ResultadoDeBusca? Dados);
+    private sealed record ResultadoDeReverso(ResultadoDeBusca? Dados, long CalculadoEmTicks);
+
+    private sealed record BuscaEmCache(List<ResultadoDeBusca> Resultados, long CalculadoEmTicks);
 }

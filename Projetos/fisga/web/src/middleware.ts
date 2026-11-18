@@ -78,6 +78,13 @@ function politicaDeCache(caminho: string, temCookie: boolean): string | null {
 export const onRequest = defineMiddleware(async (context, next) => {
   const resposta = await next();
 
+  // Erro nunca herda TTL positivo: um 404/429/500 com max-age ficaria pinado
+  // no navegador ou no CDN. A regra vale mesmo quando a página definiu o header.
+  if (resposta.status >= 400) {
+    resposta.headers.set('Cache-Control', NO_STORE);
+    return resposta;
+  }
+
   if (resposta.headers.has('Cache-Control')) {
     return resposta;
   }

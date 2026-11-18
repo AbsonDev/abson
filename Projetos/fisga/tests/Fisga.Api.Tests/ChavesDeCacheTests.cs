@@ -14,6 +14,27 @@ public sealed class ChavesDeCacheTests
     }
 
     [Fact]
+    public void Normalizacao_nao_corta_par_substituto_no_limite()
+    {
+        // 79 'a' + emoji (2 unidades UTF-16): o corte em 80 cairia no meio do par.
+        var termo = new string('a', 79) + "😀";
+
+        var normalizado = ChavesDeCache.NormalizarTermo(termo);
+
+        Assert.Equal(new string('a', 79), normalizado);
+        Assert.DoesNotContain(normalizado, char.IsSurrogate);
+    }
+
+    [Fact]
+    public void Normalizacao_pode_encolher_termo_abaixo_de_dois_caracteres()
+    {
+        // Acentos combinantes são removidos na normalização; o provedor precisa
+        // checar o termo normalizado antes de criar a chave.
+        Assert.Equal("a", ChavesDeCache.NormalizarTermo("\u0301a"));
+        Assert.Equal(string.Empty, ChavesDeCache.NormalizarTermo("\u0301\u0301"));
+    }
+
+    [Fact]
     public void Termo_vazio_continua_vazio()
     {
         Assert.Equal(string.Empty, ChavesDeCache.NormalizarTermo("   "));

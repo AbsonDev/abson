@@ -156,6 +156,8 @@ import Layout from '../layouts/Layout.astro';
 
   <script>
     // @ts-nocheck
+    import { encerrarSessaoExpirada } from '../lib/auth';
+
     const API = (document.body.dataset.api || 'http://localhost:5184').replace(/\/$/, '');
     const conteudo = document.getElementById('conteudo-diario');
     const carregando = document.getElementById('carregando');
@@ -215,7 +217,7 @@ import Layout from '../layouts/Layout.astro';
       try {
         const resposta = await fetch(`${API}/api/diario`, { credentials: 'include' });
         if (resposta.status === 401) {
-          mostrarAcesso();
+          await encerrarSessaoExpirada('/meu-diario');
           return;
         }
 
@@ -339,10 +341,15 @@ import Layout from '../layouts/Layout.astro';
     (async function iniciar() {
       try {
         const resposta = await fetch(`${API}/api/auth/me`, { credentials: 'include' });
+        if (resposta.status === 401) {
+          await encerrarSessaoExpirada('/meu-diario');
+          return;
+        }
+
         const dados = await resposta.json().catch(() => ({}));
 
         if (!dados.autenticado || !dados.usuario) {
-          mostrarAcesso();
+          await encerrarSessaoExpirada('/meu-diario');
           return;
         }
 

@@ -92,10 +92,10 @@ public sealed class CondicoesCacheTests
         Assert.Null(primeira);
         Assert.Null(segunda);
         Assert.Equal(1, handler.ChamadasClima);
-        Assert.Contains(cache.Gravacoes, gravacao =>
-            gravacao.Chave == ChavesDeCache.Condicoes(-23.55, -45.13, Dia)
-            && gravacao.Expiration == TimeSpan.FromSeconds(30)
-            && gravacao.LocalCacheExpiration == TimeSpan.FromSeconds(30));
+        AssertGravacoes(
+            cache.Gravacoes,
+            ChavesDeCache.Condicoes(-23.55, -45.13, Dia),
+            TimeSpan.FromSeconds(30));
     }
 
     [Fact]
@@ -119,10 +119,10 @@ public sealed class CondicoesCacheTests
         Assert.NotNull(segunda);
         Assert.False(segunda!.TemMare);
         Assert.Equal(1, handler.ChamadasMar);
-        Assert.Contains(cache.Gravacoes, gravacao =>
-            gravacao.Chave == ChavesDeCache.Condicoes(-23.55, -45.13, Dia)
-            && gravacao.Expiration == TimeSpan.FromMinutes(2)
-            && gravacao.LocalCacheExpiration == TimeSpan.FromMinutes(2));
+        AssertGravacoes(
+            cache.Gravacoes,
+            ChavesDeCache.Condicoes(-23.55, -45.13, Dia),
+            TimeSpan.FromMinutes(2));
     }
 
     [Fact]
@@ -213,10 +213,14 @@ public sealed class CondicoesCacheTests
 
         await provedor.ObterAsync(-23.55, -45.13, Dia);
 
-        Assert.Contains(cache.Gravacoes, gravacao =>
-            gravacao.Chave == ChavesDeCache.Condicoes(-23.55, -45.13, Dia)
-            && gravacao.Expiration == TimeSpan.FromMinutes(10)
-            && gravacao.LocalCacheExpiration == TimeSpan.FromMinutes(10));
+        // O TTL completo vem da criação: a factory usa CacheMinutos no próprio
+        // GetOrCreateAsync, então um observador não precisa reescrever a entrada.
+        Assert.Contains(cache.Criacoes, criacao =>
+            criacao.Chave == ChavesDeCache.Condicoes(-23.55, -45.13, Dia)
+            && criacao.Expiration == TimeSpan.FromMinutes(10)
+            && criacao.LocalCacheExpiration == TimeSpan.FromMinutes(10));
+        Assert.DoesNotContain(cache.Gravacoes, gravacao =>
+            gravacao.Chave == ChavesDeCache.Condicoes(-23.55, -45.13, Dia));
     }
 
     [Fact]
@@ -233,10 +237,8 @@ public sealed class CondicoesCacheTests
 
         await provedor.ObterAsync(-23.55, -45.13, Dia);
 
-        Assert.Contains(cache.Gravacoes, gravacao =>
-            gravacao.Chave == ChavesDeCache.Condicoes(-23.55, -45.13, Dia)
-            && gravacao.Expiration == TimeSpan.FromMinutes(2)
-            && gravacao.LocalCacheExpiration == TimeSpan.FromMinutes(2));
+        var gravacao = Assert.Single(cache.Gravacoes, g => g.Chave == ChavesDeCache.Condicoes(-23.55, -45.13, Dia));
+        AssertTtlAproximado(gravacao.Expiration, TimeSpan.FromMinutes(2));
     }
 
     [Fact]
@@ -254,10 +256,8 @@ public sealed class CondicoesCacheTests
         var resultado = await provedor.ObterAsync(-23.55, -45.13, Dia);
 
         Assert.Null(resultado);
-        Assert.Contains(cache.Gravacoes, gravacao =>
-            gravacao.Chave == ChavesDeCache.Condicoes(-23.55, -45.13, Dia)
-            && gravacao.Expiration == TimeSpan.FromSeconds(30)
-            && gravacao.LocalCacheExpiration == TimeSpan.FromSeconds(30));
+        var gravacao = Assert.Single(cache.Gravacoes, g => g.Chave == ChavesDeCache.Condicoes(-23.55, -45.13, Dia));
+        AssertTtlAproximado(gravacao.Expiration, TimeSpan.FromSeconds(30));
     }
 
     [Fact]
@@ -280,6 +280,40 @@ public sealed class CondicoesCacheTests
         Assert.NotNull(opcoes.DefaultEntryOptions);
         Assert.Equal(TimeSpan.FromMinutes(20), opcoes.DefaultEntryOptions!.Expiration);
         Assert.Equal(TimeSpan.FromMinutes(20), opcoes.DefaultEntryOptions.LocalCacheExpiration);
+        Assert.Equal(256 * 1024, opcoes.MaximumPayloadBytes);
+        Assert.Equal(200, opcoes.MaximumKeyLength);
+    }
+
+    [Fact]
+    public async Task Observador_corrige_ttl_parcial_quando_o_calculador_e_cancelado()
+    {
+        var handler = new ContadorHandler { FalharMar = true };
+        using var http = new HttpClient(handler);
+        var chave = ChavesDeCache.Condicoes(-23.55, -45.13, Dia);
+        var cache = new CacheDeCorrida(chave);
+        var provedor = new OpenMeteoProvedorDeCondicoes(
+            http,
+            cache,
+            new CondicoesOptions(),
+            NullLogger<OpenMeteoProvedorDeCondicoes>.Instance,
+            new CacheObservabilidadeNula());
+
+        using var cancelamento = new CancellationTokenSource();
+        var calculador = provedor.ObterAsync(-23.55, -45.13, Dia, cancelamento.Token);
+        await cache.ValorArmazenado;
+
+        // O observador recebe o valor que a factory já gravou, mesmo antes de o
+        // calculador ser cancelado. É ele quem reaplica a política curta.
+        var observador = await provedor.ObterAsync(-23.55, -45.13, Dia);
+
+        Assert.NotNull(observador);
+        Assert.False(observador!.TemMare);
+        var gravacao = Assert.Single(cache.Gravacoes, g => g.Chave == chave);
+        AssertTtlAproximado(gravacao.Expiration, TimeSpan.FromMinutes(2));
+
+        cancelamento.Cancel();
+        cache.Liberar();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => calculador);
     }
 
     [Fact]
@@ -346,6 +380,29 @@ public sealed class CondicoesCacheTests
             Assert.DoesNotContain("-23.55", mensagem, StringComparison.Ordinal);
             Assert.DoesNotContain("45.13", mensagem, StringComparison.Ordinal);
         });
+    }
+
+    private static void AssertGravacoes(
+        IReadOnlyCollection<ChamadaDeCache> gravacoes,
+        string chave,
+        TimeSpan esperado)
+    {
+        var daChave = gravacoes.Where(g => g.Chave == chave).ToArray();
+        Assert.NotEmpty(daChave);
+        Assert.All(daChave, gravacao =>
+        {
+            AssertTtlAproximado(gravacao.Expiration, esperado);
+            Assert.Equal(gravacao.Expiration, gravacao.LocalCacheExpiration);
+        });
+    }
+
+    private static void AssertTtlAproximado(TimeSpan? ttl, TimeSpan esperado)
+    {
+        Assert.NotNull(ttl);
+        Assert.True(ttl <= esperado, $"TTL {ttl} maior que o esperado {esperado}");
+        Assert.True(
+            ttl >= esperado - TimeSpan.FromSeconds(5),
+            $"TTL {ttl} muito menor que o esperado {esperado}");
     }
 
     private static HybridCache CriarHybridCache()

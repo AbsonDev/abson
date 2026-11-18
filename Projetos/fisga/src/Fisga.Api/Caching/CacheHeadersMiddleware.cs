@@ -2,7 +2,8 @@ namespace Fisga.Api.Caching;
 
 // Default-deny de cache: aplica a política do endpoint (metadata CachePolicy) e,
 // quando não há nenhuma, responde "private, no-store". Um Cache-Control já
-// definido pelo endpoint (ou por outro middleware antes do envio) é preservado.
+// definido pelo endpoint (ou por outro middleware antes do envio) é preservado
+// em respostas de sucesso; erros (>= 400) sempre saem como "private, no-store".
 public sealed class CacheHeadersMiddleware(RequestDelegate next)
 {
     public async Task InvokeAsync(HttpContext context)
@@ -12,7 +13,11 @@ public sealed class CacheHeadersMiddleware(RequestDelegate next)
 
         context.Response.OnStarting(() =>
         {
-            if (!context.Response.Headers.ContainsKey(Headers.CacheControl))
+            if (context.Response.StatusCode >= 400)
+            {
+                context.Response.Headers.CacheControl = DecisaoDeCache.NoStore;
+            }
+            else if (!context.Response.Headers.ContainsKey(Headers.CacheControl))
             {
                 context.Response.Headers.CacheControl = politica.HeaderValue;
             }

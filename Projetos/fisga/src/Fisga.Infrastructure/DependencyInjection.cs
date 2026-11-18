@@ -41,6 +41,12 @@ public static class DependencyInjection
         // 20 min valerem de fato. Com Redis/L2 (Fase 3), o local volta para 5 min.
         services.AddHybridCache(options =>
         {
+            // Cardinalidade: o envelope de condições fica na casa das dezenas de
+            // KB, então 256 KB cobre a resposta com folga e rejeita payload
+            // anômalo. A chave de busca é normalizada a 80 caracteres; 200 dá
+            // margem para prefixo/versão sem aceitar termos abusivos.
+            options.MaximumPayloadBytes = 256 * 1024;
+            options.MaximumKeyLength = 200;
             options.DefaultEntryOptions = new HybridCacheEntryOptions
             {
                 Expiration = TimeSpan.FromMinutes(20),
