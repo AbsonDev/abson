@@ -21,6 +21,16 @@ const PRIVADAS = [
 ];
 
 const PUBLICAS_POR_MAIS_TEMPO = [
+  // Páginas de autenticação são SSR (passam pelo middleware) e iguais para
+  // todo visitante; o precache do service worker depende do header público.
+  '/entrar',
+  '/criar-conta',
+  '/esqueci-senha',
+  '/redefinir-senha',
+  '/confirmar-email',
+  '/entrar/confirmar',
+  '/offline',
+  '/newsletter/descadastrado',
   '/wiki',
   '/sobre',
   '/termos',
@@ -52,24 +62,50 @@ function normalizar(caminho: string): string {
   return caminho.length > 1 && caminho.endsWith('/') ? caminho.slice(0, -1) : caminho;
 }
 
-function politicaDeCache(caminho: string, temCookie: boolean): string | null {
+interface PoliticaDeCache {
+  cacheControl: string;
+  variarPorCookie: boolean;
+}
+
+/**
+ * Anexa `Cookie` ao `Vary` sem sobrescrever valores já definidos. Respostas
+ * `/` e `/condicoes` mudam conforme a sessão: sem `Vary`, um cache intermediário
+ * poderia servir o HTML anônimo a quem tem cookie (ou o contrário).
+ */
+function acrescentarVaryCookie(cabecalhos: Headers): void {
+  const atual = cabecalhos.get('Vary');
+  const valores = atual
+    ? atual.split(',').map((valor) => valor.trim()).filter(Boolean)
+    : [];
+
+  if (valores.some((valor) => valor === '*' || valor.toLowerCase() === 'cookie')) {
+    return;
+  }
+
+  cabecalhos.set('Vary', [...valores, 'Cookie'].join(', '));
+}
+
+function politicaDeCache(caminho: string, temCookie: boolean): PoliticaDeCache | null {
   const rota = normalizar(caminho);
 
   if (PRIVADAS.some((privada) => combina(rota, privada))) {
-    return NO_STORE;
+    return { cacheControl: NO_STORE, variarPorCookie: false };
   }
 
   // `/p/[token]` mostra `podeEditar` conforme o visitante; curto e privado.
   if (combina(rota, '/p')) {
-    return COMPARTILHADA;
+    return { cacheControl: COMPARTILHADA, variarPorCookie: false };
   }
 
   if (ROTAS_ANONIMAS.includes(rota)) {
-    return temCookie ? NO_STORE : PAGINA_ANONIMA;
+    return {
+      cacheControl: temCookie ? NO_STORE : PAGINA_ANONIMA,
+      variarPorCookie: !temCookie
+    };
   }
 
   if (PUBLICAS_POR_MAIS_TEMPO.some((publica) => combina(rota, publica))) {
-    return CONTEUDO_PUBLICO;
+    return { cacheControl: CONTEUDO_PUBLICO, variarPorCookie: false };
   }
 
   return null;
@@ -90,10 +126,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
 
   const cookie = context.request.headers.get('cookie');
-  const valor = politicaDeCache(context.url.pathname, Boolean(cookie));
+  const politica = politicaDeCache(context.url.pathname, Boolean(cookie));
 
-  if (valor) {
-    resposta.headers.set('Cache-Control', valor);
+  if (politica) {
+    resposta.headers.set('Cache-Control', politica.cacheControl);
+    if (politica.variarPorCookie) {
+      acrescentarVaryCookie(resposta.headers);
+    }
   }
 
   return resposta;

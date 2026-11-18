@@ -273,15 +273,44 @@ public sealed class GeocodificadorCacheTests
     {
         var throttle = new NominatimThrottle();
         var relogio = Stopwatch.StartNew();
+        var inicios = new ConcurrentQueue<TimeSpan>();
 
-        var primeira = throttle.AguardarAsync().AsTask();
-        var segunda = throttle.AguardarAsync().AsTask();
-        await Task.WhenAll(primeira, segunda);
+        Task<bool> Executar(CancellationToken _)
+        {
+            inicios.Enqueue(relogio.Elapsed);
+            return Task.FromResult(true);
+        }
 
-        relogio.Stop();
+        await Task.WhenAll(
+            throttle.ExecutarAsync(Executar),
+            throttle.ExecutarAsync(Executar));
+
+        var ordenados = inicios.OrderBy(inicio => inicio).ToArray();
+        Assert.Equal(2, ordenados.Length);
+
+        var intervalo = ordenados[1] - ordenados[0];
         Assert.True(
-            relogio.Elapsed >= TimeSpan.FromMilliseconds(900),
-            $"duas chamadas seguidas levaram {relogio.Elapsed}; esperado ao menos 1 s entre inícios");
+            intervalo >= TimeSpan.FromMilliseconds(900),
+            $"duas chamadas seguidas começaram com {intervalo} de intervalo; esperado ao menos 1 s");
+    }
+
+    [Fact]
+    public async Task Reverso_de_chaves_distintas_nao_sobrepoe_requisicoes()
+    {
+        var handler = new ConcorrenciaHandler();
+        using var http = new HttpClient(handler);
+        var geocoder = new OpenMeteoGeocodificador(
+            http, CriarHybridCache(), new NominatimThrottle(), new CacheObservabilidadeNula());
+
+        var primeira = geocoder.ReversoAsync(-23.2178, -44.7131);
+        var segunda = geocoder.ReversoAsync(-22.9068, -43.1729);
+        var resultados = await Task.WhenAll(primeira, segunda);
+
+        Assert.All(resultados, resultado => Assert.NotNull(resultado));
+        Assert.Equal(2, handler.Chamadas);
+        // O Nominatim pede 1 req/s; sem segurar a porta durante o HTTP, as duas
+        // requisições de chaves distintas ficariam em voo ao mesmo tempo.
+        Assert.Equal(1, handler.MaximaConcorrencia);
     }
 
     [Fact]
@@ -385,6 +414,53 @@ public sealed class GeocodificadorCacheTests
         string Chave,
         TimeSpan? Expiration,
         TimeSpan? LocalCacheExpiration);
+
+    private sealed class ConcorrenciaHandler : HttpMessageHandler
+    {
+        private int _chamadas;
+        private int _concorrentes;
+        private int _maxima;
+
+        public int Chamadas => Volatile.Read(ref _chamadas);
+
+        public int MaximaConcorrencia => Volatile.Read(ref _maxima);
+
+        protected override async Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            Interlocked.Increment(ref _chamadas);
+            var atuais = Interlocked.Increment(ref _concorrentes);
+            AtualizarMaxima(atuais);
+
+            try
+            {
+                // Precisa durar mais que o intervalo de 1 s: com o throttle
+                // antigo (que liberava a porta antes do HTTP), a segunda
+                // requisição começaria com a primeira ainda em voo.
+                await Task.Delay(1200, cancellationToken);
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(ReversoJson, Encoding.UTF8, "application/json")
+                };
+            }
+            finally
+            {
+                Interlocked.Decrement(ref _concorrentes);
+            }
+        }
+
+        private void AtualizarMaxima(int atuais)
+        {
+            var maximo = Volatile.Read(ref _maxima);
+            while (atuais > maximo)
+            {
+                var anterior = Interlocked.CompareExchange(ref _maxima, atuais, maximo);
+                if (anterior == maximo) return;
+                maximo = anterior;
+            }
+        }
+    }
 
     private sealed class ContadorHandler : HttpMessageHandler
     {

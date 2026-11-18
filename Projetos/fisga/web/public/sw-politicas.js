@@ -42,19 +42,50 @@
     return PAGINAS_PUBLICAS.includes(limpo);
   }
 
+  // Tipos de arquivo que podem ser servidos sem instrução explícita de cache
+  // público. HTML nunca entra aqui: sem `public` no header, a resposta é
+  // ambígua e pode ter sido personalizada por cookie.
+  const TIPOS_ESTATICOS = [
+    'image/',
+    'font/',
+    'text/css',
+    'text/javascript',
+    'application/javascript',
+    'application/x-javascript',
+    'application/json',
+    'application/manifest+json',
+    'application/wasm',
+    'application/font-woff',
+    'application/vnd.ms-fontobject'
+  ];
+
   /**
    * A decisão é pelo header, não só pelo path: `/condicoes` e `/` são públicos
    * para quem não tem sessão e privados para quem tem. `Set-Cookie` também
    * impede o cache, mesmo quando o `Cache-Control` não vem explícito.
+   *
+   * Default-deny para HTML: sem `public` explícito, só assets com tipo
+   * conhecidamente não-HTML entram no cache. Um HTML 2xx sem header pode ter
+   * escapado do middleware (rota não listada, redirect, `/p/<token>`) e ser
+   * personalizado por cookie; guardá-lo em `fisga-public-*` o faria sobreviver
+   * ao logout e aparecer offline para outra sessão. `Content-Type` vazio
+   * também é ambíguo e fica de fora.
    */
   function podeCachear(resposta) {
     if (!resposta || !resposta.ok) return false;
 
-    const controle = (resposta.headers.get('Cache-Control') || '').toLowerCase();
+    const cabecalhos = resposta.headers;
+    const controle = (cabecalhos.get('Cache-Control') || '').toLowerCase();
     if (controle.includes('no-store') || controle.includes('private')) return false;
-    if (resposta.headers.get('Set-Cookie')) return false;
+    if (cabecalhos.get('Set-Cookie')) return false;
+    if (controle.includes('public')) return true;
 
-    return true;
+    const tipo = (cabecalhos.get('Content-Type') || '').toLowerCase();
+    if (!tipo || tipo.includes('text/html') || tipo.includes('application/xhtml')) {
+      return false;
+    }
+
+    return TIPOS_ESTATICOS.some((prefixo) => tipo.startsWith(prefixo));
   }
 
   escopo.FisgaSWPoliticas = {

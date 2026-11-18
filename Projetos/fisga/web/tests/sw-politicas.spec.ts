@@ -35,7 +35,20 @@ test('podeCachear segue o header e não o path', async ({ page }) => {
       privateMaxAge: p.podeCachear(fake(true, { 'cache-control': 'private, max-age=30' })),
       setCookie: p.podeCachear(fake(true, { 'set-cookie': 'fisga_auth=abc' })),
       publico: p.podeCachear(fake(true, { 'cache-control': 'public, max-age=60' })),
-      semHeader: p.podeCachear(fake(true, {})),
+      publicoHtml: p.podeCachear(
+        fake(true, {
+          'cache-control': 'public, max-age=3600, stale-while-revalidate=86400',
+          'content-type': 'text/html; charset=utf-8'
+        })
+      ),
+      semHeaderHtml: p.podeCachear(
+        fake(true, { 'content-type': 'text/html; charset=utf-8' })
+      ),
+      semHeaderImagem: p.podeCachear(fake(true, { 'content-type': 'image/png' })),
+      semHeaderSemTipo: p.podeCachear(fake(true, {})),
+      maxAgeSemPublicoHtml: p.podeCachear(
+        fake(true, { 'cache-control': 'max-age=60', 'content-type': 'text/html' })
+      ),
       erro: p.podeCachear(fake(false, { 'cache-control': 'public, max-age=60' })),
       nulo: p.podeCachear(null),
       hoje: p.rotaPrivada('/hoje'),
@@ -50,8 +63,13 @@ test('podeCachear segue o header e não o path', async ({ page }) => {
   expect(resultados.privateMaxAge).toBe(false);
   expect(resultados.setCookie).toBe(false);
   expect(resultados.publico).toBe(true);
-  // Sem header, a política atual permite cachear respostas 2xx same-origin.
-  expect(resultados.semHeader).toBe(true);
+  expect(resultados.publicoHtml).toBe(true);
+  // Default-deny: HTML sem `public` explícito nunca é cacheado. Só assets com
+  // tipo conhecidamente não-HTML passam sem header.
+  expect(resultados.semHeaderHtml).toBe(false);
+  expect(resultados.semHeaderImagem).toBe(true);
+  expect(resultados.semHeaderSemTipo).toBe(false);
+  expect(resultados.maxAgeSemPublicoHtml).toBe(false);
   expect(resultados.erro).toBe(false);
   expect(resultados.nulo).toBe(false);
   expect(resultados.hoje).toBe(true);

@@ -1,5 +1,5 @@
-const VERSAO = 'fisga-v9';
-// O cache público usa o sufixo da versão (`fisga-public-v9`); os dois mudam
+const VERSAO = 'fisga-v10';
+// O cache público usa o sufixo da versão (`fisga-public-v10`); os dois mudam
 // juntos, sem repetir o número em dois lugares.
 const CACHE_PUBLICO = `fisga-public-${VERSAO.replace(/^fisga-/, '')}`;
 const CACHE_TILES = 'fisga-tiles-v1';

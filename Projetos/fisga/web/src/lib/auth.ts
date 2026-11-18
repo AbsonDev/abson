@@ -179,6 +179,13 @@ export async function encerrarSessaoExpirada(
   // um destino com query para não quebrar o parâmetro `voltar`.
   const voltar = encodeURIComponent(destinoSeguro(alvo)).replace(/%2F/g, '/');
   window.location.replace(`/entrar?voltar=${voltar}`);
+
+  // `location.replace` não avisa quando a navegação é bloqueada ou falha (ex.:
+  // outra navegação em andamento, teste ou ambiente embutido). Sem o reset, o
+  // guard ficaria travado e nenhuma chamada posterior encerraria a sessão.
+  setTimeout(() => {
+    encerrandoSessaoExpirada = false;
+  }, 1000);
 }
 
 /** POST JSON com cookie de autenticação e leitura tolerante de problem+json. */

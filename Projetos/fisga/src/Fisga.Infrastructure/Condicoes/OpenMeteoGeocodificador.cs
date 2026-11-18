@@ -76,10 +76,16 @@ public sealed class OpenMeteoGeocodificador(
             async token =>
             {
                 // O throttle fica dentro da factory: um cache hit não espera
-                // nem consome a cota de 1 req/s do Nominatim.
-                await throttle.AguardarAsync(token);
-                observabilidade.GeocodingUpstream("reverso");
-                var resultado = await BuscarReversoNoUpstreamAsync(latitude, longitude, token);
+                // nem consome a cota de 1 req/s do Nominatim. `ExecutarAsync`
+                // segura a porta durante o HTTP, então duas chaves de reverso
+                // distintas também não se sobrepõem.
+                var resultado = await throttle.ExecutarAsync(
+                    async executar =>
+                    {
+                        observabilidade.GeocodingUpstream("reverso");
+                        return await BuscarReversoNoUpstreamAsync(latitude, longitude, executar);
+                    },
+                    token);
                 if (resultado is null)
                 {
                     observabilidade.GeocodingNegativo("reverso");

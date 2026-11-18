@@ -169,6 +169,7 @@ Browser
 - `Accept-Encoding` para compressão.
 - `Origin` para CORS.
 - Evitar `Vary: Cookie` como estratégia principal; ele praticamente zera o cache. Para páginas personalizadas, usar `private/no-store` ou separar o conteúdo público.
+- Exceção: `/` e `/condicoes` mudam de HTML conforme a sessão. Quando a política anônima (`public`) é aplicada, o middleware anexa `Vary: Cookie` (sem sobrescrever um `Vary` existente); com cookie, a resposta continua `private, no-store`.
 
 ### 6.4 CDN (fase futura)
 
@@ -378,8 +379,8 @@ Separar caches:
 
 Regras:
 
-1. **Precache apenas público:** remover `/`, `/meu-diario` e `/mapa` do `CASCA`; manter wiki, ferramentas, offline, manifest e ícones. O install busca cada URL sem credenciais e só grava se `podeCachear` aprovar (não `cache.addAll`).
-2. **Navegação:** network-first; cachear somente se a resposta tiver `Cache-Control` público e não tiver `Set-Cookie`.
+1. **Precache apenas público:** remover `/`, `/meu-diario` e `/mapa` do `CASCA`; manter wiki, ferramentas, offline, manifest e ícones. O install busca cada URL sem credenciais e só grava se `podeCachear` aprovar (não `cache.addAll`). As páginas SSR de acesso (`/entrar`, `/criar-conta`, `/esqueci-senha`, `/redefinir-senha`, `/confirmar-email`, `/entrar/confirmar`) e `/offline` recebem `public, max-age=3600, stale-while-revalidate=86400` do middleware; sem esse header o default-deny do `podeCachear` as descartaria.
+2. **Navegação:** network-first; cachear somente se a resposta tiver `Cache-Control` público e não tiver `Set-Cookie`. Default-deny: sem `public` explícito, só assets com `Content-Type` conhecidamente não-HTML (imagem, CSS, JS, fonte, JSON) podem entrar; HTML, `Content-Type` vazio ou ambíguo ficam de fora.
 3. **Rotas privadas:** `['/hoje','/mapa','/conta','/meu-diario','/registrar','/trofeu','/aceite','/boas-vindas']` — sempre `fetch` direto, sem `cache.put`.
 4. **`/condicoes`:** não decidir pelo path; ler o header. Anônimo (`public`) pode cachear; autenticado (`private`) não.
 5. **Logout/expiração:** apagar `fisga-private-*` e caches legados `fisga-*` que não sejam `fisga-public-*`/`fisga-tiles-v1`, e remover chaves `fisga:*` do `localStorage`. **Preservar** `fisga-public-*` e `fisga-tiles-v1`: só contêm conteúdo aprovado por `podeCachear`, e mantê-los é o que faz `/offline`, wiki, ferramentas e Pagefind continuarem funcionando depois de sair. A limpeza é a mesma na sessão expirada (200 anônimo/401), via `encerrarSessaoExpirada`; quando a tela continua pública, como `/mapa` anônimo, basta `limparCachePrivado`. Exceção: `fisga:rascunho:v1` sobrevive à expiração anônima com `{ preservarRascunho: true }`; logout explícito apaga o rascunho.

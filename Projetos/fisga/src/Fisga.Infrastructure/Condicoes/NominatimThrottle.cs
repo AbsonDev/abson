@@ -9,8 +9,18 @@ public sealed class NominatimThrottle
     private readonly SemaphoreSlim _porta = new(1, 1);
     private long _ultimoInicio;
 
-    public async ValueTask AguardarAsync(CancellationToken ct = default)
+    /// <summary>
+    /// Executa a ação segurando a porta do throttle: garante ao menos 1 s entre
+    /// inícios e impede duas requisições simultâneas ao Nominatim, mesmo para
+    /// chaves de cache distintas. A porta só é liberada no <c>finally</c>, depois
+    /// que o HTTP terminou.
+    /// </summary>
+    public async Task<T> ExecutarAsync<T>(
+        Func<CancellationToken, Task<T>> acao,
+        CancellationToken ct = default)
     {
+        ArgumentNullException.ThrowIfNull(acao);
+
         await _porta.WaitAsync(ct);
         try
         {
@@ -24,6 +34,7 @@ public sealed class NominatimThrottle
             }
 
             _ultimoInicio = Stopwatch.GetTimestamp();
+            return await acao(ct);
         }
         finally
         {

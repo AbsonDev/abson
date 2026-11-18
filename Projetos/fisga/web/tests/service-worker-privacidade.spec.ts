@@ -124,10 +124,10 @@ async function semearEstadoPrivado(page: Page) {
     localStorage.setItem(chaves[3], '[]');
     localStorage.setItem(chaves[4], '1');
 
-    const publico = await caches.open('fisga-public-v9');
+    const publico = await caches.open('fisga-public-v10');
     await publico.put('/offline', new Response('offline público'));
 
-    const privado = await caches.open('fisga-private-v9');
+    const privado = await caches.open('fisga-private-v10');
     await privado.put('/hoje', new Response('html privado'));
     await privado.put('/conta', new Response('html privado'));
   }, CHAVES_PRIVADAS);
@@ -159,7 +159,7 @@ async function expectPublicoPreservadoEPrivadoRemovido(
   opcoes: { preservarRascunho?: boolean } = {}
 ) {
   const chaves = await chavesDeCache(page);
-  expect(chaves).toContain('fisga-public-v9');
+  expect(chaves).toContain('fisga-public-v10');
   expect(chaves.some((chave) => chave.startsWith('fisga-private-'))).toBe(false);
 
   const caminhos = await caminhosNoCache(page);
@@ -205,7 +205,7 @@ async function mockEntrarVoltarConta(page: Page) {
 }
 
 test.describe('logout sem service worker', () => {
-  // O SW ativo recria `fisga-public-v9` com os assets públicos de `/entrar`
+  // O SW ativo recria `fisga-public-v10` com os assets públicos de `/entrar`
   // logo depois do logout. Aqui ele fica bloqueado para medir exatamente o que
   // `limparCachePrivado` apaga; o comportamento com SW ativo é coberto pelo
   // teste de rota privada offline.
@@ -221,14 +221,14 @@ test.describe('logout sem service worker', () => {
       localStorage.setItem('fisga:locais:v1', '[]');
       localStorage.setItem('outro:app', 'mantém');
 
-      const publico = await caches.open('fisga-public-v9');
+      const publico = await caches.open('fisga-public-v10');
       await publico.put('/offline', new Response('offline público'));
       await publico.put(
         '/ferramentas',
         new Response('página pública', { headers: { 'content-type': 'text/html' } })
       );
 
-      const privado = await caches.open('fisga-private-v9');
+      const privado = await caches.open('fisga-private-v10');
       await privado.put('/conta', new Response('html privado'));
       await privado.put('/hoje', new Response('html privado'));
 
@@ -253,7 +253,7 @@ test.describe('logout sem service worker', () => {
     await expect(page).toHaveURL(/\/entrar\?saiu=1$/);
 
     const chaves = await chavesDeCache(page);
-    expect(chaves).toContain('fisga-public-v9');
+    expect(chaves).toContain('fisga-public-v10');
     expect(chaves.some((chave) => chave.startsWith('fisga-private-'))).toBe(false);
     expect(chaves).not.toContain('fisga-v8');
     expect(chaves).toContain('fisga-tiles-v1');
@@ -481,12 +481,24 @@ test.describe('logout sem service worker', () => {
 
 const MARCADOR_PRIVADO = 'conteudo-privado-da-sessao';
 
+test('install precacheia as páginas públicas de acesso e offline', async ({ page }) => {
+  await page.goto(`${ORIGEM}/offline`);
+  await esperarServiceWorker(page);
+
+  const caminhos = await caminhosNoCache(page);
+  // `/entrar` e `/offline` são SSR: só entram no precache porque o middleware
+  // responde `public`; o default-deny de `podeCachear` descartaria um HTML 2xx
+  // sem header.
+  expect(caminhos).toContain('/entrar');
+  expect(caminhos).toContain('/offline');
+});
+
 test('rota privada nunca é servida do cache quando offline', async ({ page, context }) => {
   await page.goto(`${ORIGEM}/offline`);
   await esperarServiceWorker(page);
 
   await page.evaluate(async (marcador) => {
-    const cache = await caches.open('fisga-public-v9');
+    const cache = await caches.open('fisga-public-v10');
     await cache.put(
       '/hoje',
       new Response(`<!doctype html><h1>${marcador}</h1>`, {
