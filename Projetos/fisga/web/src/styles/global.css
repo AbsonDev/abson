@@ -300,6 +300,12 @@ details:focus-visible {
 }
 
 /* Cabeçalho e rodapé */
+body.foco .topo,
+body.foco .rodape,
+body.foco .tabbar {
+  display: none;
+}
+
 .topo {
   position: sticky;
   z-index: 40;

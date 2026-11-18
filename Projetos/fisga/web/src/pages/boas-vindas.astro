@@ -1,286 +1,349 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import Logo from '../components/Logo.astro';
+
+const sugestoes = [
+  { nome: 'Aracaju', cidade: 'Aracaju', estado: 'SE', latitude: -10.911, longitude: -37.071, ambiente: 'Mar' },
+  { nome: 'Ilhabela', cidade: 'Ilhabela', estado: 'SP', latitude: -23.778, longitude: -45.358, ambiente: 'Mar' },
+  { nome: 'Campinas', cidade: 'Campinas', estado: 'SP', latitude: -22.905, longitude: -47.06, ambiente: 'Represa' }
+];
 ---
 
 <Layout
   titulo="Bem-vindo ao Fisga"
-  descricao="Seu primeiro acesso ao Fisga. Seu diário já está pronto e é privado por padrão."
+  descricao="Escolha onde você pesca para abrir a janela de hoje e começar seu diário."
   noindex
+  foco
 >
-  <section class="boas-vindas">
-    <div class="container">
-      <div class="boas-progresso">
-        <span>Primeiro acesso</span>
-        <span id="boas-progresso-numero">1 de 2</span>
+  <section class="boas">
+    <div class="boas-topo">
+      <Logo compacto />
+      <button id="boas-pular" class="boas-pular" type="button">Agora não</button>
+    </div>
+
+    <div class="boas-conteudo">
+      <span class="eyebrow">Primeiro acesso</span>
+      <h1 id="boas-titulo">Bem-vindo.</h1>
+      <p class="boas-lead">
+        Escolha onde você pesca para abrir a janela de hoje e começar seu diário.
+      </p>
+
+      <div class="boas-busca">
+        <label class="boas-rotulo" for="boas-busca-local">Onde você pesca?</label>
+        <div class="boas-campo">
+          <svg class="boas-lupa" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="6.5"></circle>
+            <path d="M16 16l4.5 4.5"></path>
+          </svg>
+          <input
+            id="boas-busca-local"
+            type="search"
+            placeholder="Cidade, praia ou represa"
+            autocomplete="off"
+          />
+        </div>
+
+        <button id="boas-usar-localizacao" class="btn btn--contorno boas-geo" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 21s7-6.1 7-11a7 7 0 1 0-14 0c0 4.9 7 11 7 11z"></path>
+            <circle cx="12" cy="10" r="2.5"></circle>
+          </svg>
+          Usar minha localização
+        </button>
+
+        <ul id="boas-resultados" class="boas-resultados oculto" aria-label="Resultados da busca"></ul>
+        <p id="boas-local-status" class="boas-status" role="status" aria-live="polite"></p>
       </div>
 
-      <div class="boas-cartao">
-        <div class="boas-avatar" id="boas-avatar" aria-hidden="true">F</div>
-        <span class="eyebrow">Sua conta está pronta</span>
-        <h1>Bem-vindo ao <em>Fisga.</em></h1>
-        <p class="boas-lead" id="boas-lead">
-          Seu diário já está pronto e é privado por padrão. Nada é publicado até você gerar um link
-          para uma pescaria.
-        </p>
-
-        <form id="boas-form" class="boas-form" novalidate>
-          <div class="campo">
-            <label for="boas-nome">Como quer ser chamado?</label>
-            <input
-              id="boas-nome"
-              type="text"
-              maxlength="80"
-              autocomplete="name"
-              placeholder="Seu nome de pescador"
-            />
-            <small>Opcional. Aparece no diário e nos cards que você compartilhar.</small>
-          </div>
-
-          <label class="boas-check">
-            <input type="checkbox" id="boas-novidades" />
-            <span>
-              <strong>Quero receber novidades e conteúdo novo do Fisga</strong>
-              <small>Uma mensagem por mês, no máximo. Você cancela em Minha conta.</small>
-            </span>
-          </label>
-
-          <p id="boas-erro" class="erro-caixa" role="alert"></p>
-
-          <button class="btn btn--primario btn--largo" type="submit" id="boas-salvar">
-            Continuar
-          </button>
-        </form>
-
-        <section id="boas-local" class="boas-local oculto" aria-labelledby="boas-local-titulo">
-          <span class="eyebrow">Passo 2 de 2</span>
-          <h2 id="boas-local-titulo">Onde você pesca?</h2>
-          <p class="boas-lead">
-            Escolha uma cidade, praia ou represa. O Fisga abre as condições desse lugar e usa o local
-            no seu registro. Dá para trocar depois.
-          </p>
-          <div class="boas-busca">
-            <label class="oculto" for="boas-busca-local">Buscar local</label>
-            <input id="boas-busca-local" type="search" placeholder="Cidade, praia ou represa" autocomplete="off" />
-            <button id="boas-usar-localizacao" class="btn btn--contorno" type="button">Usar minha localização</button>
-            <div id="boas-resultados" class="boas-resultados oculto" role="listbox"></div>
-          </div>
-          <p id="boas-local-status" class="boas-local-status" role="status" aria-live="polite"></p>
-          <div class="boas-local-acoes">
-            <button class="btn btn--primario" type="button" id="boas-local-pular">Agora não</button>
-          </div>
-        </section>
-
-        <button class="boas-pular" type="button" id="boas-pular">Pular por agora</button>
-
-        <details class="boas-privacidade">
-          <summary>O que fica privado?</summary>
-          <p>
-            O diário completo, as estatísticas e os recordes ficam na sua conta. Uma pescaria só
-            aparece para outra pessoa quando você gera e compartilha o link público dela. O card do
-            troféu e o PDF usam apenas aquela pescaria.
-          </p>
-        </details>
+      <div class="boas-sugestoes">
+        <p class="boas-sugestoes-rotulo">Ou comece por</p>
+        <div class="boas-chips">
+          {sugestoes.map((sugestao) => (
+            <button
+              type="button"
+              class="boas-sugestao"
+              data-nome={sugestao.nome}
+              data-cidade={sugestao.cidade}
+              data-estado={sugestao.estado}
+              data-latitude={sugestao.latitude}
+              data-longitude={sugestao.longitude}
+              data-ambiente={sugestao.ambiente}
+            >
+              {sugestao.nome}
+            </button>
+          ))}
+        </div>
       </div>
+
+      <p class="boas-privacidade">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="5" y="10" width="14" height="10" rx="2"></rect>
+          <path d="M8 10V7a4 4 0 0 1 8 0v3"></path>
+        </svg>
+        <span>
+          Privado por padrão. Nada é publicado até você compartilhar.
+          <a href="/privacidade">Como funciona</a>
+        </span>
+      </p>
     </div>
   </section>
 </Layout>
 
 <style>
-  .boas-vindas {
-    padding: clamp(32px, 5vw, 64px) 0 clamp(60px, 8vw, 96px);
+  .boas {
+    display: flex;
+    min-height: 100dvh;
+    flex-direction: column;
+    padding: 20px 20px 44px;
+    background:
+      radial-gradient(circle at 92% 4%, rgba(23, 78, 87, 0.055), transparent 26rem),
+      radial-gradient(circle at 4% 96%, rgba(217, 119, 63, 0.07), transparent 24rem),
+      var(--papel);
   }
 
-  .boas-progresso {
+  .boas-topo {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    width: min(100%, 720px);
-    margin: 0 auto 18px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid var(--terracota);
-    color: var(--tinta-suave);
-    font-size: 0.62rem;
-    font-weight: 700;
-    letter-spacing: 0.09em;
-    text-transform: uppercase;
-  }
-
-  .boas-cartao {
-    width: min(100%, 720px);
+    width: min(100%, 1000px);
     margin: 0 auto;
-    padding: clamp(26px, 5vw, 48px);
-    border: 1px solid var(--linha);
-    border-radius: 22px;
-    background: var(--superficie);
-    box-shadow: var(--sombra);
-  }
-
-  .boas-avatar {
-    display: grid;
-    width: 64px;
-    height: 64px;
-    margin-bottom: 20px;
-    place-items: center;
-    border-radius: 999px;
-    background: var(--terracota);
-    color: var(--creme);
-    font-family: var(--fonte-titulo);
-    font-size: 1.1rem;
-    font-weight: 600;
-  }
-
-  .boas-cartao h1 {
-    margin-top: 12px;
-    font-size: clamp(2.3rem, 5vw, 3.6rem);
-  }
-
-  .boas-lead {
-    max-width: 56ch;
-    margin-top: 14px;
-    color: var(--tinta-suave);
-    font-size: 0.94rem;
-    line-height: 1.7;
-  }
-
-  .boas-form {
-    margin-top: 26px;
-  }
-
-  .boas-form .campo input {
-    min-height: 46px;
-    background: var(--papel);
-  }
-
-  .boas-form .campo small {
-    display: block;
-    margin-top: 5px;
-    color: var(--tinta-suave);
-    font-size: 0.66rem;
-  }
-
-  .boas-check {
-    display: flex;
-    align-items: flex-start;
-    gap: 11px;
-    margin-top: 18px;
-    padding: 14px;
-    border: 1px solid var(--linha);
-    border-radius: 12px;
-    background: var(--papel);
-    cursor: pointer;
-  }
-
-  .boas-check input {
-    width: 18px;
-    height: 18px;
-    flex: 0 0 auto;
-    margin-top: 2px;
-    accent-color: var(--terracota);
-  }
-
-  .boas-check span {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .boas-check strong {
-    font-size: 0.78rem;
-  }
-
-  .boas-check small {
-    color: var(--tinta-suave);
-    font-size: 0.67rem;
-    line-height: 1.5;
-  }
-
-  .boas-form .btn {
-    margin-top: 18px;
-  }
-
-  .boas-form .erro-caixa.visivel {
-    margin-top: 14px;
+    gap: 16px;
   }
 
   .boas-pular {
-    display: block;
-    width: 100%;
-    margin-top: 12px;
-    padding: 7px;
+    min-height: 44px;
+    padding: 0 6px;
     border: 0;
     background: transparent;
     color: var(--tinta-suave);
-    font-size: 0.7rem;
+    font-size: 0.78rem;
+    font-weight: 600;
     text-decoration: underline;
-    text-underline-offset: 3px;
+    text-underline-offset: 4px;
   }
 
   .boas-pular:hover {
     color: var(--tinta);
   }
 
-  .boas-privacidade {
-    margin-top: 20px;
-    padding-top: 18px;
+  .boas-conteudo {
+    width: min(100%, 620px);
+    margin: auto;
+    padding: clamp(40px, 10vh, 110px) 0 clamp(24px, 5vh, 48px);
+  }
+
+  .boas-conteudo h1 {
+    margin-top: 14px;
+    font-size: clamp(2.3rem, 6vw, 3.7rem);
+  }
+
+  .boas-lead {
+    max-width: 50ch;
+    margin-top: 16px;
+    color: var(--tinta-suave);
+    font-size: 0.98rem;
+    line-height: 1.7;
+  }
+
+  .boas-busca {
+    margin-top: 34px;
+  }
+
+  .boas-rotulo {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--tinta);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .boas-campo {
+    position: relative;
+  }
+
+  .boas-lupa {
+    position: absolute;
+    top: 50%;
+    left: 16px;
+    width: 18px;
+    height: 18px;
+    color: var(--tinta-suave);
+    pointer-events: none;
+    transform: translateY(-50%);
+  }
+
+  .boas-campo input {
+    width: 100%;
+    min-height: 52px;
+    padding: 0 16px 0 46px;
+    border: 1px solid var(--linha-forte);
+    border-radius: 14px;
+    background: var(--superficie);
+    color: var(--tinta);
+    font-size: 1rem;
+  }
+
+  .boas-campo input:focus {
+    border-color: var(--terracota);
+    box-shadow: 0 0 0 3px rgba(23, 78, 87, 0.14);
+    outline: none;
+  }
+
+  .boas-campo input::placeholder {
+    color: var(--tinta-suave);
+    opacity: 0.8;
+  }
+
+  .boas-geo {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    margin-top: 12px;
+    padding: 0 16px;
+    font-size: 0.8rem;
+  }
+
+  .boas-geo svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .boas-resultados {
+    margin: 10px 0 0;
+    padding: 6px;
+    border: 1px solid var(--linha);
+    border-radius: 14px;
+    background: var(--superficie);
+    box-shadow: var(--sombra-suave);
+    list-style: none;
+  }
+
+  .boas-resultados li + li {
     border-top: 1px solid var(--linha);
   }
 
-  .boas-privacidade summary {
+  .boas-resultado {
+    display: block;
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 12px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
     color: var(--tinta);
-    font-size: 0.74rem;
-    font-weight: 600;
-    cursor: pointer;
+    font-size: 0.9rem;
+    text-align: left;
   }
 
-  .boas-privacidade p {
-    margin-top: 8px;
+  .boas-resultado:hover,
+  .boas-resultado:focus-visible {
+    background: var(--superficie-2);
+  }
+
+  .boas-status {
+    min-height: 1.5em;
+    margin-top: 10px;
     color: var(--tinta-suave);
-    font-size: 0.7rem;
+    font-size: 0.8rem;
+    line-height: 1.5;
+  }
+
+  .boas-sugestoes {
+    margin-top: 26px;
+  }
+
+  .boas-sugestoes-rotulo {
+    color: var(--tinta-suave);
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+
+  .boas-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .boas-sugestao {
+    min-height: 44px;
+    padding: 0 18px;
+    border: 1px solid var(--linha-forte);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--tinta);
+    font-size: 0.84rem;
+    font-weight: 500;
+  }
+
+  .boas-sugestao:hover,
+  .boas-sugestao:focus-visible {
+    border-color: var(--terracota);
+    background: var(--terracota-clara);
+  }
+
+  .boas-privacidade {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-top: clamp(40px, 8vh, 72px);
+    padding-top: 18px;
+    border-top: 1px solid var(--linha);
+    color: var(--tinta-suave);
+    font-size: 0.74rem;
     line-height: 1.6;
+  }
+
+  .boas-privacidade svg {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+    margin-top: 2px;
+  }
+
+  .boas-privacidade a {
+    color: var(--terracota);
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  @media (max-width: 560px) {
+    .boas {
+      padding: 16px 18px 36px;
+    }
+
+    .boas-conteudo {
+      padding-top: clamp(32px, 7vh, 64px);
+    }
+
+    .boas-geo {
+      width: 100%;
+      justify-content: center;
+    }
   }
 </style>
 
 <script>
   // @ts-nocheck
-  import { destinoSeguro } from '../lib/auth';
-
   const API = (document.body.dataset.api || 'http://localhost:5184').replace(/\/$/, '');
-  const formulario = document.getElementById('boas-form');
-  const nomeInput = document.getElementById('boas-nome');
-  const novidades = document.getElementById('boas-novidades');
-  const botao = document.getElementById('boas-salvar');
-  const erro = document.getElementById('boas-erro');
-  const avatar = document.getElementById('boas-avatar');
-  const lead = document.getElementById('boas-lead');
-  const passoLocal = document.getElementById('boas-local');
-  const progressoNumero = document.getElementById('boas-progresso-numero');
-  const buscaLocal = document.getElementById('boas-busca-local');
-  const resultadosLocal = document.getElementById('boas-resultados');
-  const statusLocal = document.getElementById('boas-local-status');
-  const localizacaoBotao = document.getElementById('boas-usar-localizacao');
-  let usuario = null;
-  let timerLocal = 0;
+  const titulo = document.getElementById('boas-titulo');
+  const status = document.getElementById('boas-local-status');
 
-  function destino() {
-    try {
-      const salvo = sessionStorage.getItem('fisga:retorno');
-      if (salvo !== null) sessionStorage.removeItem('fisga:retorno');
-      return destinoSeguro(salvo, '/hoje');
-    } catch {
-      return '/hoje';
-    }
+  function primeiroNome(nome) {
+    const limpo = String(nome || '').trim();
+    return limpo ? limpo.split(/\s+/)[0] : 'pescador';
   }
 
-  function iniciais(nome) {
-    const partes = String(nome || 'F').trim().split(/\s+/).filter(Boolean);
-    if (partes.length >= 2) return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
-    return String(nome || 'F').slice(0, 2).toUpperCase();
-  }
-
-  (async function iniciar() {
+  async function iniciar() {
     try {
       const resposta = await fetch(`${API}/api/auth/me`, { credentials: 'include' });
       const dados = await resposta.json().catch(() => ({}));
+
       if (!dados.autenticado || !dados.usuario) {
         window.location.replace('/entrar?voltar=/hoje');
         return;
@@ -293,158 +356,11 @@ import Layout from '../layouts/Layout.astro';
         return;
       }
 
-      usuario = dados.usuario;
-      avatar.textContent = iniciais(usuario.nome || usuario.nomeExibicao);
-      nomeInput.value = usuario.nome || '';
-      novidades.checked = Boolean(usuario.aceitaNovidades);
-      lead.innerHTML = `${usuario.email} está conectado. Seu diário já está pronto e é privado por padrão.`;
-
-      if (!usuario.nome) nomeInput.focus();
+      if (titulo) titulo.textContent = `Bem-vindo, ${primeiroNome(dados.usuario.nome)}.`;
     } catch {
-      erro.textContent = 'Não foi possível carregar sua conta. Recarregue a página.';
-      erro.classList.add('visivel');
-    }
-  })();
-
-  formulario.addEventListener('submit', async (evento) => {
-    evento.preventDefault();
-    if (!usuario) return;
-
-    erro.classList.remove('visivel');
-    botao.disabled = true;
-    botao.textContent = 'Salvando...';
-
-    try {
-      const resposta = await fetch(`${API}/api/auth/perfil`, {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nome: nomeInput.value.trim() || null,
-          aceitaNovidades: novidades.checked
-        })
-      });
-
-      const dados = await resposta.json().catch(() => ({}));
-      if (!resposta.ok) throw new Error(dados.detalhe || 'Não foi possível salvar suas preferências.');
-
-      formulario.classList.add('oculto');
-      document.getElementById('boas-pular')?.classList.add('oculto');
-      passoLocal?.classList.remove('oculto');
-      if (progressoNumero) progressoNumero.textContent = '2 de 2';
-      if (lead) lead.textContent = 'Agora escolha o lugar que você mais pesca.';
-      buscaLocal?.focus();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch (falha) {
-      erro.textContent = falha instanceof Error ? falha.message : 'Não foi possível salvar suas preferências.';
-      erro.classList.add('visivel');
-      botao.disabled = false;
-      botao.textContent = 'Continuar';
-    }
-  });
-
-  async function salvarLocal(local) {
-    if (statusLocal) statusLocal.textContent = 'Salvando local...';
-    try {
-      const resposta = await fetch(`${API}/api/locais`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nome: local.nome,
-          cidade: local.cidade ?? null,
-          estado: local.estado ?? null,
-          latitude: local.latitude,
-          longitude: local.longitude,
-          ambiente: local.ambiente ?? 'Outro',
-          padrao: true
-        })
-      });
-
-      if (resposta.status === 401) {
-        window.location.assign(`/entrar?voltar=${encodeURIComponent('/hoje')}`);
-        return;
-      }
-
-      const dados = await resposta.json().catch(() => ({}));
-      if (!resposta.ok) throw new Error(dados.detalhe || 'Não foi possível salvar o local.');
-      window.location.assign(destino());
-    } catch (falha) {
-      if (statusLocal) statusLocal.textContent = falha instanceof Error ? falha.message : 'Não foi possível salvar o local.';
+      if (status) status.textContent = 'Não foi possível carregar sua conta. Recarregue a página.';
     }
   }
 
-  async function buscarLocal(termo) {
-    if (!resultadosLocal) return;
-    if (termo.trim().length < 2) {
-      resultadosLocal.classList.add('oculto');
-      return;
-    }
-
-    try {
-      const resposta = await fetch(`${API}/api/locais/buscar?q=${encodeURIComponent(termo.trim())}`);
-      const lista = await resposta.json();
-      resultadosLocal.innerHTML = '';
-      if (!Array.isArray(lista) || lista.length === 0) {
-        resultadosLocal.innerHTML = '<p class="busca-vazia">Nenhum lugar encontrado.</p>';
-        resultadosLocal.classList.remove('oculto');
-        return;
-      }
-
-      for (const item of lista) {
-        const opcao = document.createElement('button');
-        opcao.type = 'button';
-        opcao.className = 'boas-resultado';
-        opcao.textContent = `${item.nome}${item.estado ? ` · ${item.estado}` : ''}`;
-        opcao.addEventListener('click', () => salvarLocal({
-          nome: item.nome ?? item.cidade ?? 'Meu local',
-          cidade: item.cidade ?? item.nome,
-          estado: item.estado,
-          latitude: Number(item.latitude),
-          longitude: Number(item.longitude),
-          ambiente: 'Outro'
-        }));
-        resultadosLocal.appendChild(opcao);
-      }
-      resultadosLocal.classList.remove('oculto');
-    } catch {
-      if (statusLocal) statusLocal.textContent = 'Não foi possível buscar agora.';
-    }
-  }
-
-  buscaLocal?.addEventListener('input', () => {
-    window.clearTimeout(timerLocal);
-    timerLocal = window.setTimeout(() => buscarLocal(buscaLocal.value), 320);
-  });
-
-  localizacaoBotao?.addEventListener('click', () => {
-    if (!navigator.geolocation) {
-      if (statusLocal) statusLocal.textContent = 'Seu navegador não oferece localização.';
-      return;
-    }
-    localizacaoBotao.disabled = true;
-    localizacaoBotao.textContent = 'Localizando...';
-    navigator.geolocation.getCurrentPosition(
-      (posicao) => salvarLocal({
-        nome: 'Minha localização',
-        latitude: Number(posicao.coords.latitude.toFixed(5)),
-        longitude: Number(posicao.coords.longitude.toFixed(5)),
-        ambiente: 'Outro'
-      }),
-      () => {
-        localizacaoBotao.disabled = false;
-        localizacaoBotao.textContent = 'Usar minha localização';
-        if (statusLocal) statusLocal.textContent = 'Não conseguimos usar sua localização. Busque pelo nome.';
-      },
-      { enableHighAccuracy: false, timeout: 12000, maximumAge: 300000 }
-    );
-  });
-
-  document.getElementById('boas-local-pular')?.addEventListener('click', () => {
-    window.location.assign(destino());
-  });
-
-  document.getElementById('boas-pular')?.addEventListener('click', () => {
-    window.location.assign(destino());
-  });
+  void iniciar();
 </script>
