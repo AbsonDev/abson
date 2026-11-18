@@ -105,6 +105,7 @@ public static class DependencyInjection
             cliente.Timeout = TimeSpan.FromSeconds(12);
             cliente.DefaultRequestHeaders.UserAgent.ParseAdd("Fisga/1.0 (+https://fisga.abson.tech)");
         });
+        services.AddSingleton<NominatimThrottle>();
         services.AddHttpClient<OpenMeteoGeocodificador>(cliente =>
         {
             cliente.Timeout = TimeSpan.FromSeconds(10);

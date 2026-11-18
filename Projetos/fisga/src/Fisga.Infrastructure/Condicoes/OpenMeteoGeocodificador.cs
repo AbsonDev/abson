@@ -1,25 +1,105 @@
-using System.Collections.Concurrent;
 using System.Globalization;
 using System.Text.Json;
+using Microsoft.Extensions.Caching.Hybrid;
 using Fisga.Application.Condicoes;
 
 namespace Fisga.Infrastructure.Condicoes;
 
-public sealed class OpenMeteoGeocodificador(HttpClient http) : IGeocodificador
+public sealed class OpenMeteoGeocodificador(
+    HttpClient http,
+    HybridCache cache,
+    NominatimThrottle throttle) : IGeocodificador
 {
-    private static readonly ConcurrentDictionary<string, (DateTimeOffset ExpiraEm, ResultadoDeBusca? Dados)> ReversoCache = new();
+    private static readonly TimeSpan TtlDaBusca = TimeSpan.FromHours(24);
+    private static readonly TimeSpan TtlDoReverso = TimeSpan.FromHours(12);
+    private static readonly TimeSpan TtlNegativo = TimeSpan.FromMinutes(10);
 
     public async Task<IReadOnlyList<ResultadoDeBusca>> BuscarAsync(
         string termo,
         CancellationToken ct = default)
     {
+        // Um termo curto compartilharia a chave "geocode:search:v1:" e cachearia
+        // um resultado que não pertence a nenhuma busca real.
         if (string.IsNullOrWhiteSpace(termo) || termo.Trim().Length < 2)
         {
             return [];
         }
 
+        var chave = ChavesDeCache.BuscaDeLocal(termo);
+        List<ResultadoDeBusca>? recemCalculado = null;
+
+        var resultados = await cache.GetOrCreateAsync(
+            chave,
+            async token =>
+            {
+                var lista = await BuscarNoUpstreamAsync(termo.Trim(), token);
+                recemCalculado = lista;
+                return lista;
+            },
+            Opcoes(TtlDaBusca),
+            cancellationToken: ct);
+
+        // Busca sem resultados (ou com falha no upstream) não fica 24 h no cache.
+        if (recemCalculado is { Count: 0 })
+        {
+            await cache.SetAsync(
+                chave,
+                recemCalculado,
+                Opcoes(TtlNegativo),
+                cancellationToken: ct);
+        }
+
+        return resultados;
+    }
+
+    public async Task<ResultadoDeBusca?> ReversoAsync(
+        double latitude,
+        double longitude,
+        CancellationToken ct = default)
+    {
+        var chave = ChavesDeCache.Reverso(latitude, longitude);
+        ResultadoDeReverso? recemCalculado = null;
+
+        var emCache = await cache.GetOrCreateAsync(
+            chave,
+            async token =>
+            {
+                // O throttle fica dentro da factory: um cache hit não espera
+                // nem consome a cota de 1 req/s do Nominatim.
+                await throttle.AguardarAsync(token);
+                var calculado = new ResultadoDeReverso(
+                    await BuscarReversoNoUpstreamAsync(latitude, longitude, token));
+                recemCalculado = calculado;
+                return calculado;
+            },
+            Opcoes(TtlDoReverso),
+            cancellationToken: ct);
+
+        // Endereço não resolvido não fica 12 h no cache.
+        if (recemCalculado is { Dados: null })
+        {
+            await cache.SetAsync(
+                chave,
+                recemCalculado,
+                Opcoes(TtlNegativo),
+                cancellationToken: ct);
+        }
+
+        return emCache.Dados;
+    }
+
+    private static HybridCacheEntryOptions Opcoes(TimeSpan ttl) => new()
+    {
+        Expiration = ttl,
+        LocalCacheExpiration = ttl,
+    };
+
+    private async Task<List<ResultadoDeBusca>> BuscarNoUpstreamAsync(
+        string termo,
+        CancellationToken ct)
+    {
         var url = "https://geocoding-api.open-meteo.com/v1/search"
-                  + $"?name={Uri.EscapeDataString(termo.Trim())}"
+                  + $"?name={Uri.EscapeDataString(termo)}"
                   + "&count=8&language=pt&format=json&countryCode=BR";
 
         try
@@ -69,23 +149,21 @@ public sealed class OpenMeteoGeocodificador(HttpClient http) : IGeocodificador
                 .Take(8)
                 .ToList();
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception excecao) when (excecao is HttpRequestException or TaskCanceledException or JsonException)
         {
             return [];
         }
     }
 
-    public async Task<ResultadoDeBusca?> ReversoAsync(
+    private async Task<ResultadoDeBusca?> BuscarReversoNoUpstreamAsync(
         double latitude,
         double longitude,
-        CancellationToken ct = default)
+        CancellationToken ct)
     {
-        var chave = $"{Math.Round(latitude, 3):F3}:{Math.Round(longitude, 3):F3}";
-        if (ReversoCache.TryGetValue(chave, out var emCache) && emCache.ExpiraEm > DateTimeOffset.UtcNow)
-        {
-            return emCache.Dados;
-        }
-
         var url = "https://nominatim.openstreetmap.org/reverse"
                   + $"?format=jsonv2&lat={latitude.ToString(CultureInfo.InvariantCulture)}"
                   + $"&lon={longitude.ToString(CultureInfo.InvariantCulture)}"
@@ -96,7 +174,6 @@ public sealed class OpenMeteoGeocodificador(HttpClient http) : IGeocodificador
             using var resposta = await http.GetAsync(url, ct);
             if (!resposta.IsSuccessStatusCode)
             {
-                ReversoCache[chave] = (DateTimeOffset.UtcNow.AddMinutes(10), null);
                 return null;
             }
 
@@ -106,7 +183,6 @@ public sealed class OpenMeteoGeocodificador(HttpClient http) : IGeocodificador
 
             if (!raiz.TryGetProperty("address", out var endereco))
             {
-                ReversoCache[chave] = (DateTimeOffset.UtcNow.AddMinutes(10), null);
                 return null;
             }
 
@@ -121,24 +197,23 @@ public sealed class OpenMeteoGeocodificador(HttpClient http) : IGeocodificador
 
             if (string.IsNullOrWhiteSpace(cidade) || !string.Equals(pais, "Brasil", StringComparison.OrdinalIgnoreCase))
             {
-                ReversoCache[chave] = (DateTimeOffset.UtcNow.AddMinutes(10), null);
                 return null;
             }
 
-            var resultado = new ResultadoDeBusca(
+            return new ResultadoDeBusca(
                 cidade,
                 cidade,
                 uf,
                 latitude,
                 longitude,
                 pais);
-
-            ReversoCache[chave] = (DateTimeOffset.UtcNow.AddHours(12), resultado);
-            return resultado;
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception excecao) when (excecao is HttpRequestException or TaskCanceledException or JsonException)
         {
-            ReversoCache[chave] = (DateTimeOffset.UtcNow.AddMinutes(5), null);
             return null;
         }
     }
@@ -147,4 +222,6 @@ public sealed class OpenMeteoGeocodificador(HttpClient http) : IGeocodificador
         item.TryGetProperty(propriedade, out var valor) && valor.ValueKind == JsonValueKind.String
             ? valor.GetString()
             : null;
+
+    private sealed record ResultadoDeReverso(ResultadoDeBusca? Dados);
 }
