@@ -23,6 +23,8 @@ type ContaFake = {
   temSenha?: boolean;
   googleConectado?: boolean;
   googleDisponivel?: boolean;
+  nome?: string | null;
+  aceitaNovidades?: boolean;
   sessoes?: SessaoFake[];
 };
 
@@ -61,9 +63,9 @@ async function mockConta(page: Page, opcoes: ContaFake = {}) {
         usuario: {
           id: 'usuario-1',
           email: 'pescador@fisga.app',
-          nome: 'Marina Sá',
+          nome: opcoes.nome !== undefined ? opcoes.nome : 'Marina Sá',
           nomeExibicao: 'Marina Sá',
-          aceitaNovidades: false,
+          aceitaNovidades: opcoes.aceitaNovidades ?? false,
           criadoEm: agoraMenos(60 * 24 * 90)
         },
         consentimentoPendente: false,
@@ -95,6 +97,24 @@ async function abrirConta(page: Page, opcoes: ContaFake = {}) {
   await page.goto('/conta');
   await expect(page.locator('#conta-content')).toBeVisible();
 }
+
+test.describe('Conta — carregamento', () => {
+  test('falha ao carregar anuncia o erro e foca o título', async ({ page }) => {
+    await page.route(`${API}/api/auth/me`, (route) =>
+      route.fulfill({
+        status: 500,
+        contentType: 'application/problem+json',
+        body: JSON.stringify({ codigo: 'falha', detalhe: 'Serviço indisponível.' })
+      })
+    );
+
+    await page.goto('/conta');
+
+    await expect(page.locator('#conta-load-error')).toBeVisible();
+    await expect(page.locator('#conta-load-error')).toHaveAttribute('role', 'alert');
+    await expect(page.locator('#conta-load-error-titulo')).toBeFocused();
+  });
+});
 
 test.describe('Conta — senha', () => {
   test('conta sem senha cria a primeira senha sem pedir senha atual', async ({ page }) => {
@@ -171,6 +191,34 @@ test.describe('Conta — senha', () => {
     await expect(page.locator('#senha-atual-error')).toBeVisible();
     await expect(page.locator('#senha-atual-error')).toContainText('senha atual está incorreta');
     await expect(page.locator('#senha-atual')).toHaveAttribute('aria-invalid', 'true');
+  });
+
+  test('criar senha que já existe vira modo alterar com erro visível', async ({ page }) => {
+    await abrirConta(page, { temSenha: false });
+    await page.route(`${API}/api/conta/senha`, (route) =>
+      route.fulfill({
+        status: 400,
+        contentType: 'application/problem+json',
+        body: JSON.stringify({
+          codigo: 'senha_atual_incorreta',
+          detalhe: 'A senha atual está incorreta.'
+        })
+      })
+    );
+
+    await page.locator('#conta-senha-acao').click();
+    await expect(page.locator('#campo-senha-atual')).toBeHidden();
+    await page.locator('#nova-senha').fill('minha-nova-senha');
+    await page.locator('#confirmar-senha').fill('minha-nova-senha');
+    await page.locator('#senha-salvar').click();
+
+    await expect(page.locator('#dialog-senha')).toBeVisible();
+    await expect(page.locator('#senha-titulo')).toHaveText('Alterar senha');
+    await expect(page.locator('#campo-senha-atual')).toBeVisible();
+    await expect(page.locator('#senha-atual-error')).toBeVisible();
+    await expect(page.locator('#senha-atual-error')).toContainText('senha atual está incorreta');
+    await expect(page.locator('#senha-atual')).toBeFocused();
+    await expect(page.locator('#conta-senha-acao')).toHaveText('Alterar senha');
   });
 
   test('validação de tamanho acontece antes de chamar a API', async ({ page }) => {
@@ -258,6 +306,100 @@ test.describe('Conta — Google', () => {
     await expect(page.locator('#conta-aviso [data-aviso-icon="erro"]')).toBeVisible();
     await expect(page.locator('#conta-aviso [data-aviso-icon="ok"]')).toBeHidden();
   });
+
+  test('falha na checagem de disponibilidade mostra a nota sem botão', async ({ page }) => {
+    await mockConta(page);
+    await page.route(`${API}/api/auth/google/disponivel`, (route) =>
+      route.fulfill({
+        status: 500,
+        contentType: 'application/problem+json',
+        body: JSON.stringify({ codigo: 'google_indisponivel', detalhe: 'Indisponível.' })
+      })
+    );
+
+    await page.goto('/conta');
+    await expect(page.locator('#conta-content')).toBeVisible();
+
+    await expect(page.getByRole('button', { name: 'Conectar Google' })).toHaveCount(0);
+    await expect(page.locator('#google-indisponivel')).toBeVisible();
+  });
+});
+
+test.describe('Conta — seus dados', () => {
+  test('edita nome e preferência de e-mail com feedback acessível', async ({ page }) => {
+    let corpo: Record<string, unknown> | null = null;
+
+    await abrirConta(page, { nome: 'Marina Sá', aceitaNovidades: false });
+    await page.route(`${API}/api/auth/perfil`, async (route) => {
+      corpo = route.request().postDataJSON() as Record<string, unknown>;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 'usuario-1',
+          email: 'pescador@fisga.app',
+          nome: 'Marina Santos',
+          nomeExibicao: 'Marina Santos',
+          aceitaNovidades: true,
+          criadoEm: agoraMenos(60 * 24 * 90)
+        })
+      });
+    });
+
+    await expect(page.locator('#dados-nome')).toHaveValue('Marina Sá');
+    await expect(page.locator('#dados-novidades')).not.toBeChecked();
+
+    await page.locator('#dados-nome').fill('Marina Santos');
+    await page.locator('#dados-novidades').check();
+    await page.locator('#dados-salvar').click();
+
+    await expect(page.locator('#dados-feedback')).toBeVisible();
+    await expect(page.locator('#dados-feedback')).toContainText('Dados salvos');
+    expect(corpo).toEqual({ nome: 'Marina Santos', aceitaNovidades: true });
+  });
+
+  test('baixa a exportação JSON usando o nome do servidor', async ({ page }) => {
+    await abrirConta(page);
+
+    await page.route(`${API}/api/conta/exportar`, (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        headers: {
+          'Content-Disposition': 'attachment; filename="fisga-conta-20261118.json"'
+        },
+        body: JSON.stringify({ conta: { email: 'pescador@fisga.app' }, pescarias: [] })
+      })
+    );
+
+    const downloadPromise = page.waitForEvent('download');
+    await page.locator('#dados-exportar').click();
+    const download = await downloadPromise;
+
+    expect(download.suggestedFilename()).toBe('fisga-conta-20261118.json');
+    await expect(page.locator('#dados-feedback')).toContainText('Download iniciado');
+  });
+
+  test('falha na exportação mostra erro acessível', async ({ page }) => {
+    await abrirConta(page);
+
+    await page.route(`${API}/api/conta/exportar`, (route) =>
+      route.fulfill({
+        status: 500,
+        contentType: 'application/problem+json',
+        body: JSON.stringify({
+          codigo: 'exportacao_falhou',
+          detalhe: 'Não foi possível preparar seus dados agora.'
+        })
+      })
+    );
+
+    await page.locator('#dados-exportar').click();
+
+    await expect(page.locator('#dados-erro')).toBeVisible();
+    await expect(page.locator('#dados-erro')).toContainText('Não foi possível preparar seus dados agora.');
+    await expect(page.locator('#dados-feedback')).toBeHidden();
+  });
 });
 
 test.describe('Conta — dispositivos', () => {
@@ -282,6 +424,14 @@ test.describe('Conta — dispositivos', () => {
     await expect(sessoes.first()).toContainText('Chrome no macOS');
     await expect(sessoes.first()).toContainText('Sessão atual');
     await expect(sessoes.nth(1)).toContainText('Safari no iOS');
+  });
+
+  test('lista vazia fala em nenhuma outra sessão, não em nenhuma sessão', async ({ page }) => {
+    await abrirConta(page, { sessoes: [] });
+
+    await expect(page.locator('#sessoes-vazio')).toBeVisible();
+    await expect(page.locator('#sessoes-vazio')).toContainText('Nenhuma outra sessão ativa.');
+    await expect(page.locator('#sessoes-vazio')).toContainText('Só este dispositivo');
   });
 
   test('sair desta sessão encerra e volta para entrar', async ({ page }) => {

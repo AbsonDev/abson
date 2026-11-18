@@ -194,6 +194,31 @@ public sealed class ContaSenhaTests : IAsyncLifetime
         Assert.False(await _usuarios.HasPasswordAsync(conta));
     }
 
+    [Theory]
+    [InlineData(9, "senha_curta")]
+    [InlineData(129, "senha_longa")]
+    public async Task Alterar_senha_fora_do_limite_e_recusada_antes_da_identity(
+        int tamanho,
+        string codigoEsperado)
+    {
+        var conta = await CriarContaComSenhaAsync();
+        using var atual = await ClienteAutenticadoAsync(conta, "Atual");
+        var novaSenha = new string('a', tamanho);
+
+        var resposta = await atual.PostAsJsonAsync(
+            "/api/conta/senha",
+            new { senhaAtual = Senha, novaSenha });
+
+        Assert.Equal(HttpStatusCode.BadRequest, resposta.StatusCode);
+        var erro = await resposta.Content.ReadFromJsonAsync<ErroResponse>();
+        Assert.Equal(codigoEsperado, erro!.Codigo);
+
+        conta = (await _usuarios.FindByIdAsync(conta.Id.ToString()))!;
+        await _db.Entry(conta).ReloadAsync();
+        Assert.True(await _usuarios.CheckPasswordAsync(conta, Senha));
+        Assert.False(await _usuarios.CheckPasswordAsync(conta, novaSenha));
+    }
+
     [Fact]
     public async Task Endpoint_exige_autenticacao()
     {

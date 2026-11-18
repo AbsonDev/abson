@@ -675,6 +675,11 @@ public static class AuthEndpoints
                 CancellationToken ct) =>
             {
                 var usuarioId = http.ExigirUsuarioId();
+                // A sessão atual é a única que sobrevive à troca de senha. Se o
+                // middleware deixar de fornecê-la, falhar aqui evita revogar
+                // todas as sessões silenciosamente, inclusive a que fez a troca.
+                var sessaoAtual = http.SessaoAtual()
+                    ?? throw new NaoAutenticadoException();
                 var novaSenha = entrada.NovaSenha ?? string.Empty;
 
                 // A Identity não tem máximo nativo: o limite é validado antes de
@@ -735,11 +740,10 @@ public static class AuthEndpoints
 
                 // A troca de senha é evento de segurança: revoga os outros
                 // dispositivos e preserva apenas a sessão que fez a alteração.
-                var sessaoAtual = http.SessaoAtual();
                 await sessoes.RevogarTodasAsync(
                     usuarioId,
                     relogio.Agora,
-                    exceto: sessaoAtual?.Id,
+                    exceto: sessaoAtual.Id,
                     ct);
                 await unidade.SalvarAsync(ct);
 
@@ -748,24 +752,21 @@ public static class AuthEndpoints
                 // validação do stamp. O principal novo já carrega o stamp
                 // atualizado e recebe de volta o claim que aponta para a linha
                 // de dispositivo preservada.
-                if (sessaoAtual is not null)
+                var principal = await fabricaDeClaims.CreateAsync(conta);
+                if (principal.Identity is ClaimsIdentity identidade
+                    && !identidade.HasClaim(claim => claim.Type == ClaimSessaoId))
                 {
-                    var principal = await fabricaDeClaims.CreateAsync(conta);
-                    if (principal.Identity is ClaimsIdentity identidade
-                        && !identidade.HasClaim(claim => claim.Type == ClaimSessaoId))
-                    {
-                        identidade.AddClaim(new Claim(ClaimSessaoId, sessaoAtual.Id.ToString()));
-                    }
-
-                    await http.SignInAsync(
-                        IdentityConstants.ApplicationScheme,
-                        principal,
-                        new AuthenticationProperties
-                        {
-                            IsPersistent = true,
-                            ExpiresUtc = sessaoAtual.ExpiraEm
-                        });
+                    identidade.AddClaim(new Claim(ClaimSessaoId, sessaoAtual.Id.ToString()));
                 }
+
+                await http.SignInAsync(
+                    IdentityConstants.ApplicationScheme,
+                    principal,
+                    new AuthenticationProperties
+                    {
+                        IsPersistent = true,
+                        ExpiresUtc = sessaoAtual.ExpiraEm
+                    });
 
                 return Results.NoContent();
             })

@@ -35,7 +35,7 @@ O produto cresceu de “diário” para “copiloto”. A apresentação ainda c
 | `/wiki` | Conteúdo de referência | Público |
 | `/registrar` | Registro da pescaria | Conta (formulário visível) |
 | `/meu-diario` | Estatísticas, insights e histórico | Conta |
-| `/conta` | Perfil, sessões, exportação e exclusão | Conta |
+| `/conta` | Perfil (nome/preferência de e-mail), senha, Google, sessões, exportação e exclusão | Conta |
 | `/entrar`, `/boas-vindas` | Acesso e primeiro uso | Público |
 
 ## Achados
@@ -344,7 +344,7 @@ Referência visual e de copy para as Tasks 11–13 do plano `docs/superpowers/pl
   Fraunces nos títulos e Inter no corpo, divisórias de 1px em vez de cartões empilhados.
 - Copy em pt-BR em todos os estados: padrão, carregando, erro, sucesso e vazio.
 - `/aceite` exige os dois checkboxes (Termos e Privacidade, versão `2026-11-17`) antes de liberar o app.
-- `/conta` separa senha, Google (status/vínculo) e sessões ativas, com confirmação explícita para excluir conta.
+- `/conta` separa e-mail/senha, Google (status/vínculo), **Seus dados** (nome, preferência de e-mail e exportação JSON), sessões ativas e zona sensível, com confirmação explícita para excluir conta.
 - O botão "Continuar com Google" só aparece quando `/api/auth/google/disponivel` retornar `disponivel: true`.
 - Acessibilidade: labels persistentes, `autocomplete`, `aria-live`, foco visível, alvos ≥44px e
   `prefers-reduced-motion`. Responsividade verificável em 360, 390, 768, 1440 e 1920 px.

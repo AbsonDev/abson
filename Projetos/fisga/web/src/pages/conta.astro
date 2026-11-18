@@ -17,10 +17,10 @@ import AuthLayout from '../layouts/AuthLayout.astro';
         <div class="progress" role="progressbar" aria-label="Carregando sua conta"><span></span></div>
       </div>
 
-      <div id="conta-load-error" hidden>
+      <div id="conta-load-error" role="alert" hidden>
         <header class="screen-head">
           <p class="eyebrow">Conta</p>
-          <h1 tabindex="-1">Não carregamos sua conta.</h1>
+          <h1 id="conta-load-error-titulo" tabindex="-1">Não carregamos sua conta.</h1>
           <p class="sub" id="conta-load-error-texto">
             Confira sua conexão e tente de novo. Se continuar, entre novamente.
           </p>
@@ -104,6 +104,73 @@ import AuthLayout from '../layouts/AuthLayout.astro';
           </div>
         </section>
 
+        <section class="acct-section" aria-labelledby="sec-dados">
+          <div class="acct-head">
+            <h2 id="sec-dados">Seus dados</h2>
+            <p>Corrija seu nome, escolha receber novidades e baixe uma cópia do que guardamos.</p>
+          </div>
+
+          <form id="form-dados" class="dados-form" novalidate>
+            <div class="acct-row">
+              <div class="row-main">
+                <div class="field">
+                  <label class="label" for="dados-nome">Nome</label>
+                  <input
+                    class="input"
+                    id="dados-nome"
+                    name="name"
+                    type="text"
+                    autocomplete="name"
+                    maxlength="80"
+                    aria-describedby="dados-nome-error"
+                  />
+                  <p class="field-error" id="dados-nome-error" role="alert" hidden>
+                    <svg class="od-icon od-icon--sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5"></path><path d="M12 16h.01"></path></svg>
+                    <span data-err-text></span>
+                  </p>
+                </div>
+                <p class="row-note">É o nome que aparece no seu diário. Deixe em branco para usar o e-mail.</p>
+              </div>
+            </div>
+
+            <div class="acct-row">
+              <div class="row-main">
+                <p class="row-title">Preferência de e-mail</p>
+                <div class="consent">
+                  <input type="checkbox" id="dados-novidades" />
+                  <div class="consent-body">
+                    <label class="consent-label" for="dados-novidades">
+                      Quero receber novidades e conteúdo do Fisga por e-mail.
+                    </label>
+                    <p class="row-note">Você pode desmarcar quando quiser. Avisos essenciais da conta continuam.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="dados-actions">
+              <button type="submit" class="btn btn-primary" id="dados-salvar">
+                <span class="spinner" hidden></span>
+                <span data-btn-label>Salvar alterações</span>
+              </button>
+              <button type="button" class="btn btn-ghost" id="dados-exportar">
+                <span class="spinner" hidden></span>
+                <span data-btn-label>Baixar meus dados (JSON)</span>
+              </button>
+            </div>
+
+            <p class="note note--success conta-feedback" id="dados-feedback" role="status" hidden>
+              <svg class="od-icon od-icon--md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="m8.5 12 2.5 2.5 4.5-5"></path></svg>
+              <span id="dados-feedback-texto"></span>
+            </p>
+
+            <p class="note note--error" id="dados-erro" role="alert" hidden>
+              <svg class="od-icon od-icon--md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5"></path><path d="M12 16h.01"></path></svg>
+              <span id="dados-erro-texto"></span>
+            </p>
+          </form>
+        </section>
+
         <section class="acct-section" aria-labelledby="sec-sessoes">
           <div class="acct-head">
             <h2 id="sec-sessoes" tabindex="-1">Sessões ativas</h2>
@@ -135,8 +202,8 @@ import AuthLayout from '../layouts/AuthLayout.astro';
           <div class="session-list" id="sessoes-lista"></div>
 
           <p class="empty" id="sessoes-vazio" hidden>
-            <strong>Nenhuma sessão ativa encontrada.</strong>
-            <span>Entre novamente para abrir o diário em outro dispositivo.</span>
+            <strong>Nenhuma outra sessão ativa.</strong>
+            <span>Só este dispositivo está conectado à sua conta.</span>
           </p>
 
           <div class="acct-actions">
@@ -184,7 +251,7 @@ import AuthLayout from '../layouts/AuthLayout.astro';
     <form id="form-senha" class="dialog-body" novalidate>
       <p class="eyebrow">Acesso</p>
       <h2 id="senha-titulo">Alterar senha</h2>
-      <p class="dialog-copy">
+      <p class="dialog-copy" id="senha-dica">
         Use de 10 a 128 caracteres. Não exigimos maiúscula, número ou símbolo.
       </p>
 
@@ -340,6 +407,26 @@ import AuthLayout from '../layouts/AuthLayout.astro';
     margin-top: var(--s4);
   }
 
+  .dados-form {
+    display: grid;
+    gap: var(--s3);
+  }
+
+  .dados-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s2);
+  }
+
+  #dados-nome {
+    max-width: 34rem;
+  }
+
+  #dados-feedback,
+  #dados-erro {
+    margin-top: 0;
+  }
+
   #google-indisponivel {
     margin-top: var(--s1);
   }
@@ -369,7 +456,9 @@ import AuthLayout from '../layouts/AuthLayout.astro';
 
   interface UsuarioConta {
     email: string;
+    nome?: string | null;
     nomeExibicao?: string;
+    aceitaNovidades?: boolean;
   }
 
   interface MeConta {
@@ -432,9 +521,21 @@ import AuthLayout from '../layouts/AuthLayout.astro';
   const contaEncerrada = porId<HTMLElement>('conta-encerrada');
   const contaEncerradaTitulo = porId<HTMLElement>('conta-encerrada-titulo');
 
+  const formDados = porId<HTMLFormElement>('form-dados');
+  const dadosNome = porId<HTMLInputElement>('dados-nome');
+  const dadosNomeErro = porId<HTMLElement>('dados-nome-error');
+  const dadosNovidades = porId<HTMLInputElement>('dados-novidades');
+  const dadosSalvar = porId<HTMLButtonElement>('dados-salvar');
+  const dadosExportar = porId<HTMLButtonElement>('dados-exportar');
+  const dadosFeedback = porId<HTMLElement>('dados-feedback');
+  const dadosFeedbackTexto = porId<HTMLElement>('dados-feedback-texto');
+  const dadosErro = porId<HTMLElement>('dados-erro');
+  const dadosErroTexto = porId<HTMLElement>('dados-erro-texto');
+
   const dialogSenha = porId<HTMLDialogElement>('dialog-senha');
   const formSenha = porId<HTMLFormElement>('form-senha');
   const senhaTitulo = porId<HTMLElement>('senha-titulo');
+  const senhaDica = porId<HTMLElement>('senha-dica');
   const campoSenhaAtual = porId<HTMLElement>('campo-senha-atual');
   const senhaAtual = porId<HTMLInputElement>('senha-atual');
   const novaSenha = porId<HTMLInputElement>('nova-senha');
@@ -472,6 +573,8 @@ import AuthLayout from '../layouts/AuthLayout.astro';
   let modoSair: ModoSair = 'atual';
   let redirecionando = false;
   let salvandoSenha = false;
+  let salvandoDados = false;
+  let exportandoDados = false;
   let saindo = false;
   let excluindo = false;
 
@@ -590,6 +693,44 @@ import AuthLayout from '../layouts/AuthLayout.astro';
     if (bloco) bloco.hidden = true;
   }
 
+  function limparFeedbackDados() {
+    if (dadosFeedback) dadosFeedback.hidden = true;
+    if (dadosErro) dadosErro.hidden = true;
+  }
+
+  function limparErroNomeDados() {
+    dadosNome?.removeAttribute('aria-invalid');
+    if (dadosNomeErro) dadosNomeErro.hidden = true;
+  }
+
+  function preencherDados(usuario: UsuarioConta) {
+    if (dadosNome) dadosNome.value = usuario.nome ?? '';
+    if (dadosNovidades) dadosNovidades.checked = usuario.aceitaNovidades === true;
+  }
+
+  function mostrarFeedbackDados(texto: string) {
+    if (!dadosFeedback || !dadosFeedbackTexto) return;
+    if (dadosErro) dadosErro.hidden = true;
+    dadosFeedbackTexto.textContent = texto;
+    dadosFeedback.hidden = false;
+  }
+
+  function mostrarErroDados(texto: string) {
+    if (!dadosErro || !dadosErroTexto) return;
+    if (dadosFeedback) dadosFeedback.hidden = true;
+    dadosErroTexto.textContent = texto;
+    dadosErro.hidden = false;
+  }
+
+  function erroNomeDados(mensagem: string) {
+    dadosNome?.setAttribute('aria-invalid', 'true');
+    dadosNome?.focus();
+    if (!dadosNomeErro) return;
+    const texto = dadosNomeErro.querySelector('[data-err-text]') as HTMLElement | null;
+    if (texto) texto.textContent = mensagem;
+    dadosNomeErro.hidden = false;
+  }
+
   function atualizarSenha() {
     if (!senhaValor || !senhaAcao || !campoSenhaAtual) return;
     senhaValor.textContent = temSenha
@@ -620,6 +761,7 @@ import AuthLayout from '../layouts/AuthLayout.astro';
     } catch (erro) {
       if (erro instanceof FalhaApi && erro.status === 401) return;
       googleAcao.hidden = true;
+      if (googleIndisponivel) googleIndisponivel.hidden = false;
     }
   }
 
@@ -780,6 +922,8 @@ import AuthLayout from '../layouts/AuthLayout.astro';
     if (senhaFeedback) senhaFeedback.hidden = true;
     if (senhaFeedbackTexto) senhaFeedbackTexto.textContent = '';
     if (aviso) aviso.hidden = true;
+    limparFeedbackDados();
+    limparErroNomeDados();
   }
 
   async function carregarConta() {
@@ -809,6 +953,7 @@ import AuthLayout from '../layouts/AuthLayout.astro';
       temSenha = dados.temSenha === true;
       googleConectado = dados.googleConectado === true;
       if (email) email.textContent = dados.usuario.email;
+      preencherDados(dados.usuario);
       atualizarSenha();
       atualizarGoogle();
 
@@ -827,6 +972,7 @@ import AuthLayout from '../layouts/AuthLayout.astro';
             : 'Não foi possível carregar sua conta. Confira sua conexão e tente novamente.';
       }
       falhaCarregamento.hidden = false;
+      porId<HTMLElement>('conta-load-error-titulo')?.focus();
     }
   }
 
@@ -890,12 +1036,35 @@ import AuthLayout from '../layouts/AuthLayout.astro';
     window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
   }
 
+  function resetarRevealSenha() {
+    document.querySelectorAll<HTMLButtonElement>('#dialog-senha [data-reveal]').forEach((botao) => {
+      const input = document.getElementById(botao.dataset.reveal ?? '') as HTMLInputElement | null;
+      if (input) input.type = 'password';
+      botao.setAttribute('aria-pressed', 'false');
+      botao.setAttribute('aria-label', 'Mostrar senha');
+      const eye = botao.querySelector('[data-icon="eye"]') as HTMLElement | null;
+      const eyeOff = botao.querySelector('[data-icon="eye-off"]') as HTMLElement | null;
+      if (eye) eye.style.display = '';
+      if (eyeOff) eyeOff.style.display = 'none';
+    });
+  }
+
+  function atualizarDicaSenha() {
+    if (!senhaDica) return;
+    senhaDica.textContent =
+      modoSenha === 'alterar'
+        ? 'Informe a senha atual e escolha uma nova, de 10 a 128 caracteres. Não exigimos maiúscula, número ou símbolo.'
+        : 'Use de 10 a 128 caracteres. Não exigimos maiúscula, número ou símbolo.';
+  }
+
   function abrirDialogoSenha() {
     if (!dialogSenha || !senhaTitulo || !campoSenhaAtual) return;
 
     modoSenha = temSenha ? 'alterar' : 'criar';
     senhaTitulo.textContent = modoSenha === 'alterar' ? 'Alterar senha' : 'Criar uma senha';
+    atualizarDicaSenha();
     campoSenhaAtual.hidden = modoSenha === 'criar';
+    resetarRevealSenha();
     if (senhaAtual) senhaAtual.value = '';
     if (novaSenha) novaSenha.value = '';
     if (confirmarSenha) confirmarSenha.value = '';
@@ -974,6 +1143,16 @@ import AuthLayout from '../layouts/AuthLayout.astro';
     } catch (erro) {
       if (erro instanceof FalhaApi && erro.status !== 401) {
         if (erro.codigo === 'senha_atual_incorreta') {
+          // Outra aba pode ter criado a senha primeiro (ou uma API antiga não
+          // informou temSenha). Sem trocar de modo, o campo atual ficaria
+          // escondido e o erro pareceria um diálogo travado.
+          if (modoSenha === 'criar') {
+            modoSenha = 'alterar';
+            temSenha = true;
+            if (senhaTitulo) senhaTitulo.textContent = 'Alterar senha';
+            atualizarDicaSenha();
+            atualizarSenha();
+          }
           erroCampo('senha-atual', 'A senha atual está incorreta.');
         } else if (erro.codigo === 'senha_curta') {
           erroCampo('nova-senha', 'Use pelo menos 10 caracteres.');
@@ -991,6 +1170,104 @@ import AuthLayout from '../layouts/AuthLayout.astro';
     }
   });
 
+  formDados?.addEventListener('submit', async (evento) => {
+    evento.preventDefault();
+    if (salvandoDados) return;
+
+    limparFeedbackDados();
+    limparErroNomeDados();
+
+    const nome = dadosNome?.value.trim() ?? '';
+    if (nome.length > 80) {
+      erroNomeDados('Use até 80 caracteres.');
+      return;
+    }
+
+    salvandoDados = true;
+    setLoading(dadosSalvar, true, 'Salvando…');
+
+    try {
+      const { dados } = await pedir<UsuarioConta>('/api/auth/perfil', {
+        metodo: 'PATCH',
+        corpo: {
+          nome: nome || null,
+          aceitaNovidades: dadosNovidades?.checked === true
+        }
+      });
+
+      if (dados) {
+        if (dadosNome) dadosNome.value = dados.nome ?? '';
+        if (dadosNovidades) dadosNovidades.checked = dados.aceitaNovidades === true;
+      }
+      mostrarFeedbackDados('Dados salvos.');
+    } catch (erro) {
+      if (erro instanceof FalhaApi && erro.status !== 401) {
+        if (erro.codigo === 'nome_longo') {
+          erroNomeDados('Use até 80 caracteres.');
+        } else {
+          mostrarErroDados(erro.message || 'Não foi possível salvar seus dados. Tente novamente.');
+        }
+      }
+    } finally {
+      salvandoDados = false;
+      setLoading(dadosSalvar, false);
+    }
+  });
+
+  dadosExportar?.addEventListener('click', async () => {
+    if (exportandoDados) return;
+
+    limparFeedbackDados();
+    exportandoDados = true;
+    setLoading(dadosExportar, true, 'Preparando…');
+
+    try {
+      const resposta = await fetch(`${API}/api/conta/exportar`, {
+        credentials: 'include',
+        headers: { Accept: 'application/json' }
+      });
+
+      if (resposta.status === 401) {
+        irParaEntrar();
+        return;
+      }
+
+      if (!resposta.ok) {
+        let mensagem = mensagemDoStatus(resposta.status);
+        try {
+          const dados = (await resposta.json()) as Record<string, unknown>;
+          if (typeof dados?.detalhe === 'string') mensagem = dados.detalhe;
+        } catch {
+          // resposta sem JSON: mantém a mensagem por status
+        }
+        mostrarErroDados(mensagem);
+        return;
+      }
+
+      const arquivo = await resposta.blob();
+      const disposicao = resposta.headers.get('Content-Disposition') ?? '';
+      const encontrado = /filename\*?=(?:UTF-8''|")?([^";]+)/i.exec(disposicao);
+      const nomeArquivo =
+        encontrado?.[1]?.trim() ||
+        `fisga-conta-${new Date().toISOString().slice(0, 10).replaceAll('-', '')}.json`;
+
+      const url = URL.createObjectURL(arquivo);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = nomeArquivo;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      mostrarFeedbackDados('Download iniciado. O arquivo JSON deve aparecer na sua pasta de downloads.');
+    } catch {
+      mostrarErroDados(MENSAGEM_REDE);
+    } finally {
+      exportandoDados = false;
+      setLoading(dadosExportar, false);
+    }
+  });
+
   function abrirDialogoSair(modo: ModoSair) {
     if (!dialogSair || !sairTitulo || !sairCopia || !sairConfirmar) return;
 
@@ -1002,7 +1279,11 @@ import AuthLayout from '../layouts/AuthLayout.astro';
         ? 'Você vai encerrar a sessão deste dispositivo. Para voltar, será preciso entrar novamente.'
         : 'Todos os navegadores e aparelhos conectados serão desconectados. Cada um vai precisar entrar novamente.';
     const label = sairConfirmar.querySelector('[data-btn-label]') as HTMLElement | null;
-    if (label) label.textContent = modo === 'atual' ? 'Sair' : 'Sair de todos';
+    const rotulo = modo === 'atual' ? 'Sair' : 'Sair de todos';
+    if (label) label.textContent = rotulo;
+    // O setLoading restaura o rótulo a partir daqui; sem atualizar junto com o
+    // modo, uma falha anterior poderia deixar "Sair de todos" em "Sair".
+    sairConfirmar.dataset.idleLabel = rotulo;
     if (sairErro) sairErro.hidden = true;
 
     dialogSair.showModal();
