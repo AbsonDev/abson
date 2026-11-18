@@ -30,15 +30,47 @@ public sealed class CadastroDeUsuario(
         CancellationToken ct = default)
     {
         var existente = await repositorio.ObterPorEmailAsync(email, ct);
-        if (existente is not null)
+        if (existente is null)
         {
+            // Mesma transação do cadastro com senha, sem senha: cria o Usuario de
+            // domínio e a ApplicationUser com o mesmo Id, refletindo emailVerificado
+            // nos dois lados.
+            return await CriarTransacionalAsync(email, nome, emailVerificado, senha: null, ct);
+        }
+
+        if (!emailVerificado)
+        {
+            // Nunca rebaixa o estado de verificação de uma conta já existente.
             return existente;
         }
 
-        // Mesma transação do cadastro com senha, sem senha: cria o Usuario de
-        // domínio e a ApplicationUser com o mesmo Id, refletindo emailVerificado
-        // nos dois lados.
-        return await CriarTransacionalAsync(email, nome, emailVerificado, senha: null, ct);
+        // Usuário legado ou conta de senha ainda não confirmada: o link mágico provou
+        // a posse do e-mail, então os DOIS lados precisam refletir isso.
+        existente.VerificarEmail(relogio.Agora);
+
+        var conta = await usuarios.FindByIdAsync(existente.Id.ToString());
+        if (conta is null)
+        {
+            // Sem ApplicationUser (conta de link mágico antiga): cria com o mesmo Id,
+            // reaproveitando a transação de provisionamento.
+            return await CriarTransacionalAsync(
+                email, nome, emailVerificado, senha: null, ct, usuarioExistente: existente);
+        }
+
+        if (!conta.EmailConfirmed)
+        {
+            conta.EmailConfirmed = true;
+            var resultado = await usuarios.UpdateAsync(conta);
+            if (!resultado.Succeeded)
+            {
+                throw new DomainException(
+                    "falha_ao_confirmar_email",
+                    resultado.Errors.FirstOrDefault()?.Description ?? "Não foi possível confirmar o e-mail.");
+            }
+        }
+
+        await unidade.SalvarAsync(ct);
+        return existente;
     }
 
     public async Task<Usuario> CriarComSenhaAsync(
@@ -57,32 +89,40 @@ public sealed class CadastroDeUsuario(
     /// <summary>
     /// Cria o <see cref="Usuario"/> e a <see cref="ApplicationUser"/> com o mesmo
     /// Id em uma única transação. Quando <paramref name="senha"/> é nulo a conta é
-    /// criada sem credencial de senha (link mágico / login externo).
+    /// criada sem credencial de senha (link mágico / login externo). Se
+    /// <paramref name="usuarioExistente"/> é informado, o domínio já está persistido
+    /// e apenas a ApplicationUser faltante é criada — com o mesmo Id e já com o
+    /// estado de verificação pedido.
     /// </summary>
     private async Task<Usuario> CriarTransacionalAsync(
         Email email,
         string? nome,
         bool emailVerificado,
         string? senha,
-        CancellationToken ct)
+        CancellationToken ct,
+        Usuario? usuarioExistente = null)
     {
         await using var transacao = await db.Database.BeginTransactionAsync(ct);
 
-        Usuario? usuario = null;
+        var criouUsuario = usuarioExistente is null;
+        Usuario? usuario = usuarioExistente;
         try
         {
-            var agora = relogio.Agora;
-            usuario = Usuario.Criar(email, nome, agora);
-            if (emailVerificado)
+            if (criouUsuario)
             {
-                usuario.VerificarEmail(agora);
-            }
+                var agora = relogio.Agora;
+                usuario = Usuario.Criar(email, nome, agora);
+                if (emailVerificado)
+                {
+                    usuario.VerificarEmail(agora);
+                }
 
-            repositorio.Adicionar(usuario);
+                repositorio.Adicionar(usuario);
+            }
 
             var conta = new ApplicationUser
             {
-                Id = usuario.Id,
+                Id = usuario!.Id,
                 Email = email.Valor,
                 UserName = email.Valor,
                 EmailConfirmed = emailVerificado
@@ -100,16 +140,19 @@ public sealed class CadastroDeUsuario(
 
             await unidade.SalvarAsync(ct);
 
-            var pendentes = usuario.Eventos.ToList();
-            await eventos.PublicarAsync(pendentes, ct);
-            usuario.LimparEventos();
+            if (criouUsuario)
+            {
+                var pendentes = usuario.Eventos.ToList();
+                await eventos.PublicarAsync(pendentes, ct);
+                usuario.LimparEventos();
+            }
 
             await transacao.CommitAsync(ct);
             return usuario;
         }
         catch
         {
-            if (usuario is not null)
+            if (criouUsuario && usuario is not null)
             {
                 // Remove o usuário de domínio do contexto (entidade em estado Added
                 // vira Detached), evitando que reste um rastro após o rollback.

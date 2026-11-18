@@ -163,6 +163,75 @@ public sealed class CadastroDeUsuarioTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task GarantirUsuarioAsync_confirma_email_de_conta_de_senha_existente()
+    {
+        var email = $"{Guid.NewGuid():N}@exemplo.com";
+        var usuario = await _cadastro.CriarComSenhaAsync(email, "Pescador", "senha-segura-123");
+
+        var contaAntes = await _usuarios.FindByIdAsync(usuario.Id.ToString());
+        Assert.NotNull(contaAntes);
+        Assert.False(contaAntes!.EmailConfirmed);
+        Assert.Null(usuario.EmailVerificadoEm);
+
+        var garantido = await _cadastro.GarantirUsuarioAsync(
+            Email.Criar(email), null, emailVerificado: true);
+
+        Assert.Equal(usuario.Id, garantido.Id);
+        Assert.NotNull(garantido.EmailVerificadoEm);
+
+        var contaDepois = await _usuarios.FindByIdAsync(usuario.Id.ToString());
+        Assert.NotNull(contaDepois);
+        Assert.True(contaDepois!.EmailConfirmed);
+        Assert.True(await _usuarios.CheckPasswordAsync(contaDepois, "senha-segura-123"),
+            "A credencial de senha deve ser preservada.");
+    }
+
+    [Fact]
+    public async Task GarantirUsuarioAsync_idempotente_nao_duplica_nem_rebaixa_verificacao()
+    {
+        var email = $"{Guid.NewGuid():N}@exemplo.com";
+        var usuario = await _cadastro.CriarComSenhaAsync(email, "Pescador", "senha-segura-123");
+
+        var primeiro = await _cadastro.GarantirUsuarioAsync(Email.Criar(email), null, emailVerificado: true);
+        var segundo = await _cadastro.GarantirUsuarioAsync(Email.Criar(email), null, emailVerificado: true);
+        var terceiro = await _cadastro.GarantirUsuarioAsync(Email.Criar(email), null, emailVerificado: false);
+
+        Assert.Equal(usuario.Id, primeiro.Id);
+        Assert.Equal(usuario.Id, segundo.Id);
+        Assert.Equal(usuario.Id, terceiro.Id);
+        Assert.Equal(1, await _db.Usuarios.CountAsync(u => u.Email == Email.Criar(email)));
+        Assert.Equal(1, await _db.Users.CountAsync(u => u.Email == email));
+
+        var conta = await _usuarios.FindByIdAsync(usuario.Id.ToString());
+        Assert.NotNull(conta);
+        Assert.True(conta!.EmailConfirmed, "Chamar com emailVerificado: false não pode rebaixar a conta.");
+        Assert.NotNull(terceiro.EmailVerificadoEm);
+    }
+
+    [Fact]
+    public async Task GarantirUsuarioAsync_cria_application_user_faltante_para_usuario_legado()
+    {
+        var email = Email.Criar($"{Guid.NewGuid():N}@exemplo.com");
+        var legado = Usuario.Criar(email, "Pescador", DateTimeOffset.UtcNow);
+        _db.Usuarios.Add(legado);
+        await _db.SaveChangesAsync();
+
+        Assert.Null(await _usuarios.FindByIdAsync(legado.Id.ToString()));
+
+        var garantido = await _cadastro.GarantirUsuarioAsync(email, null, emailVerificado: true);
+
+        Assert.Equal(legado.Id, garantido.Id);
+        var conta = await _usuarios.FindByIdAsync(legado.Id.ToString());
+        Assert.NotNull(conta);
+        Assert.Equal(legado.Id, conta!.Id);
+        Assert.Equal(email.Valor, conta.Email);
+        Assert.True(conta.EmailConfirmed);
+        Assert.Null(conta.PasswordHash);
+        Assert.Equal(1, await _db.Usuarios.CountAsync(u => u.Email == email));
+        Assert.Equal(1, await _db.Users.CountAsync(u => u.Email == email.Valor));
+    }
+
+    [Fact]
     public async Task GarantirApplicationUserAsync_cria_conta_para_usuario_sem_senha()
     {
         var usuario = await _cadastro.GarantirUsuarioAsync(

@@ -103,6 +103,38 @@ public sealed class LinkMagicoIdentityTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Link_magico_confirma_conta_de_senha_e_desbloqueia_login_por_senha()
+    {
+        var email = $"{Guid.NewGuid():N}@exemplo.com";
+        const string senha = "senha-segura-123";
+        var cadastro = _scope.ServiceProvider.GetRequiredService<ICadastroDeUsuario>();
+        var usuario = await cadastro.CriarComSenhaAsync(email, "Pescador", senha);
+
+        var contaAntes = await _db.Users.AsNoTracking().SingleAsync(u => u.Id == usuario.Id);
+        Assert.False(contaAntes.EmailConfirmed);
+
+        var link = await SolicitarLinkAsync(email);
+        using var cliente = CriarClienteSemRedirect();
+        var resposta = await ConfirmarAsync(cliente, link);
+
+        Assert.Equal(HttpStatusCode.Found, resposta.StatusCode);
+        Assert.True(TemCookieDeAutenticacao(resposta));
+
+        var usuarioDepois = await _db.Usuarios.AsNoTracking().SingleAsync(u => u.Id == usuario.Id);
+        Assert.NotNull(usuarioDepois.EmailVerificadoEm);
+        var contaDepois = await _db.Users.AsNoTracking().SingleAsync(u => u.Id == usuario.Id);
+        Assert.True(contaDepois.EmailConfirmed);
+        Assert.NotNull(contaDepois.PasswordHash);
+
+        // RequireConfirmedEmail = true: sem a confirmação acima este login ficaria bloqueado.
+        using var clienteSenha = _fixture.Factory.CreateClient();
+        var login = await clienteSenha.PostAsJsonAsync("/api/auth/entrar", new { email, senha });
+        var corpo = await login.Content.ReadFromJsonAsync<EntrarResponse>();
+        Assert.NotNull(corpo);
+        Assert.True(corpo!.Autenticado);
+    }
+
+    [Fact]
     public async Task Segundo_acesso_redireciona_para_estado_ok()
     {
         var email = $"{Guid.NewGuid():N}@exemplo.com";

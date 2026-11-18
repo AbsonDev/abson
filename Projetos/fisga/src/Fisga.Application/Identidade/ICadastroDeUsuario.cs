@@ -13,8 +13,10 @@ public interface ICadastroDeUsuario
     /// Garante o <see cref="Usuario"/> e a respectiva conta da Identity com o mesmo
     /// Id, criando ambos quando ainda não existem, em uma única transação.
     /// <paramref name="emailVerificado"/> marca <c>Usuario.EmailVerificadoEm</c> e
-    /// <c>ApplicationUser.EmailConfirmed</c> no momento da criação (ex.: link mágico
-    /// ou login externo do Google). A conta é criada sem senha.
+    /// <c>ApplicationUser.EmailConfirmed</c> — tanto na criação quanto quando o
+    /// e-mail já pertence a uma conta existente ainda não confirmada (ex.: link
+    /// mágico ou login externo do Google). Nunca rebaixa uma conta já confirmada.
+    /// A conta é criada sem senha.
     /// </summary>
     Task<Usuario> GarantirUsuarioAsync(
         Email email,
