@@ -35,27 +35,28 @@ dos bugs conhecidos; a camada serve para o humano gastar atenção no que só hu
 |---|---|---|---|---|
 | CI | `gate` (build, format, 250 testes, `astro check`, Playwright) | implementado | sim, único required check | R$ 0 |
 | Dependências | Dependabot | implementado | não (propõe PRs) | R$ 0 |
-| Supply chain | `dependency-review-action@v5` | planejado | sim, quando promovido | R$ 0 |
-| Segurança estática | CodeQL (`csharp`, `javascript-typescript`, `actions`) | planejado | sim, via regra `code_scanning` | R$ 0 (repo público) |
-| Qualidade inline | reviewdog | planejado | não | R$ 0 |
-| Revisor LLM | PR-Agent + OpenCode Go | planejado | não | franquia Go |
-| Agente | OpenCode `/oc` | planejado | não (sob demanda) | franquia Go |
+| Supply chain | `dependency-review-action@v5` | implementado, advisory | sim, quando promovido | R$ 0 |
+| Segurança estática | CodeQL (`csharp`, `javascript-typescript`, `actions`) | em PR (#22) | sim, via regra `code_scanning` | R$ 0 (repo público) |
+| Qualidade inline | reviewdog | em PR (#23) | não | R$ 0 |
+| Revisor LLM | PR-Agent CLI + OpenCode Go | em PR (#27), validado | não | franquia Go |
+| Agente | OpenCode `/oc` | implementado | não (sob demanda) | franquia Go |
 
-Hoje não existe nenhum revisor automático de diff. O `gate` valida que o código compila, formata e
-passa nos testes; ele não lê a intenção da mudança.
+O `gate` valida que o código compila, formata e passa nos testes; ele não lê a intenção da mudança.
+O revisor LLM cobre isso. dependency-review e `/oc` já estão na `main`; CodeQL, reviewdog e
+PR-Agent aguardam merge. Nenhuma camada nova é required check até passar pelo ciclo de métricas.
 
 ## Fluxo de um PR
 
 ```text
 PR aberto ou atualizado
 ├── fisga-pipeline / gate ........ bloqueia (build, format, testes, astro check, Playwright)
-├── dependency-review ............ bloqueia CVE high+ e licença inválida (planejado)
-├── codeql (3 linguagens) ........ bloqueia alerta high+ via ruleset (planejado)
-├── reviewdog .................... advisory: linter inline (planejado)
-└── pr-review (PR-Agent) ......... advisory: julgamento do diff (planejado)
+├── dependency-review ............ bloqueia CVE high+ (implementado, advisory até promover)
+├── codeql (3 linguagens) ........ bloqueia alerta high+ via ruleset (em PR)
+├── reviewdog .................... advisory: linter inline (em PR)
+└── pr-review (PR-Agent) ......... advisory: julgamento do diff (em PR)
         │
         ├── humano revisa e decide
-        └── /oc sob demanda ...... explica, corrige, implementa (planejado)
+        └── /oc sob demanda ...... explica, corrige, implementa (implementado)
 
 merge em main
 └── fisga-deploy ................. só com CI verde; ver ci-cd.md
@@ -101,6 +102,10 @@ ensina o time a ignorar a ferramenta.
 
 - **Quando roda:** `pull_request`.
 - **Onde:** `.github/workflows/dependency-review.yml` (a criar).
+- **Pré-requisito:** o dependency graph do repositório precisa estar habilitado. Sem ele, a API de
+  dependency review responde `403 Forbidden` e o job falha em segundos. O repo estava com o grafo
+  desabilitado; habilitar em Settings → Code security, ou
+  `gh api -X PUT repos/AbsonDev/abson/vulnerability-alerts`.
 - **Configuração canônica:**
 
 ```yaml
@@ -119,6 +124,8 @@ ensina o time a ignorar a ferramenta.
   quando `comment-summary-in-pr` está ativo.
 - **Relação com Dependabot:** Dependabot **propõe** upgrade; dependency-review **impede a entrada**
   de uma versão vulnerável que alguém subiu manualmente.
+- **Validação (18/11/2026):** PR descartável com `lodash@4.17.20` falhou como esperado, apontando
+  `GHSA-35jh-r3h4-6jhm` e `GHSA-r5fr-rjxr-66jc` (high). PR sem mudança de dependência passa.
 
 ### CodeQL
 
@@ -135,6 +142,12 @@ ensina o time a ignorar a ferramenta.
   Nunca `paths-ignore` no gatilho com essa regra ativa.
 - **Como ler:** `Security and quality` → Code scanning, ou
   `gh api "repos/AbsonDev/abson/code-scanning/alerts?state=open"`.
+- **Pré-requisito de C#:** o job precisa de `actions/setup-dotnet` com
+  `global-json-file: Projetos/fisga/global.json` antes do `init`; sem o SDK 10 o restore do
+  `build-mode: none` falha.
+- **Validação (18/11/2026):** as três linguagens passaram — `actions` 36 s,
+  `javascript-typescript` 1m06s, `csharp` 3m34s. O check `CodeQL` também aparece verde quando o PR
+  não introduz alerta novo.
 
 ### reviewdog
 
@@ -151,37 +164,56 @@ ensina o time a ignorar a ferramenta.
 
 - **Quando roda:** `pull_request` (`opened`, `reopened`, `ready_for_review`) e comandos em
   `issue_comment`.
-- **Onde:** `.github/workflows/pr-review.yml` e `.pr_agent.toml` (a criar).
-- **Modelo:** OpenCode Go via endpoint OpenAI-compatible.
-- **Configuração canônica do provider:**
+- **Onde:** `.github/workflows/pr-review.yml` (a criar).
+- **Como roda:** PR-Agent **CLI**, não a action Docker. A imagem publicada mais nova do PR-Agent
+  (0.50.0, build de 08/11) fixa LiteLLM 1.105.1, que não tem o provider `opencode_go`; o provider e
+  a derivação do `x-opencode-session` entraram no LiteLLM 1.109.1, que o `main` do PR-Agent só passou
+  a fixar em 14/11. O job instala o commit pinado com `pip install "pr-agent[github] @ git+..."` e
+  usa o provider nativo.
+- **Configuração canônica (env do job):**
 
 ```yaml
 env:
-  OPENAI.KEY: ${{ secrets.OPENCODE_API_KEY }}
-  OPENAI.API_BASE: https://opencode.ai/inference/go/v1
-  config.model: openai/deepseek-v4.1-flash
-  config.custom_model_max_tokens: "128000"
-  config.fallback_models: '[]'
+  GITHUB__USER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+  CONFIG__MODEL: opencode_go/deepseek-v4.1-flash
+  CONFIG__FALLBACK_MODELS: '[]'
+  CONFIG__CUSTOM_MODEL_MAX_TOKENS: '128000'
+  CONFIG__RESTRICTED_MODE: 'true'
+  CONFIG__RESPONSE_LANGUAGE: pt-BR
+  CONFIG__REASONING_EFFORT: none
+  LITELLM__ADD_SESSION_ID_TO_REQUESTS: 'true'
 ```
 
-- **Guardrails:** `restricted_mode = true` (não empurra código), `response_language = "pt-BR"`,
+- **Session id obrigatório:** o Go rejeita request sem `x-opencode-session` (`MissingSessionID`).
+  Com o provider nativo e `add_session_id_to_requests`, o LiteLLM deriva o header do
+  `litellm_session_id` que o PR-Agent envia por PR. Com o prefixo `openai/` isso não acontece.
+- **Por que `fallback_models=[]`:** o default é `gpt-6-luna`, que exigiria uma chave OpenAI e
+  falharia o retry.
+- **Por que `reasoning_effort = none`:** em PRs grandes o `deepseek-v4.1-flash` pode streamar
+  reasoning por mais de 10 minutos e estourar o timeout do LiteLLM. O próprio PR-Agent documenta
+  esse comportamento e recomenda desligar o reasoning ou trocar de modelo.
+- **Guardrails:** `restricted_mode = true` (não empurra código), `response_language = pt-BR`,
   `num_max_findings = 6`, `require_tests_review = false` (o gate já roda 250 testes).
-- **Comandos:** `/review`, `/describe`, `/ask`, `/improve`.
-- **Risco conhecido:** o Go é otimizado para clientes de coding agent e validou OpenCode, Claude
-  Code, Codex, Hermes, Pi, ZCode, jcode e Kilo. PR-Agent via LiteLLM não está na lista; o
-  user-agent e o header `x-opencode-session` não são os nativos. Se o gateway recusar, o plano B é
-  usar o OpenCode Action como revisor.
+- **Comandos:** `/review`, `/describe`, `/ask`, `/improve`, com gate de `author_association` em
+  `issue_comment`.
 - **Como ler:** comentário do bot com achados numerados. `/ask <pergunta>` responde no thread.
+- **Validação (18/11/2026):** run de 1m12s publicou o review em pt-BR com 4 achados inline e o log
+  confirmou `Adding reasoning_effort with value none to model opencode_go/deepseek-v4.1-flash`.
+- **Quando houver release com LiteLLM >= 1.109.1:** voltar para a action Docker pinada por digest,
+  que é mais simples e tem attestation. Até lá, o CLI é o caminho.
 
 ### `/oc`
 
 - **Quando roda:** comentário `/oc` ou `/opencode` em PR, ou comentário em linha do diff.
-- **Onde:** `.github/workflows/oc.yml` (a criar).
+- **Onde:** `.github/workflows/oc.yml` (implementado).
 - **Modelo:** `opencode-go/deepseek-v4.1-flash`, `variant: max`.
 - **Gate obrigatório:** só roda para `author_association` em `OWNER`, `MEMBER` ou `COLLABORATOR`.
   Sem isso, qualquer pessoa em repo público queima a franquia.
 - **O que faz:** explica o diff, corrige, implementa, responde em linha. Pode commitar no branch do
   PR — por isso `contents: write` e uso sob demanda, nunca automático.
+- **Validação:** o workflow só passa a valer depois do merge, porque `issue_comment` usa sempre o
+  workflow da branch padrão. Testar com `/oc` em um PR interno após o merge.
 
 ## Triagem
 
@@ -193,7 +225,8 @@ env:
 | CodeQL "analysis not found" no merge | confirmar que o workflow rodou no PR; não filtrar caminho no gatilho |
 | reviewdog vermelho | aplicar a sugestão ou ignorar; não é required |
 | PR-Agent com achado ruim | responder no thread ou ignorar; usar `/ask` para pedir contexto; `/review` para reavaliar |
-| PR-Agent não comentou | conferir secret `OPENCODE_API_KEY`, `OPENAI.API_BASE` e o log do container |
+| PR-Agent não comentou | conferir secret `OPENCODE_API_KEY`, `CONFIG__MODEL=opencode_go/deepseek-v4.1-flash` e o log do job (`MissingSessionID` = header ausente) |
+| PR-Agent falhou no `pip install` | confirmar o extra `[github]` e o commit pinado do PR-Agent |
 | `/oc` não rodou | conferir `author_association` do comentário e se o workflow existe no branch padrão |
 | `/oc` alterou código errado | reverter o commit no branch e responder no thread com a correção |
 
@@ -253,7 +286,8 @@ Push que altera `.github/workflows/**` exige token com escopo `workflow`. O `gh`
 
 - Repo público: runners padrão gratuitos e CodeQL sem custo.
 - dependency-review e reviewdog: R$ 0.
-- PR-Agent: uma chamada por comando, centavos dentro da franquia Go.
+- PR-Agent: `pip install` do commit pinado (~40 s) + uma chamada por comando, centavos dentro da
+  franquia Go.
 - `/oc`: 10–50 chamadas por execução; o gasto real aparece no Console do Go.
 
 ## Métricas e promoção
@@ -288,12 +322,14 @@ Rollback é deletar o workflow. Nenhuma camada exige mudança no `fisga-pipeline
 | dependency-review | deletar o workflow; remover required check do ruleset |
 | CodeQL | deletar o workflow; remover a regra `code_scanning`; alertas ficam no histórico |
 | reviewdog | deletar o workflow |
-| PR-Agent | deletar workflow e `.pr_agent.toml`; revogar a chave se não for usar no `/oc` |
+| PR-Agent | deletar `.github/workflows/pr-review.yml`; revogar a chave se não for usar no `/oc` |
 | `/oc` | deletar o workflow |
 
 Pendências conhecidas:
 
-- Validar PR-Agent + OpenCode Go (compatibilidade LiteLLM) num PR de smoke antes de promover.
+- Testar `/oc` em um PR interno depois do merge; `issue_comment` só usa o workflow da branch padrão.
+- Voltar o PR-Agent para a action Docker quando sair release com LiteLLM >= 1.109.1; aí pinar a
+  imagem por digest e remover o `pip install`.
 - Validar o parser de `astro check` no reviewdog; se não encaixar, ficar só com `actionlint`.
 - Decidir se o CodeQL roda em PR desde o início ou só depois da triagem da linha de base.
 - Fase B do CI/CD (GHCR, E2E real, preview deployments) continua em [ci-cd.md](./ci-cd.md).
