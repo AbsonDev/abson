@@ -96,6 +96,42 @@ export async function exigirConsentimento(
   return true;
 }
 
+/**
+ * Apaga do aparelho o que é privado antes de encerrar a sessão: todos os
+ * caches `fisga-*` (menos os tiles do mapa, que são conteúdo público) e as
+ * chaves `fisga:*` do localStorage (rascunho, locais, trilhas e pontos).
+ *
+ * Nunca rejeita: Cache Storage ou localStorage indisponíveis não podem
+ * impedir o logout. Outras chaves do mesmo domínio são preservadas.
+ */
+export async function limparCachePrivado(): Promise<void> {
+  if (typeof window === 'undefined') return;
+
+  try {
+    if ('caches' in window) {
+      const chaves = await caches.keys();
+      await Promise.all(
+        chaves
+          .filter((chave) => chave.startsWith('fisga-') && chave !== 'fisga-tiles-v1')
+          .map((chave) => caches.delete(chave))
+      );
+    }
+  } catch {
+    // Sem Cache Storage: segue para o localStorage.
+  }
+
+  try {
+    const chaves: string[] = [];
+    for (let indice = 0; indice < localStorage.length; indice += 1) {
+      const chave = localStorage.key(indice);
+      if (chave?.startsWith('fisga:')) chaves.push(chave);
+    }
+    for (const chave of chaves) localStorage.removeItem(chave);
+  } catch {
+    // Sem localStorage (modo privado): não há o que limpar.
+  }
+}
+
 /** POST JSON com cookie de autenticação e leitura tolerante de problem+json. */
 export async function postJson<T = Record<string, unknown>>(
   caminho: string,

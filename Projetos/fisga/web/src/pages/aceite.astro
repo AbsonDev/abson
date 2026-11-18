@@ -59,7 +59,7 @@ import AuthLayout from '../layouts/AuthLayout.astro';
 </AuthLayout>
 
 <script>
-  import { apiBase, destinoSeguro, postJson } from '../lib/auth';
+  import { apiBase, destinoSeguro, limparCachePrivado, postJson } from '../lib/auth';
 
   const API = apiBase();
   const TERMOS_FALLBACK = '2026-11-17';
@@ -175,6 +175,7 @@ import AuthLayout from '../layouts/AuthLayout.astro';
         credentials: 'include'
       });
       if (resposta.ok || resposta.status === 401) {
+        await limparCachePrivado();
         window.location.replace('/entrar?saiu=1');
         return;
       }

@@ -443,7 +443,7 @@ import AuthLayout from '../layouts/AuthLayout.astro';
 </style>
 
 <script>
-  import { apiBase } from '../lib/auth';
+  import { apiBase, limparCachePrivado } from '../lib/auth';
 
   const API = apiBase();
   const URL_ENTRAR = '/entrar?voltar=/conta';
@@ -1302,6 +1302,7 @@ import AuthLayout from '../layouts/AuthLayout.astro';
       await pedir(modoSair === 'atual' ? '/api/auth/sair' : '/api/auth/sair-de-todos', {
         metodo: 'POST'
       });
+      await limparCachePrivado();
       window.location.assign('/entrar?saiu=1');
     } catch (erro) {
       if (erro instanceof FalhaApi && erro.status !== 401 && sairErro && sairErroTexto) {
