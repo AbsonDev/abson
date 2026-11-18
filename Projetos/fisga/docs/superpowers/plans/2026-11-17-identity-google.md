@@ -533,37 +533,49 @@ git commit -m "feat(auth): add Google sign-in and account linking"
 ### Task 9: Conectar Google em `/conta`
 
 **Files:**
+- Create: `src/Fisga.Infrastructure/Identity/ConexaoGoogleService.cs`
 - Modify: `src/Fisga.Api/Endpoints/AuthEndpoints.cs`
-- Modify: `src/Fisga.Api/Endpoints/ContaEndpoints.cs`
 - Modify: `src/Fisga.Api/Contracts/AuthContracts.cs`
+- Modify: `src/Fisga.Api/Program.cs` (registro do serviço)
 - Create: `tests/Fisga.Api.Tests/ConectarGoogleTests.cs`
 
 **Interfaces:**
-- Produces: `GET /api/auth/google/conectar`, `GET /api/auth/google/conectar/concluir`, `GoogleVinculadoResponse`.
-- Consumes: `GoogleIdentityValidator` e `SignInManager` da Task 8.
+- Produces: `ConexaoGoogleService.ConectarAsync(ApplicationUser conta, GoogleUsuario google, CancellationToken) : Task`; `CriarIntencaoAsync(Guid usuarioId)` / `ValidarIntencaoAsync(string valor, Guid usuarioId)` com `IDataProtectionProvider`.
+- Produces: `GET /api/auth/google/conectar`, `GET /api/auth/google/conectar/concluir`; `MeResponse.GoogleConectado`.
+- Consumes: `GoogleIdentityValidator`/`GoogleIdentityService` da Task 8 e `UserManager<ApplicationUser>`.
+
+**Decisões de implementação (vinculantes):**
+- O cookie de intenção `fisga_google_intencao` é protegido por `IDataProtector` com purpose `google-connect`, `HttpOnly`, `Secure` conforme `Auth:CookieSecure`, `SameSite=Lax`, validade máxima de 5 minutos, e é apagado no callback (sucesso ou falha). O valor carrega `usuarioId`, `nonce` e `expiraEm`.
+- O callback exige usuário autenticado com o **mesmo** `usuarioId` da intenção; intenção expirada, inválida ou de outro usuário é recusada.
+- Exigir `GoogleUsuario.EmailVerified` e e-mail Google **igual** ao e-mail verificado da conta (`conta.Email`/`EmailConfirmed`), comparando normalizado. E-mail diferente ou conta local não verificada → recusa, sem gravar nada.
+- Se o `subject` já estiver vinculado a outro usuário (`FindByLoginAsync`), recusar sem trocar de conta.
+- Se já estiver vinculado ao usuário atual, confirmar sem erro e sem duplicar linha.
+- Chamar **apenas** `AddLoginAsync`. Nunca `SignInAsync`, nunca criar nova `Sessao` ou novo cookie `fisga_auth`.
+- O gate de consentimento da Task 7 continua válido: `/conectar` e o callback ficam bloqueados enquanto o aceite estiver pendente.
+- Sem credenciais Google configuradas, `/conectar` retorna 503 `google_indisponivel`, como no login.
 
 - [ ] **Step 1: Escrever testes**
 
-Usuário logado conecta Google com o mesmo e-mail e continua na mesma conta; e-mail diferente é recusado; Google já vinculado a outro usuário é recusado; sessão atual permanece; nenhum novo cookie de login é emitido.
+Testar: mesmo e-mail → vincula e mantém o mesmo usuário; e-mail diferente → recusa; `subject` já vinculado a outro usuário → recusa; já vinculado ao atual → confirma; intenção expirada/inválida/de outro usuário → recusa; nenhum `Set-Cookie` de `fisga_auth` novo e nenhuma linha nova em `Sessoes`; `MeResponse.GoogleConectado` reflete `AspNetUserLogins`.
 
 - [ ] **Step 2: Rodar e ver falhar**
 
-Run: `dotnet test tests/Fisga.Api.Tests --filter ConectarGoogle`
+Run: `dotnet test --filter ConectarGoogle`
 Expected: FAIL.
 
 - [ ] **Step 3: Implementar**
 
-Criar cookie de intenção `HttpOnly` de uso único e curta duração. O callback exige o usuário autenticado, valida o e-mail Google igual ao e-mail da conta, verifica se o `LoginProvider/ProviderKey` já pertence a outro usuário e então chama `AddLoginAsync`. Não chamar `SignInAsync` de novo.
+Serviço, intenção protegida, endpoints e status no `/me`. Registrar no DI. Não alterar o fluxo de login da Task 8.
 
 - [ ] **Step 4: Rodar e ver passar**
 
-Run: `dotnet test tests/Fisga.Api.Tests --filter ConectarGoogle`
+Run: `dotnet test`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/Fisga.Api tests/Fisga.Api.Tests
+git add src/Fisga.Infrastructure/Identity src/Fisga.Api tests/Fisga.Api.Tests
 git commit -m "feat(auth): allow explicit Google account linking"
 ```
 
