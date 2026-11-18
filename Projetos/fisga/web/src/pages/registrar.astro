@@ -333,7 +333,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
   <script>
     // @ts-nocheck
     import exifr from 'exifr';
-    import { encerrarSessaoExpirada } from '../lib/auth';
+    import { CHAVE_RASCUNHO, encerrarSessaoExpirada, limparCachePrivado } from '../lib/auth';
 
     const API = (document.body.dataset.api || 'http://localhost:5184').replace(/\/$/, '');
     const catalogo = JSON.parse(document.getElementById('catalogo-dados')?.textContent || 'null');
@@ -343,7 +343,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
     const botaoSalvar = document.getElementById('btn-salvar');
     const erroFormulario = document.getElementById('erro-form');
     const acessoRegistrar = document.getElementById('acesso-registrar');
-    const chaveRascunho = 'fisga:rascunho:v1';
+    const chaveRascunho = CHAVE_RASCUNHO;
     const especieParam = new URLSearchParams(window.location.search).get('especie');
     let estadoEdicao = null;
     let uploadsPendentes = 0;
@@ -1170,9 +1170,10 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       }
 
       if (!autenticado) {
-        // Navegação explícita sem sessão: o formulário fica bloqueado, mas o
-        // rascunho em `fisga:*` é preservado para o pescador entrar e continuar.
-        // Só a sessão expirada (401) limpa o rascunho, via encerrarSessaoExpirada.
+        // Navegação explícita sem sessão: o formulário fica bloqueado e o
+        // estado da conta é limpo, mas o rascunho não salvo é preservado para
+        // o pescador entrar e continuar. Só o logout explícito apaga o rascunho.
+        await limparCachePrivado({ preservarRascunho: true });
         bloquearFormulario();
         const aplicouCondicoes = await aplicarCondicoesDaUrl();
         if (!aplicouCondicoes) iniciarFormularioVazio();

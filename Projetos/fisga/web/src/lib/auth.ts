@@ -96,10 +96,23 @@ export async function exigirConsentimento(
   return true;
 }
 
+/** Chave do rascunho de pescaria; única exceção à limpeza de sessão anônima. */
+export const CHAVE_RASCUNHO = 'fisga:rascunho:v1';
+
+export interface OpcoesDeLimpeza {
+  /**
+   * Preserva o rascunho não salvo. Usado nas telas em que a sessão pode ter
+   * expirado sem o pescador ter saído (ex.: `/registrar` e `/mapa` anônimos).
+   * Logout explícito nunca usa esta opção.
+   */
+  preservarRascunho?: boolean;
+}
+
 /**
  * Apaga do aparelho o que é privado antes de encerrar a sessão: os caches
  * `fisga-private-*` (e versões antigas, anteriores à separação público/privado)
  * e as chaves `fisga:*` do localStorage (rascunho, locais, trilhas e pontos).
+ * Com `preservarRascunho`, a única chave poupada é `fisga:rascunho:v1`.
  *
  * `fisga-public-*` e `fisga-tiles-v1` são preservados: só contêm o que passou em
  * `podeCachear` (wiki, ferramentas, offline e o shell anônimo de `/` e
@@ -107,7 +120,7 @@ export async function exigirConsentimento(
  * Cache Storage ou localStorage indisponíveis não podem impedir o logout.
  * Outras chaves do mesmo domínio são preservadas.
  */
-export async function limparCachePrivado(): Promise<void> {
+export async function limparCachePrivado(opcoes: OpcoesDeLimpeza = {}): Promise<void> {
   if (typeof window === 'undefined') return;
 
   try {
@@ -134,7 +147,10 @@ export async function limparCachePrivado(): Promise<void> {
       const chave = localStorage.key(indice);
       if (chave?.startsWith('fisga:')) chaves.push(chave);
     }
-    for (const chave of chaves) localStorage.removeItem(chave);
+    for (const chave of chaves) {
+      if (opcoes.preservarRascunho && chave === CHAVE_RASCUNHO) continue;
+      localStorage.removeItem(chave);
+    }
   } catch {
     // Sem localStorage (modo privado): não há o que limpar.
   }
@@ -150,12 +166,15 @@ let encerrandoSessaoExpirada = false;
  * O guard evita dois redirecionamentos quando a página faz mais de uma chamada
  * que descobre o 401 (ex.: carregamento inicial e uma ação do usuário).
  */
-export async function encerrarSessaoExpirada(destino?: string): Promise<void> {
+export async function encerrarSessaoExpirada(
+  destino?: string,
+  opcoes: OpcoesDeLimpeza = {}
+): Promise<void> {
   if (typeof window === 'undefined' || encerrandoSessaoExpirada) return;
   encerrandoSessaoExpirada = true;
 
   const alvo = destino ?? `${window.location.pathname}${window.location.search}`;
-  await limparCachePrivado();
+  await limparCachePrivado(opcoes);
   window.location.replace(`/entrar?voltar=${encodeURIComponent(destinoSeguro(alvo))}`);
 }
 

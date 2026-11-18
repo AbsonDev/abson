@@ -4,6 +4,10 @@
  * `sw.js` carrega este arquivo com `importScripts`; o Playwright carrega o
  * mesmo arquivo com `addScriptTag` para testar a decisão sem depender de um
  * service worker ativo. Não use APIs exclusivas de service worker aqui.
+ *
+ * CHECKLIST: qualquer mudança neste arquivo exige bump de `VERSAO`/`sw.js`.
+ * O registro usa `updateViaCache: 'none'`, mas o navegador só busca os imports
+ * quando o próprio `sw.js` muda; sem o bump, a versão antiga continua ativa.
  */
 (function (escopo) {
   // HTML que nunca pode ser gravado nem lido do cache. `/locais` é um link

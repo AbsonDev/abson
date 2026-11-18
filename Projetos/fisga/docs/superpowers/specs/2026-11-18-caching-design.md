@@ -79,7 +79,7 @@ Estas regras valem para qualquer fase:
 4. **Service worker não cacheia HTML privado.** A decisão é pelo header da resposta, não só pelo path.
 5. **Coordenadas não vão para cache compartilhado sem decisão explícita.** `/api/locais/reverso` e `/api/condicoes` usam `private` no browser; CDN só com bypass de cookie e revisão de privacidade.
 6. **Fotos são privadas por padrão.** `/media/*` continua imutável no browser; não entra em CDN compartilhado sem URL assinada.
-7. **Logout limpa o que é privado.** Cache Storage e chaves `fisga:*` do `localStorage` são apagados; o cache de mídia da API pode ser limpo com `Clear-Site-Data`.
+7. **Logout/expiração limpa o que é privado, mas preserva o público.** Caches `fisga-private-*` e chaves `fisga:*` do `localStorage` são apagados; `fisga-public-*` e `fisga-tiles-v1` sobrevivem para manter `/offline`, wiki, ferramentas e Pagefind. Exceção: o rascunho não salvo `fisga:rascunho:v1` pode sobreviver à expiração anônima (via `limparCachePrivado({ preservarRascunho: true })`); logout explícito apaga tudo.
 8. **Entrada externa não vira chave crua.** Termos de busca são normalizados, limitados e versionados; coordenadas são arredondadas.
 
 ---
@@ -382,9 +382,9 @@ Regras:
 2. **Navegação:** network-first; cachear somente se a resposta tiver `Cache-Control` público e não tiver `Set-Cookie`.
 3. **Rotas privadas:** `['/hoje','/mapa','/conta','/meu-diario','/registrar','/trofeu','/aceite','/boas-vindas']` — sempre `fetch` direto, sem `cache.put`.
 4. **`/condicoes`:** não decidir pelo path; ler o header. Anônimo (`public`) pode cachear; autenticado (`private`) não.
-5. **Logout/expiração:** apagar `fisga-private-*` e caches legados `fisga-*` que não sejam `fisga-public-*`/`fisga-tiles-v1`, e remover chaves `fisga:*` do `localStorage`. **Preservar** `fisga-public-*` e `fisga-tiles-v1`: só contêm conteúdo aprovado por `podeCachear`, e mantê-los é o que faz `/offline`, wiki, ferramentas e Pagefind continuarem funcionando depois de sair. A limpeza é a mesma na sessão expirada (200 anônimo/401), via `encerrarSessaoExpirada`; quando a tela continua pública, como `/mapa` anônimo, basta `limparCachePrivado`.
+5. **Logout/expiração:** apagar `fisga-private-*` e caches legados `fisga-*` que não sejam `fisga-public-*`/`fisga-tiles-v1`, e remover chaves `fisga:*` do `localStorage`. **Preservar** `fisga-public-*` e `fisga-tiles-v1`: só contêm conteúdo aprovado por `podeCachear`, e mantê-los é o que faz `/offline`, wiki, ferramentas e Pagefind continuarem funcionando depois de sair. A limpeza é a mesma na sessão expirada (200 anônimo/401), via `encerrarSessaoExpirada`; quando a tela continua pública, como `/mapa` anônimo, basta `limparCachePrivado`. Exceção: `fisga:rascunho:v1` sobrevive à expiração anônima com `{ preservarRascunho: true }`; logout explícito apaga o rascunho.
 6. **Tamanho:** limite de entradas/bytes por cache; remover os mais antigos.
-7. **Versão:** bump explícito de `VERSAO` em cada deploy que mude conteúdo não hasheado; documentar no checklist de release.
+7. **Versão:** bump explícito de `VERSAO` em cada deploy que mude conteúdo não hasheado; documentar no checklist de release. O registro do SW usa `updateViaCache: 'none'`, mas qualquer mudança em `sw-politicas.js` também exige mudar `sw.js`/`VERSAO` para o navegador buscar o import novo.
 
 ### 9.3 Teste de privacidade
 

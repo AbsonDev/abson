@@ -105,11 +105,24 @@ async function mockAnonimo(page: Page) {
  *
  * `fisga-public-*` guarda só conteúdo aprovado por `podeCachear` (offline, wiki,
  * ferramentas); `fisga-private-*` guarda o que precisa sumir no logout/expiração.
+ * `fisga:rascunho:v1` é a única chave que pode sobreviver à expiração anônima.
  */
+const CHAVES_PRIVADAS = [
+  'fisga:rascunho:v1',
+  'fisga:locais:v1',
+  'fisga:pontos:v1',
+  'fisga:trilhas:v1',
+  'fisga:sessao:v1'
+] as const;
+
 async function semearEstadoPrivado(page: Page) {
   await page.goto(`${ORIGEM}/offline`);
-  await page.evaluate(async () => {
-    localStorage.setItem('fisga:diario:v1', 'rascunho privado');
+  await page.evaluate(async (chaves) => {
+    localStorage.setItem(chaves[0], 'rascunho privado');
+    localStorage.setItem(chaves[1], '[]');
+    localStorage.setItem(chaves[2], '[]');
+    localStorage.setItem(chaves[3], '[]');
+    localStorage.setItem(chaves[4], '1');
 
     const publico = await caches.open('fisga-public-v9');
     await publico.put('/offline', new Response('offline público'));
@@ -117,7 +130,7 @@ async function semearEstadoPrivado(page: Page) {
     const privado = await caches.open('fisga-private-v9');
     await privado.put('/hoje', new Response('html privado'));
     await privado.put('/conta', new Response('html privado'));
-  });
+  }, CHAVES_PRIVADAS);
 }
 
 async function chavesDeCache(page: Page): Promise<string[]> {
@@ -137,8 +150,14 @@ async function caminhosNoCache(page: Page): Promise<string[]> {
   });
 }
 
-/** O cache público e os tiles sobrevivem; o privado e o localStorage somem. */
-async function expectPublicoPreservadoEPrivadoRemovido(page: Page) {
+/**
+ * O cache público e os tiles sobrevivem; o privado e o `localStorage` somem.
+ * `preservarRascunho` cobre a exceção das telas anônimas (`/registrar`, `/mapa`).
+ */
+async function expectPublicoPreservadoEPrivadoRemovido(
+  page: Page,
+  opcoes: { preservarRascunho?: boolean } = {}
+) {
   const chaves = await chavesDeCache(page);
   expect(chaves).toContain('fisga-public-v9');
   expect(chaves.some((chave) => chave.startsWith('fisga-private-'))).toBe(false);
@@ -148,7 +167,21 @@ async function expectPublicoPreservadoEPrivadoRemovido(page: Page) {
   expect(caminhos).not.toContain('/conta');
   expect(caminhos).not.toContain('/hoje');
 
-  expect(await page.evaluate(() => localStorage.getItem('fisga:diario:v1'))).toBeNull();
+  const valores = await page.evaluate(
+    (nomes) => Object.fromEntries(nomes.map((nome) => [nome, localStorage.getItem(nome)])),
+    [...CHAVES_PRIVADAS]
+  );
+
+  if (opcoes.preservarRascunho) {
+    expect(valores['fisga:rascunho:v1']).toBe('rascunho privado');
+  } else {
+    expect(valores['fisga:rascunho:v1']).toBeNull();
+  }
+
+  for (const chave of CHAVES_PRIVADAS) {
+    if (chave === 'fisga:rascunho:v1' && opcoes.preservarRascunho) continue;
+    expect(valores[chave]).toBeNull();
+  }
 }
 
 async function mockEntrar(page: Page) {
@@ -184,7 +217,7 @@ test.describe('logout sem service worker', () => {
     await expect(page.locator('#conta-content')).toBeVisible();
 
     await page.evaluate(async () => {
-      localStorage.setItem('fisga:diario:v1', 'rascunho privado');
+      localStorage.setItem('fisga:rascunho:v1', 'rascunho privado');
       localStorage.setItem('fisga:locais:v1', '[]');
       localStorage.setItem('outro:app', 'mantém');
 
@@ -232,7 +265,7 @@ test.describe('logout sem service worker', () => {
     expect(caminhos).not.toContain('/meu-diario');
     expect(caminhos).not.toContain('/hoje');
 
-    expect(await page.evaluate(() => localStorage.getItem('fisga:diario:v1'))).toBeNull();
+    expect(await page.evaluate(() => localStorage.getItem('fisga:rascunho:v1'))).toBeNull();
     expect(await page.evaluate(() => localStorage.getItem('fisga:locais:v1'))).toBeNull();
     expect(await page.evaluate(() => localStorage.getItem('outro:app'))).toBe('mantém');
   });
@@ -325,7 +358,7 @@ test.describe('logout sem service worker', () => {
     await expect(page).toHaveURL(
       (url) => url.pathname === '/entrar' && url.searchParams.get('voltar') === '/mapa'
     );
-    await expectPublicoPreservadoEPrivadoRemovido(page);
+    await expectPublicoPreservadoEPrivadoRemovido(page, { preservarRascunho: true });
   });
 
   test('mapa anônimo limpa estado privado sem tirar o mapa do ar', async ({ page }) => {
@@ -335,7 +368,7 @@ test.describe('logout sem service worker', () => {
 
     await expect(page).toHaveURL((url) => url.pathname === '/mapa');
     await expect(page.locator('#mapa')).toBeVisible();
-    await expectPublicoPreservadoEPrivadoRemovido(page);
+    await expectPublicoPreservadoEPrivadoRemovido(page, { preservarRascunho: true });
   });
 
   test('registrar anônimo preserva o rascunho e bloqueia o formulário', async ({ page }) => {
@@ -356,9 +389,7 @@ test.describe('logout sem service worker', () => {
     await page.goto(`${ORIGEM}/registrar`);
 
     await expect(page.locator('#acesso-registrar')).toBeVisible();
-    expect(await page.evaluate(() => localStorage.getItem('fisga:diario:v1'))).toBe(
-      'rascunho privado'
-    );
+    await expectPublicoPreservadoEPrivadoRemovido(page, { preservarRascunho: true });
   });
 
   test('registrar com 401 limpa o rascunho e manda para entrar', async ({ page }) => {
