@@ -829,7 +829,7 @@ public static class AuthEndpoints
     // Apenas limpa o cookie obsoleto fisga_sessao no logout; nenhum cookie novo é gravado.
     private static void LimparCookie(HttpContext http, AutenticacaoOptions opcoes)
     {
-        http.Response.Cookies.Delete(opcoes.CookieName, new CookieOptions
+        http.Response.Cookies.Delete(opcoes.LegacyCookieName, new CookieOptions
         {
             HttpOnly = true,
             Secure = opcoes.CookieSecure,

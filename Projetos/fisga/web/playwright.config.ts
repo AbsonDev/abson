@@ -5,6 +5,9 @@ const baseURL = `http://localhost:${porta}`;
 
 export default defineConfig({
   testDir: './tests',
+  // A suíte real (`identity-e2e.spec.ts`) exige backend real e roda pelo
+  // `playwright.real.config.ts`. A suíte padrão continua 100% mockada.
+  testIgnore: ['**/identity-e2e.spec.ts'],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,

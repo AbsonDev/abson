@@ -358,3 +358,48 @@ apontam para `/termos` e `/privacidade`.
 ### Aprovação
 
 Protótipo aprovado pelo usuário em 2026-11-17 para implementação no Astro.
+
+### Rollout e evidência — 18/11/2026
+
+A migração de identidade foi implementada e verificada de ponta a ponta. O rollout operacional está
+no runbook [`docs/superpowers/runbooks/2026-11-17-identity-rollout.md`](superpowers/runbooks/2026-11-17-identity-rollout.md).
+
+**Implementado**
+
+- `/entrar` com senha, link mágico e Google condicional; `/criar-conta`, `/esqueci-senha`,
+  `/redefinir-senha` e `/confirmar-email` com estados reais de carregando, erro, sucesso e expirado.
+- `/aceite` bloqueando Termos/Privacidade `2026-11-17` até os dois checkboxes e registrando o aceite
+  por usuário.
+- `/conta` com criação/alteração de senha, vínculo Google, nome/newsletter, exportação JSON, lista de
+  sessões com “sair desta”/“sair de todos” e zona sensível.
+- Cookie `fisga_auth` da Identity; `fisga_sessao` apenas apagado como legado.
+- Data Protection persistido no volume `fisga_keys` (`/app/data/keys`), exigido também em produção.
+
+**Verificação executada**
+
+- **204 testes .NET** aprovados (36 domínio, 48 aplicação, 120 API), incluindo confirmação, reset,
+  consentimento, senha, sessões, Google e outbox de e-mail.
+- **`npm run check`**: 0 erros/avisos em 87 arquivos; **`npm run build`** aprovado.
+- **Playwright mockado: 58/58** — UI, estados e contratos continuam iguais.
+- **Playwright com backend real: 6/6** em 18,2 s (12/12 com `--repeat-each=2`) — cadastro por senha →
+  confirmação → consentimento → app; link mágico de usuário existente → consentimento → diário com
+  pescaria preservada; reset de senha; “sair desta”/“sair de todos” com dois navegadores; `/conta`
+  (senha, perfil, newsletter, exportação JSON) e Google indisponível.
+
+**Não verificado neste ambiente**
+
+- Migration em PostgreSQL local: `docker` ausente e nenhum Postgres disponível. Fica como checklist
+  pré-deploy no runbook, com contagens antes/depois de `usuarios`, `pescarias` e `AspNetUsers`.
+- OAuth Google real: sem `ClientId`/`ClientSecret`. O E2E cobre só o estado indisponível; o fluxo real
+  e os redirect URIs estão no checklist pós-credenciais.
+- Sentry em produção: sem DSN no E2E. O scrubber e os testes de API cobrem o comportamento, mas não
+  houve envio real para inspeção.
+
+**Reprodução**
+
+```bash
+cd Projetos/fisga
+~/.dotnet/dotnet test
+cd web && npm run check && npm run build && npx playwright test
+./scripts/e2e-real.sh   # 6 testes com backend real, dados descartáveis
+```

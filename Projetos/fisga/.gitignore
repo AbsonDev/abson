@@ -12,6 +12,10 @@ obj/
 *.db-shm
 *.db-wal
 
+# Data Protection local e outbox de e-mail (contêm segredos/PII)
+**/data/keys/
+.outbox/
+
 # ambiente
 .env
 .env.*

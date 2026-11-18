@@ -14,7 +14,11 @@ public sealed class AutenticacaoOptions
 
     public string WebUrl { get; set; } = "http://localhost:4323";
 
-    public string CookieName { get; set; } = "fisga_sessao";
+    /// <summary>
+    /// Nome do cookie legado <c>fisga_sessao</c>, mantido apenas para apagá-lo no
+    /// logout/exclusão. A sessão atual usa o cookie <c>fisga_auth</c> da Identity.
+    /// </summary>
+    public string LegacyCookieName { get; set; } = "fisga_sessao";
 
     public bool CookieSecure { get; set; } = true;
 }
@@ -28,6 +32,12 @@ public sealed class EmailOptions
     public string? ResendApiKey { get; set; }
 
     public string? ReplyTo { get; set; }
+
+    /// <summary>
+    /// Diretório do outbox de teste (<c>Email:Provider=Outbox</c>). Vazio em
+    /// produção; nunca aponte para um diretório versionado.
+    /// </summary>
+    public string? OutboxPath { get; set; }
 }
 
 public interface IUsuarioRepository

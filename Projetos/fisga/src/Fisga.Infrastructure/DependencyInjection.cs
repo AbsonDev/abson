@@ -116,10 +116,16 @@ public static class DependencyInjection
             servicos.GetRequiredService<OpenMeteoGeocodificador>());
 
         services.AddSingleton<ConsoleEmailSender>();
+        services.AddSingleton<OutboxEmailSender>();
         services.AddHttpClient<ResendEmailSender>();
         services.AddScoped<IEmailSender>(sp =>
         {
             var opcoes = sp.GetRequiredService<EmailOptions>();
+            if (string.Equals(opcoes.Provider, "Outbox", StringComparison.OrdinalIgnoreCase))
+            {
+                return sp.GetRequiredService<OutboxEmailSender>();
+            }
+
             return string.Equals(opcoes.Provider, "Resend", StringComparison.OrdinalIgnoreCase)
                    && !string.IsNullOrWhiteSpace(opcoes.ResendApiKey)
                 ? sp.GetRequiredService<ResendEmailSender>()

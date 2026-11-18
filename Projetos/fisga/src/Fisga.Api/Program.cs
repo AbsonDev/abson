@@ -81,11 +81,14 @@ builder.Services.AddCors(opcoes =>
 builder.Services.AddRateLimiter(opcoes =>
 {
     opcoes.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-    AdicionarPolitica(opcoes, "leitura", 180);
-    AdicionarPolitica(opcoes, "escrita", 40);
-    AdicionarPolitica(opcoes, "auth", 8);
-    AdicionarPolitica(opcoes, "pdf", 30);
-    AdicionarPolitica(opcoes, "midia", 30);
+    // Limites por minuto/IP. Os valores padrão são os de produção; ambientes de
+    // teste podem elevá-los por configuração (RateLimiting__Auth=1000) sem
+    // alterar o comportamento padrão.
+    AdicionarPolitica(opcoes, builder.Configuration, "leitura", 180);
+    AdicionarPolitica(opcoes, builder.Configuration, "escrita", 40);
+    AdicionarPolitica(opcoes, builder.Configuration, "auth", 8);
+    AdicionarPolitica(opcoes, builder.Configuration, "pdf", 30);
+    AdicionarPolitica(opcoes, builder.Configuration, "midia", 30);
 });
 
 var app = builder.Build();
@@ -149,8 +152,13 @@ static double TaxaDeAmostragem(IWebHostEnvironment ambiente)
     return ambiente.IsDevelopment() ? 1.0 : 0.1;
 }
 
-static void AdicionarPolitica(Microsoft.AspNetCore.RateLimiting.RateLimiterOptions opcoes, string nome, int limitePorMinuto)
+static void AdicionarPolitica(
+    Microsoft.AspNetCore.RateLimiting.RateLimiterOptions opcoes,
+    IConfiguration configuration,
+    string nome,
+    int limitePadraoPorMinuto)
 {
+    var limitePorMinuto = configuration.GetValue<int?>($"RateLimiting:{nome}") ?? limitePadraoPorMinuto;
     opcoes.AddPolicy(nome, contexto =>
     {
         var chave = contexto.Connection.RemoteIpAddress?.ToString() ?? "anonimo";

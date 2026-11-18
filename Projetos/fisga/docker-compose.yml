@@ -37,6 +37,7 @@ services:
       - "5184:8080"
     volumes:
       - fisga_media:/app/media
+      - fisga_keys:/app/data/keys
     depends_on:
       postgres:
         condition: service_healthy
@@ -60,3 +61,4 @@ services:
 volumes:
   fisga_pgdata:
   fisga_media:
+  fisga_keys:
