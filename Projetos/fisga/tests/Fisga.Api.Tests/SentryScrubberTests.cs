@@ -1,3 +1,5 @@
+using System.Text;
+using System.Text.Json;
 using Fisga.Api.Observabilidade;
 using Sentry;
 using Sentry.Protocol;
@@ -95,12 +97,18 @@ public sealed class SentryScrubberTests
     {
         var limpo = SentryScrubber.ScrubEvent(new SentryEvent(), new SentryHint());
 
-        // O SDK não aceita User nulo: um SentryUser sem Id é semanticamente anônimo.
-        Assert.Null(limpo!.User!.Id);
-        Assert.Null(limpo.User.Email);
-        Assert.Null(limpo.User.Username);
-        Assert.Null(limpo.User.IpAddress);
-        Assert.Empty(limpo.User.Other);
+        // O getter rematerializa um SentryUser vazio; o que importa é o payload.
+        Assert.DoesNotContain("\"user\"", Serializar(limpo!));
+    }
+
+    [Fact]
+    public void ScrubTransaction_omite_usuario_quando_anonima()
+    {
+        var transacao = new SentryTransaction("GET /api/x", "http.server");
+
+        var limpa = SentryScrubber.ScrubTransaction(transacao, new SentryHint());
+
+        Assert.DoesNotContain("\"user\"", Serializar(limpa!));
     }
 
     [Fact]
@@ -115,5 +123,27 @@ public sealed class SentryScrubberTests
 
         Assert.Equal("usuario-456", limpa!.User!.Id);
         Assert.Null(limpa.User.Email);
+    }
+
+    private static string Serializar(SentryEvent evento)
+    {
+        using var stream = new MemoryStream();
+        using (var writer = new Utf8JsonWriter(stream))
+        {
+            evento.WriteTo(writer, null);
+        }
+
+        return Encoding.UTF8.GetString(stream.ToArray());
+    }
+
+    private static string Serializar(SentryTransaction transacao)
+    {
+        using var stream = new MemoryStream();
+        using (var writer = new Utf8JsonWriter(stream))
+        {
+            transacao.WriteTo(writer, null);
+        }
+
+        return Encoding.UTF8.GetString(stream.ToArray());
     }
 }

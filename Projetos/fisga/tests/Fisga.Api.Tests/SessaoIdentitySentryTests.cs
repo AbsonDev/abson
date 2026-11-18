@@ -47,27 +47,76 @@ public sealed class SessaoIdentitySentryTests
             return Task.CompletedTask;
         });
 
-        await middleware.InvokeAsync(
-            context,
-            new SessoesFake(sessao),
-            new UsuariosFake(usuario),
-            new UnidadeFake(),
-            new RelogioFake(agora));
-
-        string? id = null;
-        string? email = "nao-nulo";
-        string? ip = "nao-nulo";
-        SentrySdk.ConfigureScope(escopo =>
+        using (SentrySdk.PushScope())
         {
-            id = escopo.User?.Id;
-            email = escopo.User?.Email;
-            ip = escopo.User?.IpAddress;
+            await middleware.InvokeAsync(
+                context,
+                new SessoesFake(sessao),
+                new UsuariosFake(usuario),
+                new UnidadeFake(),
+                new RelogioFake(agora));
+
+            string? id = null;
+            string? email = "nao-nulo";
+            string? ip = "nao-nulo";
+            SentrySdk.ConfigureScope(escopo =>
+            {
+                id = escopo.User?.Id;
+                email = escopo.User?.Email;
+                ip = escopo.User?.IpAddress;
+            });
+
+            Assert.True(chamouSeguinte);
+            Assert.Equal(usuario.Id.ToString(), id);
+            Assert.Null(email);
+            Assert.Null(ip);
+        }
+    }
+
+    [Fact]
+    public async Task InvokeAsync_sem_claim_de_sessao_nao_define_usuario_no_sentry()
+    {
+        using var sdk = SentrySdk.Init(opcoes =>
+        {
+            opcoes.Dsn = "https://publico@fake.invalid/1";
+            opcoes.TracesSampleRate = 0;
+            opcoes.SendDefaultPii = false;
         });
 
-        Assert.True(chamouSeguinte);
-        Assert.Equal(usuario.Id.ToString(), id);
-        Assert.Null(email);
-        Assert.Null(ip);
+        var agora = DateTimeOffset.UtcNow;
+        var usuario = Usuario.Criar(Email.Criar($"{Guid.NewGuid():N}@exemplo.com"), "Pescador", agora);
+        var sessao = Sessao.Criar(
+            usuario.Id,
+            new string('a', 64),
+            "agente-de-teste",
+            null,
+            agora,
+            TimeSpan.FromDays(30));
+
+        // Autenticado, mas sem sessao_id: o middleware retorna antes de validar.
+        var context = new DefaultHttpContext();
+        context.Request.Path = "/api/auth/me";
+        context.User = new ClaimsPrincipal(new ClaimsIdentity(
+        [
+            new Claim(ClaimTypes.NameIdentifier, usuario.Id.ToString())
+        ], "autenticacao-de-teste", ClaimTypes.NameIdentifier, ClaimTypes.Role));
+
+        var middleware = new SessaoIdentityMiddleware(_ => Task.CompletedTask);
+
+        using (SentrySdk.PushScope())
+        {
+            await middleware.InvokeAsync(
+                context,
+                new SessoesFake(sessao),
+                new UsuariosFake(usuario),
+                new UnidadeFake(),
+                new RelogioFake(agora));
+
+            string? id = "nao-nulo";
+            SentrySdk.ConfigureScope(escopo => id = escopo.User?.Id);
+
+            Assert.Null(id);
+        }
     }
 
     private sealed class SessoesFake(Sessao sessao) : ISessaoRepository
