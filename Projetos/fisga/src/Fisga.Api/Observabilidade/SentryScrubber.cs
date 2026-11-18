@@ -9,6 +9,23 @@ namespace Fisga.Api.Observabilidade;
 /// </summary>
 public static partial class SentryScrubber
 {
+    [GeneratedRegex(@"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}")]
+    private static partial Regex EnderecoDeEmail();
+
+    // Parâmetros estruturados de log promovidos a tags/extras que carregam
+    // destinatário ou corpo de e-mail. Em query strings eles já caem no filtro
+    // por padrão da allowlist abaixo.
+    private static readonly HashSet<string> ChavesDeLogSensiveis = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "destino",
+        "descadastro",
+        "texto",
+        "html"
+    };
+
+    private static bool ChaveSensivel(string chave) =>
+        ChavesSensiveis.Contains(chave) || ChavesDeLogSensiveis.Contains(chave);
+
     private static readonly HashSet<string> ChavesSensiveis = new(StringComparer.OrdinalIgnoreCase)
     {
         "lat",
@@ -24,14 +41,32 @@ public static partial class SentryScrubber
         "shareToken",
         "handoff_code",
         "code",
-        // Parâmetros estruturados de log que carregam destinatário ou corpo de e-mail.
-        "destino",
-        "descadastro",
-        "texto",
-        "html"
+        "q",
+        "busca",
+        "termo"
     };
 
-    private const string Filtrado = "[Filtered]";
+    // Allowlist explícita: qualquer chave fora dela é filtrada por padrão. Assim
+    // um parâmetro novo (ex.: termo de busca) não vaza antes de entrar na lista
+    // de sensíveis. Só ficam visíveis chaves operacionais sem dado pessoal.
+    private static readonly HashSet<string> ChavesPublicas = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "page",
+        "pagina",
+        "per_page",
+        "limite",
+        "offset",
+        "ordenar",
+        "ordem",
+        "ts",
+        "v",
+        "lang",
+        "idioma",
+        "utm_source",
+        "utm_medium",
+        "utm_campaign",
+        "utm_content"
+    };
 
     public static SentryEvent? ScrubEvent(SentryEvent evento, SentryHint _)
     {
@@ -55,7 +90,7 @@ public static partial class SentryScrubber
             var limpo = ScrubValor(chave, valor);
             if (!string.Equals(limpo, valor, StringComparison.Ordinal))
             {
-                evento.SetTag(chave, limpo ?? Filtrado);
+                evento.SetTag(chave, limpo ?? "[Filtered]");
             }
         }
     }
@@ -66,9 +101,9 @@ public static partial class SentryScrubber
         {
             if (valor is not string texto)
             {
-                if (valor is not null && ChavesSensiveis.Contains(chave))
+                if (valor is not null && ChaveSensivel(chave))
                 {
-                    evento.SetExtra(chave, Filtrado);
+                    evento.SetExtra(chave, "[Filtered]");
                 }
 
                 continue;
@@ -89,7 +124,7 @@ public static partial class SentryScrubber
             return valor;
         }
 
-        return ChavesSensiveis.Contains(chave) ? Filtrado : ScrubText(valor);
+        return ChaveSensivel(chave) ? "[Filtered]" : ScrubText(valor);
     }
 
     private static void LimparMensagens(SentryEvent evento)
@@ -162,7 +197,8 @@ public static partial class SentryScrubber
             }
 
             var chave = Uri.UnescapeDataString(parte[..igual]);
-            return ChavesSensiveis.Contains(chave) ? $"{parte[..igual]}=[Filtered]" : parte;
+            var filtrar = ChavesSensiveis.Contains(chave) || !ChavesPublicas.Contains(chave);
+            return filtrar ? $"{parte[..igual]}=[Filtered]" : parte;
         }));
     }
 
@@ -174,12 +210,9 @@ public static partial class SentryScrubber
         }
 
         var semParametros = ParametroSensivel().Replace(texto, "$1[Filtered]");
-        return EnderecoDeEmail().Replace(semParametros, Filtrado);
+        return EnderecoDeEmail().Replace(semParametros, "[Filtered]");
     }
 
-    [GeneratedRegex(@"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}")]
-    private static partial Regex EnderecoDeEmail();
-
-    [GeneratedRegex(@"(?i)([?&](?:lat|lon|latitude|longitude|nome|cidade|pescador|email|token|uid|handoff_code|code)=)[^&\s]+")]
+    [GeneratedRegex(@"(?i)([?&](?:lat|lon|latitude|longitude|nome|cidade|pescador|email|token|uid|handoff_code|code|q|busca|termo)=)[^&\s]+")]
     private static partial Regex ParametroSensivel();
 }

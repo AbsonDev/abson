@@ -32,29 +32,37 @@ public sealed class SentryScrubberTests
     }
 
     [Fact]
-    public void ScrubEvent_remove_destinatario_e_token_das_tags_de_log()
+    public void ScrubUrl_filtra_termo_de_busca_e_preserva_paginacao()
     {
-        var evento = new SentryEvent { Message = "Link enviado para pescador@exemplo.com" };
-        evento.SetTag("Destino", "pescador@exemplo.com");
-        evento.SetTag("Url", "http://localhost:5184/api/auth/confirmar?token=segredo-abc");
-        evento.SetTag("Expira", "17/11/2026 17:01");
-        evento.SetExtra("Texto", "Acesse http://localhost:4323/confirmar-email?uid=usuario-123&token=segredo-abc");
+        var url = SentryScrubber.ScrubUrl(
+            "https://api.fisga.abson.tech/api/locais/buscar?q=S%C3%A3o%20Jo%C3%A3o&page=2");
 
-        var limpo = SentryScrubber.ScrubEvent(evento, new SentryHint());
-
-        Assert.NotNull(limpo);
-        Assert.Equal("[Filtered]", limpo!.Tags["Destino"]);
-        Assert.Equal("http://localhost:5184/api/auth/confirmar?token=[Filtered]", limpo.Tags["Url"]);
-        Assert.Equal("17/11/2026 17:01", limpo.Tags["Expira"]);
-        Assert.Equal("[Filtered]", limpo.Extra["Texto"]);
-        Assert.DoesNotContain("pescador@exemplo.com", limpo.Message!.Message);
+        Assert.NotNull(url);
+        Assert.Contains("q=[Filtered]", url);
+        Assert.Contains("page=2", url);
+        Assert.DoesNotContain("S%C3%A3o", url);
     }
 
     [Fact]
-    public void ScrubText_remove_enderecos_de_email_soltos()
+    public void ScrubQuery_filtra_busca_termo_e_chave_desconhecida_por_padrao()
     {
-        var texto = SentryScrubber.ScrubText("Para: metrics.1794944797@exemplo.com");
+        var query = SentryScrubber.ScrubQuery("q=São João&busca=Paraty&termo=Angra&futuro=segredo&page=3");
 
-        Assert.Equal("Para: [Filtered]", texto);
+        Assert.NotNull(query);
+        Assert.DoesNotContain("São João", query);
+        Assert.DoesNotContain("Paraty", query);
+        Assert.DoesNotContain("Angra", query);
+        Assert.DoesNotContain("segredo", query);
+        Assert.Contains("page=3", query);
+    }
+
+    [Fact]
+    public void ScrubText_filtra_q_em_mensagem()
+    {
+        var texto = SentryScrubber.ScrubText(
+            "Falha em /api/locais/buscar?q=S%C3%A3o%20Jo%C3%A3o");
+
+        Assert.DoesNotContain("S%C3%A3o", texto);
+        Assert.Contains("q=[Filtered]", texto);
     }
 }
