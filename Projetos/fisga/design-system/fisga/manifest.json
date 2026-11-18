@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "od-design-system-project/v1",
+  "id": "fisga",
+  "name": "Fisga",
+  "category": "Lifestyle & Outdoors",
+  "description": "Diário de pesca brasileiro: papel areia, tinta petróleo, Fraunces e Inter. Editorial de caderno de campo, privado por padrão.",
+  "source": {
+    "type": "local",
+    "origin": "Projetos/fisga/design-system"
+  },
+  "files": {
+    "design": "DESIGN.md",
+    "tokens": "tokens.css"
+  },
+  "usage": "USAGE.md",
+  "importMode": "normalized"
+}
