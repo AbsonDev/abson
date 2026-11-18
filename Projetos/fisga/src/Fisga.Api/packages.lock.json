@@ -177,6 +177,11 @@
           "SQLitePCLRaw.core": "2.1.13"
         }
       },
+      "Microsoft.Extensions.Caching.Hybrid": {
+        "type": "Transitive",
+        "resolved": "10.11.0",
+        "contentHash": "F4P+uZgDFnKfmHm0ReWJNSVXAlZmknQgkkrmEDtAdxWvVPCSZL7UPAY7Ewf8zs5qwPCGaYopZiRiPg2YGCfuhA=="
+      },
       "Microsoft.Extensions.DependencyModel": {
         "type": "Transitive",
         "resolved": "10.0.15",
@@ -355,6 +360,7 @@
           "Microsoft.AspNetCore.Authentication.Google": "[10.0.15, )",
           "Microsoft.AspNetCore.Identity.EntityFrameworkCore": "[10.0.15, )",
           "Microsoft.EntityFrameworkCore.Sqlite": "[10.0.15, )",
+          "Microsoft.Extensions.Caching.Hybrid": "[10.11.0, )",
           "Npgsql.EntityFrameworkCore.PostgreSQL": "[10.0.3, )",
           "QRCoder": "[1.8.1, )",
           "QuestPDF": "[2026.9.2, )"

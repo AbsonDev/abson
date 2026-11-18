@@ -1,17 +1,26 @@
 using System.Globalization;
 using System.Text.Json;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
 using Fisga.Application.Condicoes;
+using Fisga.Application.Observabilidade;
 
 namespace Fisga.Infrastructure.Condicoes;
 
 public sealed class OpenMeteoProvedorDeCondicoes(
     HttpClient http,
-    ICacheDeCondicoes cache,
+    HybridCache cache,
     CondicoesOptions opcoes,
-    ILogger<OpenMeteoProvedorDeCondicoes> logger) : IProvedorDeCondicoes
+    ILogger<OpenMeteoProvedorDeCondicoes> logger,
+    ICacheObservabilidade observabilidade) : IProvedorDeCondicoes
 {
     private const string Fonte = "Open-Meteo";
+    private static readonly TimeSpan TtlMaximo = TimeSpan.FromMinutes(20);
+    private static readonly TimeSpan TtlDaLua = TimeSpan.FromHours(12);
+
+    // CacheMinutos só encurta o TTL completo; nunca passa do teto da política.
+    private TimeSpan TtlCompleto =>
+        TimeSpan.FromMinutes(Math.Clamp(opcoes.CacheMinutos, 1, (int)TtlMaximo.TotalMinutes));
 
     public async Task<DadosDeCondicoes?> ObterAsync(
         double latitude,
@@ -19,24 +28,78 @@ public sealed class OpenMeteoProvedorDeCondicoes(
         DateOnly diaLocal,
         CancellationToken ct = default)
     {
-        var chave = $"openmeteo:{Math.Round(latitude, 2):F2}:{Math.Round(longitude, 2):F2}";
-        if (cache.TentarObter(chave, out var emCache) && emCache is not null)
+        var chave = ChavesDeCache.Condicoes(latitude, longitude, diaLocal);
+
+        var resultado = await cache.GetOrCreateAsync(
+            chave,
+            async token =>
+            {
+                observabilidade.CondicoesUpstream();
+                return await CalcularAsync(latitude, longitude, diaLocal, token);
+            },
+            Opcoes(TtlCompleto),
+            cancellationToken: ct);
+
+        // O TTL efetivo depende do valor devolvido, não de quem executou a
+        // factory: se o chamador que calculou for cancelado depois de o
+        // HybridCache gravar a entrada, um observador ainda corrige o TTL.
+        // A escrita usa CancellationToken.None porque é contabilidade de cache,
+        // não trabalho do chamador.
+        var politica = PoliticaDeCacheDeCondicoes.Ttl(resultado.Dados);
+        if (politica < TtlMaximo)
         {
-            return emCache;
+            var restante = Restante(politica, resultado.CalculadoEmTicks);
+
+            if (restante <= TimeSpan.Zero)
+            {
+                await cache.RemoveAsync(chave, CancellationToken.None);
+            }
+            else
+            {
+                await cache.SetAsync(
+                    chave,
+                    resultado,
+                    Opcoes(restante),
+                    cancellationToken: CancellationToken.None);
+            }
         }
 
-        var clima = await BuscarClimaAsync(latitude, longitude, ct);
+        return resultado.Dados;
+    }
+
+    private static HybridCacheEntryOptions Opcoes(TimeSpan ttl) => new()
+    {
+        Expiration = ttl,
+        LocalCacheExpiration = ttl,
+    };
+
+    // Idade desde o cálculo: evita que uma leitura reaplique o TTL curto e
+    // estenda indefinidamente um resultado parcial/negativo sob tráfego.
+    private static TimeSpan Restante(TimeSpan politica, long calculadoEmTicks)
+    {
+        var idade = DateTimeOffset.UtcNow.UtcTicks - calculadoEmTicks;
+        return idade <= 0 ? politica : politica - TimeSpan.FromTicks(idade);
+    }
+
+    private async Task<ResultadoDeCondicoes> CalcularAsync(
+        double latitude,
+        double longitude,
+        DateOnly diaLocal,
+        CancellationToken ct)
+    {
+        var climaTask = BuscarClimaAsync(latitude, longitude, ct);
+        var marTask = BuscarMarAsync(latitude, longitude, ct);
+        var luaTask = ObterLuaAsync(latitude, longitude, diaLocal, ct);
+        await Task.WhenAll(climaTask, marTask, luaTask);
+
+        var clima = await climaTask;
         if (clima is null)
         {
-            return null;
+            return new ResultadoDeCondicoes(null, Indisponivel: true, CalculadoEmTicks: DateTimeOffset.UtcNow.UtcTicks);
         }
 
-        var marTask = BuscarMarAsync(latitude, longitude, ct);
-        var luaTask = BuscarLuaAsync(latitude, longitude, diaLocal, ct);
-        await Task.WhenAll(marTask, luaTask);
-
-        var mar = marTask.Result;
-        var lua = luaTask.Result;
+        var mar = await marTask;
+        var lua = await luaTask;
         var horas = clima.Horas
             .Select(hora =>
             {
@@ -60,8 +123,39 @@ public sealed class OpenMeteoProvedorDeCondicoes(
             horas.Any(hora => hora.NivelDoMarM is not null),
             lua is null ? Fonte : $"{Fonte} + MET Norway");
 
-        cache.Guardar(chave, dados, TimeSpan.FromMinutes(Math.Max(5, opcoes.CacheMinutos)));
-        return dados;
+        return new ResultadoDeCondicoes(
+            dados,
+            Indisponivel: false,
+            CalculadoEmTicks: DateTimeOffset.UtcNow.UtcTicks);
+    }
+
+    private async Task<DadosDaLua?> ObterLuaAsync(
+        double latitude,
+        double longitude,
+        DateOnly dia,
+        CancellationToken ct)
+    {
+        var chave = ChavesDeCache.Lua(latitude, longitude, dia);
+
+        var emCache = await cache.GetOrCreateAsync(
+            chave,
+            async token =>
+            {
+                var calculado = new LuaEmCache(await BuscarLuaAsync(latitude, longitude, dia, token));
+                return calculado;
+            },
+            Opcoes(TtlDaLua),
+            cancellationToken: ct);
+
+        // Falha do MET Norway não fica presa por 12 h: a decisão é pelo valor
+        // devolvido, então um observador também remove a entrada quando a
+        // factory rodou em outro chamador que foi cancelado.
+        if (emCache.Dados is null)
+        {
+            await cache.RemoveAsync(chave, CancellationToken.None);
+        }
+
+        return emCache.Dados;
     }
 
     private async Task<ClimaBruto?> BuscarClimaAsync(
@@ -153,6 +247,10 @@ public sealed class OpenMeteoProvedorDeCondicoes(
 
             return new ClimaBruto(horas, dias);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception excecao) when (excecao is HttpRequestException or TaskCanceledException or JsonException)
         {
             logger.LogWarning(excecao, "Falha ao buscar clima em Open-Meteo");
@@ -215,9 +313,13 @@ public sealed class OpenMeteoProvedorDeCondicoes(
 
             return resultado;
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception excecao) when (excecao is HttpRequestException or TaskCanceledException or JsonException)
         {
-            logger.LogInformation(excecao, "Maré/ondas indisponíveis para {Lat},{Lon}", latitude, longitude);
+            logger.LogInformation(excecao, "Maré/ondas indisponíveis no provedor de mar");
             return [];
         }
     }
@@ -283,9 +385,13 @@ public sealed class OpenMeteoProvedorDeCondicoes(
                 LerTempo(propriedades, "low_moon"),
                 fase);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception excecao) when (excecao is HttpRequestException or TaskCanceledException or JsonException)
         {
-            logger.LogInformation(excecao, "Lua indisponível em MET Norway para {Lat},{Lon}", latitude, longitude);
+            logger.LogInformation(excecao, "Lua indisponível em MET Norway");
             return null;
         }
     }
@@ -370,4 +476,11 @@ public sealed class OpenMeteoProvedorDeCondicoes(
         DateTimeOffset? Transito,
         DateTimeOffset? TransitoOposto,
         double FaseAngulo);
+
+    private sealed record ResultadoDeCondicoes(
+        DadosDeCondicoes? Dados,
+        bool Indisponivel,
+        long CalculadoEmTicks);
+
+    private sealed record LuaEmCache(DadosDaLua? Dados);
 }

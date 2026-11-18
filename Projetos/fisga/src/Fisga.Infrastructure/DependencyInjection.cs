@@ -2,10 +2,12 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Hybrid;
 using Fisga.Application.Abstractions;
 using Fisga.Application.Condicoes;
 using Fisga.Application.Identidade;
 using Fisga.Application.Locais;
+using Fisga.Application.Observabilidade;
 using Fisga.Application.Pontos;
 using Fisga.Application.Trilhas;
 using Fisga.Application.Vision;
@@ -15,6 +17,7 @@ using Fisga.Infrastructure.Emails;
 using Fisga.Infrastructure.Events;
 using Fisga.Infrastructure.Identity;
 using Fisga.Infrastructure.Midia;
+using Fisga.Infrastructure.Observabilidade;
 using Fisga.Infrastructure.Pdf;
 using Fisga.Infrastructure.Persistence;
 using Fisga.Infrastructure.Persistence.Repositories;
@@ -32,6 +35,28 @@ public static class DependencyInjection
         bool desenvolvimento)
     {
         services.Configure<WebOptions>(configuration.GetSection("Web"));
+
+        // Fase 1 sem L2: o HybridCache descarta a entrada quando o cache local
+        // expira, então LocalCacheExpiration precisa igualar Expiration para os
+        // 20 min valerem de fato. Com Redis/L2 (Fase 3), o local volta para 5 min.
+        services.AddHybridCache(options =>
+        {
+            // Cardinalidade: o envelope de condições fica na casa das dezenas de
+            // KB, então 256 KB cobre a resposta com folga e rejeita payload
+            // anômalo. A chave de busca é normalizada a 80 caracteres; 200 dá
+            // margem para prefixo/versão sem aceitar termos abusivos.
+            options.MaximumPayloadBytes = 256 * 1024;
+            options.MaximumKeyLength = 200;
+            options.DefaultEntryOptions = new HybridCacheEntryOptions
+            {
+                Expiration = TimeSpan.FromMinutes(20),
+                LocalCacheExpiration = TimeSpan.FromMinutes(20),
+            };
+        });
+
+        // A Api registra o adaptador de telemetria depois desta chamada e vence a
+        // resolução por último registro; aqui fica a implementação neutra.
+        services.AddSingleton<ICacheObservabilidade, CacheObservabilidadeNula>();
 
         services.Configure<AutenticacaoOptions>(configuration.GetSection("Auth"));
         services.AddSingleton(sp => sp.GetRequiredService<IOptions<AutenticacaoOptions>>().Value);
@@ -87,12 +112,12 @@ public static class DependencyInjection
         services.AddSingleton<IRelogio, RelogioDoSistema>();
         services.AddSingleton<IGeradorDePdf, QuestPdfGerador>();
 
-        services.AddSingleton<ICacheDeCondicoes, CacheEmMemoriaDeCondicoes>();
         services.AddHttpClient<OpenMeteoProvedorDeCondicoes>(cliente =>
         {
             cliente.Timeout = TimeSpan.FromSeconds(12);
             cliente.DefaultRequestHeaders.UserAgent.ParseAdd("Fisga/1.0 (+https://fisga.abson.tech)");
         });
+        services.AddSingleton<NominatimThrottle>();
         services.AddHttpClient<OpenMeteoGeocodificador>(cliente =>
         {
             cliente.Timeout = TimeSpan.FromSeconds(10);

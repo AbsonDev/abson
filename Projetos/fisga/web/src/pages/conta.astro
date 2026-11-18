@@ -443,7 +443,7 @@ import AuthLayout from '../layouts/AuthLayout.astro';
 </style>
 
 <script>
-  import { apiBase } from '../lib/auth';
+  import { apiBase, limparCachePrivado } from '../lib/auth';
 
   const API = apiBase();
   const URL_ENTRAR = '/entrar?voltar=/conta';
@@ -615,6 +615,7 @@ import AuthLayout from '../layouts/AuthLayout.astro';
     }
 
     if (resposta.status === 401) {
+      await limparCachePrivado();
       irParaEntrar();
       throw new FalhaApi('Sua sessão expirou. Redirecionando para a entrada...', 401);
     }
@@ -938,6 +939,7 @@ import AuthLayout from '../layouts/AuthLayout.astro';
       const { dados } = await pedir<MeConta>('/api/auth/me');
 
       if (!dados?.autenticado || !dados.usuario) {
+        await limparCachePrivado();
         irParaEntrar();
         return;
       }
@@ -1228,6 +1230,7 @@ import AuthLayout from '../layouts/AuthLayout.astro';
       });
 
       if (resposta.status === 401) {
+        await limparCachePrivado();
         irParaEntrar();
         return;
       }
@@ -1302,6 +1305,7 @@ import AuthLayout from '../layouts/AuthLayout.astro';
       await pedir(modoSair === 'atual' ? '/api/auth/sair' : '/api/auth/sair-de-todos', {
         metodo: 'POST'
       });
+      await limparCachePrivado();
       window.location.assign('/entrar?saiu=1');
     } catch (erro) {
       if (erro instanceof FalhaApi && erro.status !== 401 && sairErro && sairErroTexto) {

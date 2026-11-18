@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Fisga.Api.Caching;
 using Fisga.Api.Contracts;
 using Fisga.Api.Observabilidade;
 using Fisga.Application.Comparacao;
@@ -49,7 +50,8 @@ public static class CondicoesEndpoints
                 return Results.Ok(condicoes);
             })
             .AllowAnonymous()
-            .RequireRateLimiting("leitura");
+            .RequireRateLimiting("leitura")
+            .WithMetadata(CachePolicy.Private(300, swr: 600));
 
         app.MapGet("/api/condicoes/comparar", async (
                 double? lat,
@@ -119,7 +121,8 @@ public static class CondicoesEndpoints
                 return resultado is null ? Results.NotFound() : Results.Ok(resultado);
             })
             .AllowAnonymous()
-            .RequireRateLimiting("leitura");
+            .RequireRateLimiting("leitura")
+            .WithMetadata(CachePolicy.Private(86400));
 
         app.MapGet("/api/locais/buscar", async (
                 string? q,
@@ -130,7 +133,8 @@ public static class CondicoesEndpoints
                 return Results.Ok(resultados);
             })
             .AllowAnonymous()
-            .RequireRateLimiting("leitura");
+            .RequireRateLimiting("leitura")
+            .WithMetadata(CachePolicy.Private(3600));
 
         var locais = app.MapGroup("/api/locais");
 

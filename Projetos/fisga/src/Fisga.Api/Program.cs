@@ -8,11 +8,13 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
 using Fisga.Api;
+using Fisga.Api.Caching;
 using Fisga.Api.Endpoints;
 using Fisga.Api.Middleware;
 using Fisga.Api.Observabilidade;
 using Fisga.Application;
 using Fisga.Application.Identidade;
+using Fisga.Application.Observabilidade;
 using Fisga.Infrastructure;
 using Fisga.Infrastructure.Identity;
 using Fisga.Infrastructure.Midia;
@@ -56,6 +58,9 @@ builder.Services.Configure<ForwardedHeadersOptions>(opcoes =>
 
 builder.Services.AdicionarAplicacao();
 builder.Services.AdicionarInfraestrutura(builder.Configuration, builder.Environment.IsDevelopment());
+// Último registro vence: substitui a implementação neutra da Infrastructure pelo
+// adaptador Sentry, que é o único ponto da solução que conhece a telemetria.
+builder.Services.AddSingleton<ICacheObservabilidade, SentryCacheObservabilidade>();
 builder.Services.AddScoped<IdentitySessionService>();
 builder.Services.AddScoped<ConexaoGoogleService>();
 
@@ -116,6 +121,9 @@ Directory.CreateDirectory(pastaMidia);
 
 app.UseForwardedHeaders();
 app.UseCors("web");
+// Cache é default-deny: sem metadata CachePolicy no endpoint, a resposta sai
+// como "private, no-store". Endpoints públicos declaram a política explicitamente.
+app.UseMiddleware<CacheHeadersMiddleware>();
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(pastaMidia),

@@ -23,7 +23,32 @@ public static partial class SentryScrubber
         "uid",
         "shareToken",
         "handoff_code",
-        "code"
+        "code",
+        "q",
+        "busca",
+        "termo"
+    };
+
+    // Allowlist explícita: qualquer chave fora dela é filtrada por padrão. Assim
+    // um parâmetro novo (ex.: termo de busca) não vaza antes de entrar na lista
+    // de sensíveis. Só ficam visíveis chaves operacionais sem dado pessoal.
+    private static readonly HashSet<string> ChavesPublicas = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "page",
+        "pagina",
+        "per_page",
+        "limite",
+        "offset",
+        "ordenar",
+        "ordem",
+        "ts",
+        "v",
+        "lang",
+        "idioma",
+        "utm_source",
+        "utm_medium",
+        "utm_campaign",
+        "utm_content"
     };
 
     public static SentryEvent? ScrubEvent(SentryEvent evento, SentryHint _)
@@ -105,7 +130,8 @@ public static partial class SentryScrubber
             }
 
             var chave = Uri.UnescapeDataString(parte[..igual]);
-            return ChavesSensiveis.Contains(chave) ? $"{parte[..igual]}=[Filtered]" : parte;
+            var filtrar = ChavesSensiveis.Contains(chave) || !ChavesPublicas.Contains(chave);
+            return filtrar ? $"{parte[..igual]}=[Filtered]" : parte;
         }));
     }
 
@@ -119,6 +145,6 @@ public static partial class SentryScrubber
         return ParametroSensivel().Replace(texto, "$1[Filtered]");
     }
 
-    [GeneratedRegex(@"(?i)([?&](?:lat|lon|latitude|longitude|nome|cidade|pescador|email|token|uid|handoff_code|code)=)[^&\s]+")]
+    [GeneratedRegex(@"(?i)([?&](?:lat|lon|latitude|longitude|nome|cidade|pescador|email|token|uid|handoff_code|code|q|busca|termo)=)[^&\s]+")]
     private static partial Regex ParametroSensivel();
 }

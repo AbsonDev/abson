@@ -168,6 +168,17 @@
           "Microsoft.Extensions.Primitives": "10.0.15"
         }
       },
+      "Microsoft.Extensions.Caching.Hybrid": {
+        "type": "Transitive",
+        "resolved": "10.11.0",
+        "contentHash": "F4P+uZgDFnKfmHm0ReWJNSVXAlZmknQgkkrmEDtAdxWvVPCSZL7UPAY7Ewf8zs5qwPCGaYopZiRiPg2YGCfuhA==",
+        "dependencies": {
+          "Microsoft.Extensions.Caching.Abstractions": "10.0.13",
+          "Microsoft.Extensions.Caching.Memory": "10.0.13",
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.13",
+          "Microsoft.Extensions.Options": "10.0.13"
+        }
+      },
       "Microsoft.Extensions.Caching.Memory": {
         "type": "Transitive",
         "resolved": "10.0.15",
@@ -687,6 +698,7 @@
           "Microsoft.AspNetCore.Authentication.Google": "[10.0.15, )",
           "Microsoft.AspNetCore.Identity.EntityFrameworkCore": "[10.0.15, )",
           "Microsoft.EntityFrameworkCore.Sqlite": "[10.0.15, )",
+          "Microsoft.Extensions.Caching.Hybrid": "[10.11.0, )",
           "Microsoft.Extensions.Http": "[10.0.15, )",
           "Microsoft.Extensions.Logging.Abstractions": "[10.0.15, )",
           "Microsoft.Extensions.Options.ConfigurationExtensions": "[10.0.15, )",

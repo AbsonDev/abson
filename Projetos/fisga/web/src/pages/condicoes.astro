@@ -812,6 +812,8 @@ const exemplos = [
   <div id="toast" class="toast oculto" role="status" aria-live="polite"></div>
 
   <script>
+    import { encerrarSessaoExpirada } from '../lib/auth';
+
     const API = (document.body.dataset.api ?? 'http://localhost:5184').replace(/\/$/, '');
     const busca = document.getElementById('busca-local') as HTMLInputElement | null;
     const resultados = document.getElementById('resultados-busca') as HTMLDivElement | null;
@@ -977,7 +979,7 @@ const exemplos = [
           });
 
           if (resposta.status === 401) {
-            window.location.href = `/entrar?voltar=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+            await encerrarSessaoExpirada();
             return;
           }
 

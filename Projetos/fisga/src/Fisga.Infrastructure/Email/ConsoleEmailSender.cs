@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Fisga.Application.Common;
 using Fisga.Application.Identidade;
 
 namespace Fisga.Infrastructure.Emails;
@@ -22,7 +23,7 @@ public sealed class ConsoleEmailSender(ILogger<ConsoleEmailSender> logger) : IEm
         logger.LogWarning(
             "Link de acesso (desenvolvimento) enviado para o domínio {Dominio}; expira em {Expira}. " +
             "Use o linkDesenvolvimento da resposta da API para testar.",
-            DominioDe(destino),
+            LogSeguro.ParaLog(DominioDe(destino)),
             expiraEm.ToLocalTime().ToString("dd/MM/yyyy HH:mm"));
 
         return Task.CompletedTask;
@@ -38,8 +39,8 @@ public sealed class ConsoleEmailSender(ILogger<ConsoleEmailSender> logger) : IEm
     {
         logger.LogWarning(
             "E-mail (desenvolvimento) enviado para o domínio {Dominio}; assunto: {Assunto}.",
-            DominioDe(destino),
-            assunto);
+            LogSeguro.ParaLog(DominioDe(destino)),
+            LogSeguro.ParaLog(assunto));
 
         return Task.CompletedTask;
     }
