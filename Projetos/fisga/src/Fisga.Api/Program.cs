@@ -17,9 +17,13 @@ using Microsoft.Extensions.Logging;
 using Sentry;
 
 var builder = WebApplication.CreateBuilder(args);
+var versao = VersaoDaAplicacao.Resolver(
+    Environment.GetEnvironmentVariable("GIT_SHA"),
+    Environment.GetEnvironmentVariable("SOURCE_COMMIT"));
 
 builder.WebHost.UseSentry(opcoes =>
 {
+    opcoes.Release = versao;
     opcoes.SendDefaultPii = false;
     opcoes.MaxRequestBodySize = Sentry.Extensibility.RequestSize.None;
     opcoes.EnableLogs = true;
@@ -105,7 +109,7 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.MapGet("/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
+app.MapGet("/health", () => Results.Ok(new { status = "ok", version = versao })).AllowAnonymous();
 app.MapGet("/ready", async (FisgaDbContext db, CancellationToken ct) =>
         await db.Database.CanConnectAsync(ct)
             ? Results.Ok(new { status = "ready" })
