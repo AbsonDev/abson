@@ -366,36 +366,56 @@ git commit -m "feat(auth): bridge identity cookie to device sessions"
 
 **Files:**
 - Modify: `src/Fisga.Application/Identidade/ServicoDeAutenticacao.cs`
+- Modify: `src/Fisga.Application/Identidade/Contratos.cs`
+- Modify: `src/Fisga.Infrastructure/Identity/CadastroDeUsuario.cs`
 - Modify: `src/Fisga.Api/Endpoints/AuthEndpoints.cs`
+- Delete: `src/Fisga.Api/Middleware/SessaoMiddleware.cs`
+- Modify: `src/Fisga.Api/Program.cs`
 - Create: `tests/Fisga.Api.Tests/LinkMagicoIdentityTests.cs`
 - Modify: `tests/Fisga.Application.Tests/ServicoDeAutenticacaoTests.cs`
+- Modify: `tests/Fisga.Api.Tests/CadastroDeUsuarioTests.cs`
 
 **Interfaces:**
-- Produces: `ServicoDeAutenticacao.ConfirmarAsync(...) : Task<ResultadoDeConfirmacao>` com `Usuario` e `PrimeiroAcesso`.
-- Consumes: `CadastroDeUsuario` da Task 3 e `AssinarAsync` da Task 5.
+- Produces: `ResultadoDaConfirmacao(Usuario Usuario, bool PrimeiroAcesso)` (substitui `SessaoCriada`).
+- Modifies: `ICadastroDeUsuario.GarantirUsuarioAsync` passa a garantir **também** o `ApplicationUser` com o mesmo Id e `EmailConfirmed = emailVerificado`, na mesma transação (o XML doc da interface já promete isso; a implementação atual só cria o `Usuario`).
+- Consumes: `IdentitySessionService.AssinarAsync` da Task 5 e `UserManager<ApplicationUser>`.
+
+**Decisões de implementação (vinculantes):**
+- Remover o middleware legado `SessaoMiddleware` do pipeline e deletar o arquivo. Não podem existir dois sistemas de sessão ao mesmo tempo.
+- `ServicoDeAutenticacao` deixa de criar `Sessao`, token de cookie, `ValidarSessaoAsync` e `SairAsync`. Mantém `SolicitarLinkAsync`, `ConfirmarAsync` e `ListarSessoesAsync`.
+- O endpoint `/api/auth/confirmar` carrega o `ApplicationUser` por id via `UserManager`, chama `IdentitySessionService.AssinarAsync(conta, usuario, http, ct)` e redireciona para o mesmo destino de hoje.
+- `DefinirCookie` (que escrevia `fisga_sessao`) sai; `LimparCookie` permanece apenas como limpeza de cookie obsoleto no logout, sem gravar cookie novo.
+- `GarantirUsuarioAsync` com `emailVerificado: true` deve marcar `Usuario.EmailVerificadoEm` e `ApplicationUser.EmailConfirmed`; com `false`, ambos ficam não verificados. Reutilizar a implementação transacional de `CriarComSenhaAsync` sem senha para não duplicar lógica.
 
 - [ ] **Step 1: Adaptar os testes**
 
-Usuário existente confirma link e entra; usuário novo é criado; token reutilizado/expirado falha; nenhum `Sessao` é criado dentro do serviço de token.
+- Usuário existente confirma link e entra; usuário novo é criado (com `Usuario` **e** `ApplicationUser`); token reutilizado/expirado falha.
+- Nenhum `Sessao` é criado dentro do serviço de token; a sessão é criada pelo endpoint via `AssinarAsync`.
+- Atualizar/remover os testes de `ValidarSessaoAsync`/`SairAsync` em `ServicoDeAutenticacaoTests` e ajustar os que usam `SessaoCriada`.
+- Adicionar teste de que `GarantirUsuarioAsync(..., emailVerificado: true/false)` cria os dois lados com o estado correto e é idempotente.
 
 - [ ] **Step 2: Rodar e ver falhar**
 
-Run: `dotnet test tests/Fisga.Application.Tests tests/Fisga.Api.Tests --filter "LinkMagico|Confirmar"`
+Run: `dotnet test tests/Fisga.Application.Tests tests/Fisga.Api.Tests --filter "LinkMagico|Confirmar|GarantirUsuario"`
 Expected: FAIL.
 
 - [ ] **Step 3: Implementar**
 
-Remover a criação de sessão/cookie do `ServicoDeAutenticacao`; ele valida o token, garante o usuário via `CadastroDeUsuario`, atualiza verificação/acesso e devolve o usuário. O endpoint `/api/auth/confirmar` chama `AssinarAsync` e redireciona.
+Ajustar `CadastroDeUsuario`/`ICadastroDeUsuario`, `ServicoDeAutenticacao` e `Contratos`. O serviço valida o token, garante o usuário via `CadastroDeUsuario`, atualiza verificação/acesso e devolve `ResultadoDaConfirmacao` — sem tocar em `Sessao` ou cookie.
 
-- [ ] **Step 4: Rodar e ver passar**
+- [ ] **Step 4: Implementar o endpoint e remover o legado**
 
-Run: `dotnet test tests/Fisga.Application.Tests tests/Fisga.Api.Tests --filter "LinkMagico|Confirmar"`
-Expected: PASS.
+`/api/auth/confirmar` chama `IdentitySessionService.AssinarAsync` e redireciona. Remover `SessaoMiddleware` do `Program.cs`, deletar o arquivo, remover `DefinirCookie`, manter `LimparCookie`.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Rodar e ver passar**
+
+Run: `dotnet test`
+Expected: PASS, sem middleware de sessão legado no pipeline.
+
+- [ ] **Step 6: Commit**
 
 ```bash
-git add src/Fisga.Application/Identidade/ServicoDeAutenticacao.cs src/Fisga.Api/Endpoints/AuthEndpoints.cs tests
+git add src/Fisga.Application src/Fisga.Infrastructure src/Fisga.Api tests
 git commit -m "feat(auth): sign in magic links through identity"
 ```
 
