@@ -419,7 +419,7 @@ test('401 ao salvar respeita o destino interno', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Aracaju' }).click();
 
-  await expect(page).toHaveURL(/\/entrar\?voltar=%2Fdiario$/);
+  await expect(page).toHaveURL(/\/entrar\?voltar=\/diario$/);
 });
 
 test('resposta antiga de busca não sobrescreve a nova', async ({ page }) => {

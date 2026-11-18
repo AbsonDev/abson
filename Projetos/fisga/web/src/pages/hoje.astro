@@ -314,6 +314,8 @@ const exemplos = [
   </section>
 
   <script>
+    import { encerrarSessaoExpirada } from '../lib/auth';
+
     const API = (document.body.dataset.api ?? 'http://localhost:5184').replace(/\/$/, '');
     const busca = document.getElementById('busca-primeiro-local') as HTMLInputElement | null;
     const resultados = document.getElementById('resultados-primeiro-local') as HTMLDivElement | null;
@@ -344,7 +346,7 @@ const exemplos = [
         });
 
         if (resposta.status === 401) {
-          window.location.href = `/entrar?voltar=${encodeURIComponent('/hoje')}`;
+          await encerrarSessaoExpirada('/hoje');
           return;
         }
 

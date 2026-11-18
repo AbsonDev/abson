@@ -3,6 +3,9 @@ using System.Text;
 using System.Text.Json;
 using Fisga.Application.Condicoes;
 using Fisga.Infrastructure.Condicoes;
+using Fisga.Infrastructure.Observabilidade;
+using Microsoft.Extensions.Caching.Hybrid;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Fisga.Api.Tests;
@@ -56,8 +59,18 @@ public sealed class OpenMeteoProvedorDeCondicoesTests
         Assert.Contains("200", excecao.Message);
     }
 
-    private static OpenMeteoProvedorDeCondicoes Criar(HandlerFalso handler, LoggerCapturador logger) =>
-        new(new HttpClient(handler), new CacheEmMemoriaDeCondicoes(), new CondicoesOptions(), logger);
+    private static OpenMeteoProvedorDeCondicoes Criar(HandlerFalso handler, LoggerCapturador logger)
+    {
+        var servicos = new ServiceCollection();
+        servicos.AddHybridCache();
+        var cache = servicos.BuildServiceProvider().GetRequiredService<HybridCache>();
+        return new OpenMeteoProvedorDeCondicoes(
+            new HttpClient(handler),
+            cache,
+            new CondicoesOptions(),
+            logger,
+            new CacheObservabilidadeNula());
+    }
 
     private static HttpResponseMessage Texto(string corpo) =>
         new(HttpStatusCode.OK) { Content = new StringContent(corpo, Encoding.UTF8, "text/plain") };

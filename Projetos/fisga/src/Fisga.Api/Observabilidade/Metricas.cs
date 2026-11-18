@@ -61,6 +61,21 @@ public static class Metricas
             MeasurementUnit.Duration.Millisecond,
             Atributos(("ambiente", ambiente.ToString()), ("tipo", tipo)));
 
+    public static void CondicoesUpstream() =>
+        SentrySdk.Metrics.EmitCounter("fisga.condicoes.upstream", 1, []);
+
+    public static void GeocodingUpstream(string tipo) =>
+        SentrySdk.Metrics.EmitCounter(
+            "fisga.geocoding.upstream",
+            1,
+            Atributos(("tipo", tipo)));
+
+    public static void GeocodingNegativo(string tipo) =>
+        SentrySdk.Metrics.EmitCounter(
+            "fisga.geocoding.negativo",
+            1,
+            Atributos(("tipo", tipo)));
+
     public static void LoginSolicitado() =>
         SentrySdk.Metrics.EmitCounter("fisga.login.solicitado", 1, []);
 

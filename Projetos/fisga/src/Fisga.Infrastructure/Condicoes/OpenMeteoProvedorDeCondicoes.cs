@@ -1,21 +1,31 @@
 using System.Globalization;
 using System.Net;
+using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
 using Fisga.Application.Condicoes;
+using Fisga.Application.Observabilidade;
 
 namespace Fisga.Infrastructure.Condicoes;
 
 public sealed class OpenMeteoProvedorDeCondicoes(
     HttpClient http,
-    ICacheDeCondicoes cache,
+    HybridCache cache,
     CondicoesOptions opcoes,
-    ILogger<OpenMeteoProvedorDeCondicoes> logger) : IProvedorDeCondicoes
+    ILogger<OpenMeteoProvedorDeCondicoes> logger,
+    ICacheObservabilidade observabilidade) : IProvedorDeCondicoes
 {
     private const string Fonte = "Open-Meteo";
+    private static readonly TimeSpan TtlMaximo = TimeSpan.FromMinutes(20);
+    private static readonly TimeSpan TtlDaLua = TimeSpan.FromHours(12);
+    private const int TamanhoMaximoDoTrecho = 200;
     private const int TentativasDeLeitura = 2;
-    private const int TamanhoDoTrecho = 200;
     private static readonly TimeSpan EsperaEntreTentativas = TimeSpan.FromMilliseconds(500);
+
+    // CacheMinutos só encurta o TTL completo; nunca passa do teto da política.
+    private TimeSpan TtlCompleto =>
+        TimeSpan.FromMinutes(Math.Clamp(opcoes.CacheMinutos, 1, (int)TtlMaximo.TotalMinutes));
 
     public async Task<DadosDeCondicoes?> ObterAsync(
         double latitude,
@@ -23,24 +33,78 @@ public sealed class OpenMeteoProvedorDeCondicoes(
         DateOnly diaLocal,
         CancellationToken ct = default)
     {
-        var chave = $"openmeteo:{Math.Round(latitude, 2):F2}:{Math.Round(longitude, 2):F2}";
-        if (cache.TentarObter(chave, out var emCache) && emCache is not null)
+        var chave = ChavesDeCache.Condicoes(latitude, longitude, diaLocal);
+
+        var resultado = await cache.GetOrCreateAsync(
+            chave,
+            async token =>
+            {
+                observabilidade.CondicoesUpstream();
+                return await CalcularAsync(latitude, longitude, diaLocal, token);
+            },
+            Opcoes(TtlCompleto),
+            cancellationToken: ct);
+
+        // O TTL efetivo depende do valor devolvido, não de quem executou a
+        // factory: se o chamador que calculou for cancelado depois de o
+        // HybridCache gravar a entrada, um observador ainda corrige o TTL.
+        // A escrita usa CancellationToken.None porque é contabilidade de cache,
+        // não trabalho do chamador.
+        var politica = PoliticaDeCacheDeCondicoes.Ttl(resultado.Dados);
+        if (politica < TtlMaximo)
         {
-            return emCache;
+            var restante = Restante(politica, resultado.CalculadoEmTicks);
+
+            if (restante <= TimeSpan.Zero)
+            {
+                await cache.RemoveAsync(chave, CancellationToken.None);
+            }
+            else
+            {
+                await cache.SetAsync(
+                    chave,
+                    resultado,
+                    Opcoes(restante),
+                    cancellationToken: CancellationToken.None);
+            }
         }
 
-        var clima = await BuscarClimaAsync(latitude, longitude, ct);
+        return resultado.Dados;
+    }
+
+    private static HybridCacheEntryOptions Opcoes(TimeSpan ttl) => new()
+    {
+        Expiration = ttl,
+        LocalCacheExpiration = ttl,
+    };
+
+    // Idade desde o cálculo: evita que uma leitura reaplique o TTL curto e
+    // estenda indefinidamente um resultado parcial/negativo sob tráfego.
+    private static TimeSpan Restante(TimeSpan politica, long calculadoEmTicks)
+    {
+        var idade = DateTimeOffset.UtcNow.UtcTicks - calculadoEmTicks;
+        return idade <= 0 ? politica : politica - TimeSpan.FromTicks(idade);
+    }
+
+    private async Task<ResultadoDeCondicoes> CalcularAsync(
+        double latitude,
+        double longitude,
+        DateOnly diaLocal,
+        CancellationToken ct)
+    {
+        var climaTask = BuscarClimaAsync(latitude, longitude, ct);
+        var marTask = BuscarMarAsync(latitude, longitude, ct);
+        var luaTask = ObterLuaAsync(latitude, longitude, diaLocal, ct);
+        await Task.WhenAll(climaTask, marTask, luaTask);
+
+        var clima = await climaTask;
         if (clima is null)
         {
-            return null;
+            return new ResultadoDeCondicoes(null, Indisponivel: true, CalculadoEmTicks: DateTimeOffset.UtcNow.UtcTicks);
         }
 
-        var marTask = BuscarMarAsync(latitude, longitude, ct);
-        var luaTask = BuscarLuaAsync(latitude, longitude, diaLocal, ct);
-        await Task.WhenAll(marTask, luaTask);
-
-        var mar = marTask.Result;
-        var lua = luaTask.Result;
+        var mar = await marTask;
+        var lua = await luaTask;
         var horas = clima.Horas
             .Select(hora =>
             {
@@ -64,8 +128,39 @@ public sealed class OpenMeteoProvedorDeCondicoes(
             horas.Any(hora => hora.NivelDoMarM is not null),
             lua is null ? Fonte : $"{Fonte} + MET Norway");
 
-        cache.Guardar(chave, dados, TimeSpan.FromMinutes(Math.Max(5, opcoes.CacheMinutos)));
-        return dados;
+        return new ResultadoDeCondicoes(
+            dados,
+            Indisponivel: false,
+            CalculadoEmTicks: DateTimeOffset.UtcNow.UtcTicks);
+    }
+
+    private async Task<DadosDaLua?> ObterLuaAsync(
+        double latitude,
+        double longitude,
+        DateOnly dia,
+        CancellationToken ct)
+    {
+        var chave = ChavesDeCache.Lua(latitude, longitude, dia);
+
+        var emCache = await cache.GetOrCreateAsync(
+            chave,
+            async token =>
+            {
+                var calculado = new LuaEmCache(await BuscarLuaAsync(latitude, longitude, dia, token));
+                return calculado;
+            },
+            Opcoes(TtlDaLua),
+            cancellationToken: ct);
+
+        // Falha do MET Norway não fica presa por 12 h: a decisão é pelo valor
+        // devolvido, então um observador também remove a entrada quando a
+        // factory rodou em outro chamador que foi cancelado.
+        if (emCache.Dados is null)
+        {
+            await cache.RemoveAsync(chave, CancellationToken.None);
+        }
+
+        return emCache.Dados;
     }
 
     private async Task<ClimaBruto?> BuscarClimaAsync(
@@ -83,14 +178,14 @@ public sealed class OpenMeteoProvedorDeCondicoes(
 
         try
         {
-            var (documento, status) = await LerJsonAsync(url, ct);
-            if (documento is null)
+            var (corpo, status) = await LerJsonAsync(url, "Open-Meteo clima", ct);
+            if (corpo is null)
             {
                 logger.LogWarning("Open-Meteo recusou o clima: {Status}", status);
                 return null;
             }
 
-            using var json = documento;
+            using var json = JsonDocument.Parse(corpo);
             var raiz = json.RootElement;
 
             if (!raiz.TryGetProperty("hourly", out var hourly)
@@ -156,6 +251,10 @@ public sealed class OpenMeteoProvedorDeCondicoes(
 
             return new ClimaBruto(horas, dias);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception excecao) when (excecao is HttpRequestException or TaskCanceledException or JsonException)
         {
             logger.LogWarning(excecao, "Falha ao buscar clima em Open-Meteo");
@@ -177,13 +276,13 @@ public sealed class OpenMeteoProvedorDeCondicoes(
 
         try
         {
-            var (documento, _) = await LerJsonAsync(url, ct);
-            if (documento is null)
+            var (corpo, _) = await LerJsonAsync(url, "Open-Meteo mar", ct);
+            if (corpo is null)
             {
                 return [];
             }
 
-            using var json = documento;
+            using var json = JsonDocument.Parse(corpo);
             var raiz = json.RootElement;
 
             if (!raiz.TryGetProperty("hourly", out var hourly)
@@ -217,9 +316,13 @@ public sealed class OpenMeteoProvedorDeCondicoes(
 
             return resultado;
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception excecao) when (excecao is HttpRequestException or TaskCanceledException or JsonException)
         {
-            logger.LogInformation(excecao, "Maré/ondas indisponíveis para {Lat},{Lon}", latitude, longitude);
+            logger.LogInformation(excecao, "Maré/ondas indisponíveis no provedor de mar");
             return [];
         }
     }
@@ -260,13 +363,13 @@ public sealed class OpenMeteoProvedorDeCondicoes(
 
         try
         {
-            var (documento, _) = await LerJsonAsync(url, ct);
-            if (documento is null)
+            var (corpo, _) = await LerJsonAsync(url, "MET Norway lua", ct);
+            if (corpo is null)
             {
                 return null;
             }
 
-            using var json = documento;
+            using var json = JsonDocument.Parse(corpo);
             if (!json.RootElement.TryGetProperty("properties", out var propriedades))
             {
                 return null;
@@ -284,21 +387,24 @@ public sealed class OpenMeteoProvedorDeCondicoes(
                 LerTempo(propriedades, "low_moon"),
                 fase);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception excecao) when (excecao is HttpRequestException or TaskCanceledException or JsonException)
         {
-            logger.LogInformation(excecao, "Lua indisponível em MET Norway para {Lat},{Lon}", latitude, longitude);
+            logger.LogInformation(excecao, "Lua indisponível em MET Norway");
             return null;
         }
     }
 
-    /// <summary>
-    /// Faz o GET e devolve o JSON da resposta. Retorna documento nulo (com o status) quando o
-    /// provedor responde com erro HTTP. Provedores às vezes respondem 200 com texto puro (página
-    /// de erro de proxy/sobrecarga); nesse caso tenta de novo uma vez e, se persistir, lança
-    /// <see cref="JsonException"/> com status, content-type e um trecho do corpo para diagnóstico.
-    /// </summary>
-    private async Task<(JsonDocument? Documento, HttpStatusCode Status)> LerJsonAsync(
+    // Um 200 nem sempre traz JSON: proxies/CDN do provedor às vezes devolvem
+    // texto (ex.: "Upstream ..."). Valida o primeiro byte e, quando o corpo não
+    // é JSON, tenta uma segunda vez antes de desistir. Se persistir, lança
+    // JsonException com status, content-type e trecho do corpo para diagnóstico.
+    private async Task<(byte[]? Corpo, HttpStatusCode Status)> LerJsonAsync(
         string url,
+        string fonte,
         CancellationToken ct)
     {
         for (var tentativa = 1; ; tentativa++)
@@ -309,20 +415,21 @@ public sealed class OpenMeteoProvedorDeCondicoes(
                 return (null, resposta.StatusCode);
             }
 
-            var corpo = await resposta.Content.ReadAsStringAsync(ct);
+            var corpo = await resposta.Content.ReadAsByteArrayAsync(ct);
             if (PareceJson(corpo))
             {
-                return (JsonDocument.Parse(corpo), resposta.StatusCode);
+                return (corpo, resposta.StatusCode);
             }
 
             var host = resposta.RequestMessage?.RequestUri?.Host ?? new Uri(url).Host;
-            var tipo = resposta.Content.Headers.ContentType?.MediaType ?? "(sem content-type)";
-            var trecho = Trecho(corpo);
+            var tipo = resposta.Content.Headers.ContentType?.ToString() ?? "(sem content-type)";
+            var trecho = Trecho(Encoding.UTF8.GetString(corpo));
 
             if (tentativa < TentativasDeLeitura)
             {
                 logger.LogInformation(
-                    "Resposta não-JSON de {Host} (status {Status}, {ContentType}); tentando de novo: {Trecho}",
+                    "{Fonte} devolveu resposta não JSON em {Host} (status {Status}, {ContentType}); tentando de novo: {Trecho}",
+                    fonte,
                     host,
                     (int)resposta.StatusCode,
                     tipo,
@@ -332,15 +439,21 @@ public sealed class OpenMeteoProvedorDeCondicoes(
             }
 
             throw new JsonException(
-                $"Resposta não-JSON de {host} após {tentativa} tentativas "
+                $"Resposta não-JSON de {host} ({fonte}) após {tentativa} tentativas "
                 + $"(status {(int)resposta.StatusCode}, content-type {tipo}): {trecho}");
         }
     }
 
-    private static bool PareceJson(string corpo)
+    private static bool PareceJson(byte[] corpo)
     {
-        var conteudo = corpo.AsSpan().TrimStart('\uFEFF').TrimStart();
-        return conteudo.Length > 0 && (conteudo[0] == '{' || conteudo[0] == '[');
+        ReadOnlySpan<byte> inicio = corpo;
+        if (inicio.StartsWith(Encoding.UTF8.Preamble))
+        {
+            inicio = inicio[Encoding.UTF8.Preamble.Length..];
+        }
+
+        inicio = inicio.TrimStart(" \t\r\n"u8);
+        return !inicio.IsEmpty && (inicio[0] == (byte)'{' || inicio[0] == (byte)'[');
     }
 
     private static string Trecho(string corpo)
@@ -351,7 +464,9 @@ public sealed class OpenMeteoProvedorDeCondicoes(
             return "(corpo vazio)";
         }
 
-        return limpo.Length <= TamanhoDoTrecho ? limpo : limpo[..TamanhoDoTrecho] + "…";
+        return limpo.Length <= TamanhoMaximoDoTrecho
+            ? limpo
+            : limpo[..TamanhoMaximoDoTrecho] + "…";
     }
 
     private static DateTimeOffset? LerTempo(JsonElement propriedades, string nome)
@@ -434,4 +549,11 @@ public sealed class OpenMeteoProvedorDeCondicoes(
         DateTimeOffset? Transito,
         DateTimeOffset? TransitoOposto,
         double FaseAngulo);
+
+    private sealed record ResultadoDeCondicoes(
+        DadosDeCondicoes? Dados,
+        bool Indisponivel,
+        long CalculadoEmTicks);
+
+    private sealed record LuaEmCache(DadosDaLua? Dados);
 }

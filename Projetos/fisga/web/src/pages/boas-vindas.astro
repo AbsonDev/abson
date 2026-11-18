@@ -569,7 +569,7 @@ const sugestoes = [
 
 <script>
   // @ts-nocheck
-  import { apiBase, destinoSeguro, postJson } from '../lib/auth';
+  import { apiBase, destinoSeguro, postJson, encerrarSessaoExpirada } from '../lib/auth';
 
   const API = apiBase();
   const titulo = document.getElementById('boas-titulo');
@@ -647,9 +647,8 @@ const sugestoes = [
   async function iniciar() {
     try {
       const resposta = await fetch(`${API}/api/auth/me`, { credentials: 'include' });
-
       if (resposta.status === 401) {
-        window.location.replace('/entrar?voltar=/hoje');
+        await encerrarSessaoExpirada('/hoje');
         return;
       }
 
@@ -661,7 +660,7 @@ const sugestoes = [
       const dados = await resposta.json().catch(() => ({}));
 
       if (!dados.autenticado || !dados.usuario) {
-        window.location.replace('/entrar?voltar=/hoje');
+        await encerrarSessaoExpirada('/hoje');
         return;
       }
 
@@ -697,8 +696,7 @@ const sugestoes = [
     const resultado = await postJson('/api/locais', corpo);
 
     if (resultado.status === 401) {
-      const retorno = destino();
-      window.location.assign(`/entrar?voltar=${encodeURIComponent(retorno)}`);
+      await encerrarSessaoExpirada(destino());
       return false;
     }
 
