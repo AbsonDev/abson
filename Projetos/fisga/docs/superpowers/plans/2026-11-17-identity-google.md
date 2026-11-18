@@ -429,34 +429,50 @@ git commit -m "feat(auth): sign in magic links through identity"
 - Modify: `src/Fisga.Api/Endpoints/AuthEndpoints.cs`
 - Modify: `src/Fisga.Api/Program.cs`
 - Modify: `src/Fisga.Api/Contracts/AuthContracts.cs`
+- Modify: `src/Fisga.Api/appsettings.json`
 - Create: `tests/Fisga.Api.Tests/ConsentimentoTests.cs`
 
 **Interfaces:**
-- Produces: `LegalOptions { TermsVersion, PrivacyVersion }`, `IConsentimentoRepository`, `POST /api/conta/consentimento`, claims `consentimento_termos`/`consentimento_privacidade`.
-- Consumes: `Consentimento` da Task 1.
+- Produces: `LegalOptions { TermsVersion, PrivacyVersion }` ligado a `Legal:TermsVersion`/`Legal:PrivacyVersion` (valor inicial `2026-11-17`).
+- Produces: `ConsentimentoService.Esta PendenteAsync(Guid usuarioId, CancellationToken)` e `RegistrarAsync(Guid usuarioId, string termosVersao, string privacidadeVersao, CancellationToken)`.
+- Produces: `POST /api/conta/consentimento` com `{ termosVersao, privacidadeVersao }`, validando se as versões enviadas são as vigentes.
+- Modifies: `MeResponse` ganha `bool ConsentimentoPendente`.
+- Consumes: `IConsentimentoRepository`/`Consentimento` da Task 1 e `HttpContext.UsuarioId()` da Task 5.
+
+**Decisões de implementação (vinculantes):**
+- A verificação é feita no banco a cada requisição autenticada, via `IConsentimentoRepository.TemVersaoAsync` — **não** usar claims de versão no cookie. Isso evita cookie obsoleto quando a versão muda e dispensa reemissão de cookie ao aceitar. Não alterar `IdentitySessionService` nesta tarefa.
+- O middleware só atua quando há usuário autenticado resolvido em `HttpContext.Items` (ou seja, depois de `SessaoIdentityMiddleware`). Usuário não autenticado continua sendo tratado pelos endpoints como hoje.
+- Allowlist exata, quando o aceite está pendente: `GET /api/auth/me`, `POST /api/auth/sair` e `POST /api/conta/consentimento`. Todo outro `/api` responde 403 com problem details `consentimento_pendente`.
+- O middleware grava o resultado em `HttpContext.Items["fisga.consentimentoPendente"]` para `/api/auth/me` devolver o sinalizador ao frontend.
+- Registrar aceite com versão diferente da vigente retorna 400; não gravar versões arbitrárias.
+- Usuários antigos começam sem aceite da versão vigente; não criar aceite retroativo.
 
 - [ ] **Step 1: Escrever testes**
 
-Login sem aceite da versão atual recebe 403 em `/api/diario`; `/api/auth/me` continua 200 com `consentimentoPendente=true`; aceitar grava tipo/versão/data e libera; mudar a versão em configuração volta a bloquear.
+Cobrir: login sem aceite da versão atual recebe 403 em `/api/diario` (ou outra rota de dados); `/api/auth/me` continua 200 com `consentimentoPendente=true`; `POST /api/conta/consentimento` com as versões vigentes grava os dois tipos e libera; versão errada retorna 400 e não grava; mudar `LegalOptions.TermsVersion` no host de teste (com restauração no `finally`) volta a bloquear; usuário não autenticado não é afetado pelo middleware.
 
 - [ ] **Step 2: Rodar e ver falhar**
 
-Run: `dotnet test tests/Fisga.Api.Tests --filter Consentimento`
+Run: `dotnet test --filter Consentimento`
 Expected: FAIL.
 
 - [ ] **Step 3: Implementar**
 
-Adicionar `LegalOptions` em `appsettings` com versão `2026-11-17` para Termos e Privacidade. No sign-in, consultar consentimentos e adicionar claims de versão. `ConsentimentoMiddleware` compara claims com `LegalOptions` e retorna 403 `consentimento_pendente` para rotas de dados, exceto allowlist. `POST /api/conta/consentimento` grava e reemite o cookie com as claims atualizadas.
+Registrar `LegalOptions` em `DependencyInjection`/`Program` com bind de `Legal`. Criar `ConsentimentoService` usando `IConsentimentoRepository`, `IRelogio`, `IUnitOfWork` e `LegalOptions`. No middleware, quando autenticado, consultar `EstaPendenteAsync`; se pendente e fora da allowlist, escrever problem details 403 com código `consentimento_pendente`. Inserir o middleware depois de `SessaoIdentityMiddleware` no `Program.cs`.
 
-- [ ] **Step 4: Rodar e ver passar**
+- [ ] **Step 4: Implementar o endpoint de aceite**
 
-Run: `dotnet test tests/Fisga.Api.Tests --filter Consentimento`
-Expected: PASS.
+`POST /api/conta/consentimento` valida as versões enviadas contra `LegalOptions`, chama `RegistrarAsync` e devolve 204. Ajustar `MeResponse` e o endpoint `/api/auth/me` para incluir `ConsentimentoPendente`.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Rodar e ver passar**
+
+Run: `dotnet test`
+Expected: PASS, sem regressão nos fluxos de login/link mágico.
+
+- [ ] **Step 6: Commit**
 
 ```bash
-git add src/Fisga.Application/Identidade src/Fisga.Api tests/Fisga.Api.Tests
+git add src/Fisga.Application src/Fisga.Api tests/Fisga.Api.Tests
 git commit -m "feat(auth): require formal terms and privacy consent"
 ```
 
