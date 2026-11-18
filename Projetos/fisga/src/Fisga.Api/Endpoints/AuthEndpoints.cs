@@ -272,21 +272,26 @@ public static class AuthEndpoints
                 string? token,
                 HttpContext http,
                 ServicoDeAutenticacao servico,
+                UserManager<ApplicationUser> usuarios,
+                IdentitySessionService identidade,
                 AutenticacaoOptions opcoes,
                 CancellationToken ct) =>
             {
                 var web = opcoes.WebUrl.TrimEnd('/');
                 try
                 {
-                    var sessao = await servico.ConfirmarAsync(
-                        token,
-                        http.Request.Headers.UserAgent.ToString(),
-                        http.Connection.RemoteIpAddress?.ToString(),
-                        ct);
+                    var resultado = await servico.ConfirmarAsync(token, ct);
 
-                    DefinirCookie(http, sessao.Token, sessao.ExpiraEm, opcoes);
-                    Metricas.LoginConfirmado(sessao.PrimeiroAcesso);
-                    var destino = sessao.PrimeiroAcesso
+                    var conta = await usuarios.FindByIdAsync(resultado.Usuario.Id.ToString())
+                                ?? throw new InvalidOperationException(
+                                    "Conta de autenticação não encontrada após a confirmação do link.");
+
+                    // O cookie da Identity é a única autenticação; a sessão de
+                    // dispositivo é criada aqui, ligada ao cookie pelo claim sessao_id.
+                    await identidade.AssinarAsync(conta, resultado.Usuario, http, ct);
+
+                    Metricas.LoginConfirmado(resultado.PrimeiroAcesso);
+                    var destino = resultado.PrimeiroAcesso
                         ? "/boas-vindas?novo=1"
                         : "/entrar/confirmar?estado=ok";
                     return Results.Redirect($"{web}{destino}");
@@ -433,23 +438,7 @@ public static class AuthEndpoints
         return app;
     }
 
-    private static void DefinirCookie(
-        HttpContext http,
-        string token,
-        DateTimeOffset expiraEm,
-        AutenticacaoOptions opcoes)
-    {
-        http.Response.Cookies.Append(opcoes.CookieName, token, new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = opcoes.CookieSecure,
-            SameSite = SameSiteMode.Lax,
-            Expires = expiraEm,
-            Path = "/",
-            IsEssential = true
-        });
-    }
-
+    // Apenas limpa o cookie obsoleto fisga_sessao no logout; nenhum cookie novo é gravado.
     private static void LimparCookie(HttpContext http, AutenticacaoOptions opcoes)
     {
         http.Response.Cookies.Delete(opcoes.CookieName, new CookieOptions

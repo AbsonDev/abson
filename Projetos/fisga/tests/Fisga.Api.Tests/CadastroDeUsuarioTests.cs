@@ -128,16 +128,38 @@ public sealed class CadastroDeUsuarioTests : IAsyncLifetime
 
         Assert.Equal(primeiro.Id, segundo.Id);
         Assert.Equal(1, await _db.Usuarios.CountAsync(u => u.Email == email));
+        Assert.Equal(1, await _db.Users.CountAsync(u => u.Email == email.Valor));
     }
 
     [Fact]
-    public async Task GarantirUsuarioAsync_marca_email_verificado_quando_solicitado()
+    public async Task GarantirUsuarioAsync_email_verificado_cria_os_dois_lados_verificados()
     {
         var email = Email.Criar($"{Guid.NewGuid():N}@exemplo.com");
 
-        var usuario = await _cadastro.GarantirUsuarioAsync(email, null, emailVerificado: true);
+        var usuario = await _cadastro.GarantirUsuarioAsync(email, "Pescador", emailVerificado: true);
 
+        var conta = await _usuarios.FindByIdAsync(usuario.Id.ToString());
         Assert.NotNull(usuario.EmailVerificadoEm);
+        Assert.NotNull(conta);
+        Assert.Equal(usuario.Id, conta!.Id);
+        Assert.Equal(email.Valor, conta.Email);
+        Assert.Equal(email.Valor, conta.UserName);
+        Assert.True(conta.EmailConfirmed);
+        Assert.Null(conta.PasswordHash);
+    }
+
+    [Fact]
+    public async Task GarantirUsuarioAsync_email_nao_verificado_deixa_os_dois_lados_nao_verificados()
+    {
+        var email = Email.Criar($"{Guid.NewGuid():N}@exemplo.com");
+
+        var usuario = await _cadastro.GarantirUsuarioAsync(email, null, emailVerificado: false);
+
+        var conta = await _usuarios.FindByIdAsync(usuario.Id.ToString());
+        Assert.Null(usuario.EmailVerificadoEm);
+        Assert.NotNull(conta);
+        Assert.False(conta!.EmailConfirmed);
+        Assert.Null(conta.PasswordHash);
     }
 
     [Fact]
@@ -146,6 +168,7 @@ public sealed class CadastroDeUsuarioTests : IAsyncLifetime
         var usuario = await _cadastro.GarantirUsuarioAsync(
             Email.Criar($"{Guid.NewGuid():N}@exemplo.com"), null, emailVerificado: true);
 
+        // GarantirUsuarioAsync já cria a ApplicationUser; chamar de novo é idempotente.
         var cadastroConcreto = (CadastroDeUsuario)_cadastro;
         var conta = await cadastroConcreto.GarantirApplicationUserAsync(usuario);
 

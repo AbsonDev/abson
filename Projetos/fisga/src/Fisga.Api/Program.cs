@@ -100,7 +100,6 @@ app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseMiddleware<ProtecaoCsrfMiddleware>();
 app.UseAuthentication();
 app.UseMiddleware<SessaoIdentityMiddleware>();
-app.UseMiddleware<SessaoMiddleware>();
 app.UseRateLimiter();
 
 if (app.Environment.IsDevelopment())

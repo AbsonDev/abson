@@ -35,21 +35,10 @@ public sealed class CadastroDeUsuario(
             return existente;
         }
 
-        var agora = relogio.Agora;
-        var usuario = Usuario.Criar(email, nome, agora);
-        if (emailVerificado)
-        {
-            usuario.VerificarEmail(agora);
-        }
-
-        repositorio.Adicionar(usuario);
-        await unidade.SalvarAsync(ct);
-
-        var pendentes = usuario.Eventos.ToList();
-        await eventos.PublicarAsync(pendentes, ct);
-        usuario.LimparEventos();
-
-        return usuario;
+        // Mesma transação do cadastro com senha, sem senha: cria o Usuario de
+        // domínio e a ApplicationUser com o mesmo Id, refletindo emailVerificado
+        // nos dois lados.
+        return await CriarTransacionalAsync(email, nome, emailVerificado, senha: null, ct);
     }
 
     public async Task<Usuario> CriarComSenhaAsync(
@@ -62,23 +51,46 @@ public sealed class CadastroDeUsuario(
         ValidarSenha(senha);
         await GarantirEmailLivreAsync(emailNormalizado, ct);
 
+        return await CriarTransacionalAsync(emailNormalizado, nome, emailVerificado: false, senha, ct);
+    }
+
+    /// <summary>
+    /// Cria o <see cref="Usuario"/> e a <see cref="ApplicationUser"/> com o mesmo
+    /// Id em uma única transação. Quando <paramref name="senha"/> é nulo a conta é
+    /// criada sem credencial de senha (link mágico / login externo).
+    /// </summary>
+    private async Task<Usuario> CriarTransacionalAsync(
+        Email email,
+        string? nome,
+        bool emailVerificado,
+        string? senha,
+        CancellationToken ct)
+    {
         await using var transacao = await db.Database.BeginTransactionAsync(ct);
 
         Usuario? usuario = null;
         try
         {
-            usuario = Usuario.Criar(emailNormalizado, nome, relogio.Agora);
+            var agora = relogio.Agora;
+            usuario = Usuario.Criar(email, nome, agora);
+            if (emailVerificado)
+            {
+                usuario.VerificarEmail(agora);
+            }
+
             repositorio.Adicionar(usuario);
 
             var conta = new ApplicationUser
             {
                 Id = usuario.Id,
-                Email = emailNormalizado.Valor,
-                UserName = emailNormalizado.Valor,
-                EmailConfirmed = false
+                Email = email.Valor,
+                UserName = email.Valor,
+                EmailConfirmed = emailVerificado
             };
 
-            var resultado = await usuarios.CreateAsync(conta, senha);
+            var resultado = senha is null
+                ? await usuarios.CreateAsync(conta)
+                : await usuarios.CreateAsync(conta, senha);
             if (!resultado.Succeeded)
             {
                 throw new DomainException(

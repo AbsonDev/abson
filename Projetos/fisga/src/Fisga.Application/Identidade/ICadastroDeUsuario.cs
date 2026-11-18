@@ -10,9 +10,11 @@ namespace Fisga.Application.Identidade;
 public interface ICadastroDeUsuario
 {
     /// <summary>
-    /// Garante um <see cref="Usuario"/> para o e-mail, criando quando ainda não
-    /// existe. <paramref name="emailVerificado"/> marca o e-mail como verificado
-    /// no momento da criação (ex.: login externo do Google).
+    /// Garante o <see cref="Usuario"/> e a respectiva conta da Identity com o mesmo
+    /// Id, criando ambos quando ainda não existem, em uma única transação.
+    /// <paramref name="emailVerificado"/> marca <c>Usuario.EmailVerificadoEm</c> e
+    /// <c>ApplicationUser.EmailConfirmed</c> no momento da criação (ex.: link mágico
+    /// ou login externo do Google). A conta é criada sem senha.
     /// </summary>
     Task<Usuario> GarantirUsuarioAsync(
         Email email,

@@ -92,6 +92,9 @@ public interface IEmailSender
 
 public sealed record ResultadoDaSolicitacao(string Email, string Link);
 
-public sealed record SessaoValida(Sessao Sessao, Usuario Usuario);
-
-public sealed record SessaoCriada(string Token, DateTimeOffset ExpiraEm, Usuario Usuario, bool PrimeiroAcesso);
+/// <summary>
+/// Resultado da confirmação do link mágico. O serviço apenas garante o usuário e
+/// atualiza o acesso; a sessão de dispositivo e o cookie são criados pelo endpoint
+/// via IdentitySessionService.AssinarAsync.
+/// </summary>
+public sealed record ResultadoDaConfirmacao(Usuario Usuario, bool PrimeiroAcesso);
