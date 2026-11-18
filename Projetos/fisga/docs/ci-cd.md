@@ -14,14 +14,13 @@ PR
     └── gate      (check obrigatório)
 
 push em main
-└── fisga-pipeline
-    ├── changes + api + web + gate
-    ├── deploy-api  (Coolify -> aguarda /health com o SHA)
-    └── deploy-web  (Coolify -> aguarda /health com o SHA + smoke)
+└── fisga-pipeline (CI: changes + api + web + gate)
+    └── fisga-deploy (workflow_run -> deploy-api -> deploy-web)
 ```
 
-O workflow fica em `.github/workflows/fisga-pipeline.yml`. O check obrigatório da `main` é o job
-**`gate`** (a UI pode exibir `fisga-pipeline / gate`; confirme o contexto exato em
+Os workflows ficam em `.github/workflows/fisga-pipeline.yml` (CI) e
+`.github/workflows/fisga-deploy.yml` (CD). O check obrigatório da `main` é o job **`gate`** (a UI
+pode exibir `fisga-pipeline / gate`; confirme o contexto exato em
 `gh api repos/AbsonDev/abson/commits/<sha>/check-runs`).
 
 ## Jobs de CI
@@ -65,27 +64,30 @@ check que precisa ser obrigatório na proteção da `main`.
 
 ## Deploy
 
-O deploy só roda em:
+O deploy é o workflow separado `fisga-deploy.yml`, disparado por `workflow_run` quando o
+`fisga-pipeline` conclui com **sucesso na `main`**. Ele não usa `inputs` nem o evento `push` no
+`if`; usa `github.event.workflow_run.conclusion`, `head_branch` e `head_sha`.
 
-- push para `main`; ou
-- `workflow_dispatch` **na branch `main`** (sempre deploya).
+O `workflow_dispatch` na `main` do `fisga-pipeline` também dispara o CI e, ao concluir, o
+`fisga-deploy`. Para deploy manual fora do fluxo, use o painel/API do Coolify.
 
 Os webhooks e o `COOLIFY_URL` precisam ser HTTPS; o workflow recusa HTTP para não enviar o token em
-claro. O CI dispara o webhook, captura o `deployment_uuid`, acompanha o status no Coolify e só então
-valida `/health` e smoke tests.
+claro. O deploy dispara o webhook, captura o `deployment_uuid`, acompanha o status no Coolify e só
+então valida `/health` e smoke tests.
 
-> Nota de manutenção: os jobs de deploy rodam só quando `github.ref == 'refs/heads/main'`.
-> Não reintroduzir `inputs.deploy` nem `github.event_name` no `if`: o contexto de inputs não existe
-> no evento `push` e o deploy é pulado.
+> Nota de manutenção: o deploy é um workflow `workflow_run` separado. Não reintroduzir
+> `inputs.deploy`, `github.event_name` ou `github.ref` no `if` dos jobs de deploy; use
+> `github.event.workflow_run.*`.
 
 ### Ordem
 
 1. `deploy-api`: dispara o Coolify, acompanha o deployment até `finished`/`success` (até 20 min),
-   aguarda `https://api.fisga.abson.tech/health` com `version == github.sha` e valida `/ready`.
+   aguarda `https://api.fisga.abson.tech/health` com `version == workflow_run.head_sha` e valida
+   `/ready`.
 2. Antes de trocar o web, o job da API valida o **web atual** em `/` e `/condicoes`. Se o web
    antigo quebrar com a API nova, o deploy do web não acontece e o rollback da API é obrigatório.
 3. `deploy-web`: dispara o Coolify, acompanha o deployment (até 20 min), aguarda o `/health` com
-   `version == github.sha` e valida `/` e `/condicoes`.
+   `version == workflow_run.head_sha` e valida `/` e `/condicoes`.
 
 Se a API falhar, o web não é deployado. Se o web falhar no smoke, faça rollback do web pelo Coolify;
 a API nova continua no ar e precisa ser compatível com a versão anterior do web.
@@ -253,7 +255,7 @@ Use exatamente o `name` retornado (`gate`, salvo se o job for renomeado).
 - [ ] Confirmar que o check `gate` aparece e passa.
 - [ ] Mergear o PR.
 - [ ] Criar a proteção da `main` exigindo `gate`.
-- [ ] Rodar `workflow_dispatch` na `main` (sempre deploya).
+- [ ] Rodar `workflow_dispatch` na `main` (dispara o CI; ao concluir, o `fisga-deploy` roda).
 - [ ] Confirmar `/health` com o SHA do commit, status `finished` no Coolify e smoke tests.
 - [ ] Testar rollback uma vez e registrar o tempo.
 
