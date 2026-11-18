@@ -12,6 +12,8 @@ transforma o dia em troféu, PDF e memória.
 **No ar:** [fisga.abson.tech](https://fisga.abson.tech) · API em
 [api.fisga.abson.tech](https://api.fisga.abson.tech/health).
 
+[![CI do Fisga](https://github.com/AbsonDev/abson/actions/workflows/fisga-pipeline.yml/badge.svg?branch=main)](https://github.com/AbsonDev/abson/actions/workflows/fisga-pipeline.yml)
+
 ---
 
 ## Visão geral
@@ -184,7 +186,8 @@ nunca são publicados.
 | Conteúdo | Astro Content Collections (Markdown tipado) |
 | Busca | Pagefind (índice estático, offline) |
 | Web | Astro 7 SSR + TypeScript + CSS próprio |
-| Testes | xUnit + verificação de tipos do Astro + Playwright |
+| CI/CD | GitHub Actions + Coolify |
+| Testes | xUnit + verificação de tipos do Astro; Playwright na Fase B |
 | Infra local | Docker Compose |
 
 ### Observabilidade
@@ -198,7 +201,8 @@ nunca são publicados.
   bloqueados. Sem analytics de navegação.
 - Source maps do web são enviados no build quando `SENTRY_AUTH_TOKEN` está presente; sem ele,
   stack traces de produção ficam minificados.
-- `/health` verifica o processo; `/ready` verifica o banco. O Docker reinicia containers doentes.
+- `/health` verifica o processo e retorna o SHA do build; `/ready` verifica o banco. O Docker
+  reinicia containers doentes.
 - Logs continuam disponíveis no Coolify para investigação imediata.
 
 ---
@@ -389,17 +393,19 @@ dotnet test
 cd web && npm run check
 ```
 
-Atualmente: **75 testes de backend** (25 de domínio + 50 de aplicação) e checagem de tipos do
-Astro. Cobrem:
+Atualmente: **82 testes de backend** (25 de domínio + 50 de aplicação + 7 de API) e checagem de
+tipos do Astro. Cobrem:
 
 - criação/edição de pescaria, IDs de captura, validações e isolamento entre usuários;
 - link mágico, expiração, uso único, sessão, logout e exclusão de conta;
 - exportação, locais salvos, condições, lua/solunar, janela e comparação com histórico;
 - pontos e trilhas privadas, com ownership;
-- fallback manual da sugestão de espécie.
+- fallback manual da sugestão de espécie;
+- resolução da versão exposta em `/health`.
 
-O fluxo completo também é validado com Playwright: login, onboarding, condições, locais, mapa com
-camadas, pontos, trilhas, GPX, EXIF, defeso, troféu, PDF, conta e mobile.
+O fluxo E2E completo com Playwright (login, onboarding, condições, locais, mapa com camadas, pontos,
+trilhas, GPX, EXIF, defeso, troféu, PDF, conta e mobile) está planejado para a Fase B do CI/CD. Hoje
+a validação é unitária/integração + typecheck + smoke de deploy.
 
 Build da web (wiki + Pagefind + precache offline):
 
@@ -407,6 +413,29 @@ Build da web (wiki + Pagefind + precache offline):
 cd web
 npm run build   # astro build + pagefind + precache
 ```
+
+---
+
+## CI/CD
+
+O Fisga tem um pipeline próprio no GitHub Actions em
+[`.github/workflows/fisga-pipeline.yml`](../../.github/workflows/fisga-pipeline.yml). Ele roda em
+todo PR e em push para `main`, detecta mudanças em `Projetos/fisga/**` e executa:
+
+- `api`: restore locked, `dotnet format --verify-no-changes`, build `-warnaserror` e testes xUnit.
+- `web`: `npm ci`, `astro check` e `npm run build`.
+- `docker`: build das imagens da API e do web sem push (em PR).
+- `gate`: job obrigatório; falha se qualquer job necessário falhar.
+
+No push para `main`, após o `gate`, o pipeline dispara o deploy do `fisga-api` e depois do
+`fisga-web` no Coolify, aguarda o `/health` retornar o SHA do commit e roda smoke tests.
+
+O check obrigatório da `main` é **`fisga-pipeline / gate`**.
+
+Segredos e variáveis necessários no GitHub: `COOLIFY_TOKEN`, `COOLIFY_WEBHOOK_FISGA_API`,
+`COOLIFY_WEBHOOK_FISGA_WEB` e a variável `FISGA_PUBLIC_SENTRY_DSN`.
+
+Runbook completo, configuração do Coolify e rollback: [docs/ci-cd.md](docs/ci-cd.md).
 
 ---
 

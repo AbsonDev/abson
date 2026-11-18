@@ -53,7 +53,7 @@
 - [ ] Criar `.github/dependabot.yml` para `github-actions`, `nuget` em `/Projetos/fisga`, `npm` em `/Projetos/fisga/web` e `docker` nos dois diretórios.
 - [ ] Commit: `chore(fisga): add reproducible dotnet build baseline`.
 
-**Verificação:** `dotnet restore Fisga.slnx --locked-mode`, build e os 75 testes passam; `dotnet format --verify-no-changes` passa.
+**Verificação:** `dotnet restore Fisga.slnx --locked-mode`, build e os 82 testes passam; `dotnet format --verify-no-changes` passa.
 
 ---
 

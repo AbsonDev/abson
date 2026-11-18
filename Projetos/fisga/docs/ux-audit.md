@@ -320,7 +320,8 @@ Implementado em 17/11/2026, depois da validação do protótipo `fisga-ux` no Op
 - Fluxo real testado: link mágico → onboarding com local → `/hoje` → mapa com abas → `/aprender` →
   registrar em 4 etapas → revisão → pescaria salva → diário com abas.
 - Bottom nav autenticada validada em 390 px, com Diário e Registrar visíveis.
-- `astro check`, build, 75 testes .NET e testes Playwright passando.
+- `astro check`, build e 82 testes .NET passando; o fluxo E2E com Playwright está planejado para a
+  Fase B do CI/CD.
 
 ### Diferença em relação ao protótipo
 

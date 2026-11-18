@@ -106,6 +106,18 @@ quando houver fonte oficial estável e abrir o diretório de guias com perfis ve
 | Offline | PWA + service worker + localStorage | IndexedDB para fila de pescarias e tiles |
 | IA de espécie | Porta plugável com fallback manual | Gemini ou outro provedor, com confirmação humana |
 
+## Infra e entrega
+
+**Status:** CI/CD do Fisga na Fase A.
+
+- GitHub Actions `fisga-pipeline` em todo PR e push para `main`.
+- `gate` obrigatório, 82 testes, `astro check`, build Docker e deploy no Coolify.
+- Deploy API → web com verificação de `/health` e smoke tests.
+- Pendente (Fase B): build once no GHCR, migration bundle, Playwright, preview deployments e merge
+  queue.
+
+Runbook: [`docs/ci-cd.md`](ci-cd.md).
+
 ## Sequência recomendada
 
 1. **Agora:** cockpit + mapa privado (entregue).
