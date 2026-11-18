@@ -1,4 +1,5 @@
 using Fisga.Api.Observabilidade;
+using Fisga.Application.Common;
 using Fisga.Application.Identidade;
 using Microsoft.AspNetCore.Authentication;
 
@@ -26,9 +27,10 @@ public static class FalhaDoLoginGoogle
         logger.LogWarning(
             contexto.Failure,
             "Falha no callback do Google em {Caminho} (query presente: {TemQuery}): {Motivo}",
-            http.Request.Path,
+            LogSeguro.ParaLog(http.Request.Path.Value),
             http.Request.QueryString.HasValue,
-            contexto.Failure?.Message);
+            LogSeguro.ParaLog(contexto.Failure?.Message));
+
         Metricas.LoginFalhou(MotivoMetrica);
 
         var web = http.RequestServices.GetRequiredService<AutenticacaoOptions>().WebUrl.TrimEnd('/');

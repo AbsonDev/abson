@@ -4,6 +4,10 @@ public sealed class CondicoesOptions
 {
     public string Fuso { get; set; } = "America/Sao_Paulo";
 
+    /// <summary>
+    /// Validade do resultado completo de condições. O provedor apara para
+    /// 1..20 minutos: acima de 20 o teto da política prevalece.
+    /// </summary>
     public int CacheMinutos { get; set; } = 20;
 
     public string AvisoMare { get; set; } =
