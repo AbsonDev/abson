@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
 using Fisga.Api;
+using Fisga.Api.Caching;
 using Fisga.Api.Endpoints;
 using Fisga.Api.Middleware;
 using Fisga.Api.Observabilidade;
@@ -116,6 +117,9 @@ Directory.CreateDirectory(pastaMidia);
 
 app.UseForwardedHeaders();
 app.UseCors("web");
+// Cache é default-deny: sem metadata CachePolicy no endpoint, a resposta sai
+// como "private, no-store". Endpoints públicos declaram a política explicitamente.
+app.UseMiddleware<CacheHeadersMiddleware>();
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(pastaMidia),
