@@ -616,32 +616,42 @@ git commit -m "docs(fisga): document identity auth screens"
 - Create: `web/src/pages/redefinir-senha.astro`
 - Create: `web/src/pages/confirmar-email.astro`
 - Create: `web/src/pages/aceite.astro`
+- Modify: `web/src/pages/entrar/confirmar.astro`
 - Create: `web/src/lib/auth.ts`
-- Create: `web/tests/auth.spec.ts`
+- Modify: `web/src/pages/hoje.astro`, `web/src/pages/diario.astro`, `web/src/pages/mapa.astro`, `web/src/pages/registrar.astro`, `web/src/pages/conta.astro`, `web/src/pages/boas-vindas.astro`, `web/src/pages/meu-diario.astro`
+- Modify: `web/package.json`
 - Create: `web/playwright.config.ts`
-- Modify: `web/package.json` (devDependency `@playwright/test`)
+- Create: `web/tests/auth.spec.ts`
 
 **Interfaces:**
-- Consumes: endpoints das Tasks 3, 4, 7, 8.
-- Produces: fluxo completo de entrada/cadastro/reset/confirmação/consentimento.
+- Consumes: `/api/auth/registrar`, `/entrar`, `/solicitar`, `/confirmar-email`, `/esqueci-senha`, `/redefinir-senha`, `/confirmar`, `/auth/me`, `/conta/consentimento`, `/auth/google/disponivel`.
+- Produces: `web/src/lib/auth.ts` com `obterSessao()` (parse de `MeResponse`, incluindo `ConsentimentoPendente` e `GoogleConectado`) e `exigirConsentimento()` (redireciona para `/aceite?destino=…`).
 
-- [ ] **Step 1: Escrever o teste Playwright**
+**Decisões de implementação (vinculantes):**
+- Usar o protótipo aprovado da Task 10 (projeto OpenDesign `fisga-auth-screens`) como referência de tokens, copy, estados e responsividade. Não inventar estética paralela.
+- `MeResponse` agora tem `ConsentimentoPendente`; toda página autenticada listada acima deve redirecionar para `/aceite` quando o campo for `true`, antes de tentar carregar dados (evita 403 da Task 7).
+- O botão do Google só aparece quando `GET /api/auth/google/disponivel` retornar `disponivel: true`.
+- `/aceite` envia `{ termosVersao, privacidadeVersao }` com as versões vigentes exibidas na página; sem os dois checkboxes, o botão fica desabilitado com mensagem clara.
+- Autenticação entre origens distintas: `fetch(..., { credentials: 'include' })`; cookie SameSite=Lax funciona porque web e API são subdomínios do mesmo site registrável.
+- Testes: adicionar `@playwright/test` e config. O ambiente pode não ter Chromium instalado; se `npx playwright install chromium` falhar, registrar a limitação e cobrir o essencial com `astro check`, `npm run build` e testes HTTP de API — **não** inventar que E2E rodou.
 
-Cobrir: Google visível quando disponível; cadastro por senha; login por senha; esqueci a senha; confirmação; link mágico; aceite obrigatório; erros genéricos. Rodar contra o dev server e ver falhar.
+- [ ] **Step 1: Escrever o teste Playwright (ou o fallback documentado)**
+
+Cobrir: Google visível quando disponível e oculto quando não; cadastro por senha; login por senha; esqueci a senha; confirmação; link mágico; aceite obrigatório; erros genéricos. Rodar contra o dev server e ver falhar.
 
 - [ ] **Step 2: Implementar as telas**
 
-Usar o protótipo da Task 10. Formulários com labels, autocomplete correto, estados de loading/erro/sucesso e links de Termos/Privacidade. O botão Google só aparece quando `/api/auth/google/disponivel` retornar true.
+Seguir o protótipo. Formulários com labels, autocomplete correto, estados de loading/erro/sucesso e links de Termos/Privacidade. Sem lorem ipsum.
 
 - [ ] **Step 3: Rodar o teste e ver passar**
 
 Run: `cd web && npx playwright test tests/auth.spec.ts`
-Expected: PASS.
+Expected: PASS. Se o navegador não estiver disponível: rodar `npm run check && npm run build` e registrar explicitamente o E2E não executado.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add web/src/pages web/src/lib/auth.ts web/tests/auth.spec.ts
+git add web/src web/package.json web/playwright.config.ts web/tests/auth.spec.ts
 git commit -m "feat(web): add identity auth screens"
 ```
 
