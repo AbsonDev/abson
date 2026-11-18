@@ -5,11 +5,13 @@ using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Options;
 using Fisga.Api;
 using Fisga.Api.Endpoints;
 using Fisga.Api.Middleware;
 using Fisga.Api.Observabilidade;
 using Fisga.Application;
+using Fisga.Application.Identidade;
 using Fisga.Infrastructure;
 using Fisga.Infrastructure.Midia;
 using Fisga.Infrastructure.Persistence;
@@ -49,6 +51,11 @@ builder.Services.Configure<ForwardedHeadersOptions>(opcoes =>
 builder.Services.AdicionarAplicacao();
 builder.Services.AdicionarInfraestrutura(builder.Configuration);
 builder.Services.AddScoped<IdentitySessionService>();
+
+// Instância única e mutável: a versão vigente é lida do banco a cada requisição,
+// sem claims de versão no cookie e sem reemissão de cookie ao aceitar.
+builder.Services.Configure<LegalOptions>(builder.Configuration.GetSection("Legal"));
+builder.Services.AddSingleton(sp => sp.GetRequiredService<IOptions<LegalOptions>>().Value);
 
 var origens = (builder.Configuration["Cors:AllowedOrigins"] ?? string.Empty)
     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
@@ -100,6 +107,7 @@ app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseMiddleware<ProtecaoCsrfMiddleware>();
 app.UseAuthentication();
 app.UseMiddleware<SessaoIdentityMiddleware>();
+app.UseMiddleware<ConsentimentoMiddleware>();
 app.UseRateLimiter();
 
 if (app.Environment.IsDevelopment())

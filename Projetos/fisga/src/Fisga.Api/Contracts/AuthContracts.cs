@@ -28,6 +28,8 @@ public sealed record RedefinirSenhaResponse(string Mensagem);
 
 public sealed record AtualizarPerfilRequest(string? Nome, bool AceitaNovidades);
 
+public sealed record RegistrarConsentimentoRequest(string? TermosVersao, string? PrivacidadeVersao);
+
 public sealed record ExcluirContaRequest(string? Confirmacao);
 
 public sealed record UsuarioResponse(
@@ -50,7 +52,10 @@ public sealed record UsuarioResponse(
             usuario.UltimoAcessoEm);
 }
 
-public sealed record MeResponse(bool Autenticado, UsuarioResponse? Usuario);
+public sealed record MeResponse(
+    bool Autenticado,
+    UsuarioResponse? Usuario,
+    bool ConsentimentoPendente);
 
 public sealed record SessaoResponse(
     Guid Id,

@@ -23,6 +23,8 @@ public sealed class SessaoIdentityTests : IAsyncLifetime
     private readonly FisgaDbContext _db;
     private readonly ICadastroDeUsuario _cadastro;
     private readonly UserManager<ApplicationUser> _usuarios;
+    private readonly ConsentimentoService _consentimento;
+    private readonly LegalOptions _opcoesLegais;
 
     public SessaoIdentityTests(ApiTestFixture fixture)
     {
@@ -32,6 +34,8 @@ public sealed class SessaoIdentityTests : IAsyncLifetime
         _db = _scope.ServiceProvider.GetRequiredService<FisgaDbContext>();
         _cadastro = _scope.ServiceProvider.GetRequiredService<ICadastroDeUsuario>();
         _usuarios = _scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        _consentimento = _scope.ServiceProvider.GetRequiredService<ConsentimentoService>();
+        _opcoesLegais = _scope.ServiceProvider.GetRequiredService<LegalOptions>();
     }
 
     public async Task InitializeAsync()
@@ -237,6 +241,13 @@ public sealed class SessaoIdentityTests : IAsyncLifetime
         var conta = await _usuarios.FindByIdAsync(usuario.Id.ToString());
         conta!.EmailConfirmed = true;
         await _usuarios.UpdateAsync(conta);
+
+        // Estes testes exercitam rotas de conta protegidas; o aceite vigente é
+        // pré-requisito do middleware de consentimento (Task 7).
+        await _consentimento.RegistrarAsync(
+            usuario.Id,
+            _opcoesLegais.TermsVersion,
+            _opcoesLegais.PrivacyVersion);
 
         return usuario;
     }

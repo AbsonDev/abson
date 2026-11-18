@@ -22,6 +22,7 @@ public static class DependencyInjection
         services.AddScoped<ServicoDePdf>();
         services.AddScoped<ServicoDeAutenticacao>();
         services.AddScoped<ServicoDeConta>();
+        services.AddScoped<ConsentimentoService>();
         services.AddScoped<ServicoDeNewsletter>();
         services.AddScoped<ServicoDeLocais>();
         services.AddScoped<ServicoDeCondicoes>();

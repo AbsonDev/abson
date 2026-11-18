@@ -310,7 +310,8 @@ public static class AuthEndpoints
                 var usuario = http.UsuarioAtual();
                 return Results.Ok(new MeResponse(
                     usuario is not null,
-                    usuario is null ? null : UsuarioResponse.De(usuario)));
+                    usuario is null ? null : UsuarioResponse.De(usuario),
+                    http.ConsentimentoPendente()));
             })
             .AllowAnonymous()
             .RequireRateLimiting("leitura");
@@ -393,6 +394,29 @@ public static class AuthEndpoints
 
     public static IEndpointRouteBuilder MapContaEndpoints(this IEndpointRouteBuilder app)
     {
+        app.MapPost("/api/conta/consentimento", async (
+                RegistrarConsentimentoRequest entrada,
+                HttpContext http,
+                ConsentimentoService consentimento,
+                LegalOptions opcoes,
+                CancellationToken ct) =>
+            {
+                var usuarioId = http.ExigirUsuarioId();
+                var termosVersao = (entrada.TermosVersao ?? string.Empty).Trim();
+                var privacidadeVersao = (entrada.PrivacidadeVersao ?? string.Empty).Trim();
+
+                if (termosVersao != opcoes.TermsVersion || privacidadeVersao != opcoes.PrivacyVersion)
+                {
+                    throw new DomainException(
+                        "consentimento_versao_invalida",
+                        "As versões enviadas não correspondem aos termos vigentes.");
+                }
+
+                await consentimento.RegistrarAsync(usuarioId, termosVersao, privacidadeVersao, ct);
+                return Results.NoContent();
+            })
+            .RequireRateLimiting("escrita");
+
         app.MapGet("/api/conta/sessoes", async (
                 HttpContext http,
                 ServicoDeAutenticacao servico,
