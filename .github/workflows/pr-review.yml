@@ -1,0 +1,49 @@
+name: pr-review
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: pr-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    name: review
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: OpenCode review
+        uses: anomalyco/opencode/github@latest
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          model: opencode-go/deepseek-v4.1-flash
+          variant: max
+          use_github_token: true
+          prompt: |
+            Você é o revisor de PR do Fisga. Revise apenas o diff deste pull request e publique
+            o resultado como um comentário no PR, em português do Brasil.
+
+            Priorize, nesta ordem:
+            1. bugs de lógica e casos de borda;
+            2. segurança: OAuth/callback, validação de entrada, secrets e autorização;
+            3. contratos de API e migrações;
+            4. violação das invariantes de CI/CD descritas em docs/ci-cd.md.
+
+            Não comente estilo já coberto por dotnet format e astro check. Não comente em docs/**.
+            Máximo de 6 achados. Para cada um: arquivo:linha, severidade (alta/média/baixa),
+            o problema e a correção sugerida.
+            Se não houver achado relevante, escreva apenas "Sem achados relevantes".
+            Não altere arquivos e não faça commit.
