@@ -68,15 +68,15 @@ check que precisa ser obrigatório na proteção da `main`.
 O deploy só roda em:
 
 - push para `main`; ou
-- `workflow_dispatch` **na branch `main`** com `deploy=true`.
+- `workflow_dispatch` **na branch `main`** (sempre deploya).
 
 Os webhooks e o `COOLIFY_URL` precisam ser HTTPS; o workflow recusa HTTP para não enviar o token em
 claro. O CI dispara o webhook, captura o `deployment_uuid`, acompanha o status no Coolify e só então
 valida `/health` e smoke tests.
 
-> Nota de manutenção: no caminho de `workflow_dispatch`, o `if` do deploy usa
-> `github.event.inputs.deploy == 'true'`. Não trocar por `inputs.deploy`: esse contexto não existe no
-> evento `push` e o job de deploy é pulado.
+> Nota de manutenção: `workflow_dispatch` na `main` sempre deploya. Não reintroduzir
+> `inputs.deploy`/`github.event.inputs.deploy` no `if` dos jobs de deploy: o contexto de inputs não
+> existe no evento `push` e os jobs são pulados.
 
 ### Ordem
 
@@ -253,7 +253,7 @@ Use exatamente o `name` retornado (`gate`, salvo se o job for renomeado).
 - [ ] Confirmar que o check `gate` aparece e passa.
 - [ ] Mergear o PR.
 - [ ] Criar a proteção da `main` exigindo `gate`.
-- [ ] Rodar `workflow_dispatch` na `main` com `deploy=true`.
+- [ ] Rodar `workflow_dispatch` na `main` (sempre deploya).
 - [ ] Confirmar `/health` com o SHA do commit, status `finished` no Coolify e smoke tests.
 - [ ] Testar rollback uma vez e registrar o tempo.
 

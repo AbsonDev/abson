@@ -18,7 +18,7 @@
 - Não implementar migration bundle nem GHCR na Fase A.
 - Não usar self-hosted runner.
 - Não usar `pull_request_target`.
-- Deploy só em push para `main` ou `workflow_dispatch` com `deploy=true`.
+- Deploy só em push para `main` ou `workflow_dispatch` na `main` (sempre deploya).
 - Nenhum segredo em arquivo, log ou build arg.
 - Actions pinadas por SHA ou lockfile; permissões mínimas.
 - Commits pequenos, uma task por commit.
@@ -119,7 +119,7 @@
 **Files:**
 - Modify: `.github/workflows/fisga-pipeline.yml`
 
-- [ ] Adicionar `deploy-api` e `deploy-web`, só em `main` (push ou `workflow_dispatch` na `main` com `deploy=true`).
+- [ ] Adicionar `deploy-api` e `deploy-web`, só em `main` (push ou `workflow_dispatch` na `main`).
 - [ ] Usar `environment: production`, `concurrency: fisga-production`, `cancel-in-progress: false` e timeout de 30 min.
 - [ ] Secrets: `COOLIFY_URL` (HTTPS), `COOLIFY_TOKEN` (read+deploy), `COOLIFY_WEBHOOK_FISGA_API`, `COOLIFY_WEBHOOK_FISGA_WEB`.
 - [ ] Var: `FISGA_PUBLIC_SENTRY_DSN` (variável de repositório).
@@ -128,7 +128,7 @@
 - [ ] Depois do deployment, pollar `/health` até `version == github.sha` (até 5 min).
 - [ ] Smoke: `/ready`, `/`, `/condicoes`; após a API, validar o web atual antes de trocar o web.
 - [ ] No Coolify: desligar deploy on push, health check `/ready` na API e `/health` no web, remover portas no host, desligar consistent container names, confirmar rolling update e **Source commit availability = Available during build**. O secret do Sentry deve ser BuildKit secret `sentry_auth_token`, nunca build variable.
-- [ ] Testar com `workflow_dispatch` na `main` e `deploy=true`.
+- [ ] Testar com `workflow_dispatch` na `main`.
 - [ ] Commit: `ci(fisga): deploy to coolify after ci`.
 
 ---
