@@ -2,10 +2,14 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Text;
 using Fisga.Application.Condicoes;
+using Fisga.Infrastructure;
 using Fisga.Infrastructure.Condicoes;
 using Microsoft.Extensions.Caching.Hybrid;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 namespace Fisga.Api.Tests;
 
@@ -166,6 +170,76 @@ public sealed class CondicoesCacheTests
             && gravacao.Ttl == TimeSpan.FromMinutes(10));
     }
 
+    [Fact]
+    public void Infraestrutura_configura_hybrid_cache_com_20_minutos_nos_dois_niveis()
+    {
+        var configuracao = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Database:Provider"] = "Sqlite",
+                ["Database:ConnectionString"] = "Data Source=:memory:",
+            })
+            .Build();
+
+        var servicos = new ServiceCollection();
+        servicos.AdicionarInfraestrutura(configuracao, desenvolvimento: false);
+
+        using var provedor = servicos.BuildServiceProvider();
+        var opcoes = provedor.GetRequiredService<IOptions<HybridCacheOptions>>().Value;
+
+        Assert.NotNull(opcoes.DefaultEntryOptions);
+        Assert.Equal(TimeSpan.FromMinutes(20), opcoes.DefaultEntryOptions!.Expiration);
+        Assert.Equal(TimeSpan.FromMinutes(20), opcoes.DefaultEntryOptions.LocalCacheExpiration);
+    }
+
+    [Fact]
+    public async Task Cancelamento_do_cliente_nao_cacheia_indisponibilidade()
+    {
+        var handler = new ContadorHandler();
+        using var http = new HttpClient(handler);
+        var cache = new CacheEspiao(CriarHybridCache());
+        var provedor = new OpenMeteoProvedorDeCondicoes(
+            http, cache, new CondicoesOptions(), NullLogger<OpenMeteoProvedorDeCondicoes>.Instance);
+
+        using var cancelamento = new CancellationTokenSource();
+        var tarefa = provedor.ObterAsync(-23.55, -45.13, Dia, cancelamento.Token);
+        await handler.Iniciado;
+        cancelamento.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => tarefa);
+        Assert.True(cache.FactoryCancelou);
+        Assert.False(cache.FactoryCompletou);
+        Assert.Empty(cache.Gravacoes);
+
+        var segunda = await provedor.ObterAsync(-23.55, -45.13, Dia);
+
+        Assert.NotNull(segunda);
+        Assert.Equal(1, handler.ChamadasClima);
+        Assert.Equal(1, handler.ChamadasMar);
+    }
+
+    [Fact]
+    public async Task Falhas_de_mar_e_lua_nao_logam_coordenadas()
+    {
+        var handler = new ContadorHandler { LancarErroMar = true, LancarErroLua = true };
+        using var http = new HttpClient(handler);
+        var logger = new LoggerEspiao();
+        var provedor = new OpenMeteoProvedorDeCondicoes(
+            http, CriarHybridCache(), new CondicoesOptions(), logger);
+
+        var resultado = await provedor.ObterAsync(-23.551, -45.134, Dia);
+
+        Assert.NotNull(resultado);
+        Assert.False(resultado!.TemMare);
+        Assert.Null(resultado.Lua);
+        Assert.NotEmpty(logger.Mensagens);
+        Assert.All(logger.Mensagens, mensagem =>
+        {
+            Assert.DoesNotContain("-23.55", mensagem, StringComparison.Ordinal);
+            Assert.DoesNotContain("45.13", mensagem, StringComparison.Ordinal);
+        });
+    }
+
     private static HybridCache CriarHybridCache()
     {
         var servicos = new ServiceCollection();
@@ -185,6 +259,10 @@ public sealed class CondicoesCacheTests
 
         public IReadOnlyCollection<string> Remocoes => _remocoes;
 
+        public bool FactoryCompletou { get; private set; }
+
+        public bool FactoryCancelou { get; private set; }
+
         public override ValueTask<T> GetOrCreateAsync<TState, T>(
             string key,
             TState state,
@@ -194,7 +272,26 @@ public sealed class CondicoesCacheTests
             CancellationToken cancellationToken = default)
         {
             _criacoes.Enqueue(new ChamadaDeCache(key, options?.Expiration));
-            return interno.GetOrCreateAsync(key, state, factory, options, tags, cancellationToken);
+            return interno.GetOrCreateAsync(
+                key,
+                state,
+                async (estado, token) =>
+                {
+                    try
+                    {
+                        var valor = await factory(estado, token);
+                        FactoryCompletou = true;
+                        return valor;
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        FactoryCancelou = true;
+                        throw;
+                    }
+                },
+                options,
+                tags,
+                cancellationToken);
         }
 
         public override ValueTask SetAsync<T>(
@@ -224,17 +321,47 @@ public sealed class CondicoesCacheTests
         public sealed record ChamadaDeCache(string Chave, TimeSpan? Ttl);
     }
 
+    private sealed class LoggerEspiao : ILogger<OpenMeteoProvedorDeCondicoes>
+    {
+        private readonly ConcurrentQueue<string> _mensagens = new();
+
+        public IReadOnlyCollection<string> Mensagens => _mensagens;
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter) =>
+            _mensagens.Enqueue(formatter(state, exception));
+    }
+
     private sealed class ContadorHandler : HttpMessageHandler
     {
+        private readonly TaskCompletionSource _iniciado =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
         private int _clima;
         private int _mar;
         private int _lua;
+
+        public Task Iniciado => _iniciado.Task;
+
+        public bool BloquearAteCancelar { get; init; }
 
         public bool FalharClima { get; init; }
 
         public bool FalharMar { get; init; }
 
         public bool FalharLua { get; init; }
+
+        public bool LancarErroMar { get; init; }
+
+        public bool LancarErroLua { get; init; }
 
         public int ChamadasClima => Volatile.Read(ref _clima);
 
@@ -246,7 +373,10 @@ public sealed class CondicoesCacheTests
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
-            await Task.Delay(100, cancellationToken);
+            _iniciado.TrySetResult();
+            await Task.Delay(
+                BloquearAteCancelar ? TimeSpan.FromSeconds(30) : TimeSpan.FromMilliseconds(100),
+                cancellationToken);
 
             var url = request.RequestUri?.AbsoluteUri ?? string.Empty;
             if (url.StartsWith("https://api.open-meteo.com/v1/forecast", StringComparison.Ordinal))
@@ -260,6 +390,11 @@ public sealed class CondicoesCacheTests
             if (url.StartsWith("https://marine-api.open-meteo.com/v1/marine", StringComparison.Ordinal))
             {
                 Interlocked.Increment(ref _mar);
+                if (LancarErroMar)
+                {
+                    throw new HttpRequestException("falha simulada no mar");
+                }
+
                 return FalharMar
                     ? Resposta(HttpStatusCode.InternalServerError, "{}")
                     : Resposta(HttpStatusCode.OK, MarJson);
@@ -268,6 +403,11 @@ public sealed class CondicoesCacheTests
             if (url.StartsWith("https://api.met.no/weatherapi/sunrise/3.0/moon", StringComparison.Ordinal))
             {
                 Interlocked.Increment(ref _lua);
+                if (LancarErroLua)
+                {
+                    throw new HttpRequestException("falha simulada na lua");
+                }
+
                 return FalharLua
                     ? Resposta(HttpStatusCode.InternalServerError, "{}")
                     : Resposta(HttpStatusCode.OK, LuaJson);

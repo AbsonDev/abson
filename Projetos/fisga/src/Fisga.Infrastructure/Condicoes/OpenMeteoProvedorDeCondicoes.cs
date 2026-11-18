@@ -233,6 +233,10 @@ public sealed class OpenMeteoProvedorDeCondicoes(
 
             return new ClimaBruto(horas, dias);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception excecao) when (excecao is HttpRequestException or TaskCanceledException or JsonException)
         {
             logger.LogWarning(excecao, "Falha ao buscar clima em Open-Meteo");
@@ -295,9 +299,13 @@ public sealed class OpenMeteoProvedorDeCondicoes(
 
             return resultado;
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception excecao) when (excecao is HttpRequestException or TaskCanceledException or JsonException)
         {
-            logger.LogInformation(excecao, "Maré/ondas indisponíveis para {Lat},{Lon}", latitude, longitude);
+            logger.LogInformation(excecao, "Maré/ondas indisponíveis no provedor de mar");
             return [];
         }
     }
@@ -363,9 +371,13 @@ public sealed class OpenMeteoProvedorDeCondicoes(
                 LerTempo(propriedades, "low_moon"),
                 fase);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception excecao) when (excecao is HttpRequestException or TaskCanceledException or JsonException)
         {
-            logger.LogInformation(excecao, "Lua indisponível em MET Norway para {Lat},{Lon}", latitude, longitude);
+            logger.LogInformation(excecao, "Lua indisponível em MET Norway");
             return null;
         }
     }

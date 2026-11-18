@@ -34,12 +34,15 @@ public static class DependencyInjection
     {
         services.Configure<WebOptions>(configuration.GetSection("Web"));
 
+        // Fase 1 sem L2: o HybridCache descarta a entrada quando o cache local
+        // expira, então LocalCacheExpiration precisa igualar Expiration para os
+        // 20 min valerem de fato. Com Redis/L2 (Fase 3), o local volta para 5 min.
         services.AddHybridCache(options =>
         {
             options.DefaultEntryOptions = new HybridCacheEntryOptions
             {
                 Expiration = TimeSpan.FromMinutes(20),
-                LocalCacheExpiration = TimeSpan.FromMinutes(5),
+                LocalCacheExpiration = TimeSpan.FromMinutes(20),
             };
         });
 
