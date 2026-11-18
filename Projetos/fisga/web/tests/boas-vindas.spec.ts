@@ -185,3 +185,103 @@ test('erro de busca tem mensagem', async ({ page }) => {
     'Não foi possível buscar agora. Tente de novo.'
   );
 });
+
+test('geolocalização aceita salva e navega', async ({ page }) => {
+  await mockMe(page, USUARIO);
+  const corpo = await mockLocais(page);
+  await mockPagina(page, '/hoje');
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'geolocation', {
+      configurable: true,
+      value: {
+        getCurrentPosition: (ok: PositionCallback) =>
+          ok({
+            coords: { latitude: -10.911234, longitude: -37.071234 }
+          } as GeolocationPosition)
+      }
+    });
+  });
+  await page.goto('/boas-vindas');
+
+  await page.locator('#boas-usar-localizacao').click();
+
+  await expect(page).toHaveURL(/\/hoje$/);
+  expect(corpo()).toEqual({
+    nome: 'Minha localização',
+    latitude: -10.91123,
+    longitude: -37.07123,
+    ambiente: 'Outro',
+    padrao: true
+  });
+});
+
+test('geolocalização negada mostra instrução e restaura o botão', async ({ page }) => {
+  await mockMe(page, USUARIO);
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'geolocation', {
+      configurable: true,
+      value: {
+        getCurrentPosition: (_ok: PositionCallback, erro: PositionErrorCallback) =>
+          erro(new Error('denied') as unknown as GeolocationPositionError)
+      }
+    });
+  });
+  await page.goto('/boas-vindas');
+
+  await page.locator('#boas-usar-localizacao').click();
+
+  await expect(page.locator('#boas-local-status')).toHaveText(
+    'Não conseguimos usar sua localização. Busque pelo nome.'
+  );
+  await expect(page.locator('#boas-usar-localizacao')).toBeEnabled();
+  await expect(page.locator('#boas-usar-localizacao')).toHaveText('Usar minha localização');
+});
+
+test('Agora não respeita o destino interno e não salva', async ({ page }) => {
+  await mockMe(page, USUARIO);
+  let posts = 0;
+  await page.route(`${API}/api/locais`, (route) => {
+    if (route.request().method() === 'POST') posts += 1;
+    return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+  });
+  await mockPagina(page, '/diario');
+  await page.goto('/boas-vindas');
+  await page.evaluate(() => sessionStorage.setItem('fisga:retorno', '/diario'));
+
+  await page.locator('#boas-pular').click();
+
+  await expect(page).toHaveURL(/\/diario$/);
+  expect(posts).toBe(0);
+});
+
+test('destino externo é ignorado', async ({ page }) => {
+  await mockMe(page, USUARIO);
+  await mockPagina(page, '/hoje');
+  await page.goto('/boas-vindas');
+  await page.evaluate(() => sessionStorage.setItem('fisga:retorno', 'https://evil.example'));
+
+  await page.locator('#boas-pular').click();
+
+  await expect(page).toHaveURL(/\/hoje$/);
+});
+
+test('duas escolhas rápidas geram um único POST', async ({ page }) => {
+  await mockMe(page, USUARIO);
+  let posts = 0;
+  await page.route(`${API}/api/locais`, async (route) => {
+    if (route.request().method() === 'POST') {
+      posts += 1;
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      return route.fulfill({ status: 201, contentType: 'application/json', body: '{}' });
+    }
+    return route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
+  });
+  await mockPagina(page, '/hoje');
+  await page.goto('/boas-vindas');
+
+  await page.getByRole('button', { name: 'Aracaju' }).click();
+  await page.getByRole('button', { name: 'Ilhabela' }).click({ force: true });
+
+  await expect(page).toHaveURL(/\/hoje$/);
+  expect(posts).toBe(1);
+});
