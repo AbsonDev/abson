@@ -33,7 +33,9 @@ public sealed class SessaoIdentityMiddleware(RequestDelegate next)
         var claim = context.User.FindFirst(ClaimSessaoId)?.Value;
         if (!Guid.TryParse(claim, out var sessaoId))
         {
-            // Sem claim, o fallback legado (fisga_sessao) ainda pode resolver.
+            // Sem o claim sessao_id não há sessão de dispositivo: a requisição
+            // segue sem usuário autenticado. O fallback legado fisga_sessao
+            // foi removido na Task 6.
             await next(context);
             return;
         }

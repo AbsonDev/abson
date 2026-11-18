@@ -172,6 +172,7 @@ public sealed class CadastroDeUsuarioTests : IAsyncLifetime
         Assert.NotNull(contaAntes);
         Assert.False(contaAntes!.EmailConfirmed);
         Assert.Null(usuario.EmailVerificadoEm);
+        var stampAntes = contaAntes.SecurityStamp;
 
         var garantido = await _cadastro.GarantirUsuarioAsync(
             Email.Criar(email), null, emailVerificado: true);
@@ -184,6 +185,9 @@ public sealed class CadastroDeUsuarioTests : IAsyncLifetime
         Assert.True(contaDepois!.EmailConfirmed);
         Assert.True(await _usuarios.CheckPasswordAsync(contaDepois, "senha-segura-123"),
             "A credencial de senha deve ser preservada.");
+        Assert.True(
+            string.Equals(stampAntes, contaDepois.SecurityStamp, StringComparison.Ordinal),
+            "Confirmar o e-mail não pode rotacionar o SecurityStamp e invalidar cookies ativos.");
     }
 
     [Fact]

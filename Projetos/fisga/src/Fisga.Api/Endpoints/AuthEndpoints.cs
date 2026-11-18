@@ -430,6 +430,9 @@ public static class AuthEndpoints
             {
                 var usuarioId = http.ExigirUsuarioId();
                 await servico.ExcluirAsync(usuarioId, entrada.Confirmacao, ct);
+
+                // O cookie ativo é o da Identity; LimparCookie só remove o legado.
+                await http.SignOutAsync(IdentityConstants.ApplicationScheme);
                 LimparCookie(http, opcoes);
                 return Results.NoContent();
             })

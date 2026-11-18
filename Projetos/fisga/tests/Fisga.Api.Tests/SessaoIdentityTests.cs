@@ -205,6 +205,23 @@ public sealed class SessaoIdentityTests : IAsyncLifetime
         Assert.Equal(sessaoA.Id, lista.Single(s => s.Atual).Id);
     }
 
+    [Fact]
+    public async Task Excluir_conta_limpa_tambem_o_cookie_fisga_auth()
+    {
+        var usuario = await CriarUsuarioConfirmadoAsync();
+        await EntrarAsync(_client, usuario.Email.Valor);
+
+        using var requisicao = new HttpRequestMessage(HttpMethod.Delete, "/api/conta")
+        {
+            Content = JsonContent.Create(new { confirmacao = "EXCLUIR" })
+        };
+        var resposta = await _client.SendAsync(requisicao);
+
+        Assert.Equal(HttpStatusCode.NoContent, resposta.StatusCode);
+        Assert.True(CookieDeAutenticacaoFoiLimpa(resposta),
+            "A exclusão da conta deve limpar o cookie ativo fisga_auth.");
+    }
+
     private HttpClient CriarCliente(string userAgent)
     {
         var cliente = _fixture.Factory.CreateClient();
