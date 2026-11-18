@@ -58,7 +58,9 @@ public sealed class CondicoesCacheTests
         var chaveDeCondicoes = ChavesDeCache.Condicoes(-23.55, -45.13, Dia);
         var chaveDaLua = ChavesDeCache.Lua(-23.55, -45.13, Dia);
         Assert.Contains(cache.Criacoes, criacao =>
-            criacao.Chave == chaveDaLua && criacao.Ttl == TimeSpan.FromHours(12));
+            criacao.Chave == chaveDaLua
+            && criacao.Expiration == TimeSpan.FromHours(12)
+            && criacao.LocalCacheExpiration == TimeSpan.FromHours(12));
         Assert.DoesNotContain(cache.Gravacoes, gravacao => gravacao.Chave == chaveDeCondicoes);
     }
 
@@ -79,7 +81,8 @@ public sealed class CondicoesCacheTests
         Assert.Equal(1, handler.ChamadasClima);
         Assert.Contains(cache.Gravacoes, gravacao =>
             gravacao.Chave == ChavesDeCache.Condicoes(-23.55, -45.13, Dia)
-            && gravacao.Ttl == TimeSpan.FromSeconds(30));
+            && gravacao.Expiration == TimeSpan.FromSeconds(30)
+            && gravacao.LocalCacheExpiration == TimeSpan.FromSeconds(30));
     }
 
     [Fact]
@@ -101,7 +104,8 @@ public sealed class CondicoesCacheTests
         Assert.Equal(1, handler.ChamadasMar);
         Assert.Contains(cache.Gravacoes, gravacao =>
             gravacao.Chave == ChavesDeCache.Condicoes(-23.55, -45.13, Dia)
-            && gravacao.Ttl == TimeSpan.FromMinutes(2));
+            && gravacao.Expiration == TimeSpan.FromMinutes(2)
+            && gravacao.LocalCacheExpiration == TimeSpan.FromMinutes(2));
     }
 
     [Fact]
@@ -167,7 +171,49 @@ public sealed class CondicoesCacheTests
 
         Assert.Contains(cache.Gravacoes, gravacao =>
             gravacao.Chave == ChavesDeCache.Condicoes(-23.55, -45.13, Dia)
-            && gravacao.Ttl == TimeSpan.FromMinutes(10));
+            && gravacao.Expiration == TimeSpan.FromMinutes(10)
+            && gravacao.LocalCacheExpiration == TimeSpan.FromMinutes(10));
+    }
+
+    [Fact]
+    public async Task Condicoes_cache_minutos_nao_encurta_ttl_parcial()
+    {
+        var handler = new ContadorHandler { FalharMar = true };
+        using var http = new HttpClient(handler);
+        var cache = new CacheEspiao(CriarHybridCache());
+        var provedor = new OpenMeteoProvedorDeCondicoes(
+            http,
+            cache,
+            new CondicoesOptions { CacheMinutos = 1 },
+            NullLogger<OpenMeteoProvedorDeCondicoes>.Instance);
+
+        await provedor.ObterAsync(-23.55, -45.13, Dia);
+
+        Assert.Contains(cache.Gravacoes, gravacao =>
+            gravacao.Chave == ChavesDeCache.Condicoes(-23.55, -45.13, Dia)
+            && gravacao.Expiration == TimeSpan.FromMinutes(2)
+            && gravacao.LocalCacheExpiration == TimeSpan.FromMinutes(2));
+    }
+
+    [Fact]
+    public async Task Condicoes_cache_minutos_nao_encurta_ttl_indisponivel()
+    {
+        var handler = new ContadorHandler { FalharClima = true };
+        using var http = new HttpClient(handler);
+        var cache = new CacheEspiao(CriarHybridCache());
+        var provedor = new OpenMeteoProvedorDeCondicoes(
+            http,
+            cache,
+            new CondicoesOptions { CacheMinutos = 1 },
+            NullLogger<OpenMeteoProvedorDeCondicoes>.Instance);
+
+        var resultado = await provedor.ObterAsync(-23.55, -45.13, Dia);
+
+        Assert.Null(resultado);
+        Assert.Contains(cache.Gravacoes, gravacao =>
+            gravacao.Chave == ChavesDeCache.Condicoes(-23.55, -45.13, Dia)
+            && gravacao.Expiration == TimeSpan.FromSeconds(30)
+            && gravacao.LocalCacheExpiration == TimeSpan.FromSeconds(30));
     }
 
     [Fact]
@@ -195,15 +241,17 @@ public sealed class CondicoesCacheTests
     [Fact]
     public async Task Cancelamento_do_cliente_nao_cacheia_indisponibilidade()
     {
-        var handler = new ContadorHandler();
-        using var http = new HttpClient(handler);
-        var cache = new CacheEspiao(CriarHybridCache());
-        var provedor = new OpenMeteoProvedorDeCondicoes(
-            http, cache, new CondicoesOptions(), NullLogger<OpenMeteoProvedorDeCondicoes>.Instance);
+        // Cache controlado: o HybridCache real pode abortar antes da factory propagar,
+        // mascarando se o provider engoliu o cancelamento. Aqui a factory é aguardada.
+        var cache = new CacheDeControle();
+        var handlerCancelado = new ContadorHandler { BloquearAteCancelar = true };
+        using var httpCancelado = new HttpClient(handlerCancelado);
+        var provedorCancelado = new OpenMeteoProvedorDeCondicoes(
+            httpCancelado, cache, new CondicoesOptions(), NullLogger<OpenMeteoProvedorDeCondicoes>.Instance);
 
         using var cancelamento = new CancellationTokenSource();
-        var tarefa = provedor.ObterAsync(-23.55, -45.13, Dia, cancelamento.Token);
-        await handler.Iniciado;
+        var tarefa = provedorCancelado.ObterAsync(-23.55, -45.13, Dia, cancelamento.Token);
+        await handlerCancelado.Iniciado;
         cancelamento.Cancel();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => tarefa);
@@ -211,11 +259,16 @@ public sealed class CondicoesCacheTests
         Assert.False(cache.FactoryCompletou);
         Assert.Empty(cache.Gravacoes);
 
-        var segunda = await provedor.ObterAsync(-23.55, -45.13, Dia);
+        var handlerNormal = new ContadorHandler();
+        using var httpNormal = new HttpClient(handlerNormal);
+        var provedorNormal = new OpenMeteoProvedorDeCondicoes(
+            httpNormal, cache, new CondicoesOptions(), NullLogger<OpenMeteoProvedorDeCondicoes>.Instance);
+
+        var segunda = await provedorNormal.ObterAsync(-23.55, -45.13, Dia);
 
         Assert.NotNull(segunda);
-        Assert.Equal(1, handler.ChamadasClima);
-        Assert.Equal(1, handler.ChamadasMar);
+        Assert.Equal(1, handlerNormal.ChamadasClima);
+        Assert.Equal(1, handlerNormal.ChamadasMar);
     }
 
     [Fact]
@@ -232,7 +285,10 @@ public sealed class CondicoesCacheTests
         Assert.NotNull(resultado);
         Assert.False(resultado!.TemMare);
         Assert.Null(resultado.Lua);
-        Assert.NotEmpty(logger.Mensagens);
+        Assert.Contains(logger.Mensagens, mensagem =>
+            mensagem.Contains("Maré/ondas indisponíveis", StringComparison.Ordinal));
+        Assert.Contains(logger.Mensagens, mensagem =>
+            mensagem.Contains("Lua indisponível em MET Norway", StringComparison.Ordinal));
         Assert.All(logger.Mensagens, mensagem =>
         {
             Assert.DoesNotContain("-23.55", mensagem, StringComparison.Ordinal);
@@ -271,7 +327,8 @@ public sealed class CondicoesCacheTests
             IEnumerable<string>? tags = null,
             CancellationToken cancellationToken = default)
         {
-            _criacoes.Enqueue(new ChamadaDeCache(key, options?.Expiration));
+            _criacoes.Enqueue(new ChamadaDeCache(
+                key, options?.Expiration, options?.LocalCacheExpiration));
             return interno.GetOrCreateAsync(
                 key,
                 state,
@@ -301,7 +358,8 @@ public sealed class CondicoesCacheTests
             IEnumerable<string>? tags = null,
             CancellationToken cancellationToken = default)
         {
-            _gravacoes.Enqueue(new ChamadaDeCache(key, options?.Expiration));
+            _gravacoes.Enqueue(new ChamadaDeCache(
+                key, options?.Expiration, options?.LocalCacheExpiration));
             return interno.SetAsync(key, value, options, tags, cancellationToken);
         }
 
@@ -317,9 +375,76 @@ public sealed class CondicoesCacheTests
             string tag,
             CancellationToken cancellationToken = default) =>
             interno.RemoveByTagAsync(tag, cancellationToken);
-
-        public sealed record ChamadaDeCache(string Chave, TimeSpan? Ttl);
     }
+
+    private sealed class CacheDeControle : HybridCache
+    {
+        private readonly ConcurrentDictionary<string, object?> _itens = new();
+        private readonly ConcurrentQueue<ChamadaDeCache> _gravacoes = new();
+
+        public bool FactoryCompletou { get; private set; }
+
+        public bool FactoryCancelou { get; private set; }
+
+        public IReadOnlyCollection<ChamadaDeCache> Gravacoes => _gravacoes;
+
+        public override async ValueTask<T> GetOrCreateAsync<TState, T>(
+            string key,
+            TState state,
+            Func<TState, CancellationToken, ValueTask<T>> factory,
+            HybridCacheEntryOptions? options = null,
+            IEnumerable<string>? tags = null,
+            CancellationToken cancellationToken = default)
+        {
+            if (_itens.TryGetValue(key, out var existente) && existente is T valor)
+            {
+                return valor;
+            }
+
+            try
+            {
+                var calculado = await factory(state, cancellationToken);
+                FactoryCompletou = true;
+                _itens[key] = calculado;
+                return calculado;
+            }
+            catch (OperationCanceledException)
+            {
+                FactoryCancelou = true;
+                throw;
+            }
+        }
+
+        public override ValueTask SetAsync<T>(
+            string key,
+            T value,
+            HybridCacheEntryOptions? options = null,
+            IEnumerable<string>? tags = null,
+            CancellationToken cancellationToken = default)
+        {
+            _gravacoes.Enqueue(new ChamadaDeCache(
+                key, options?.Expiration, options?.LocalCacheExpiration));
+            _itens[key] = value;
+            return default;
+        }
+
+        public override ValueTask RemoveAsync(
+            string key,
+            CancellationToken cancellationToken = default)
+        {
+            _itens.TryRemove(key, out _);
+            return default;
+        }
+
+        public override ValueTask RemoveByTagAsync(
+            string tag,
+            CancellationToken cancellationToken = default) => default;
+    }
+
+    private sealed record ChamadaDeCache(
+        string Chave,
+        TimeSpan? Expiration,
+        TimeSpan? LocalCacheExpiration);
 
     private sealed class LoggerEspiao : ILogger<OpenMeteoProvedorDeCondicoes>
     {

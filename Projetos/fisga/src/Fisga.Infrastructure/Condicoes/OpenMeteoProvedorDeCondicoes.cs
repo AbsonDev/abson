@@ -16,7 +16,7 @@ public sealed class OpenMeteoProvedorDeCondicoes(
     private static readonly TimeSpan TtlMaximo = TimeSpan.FromMinutes(20);
     private static readonly TimeSpan TtlDaLua = TimeSpan.FromHours(12);
 
-    // CacheMinutos pode encurtar o TTL completo, mas nunca passar do teto da política.
+    // CacheMinutos só encurta o TTL completo; nunca passa do teto da política.
     private TimeSpan TtlCompleto =>
         TimeSpan.FromMinutes(Math.Clamp(opcoes.CacheMinutos, 1, (int)TtlMaximo.TotalMinutes));
 
@@ -44,7 +44,10 @@ public sealed class OpenMeteoProvedorDeCondicoes(
         if (recemCalculado is not null)
         {
             var ttl = PoliticaDeCacheDeCondicoes.Ttl(recemCalculado.Dados);
-            if (ttl > TtlCompleto)
+
+            // Só o resultado completo usa CacheMinutos; parcial e indisponível
+            // mantêm os 2 min e os 30 s definidos pela política.
+            if (ttl == TtlMaximo)
             {
                 ttl = TtlCompleto;
             }
