@@ -4,6 +4,7 @@ using System.Text;
 using Fisga.Application.Condicoes;
 using Fisga.Infrastructure;
 using Fisga.Infrastructure.Condicoes;
+using Fisga.Infrastructure.Observabilidade;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,7 +25,11 @@ public sealed class CondicoesCacheTests
         using var http = new HttpClient(handler);
         var cache = CriarHybridCache();
         var provedor = new OpenMeteoProvedorDeCondicoes(
-            http, cache, new CondicoesOptions(), NullLogger<OpenMeteoProvedorDeCondicoes>.Instance);
+            http,
+            cache,
+            new CondicoesOptions(),
+            NullLogger<OpenMeteoProvedorDeCondicoes>.Instance,
+            new CacheObservabilidadeNula());
 
         var tarefas = Enumerable.Range(0, 10)
             .Select(_ => provedor.ObterAsync(-23.55, -45.13, Dia))
@@ -44,7 +49,11 @@ public sealed class CondicoesCacheTests
         using var http = new HttpClient(handler);
         var cache = new CacheEspiao(CriarHybridCache());
         var provedor = new OpenMeteoProvedorDeCondicoes(
-            http, cache, new CondicoesOptions(), NullLogger<OpenMeteoProvedorDeCondicoes>.Instance);
+            http,
+            cache,
+            new CondicoesOptions(),
+            NullLogger<OpenMeteoProvedorDeCondicoes>.Instance,
+            new CacheObservabilidadeNula());
 
         var primeira = await provedor.ObterAsync(-23.55, -45.13, Dia);
         var segunda = await provedor.ObterAsync(-23.55, -45.13, Dia);
@@ -71,7 +80,11 @@ public sealed class CondicoesCacheTests
         using var http = new HttpClient(handler);
         var cache = new CacheEspiao(CriarHybridCache());
         var provedor = new OpenMeteoProvedorDeCondicoes(
-            http, cache, new CondicoesOptions(), NullLogger<OpenMeteoProvedorDeCondicoes>.Instance);
+            http,
+            cache,
+            new CondicoesOptions(),
+            NullLogger<OpenMeteoProvedorDeCondicoes>.Instance,
+            new CacheObservabilidadeNula());
 
         var primeira = await provedor.ObterAsync(-23.55, -45.13, Dia);
         var segunda = await provedor.ObterAsync(-23.55, -45.13, Dia);
@@ -92,7 +105,11 @@ public sealed class CondicoesCacheTests
         using var http = new HttpClient(handler);
         var cache = new CacheEspiao(CriarHybridCache());
         var provedor = new OpenMeteoProvedorDeCondicoes(
-            http, cache, new CondicoesOptions(), NullLogger<OpenMeteoProvedorDeCondicoes>.Instance);
+            http,
+            cache,
+            new CondicoesOptions(),
+            NullLogger<OpenMeteoProvedorDeCondicoes>.Instance,
+            new CacheObservabilidadeNula());
 
         var primeira = await provedor.ObterAsync(-23.55, -45.13, Dia);
         var segunda = await provedor.ObterAsync(-23.55, -45.13, Dia);
@@ -115,7 +132,11 @@ public sealed class CondicoesCacheTests
         using var http = new HttpClient(handler);
         var cache = new CacheEspiao(CriarHybridCache());
         var provedor = new OpenMeteoProvedorDeCondicoes(
-            http, cache, new CondicoesOptions(), NullLogger<OpenMeteoProvedorDeCondicoes>.Instance);
+            http,
+            cache,
+            new CondicoesOptions(),
+            NullLogger<OpenMeteoProvedorDeCondicoes>.Instance,
+            new CacheObservabilidadeNula());
 
         await provedor.ObterAsync(-23.55, -45.13, Dia);
         Assert.Equal(2, handler.ChamadasLua);
@@ -139,7 +160,11 @@ public sealed class CondicoesCacheTests
         using var http = new HttpClient(handler);
         var cache = new CacheEspiao(CriarHybridCache());
         var provedor = new OpenMeteoProvedorDeCondicoes(
-            http, cache, new CondicoesOptions(), NullLogger<OpenMeteoProvedorDeCondicoes>.Instance);
+            http,
+            cache,
+            new CondicoesOptions(),
+            NullLogger<OpenMeteoProvedorDeCondicoes>.Instance,
+            new CacheObservabilidadeNula());
 
         var primeira = await provedor.ObterAsync(-23.55, -45.13, Dia);
         Assert.NotNull(primeira);
@@ -156,6 +181,25 @@ public sealed class CondicoesCacheTests
     }
 
     [Fact]
+    public async Task Condicoes_emite_metricas_de_upstream_so_no_miss()
+    {
+        var handler = new ContadorHandler();
+        using var http = new HttpClient(handler);
+        var observabilidade = new CacheObservabilidadeEspiao();
+        var provedor = new OpenMeteoProvedorDeCondicoes(
+            http,
+            CriarHybridCache(),
+            new CondicoesOptions(),
+            NullLogger<OpenMeteoProvedorDeCondicoes>.Instance,
+            observabilidade);
+
+        await provedor.ObterAsync(-23.55, -45.13, Dia);
+        await provedor.ObterAsync(-23.55, -45.13, Dia);
+
+        Assert.Equal(1, observabilidade.CondicoesUpstreamChamadas);
+    }
+
+    [Fact]
     public async Task Condicoes_cache_minutos_configurado_encurta_o_ttl_completo()
     {
         var handler = new ContadorHandler();
@@ -165,7 +209,7 @@ public sealed class CondicoesCacheTests
             http,
             cache,
             new CondicoesOptions { CacheMinutos = 10 },
-            NullLogger<OpenMeteoProvedorDeCondicoes>.Instance);
+            NullLogger<OpenMeteoProvedorDeCondicoes>.Instance, new CacheObservabilidadeNula());
 
         await provedor.ObterAsync(-23.55, -45.13, Dia);
 
@@ -185,7 +229,7 @@ public sealed class CondicoesCacheTests
             http,
             cache,
             new CondicoesOptions { CacheMinutos = 1 },
-            NullLogger<OpenMeteoProvedorDeCondicoes>.Instance);
+            NullLogger<OpenMeteoProvedorDeCondicoes>.Instance, new CacheObservabilidadeNula());
 
         await provedor.ObterAsync(-23.55, -45.13, Dia);
 
@@ -205,7 +249,7 @@ public sealed class CondicoesCacheTests
             http,
             cache,
             new CondicoesOptions { CacheMinutos = 1 },
-            NullLogger<OpenMeteoProvedorDeCondicoes>.Instance);
+            NullLogger<OpenMeteoProvedorDeCondicoes>.Instance, new CacheObservabilidadeNula());
 
         var resultado = await provedor.ObterAsync(-23.55, -45.13, Dia);
 
@@ -247,7 +291,11 @@ public sealed class CondicoesCacheTests
         var handlerCancelado = new ContadorHandler { BloquearAteCancelar = true };
         using var httpCancelado = new HttpClient(handlerCancelado);
         var provedorCancelado = new OpenMeteoProvedorDeCondicoes(
-            httpCancelado, cache, new CondicoesOptions(), NullLogger<OpenMeteoProvedorDeCondicoes>.Instance);
+            httpCancelado,
+            cache,
+            new CondicoesOptions(),
+            NullLogger<OpenMeteoProvedorDeCondicoes>.Instance,
+            new CacheObservabilidadeNula());
 
         using var cancelamento = new CancellationTokenSource();
         var tarefa = provedorCancelado.ObterAsync(-23.55, -45.13, Dia, cancelamento.Token);
@@ -262,7 +310,11 @@ public sealed class CondicoesCacheTests
         var handlerNormal = new ContadorHandler();
         using var httpNormal = new HttpClient(handlerNormal);
         var provedorNormal = new OpenMeteoProvedorDeCondicoes(
-            httpNormal, cache, new CondicoesOptions(), NullLogger<OpenMeteoProvedorDeCondicoes>.Instance);
+            httpNormal,
+            cache,
+            new CondicoesOptions(),
+            NullLogger<OpenMeteoProvedorDeCondicoes>.Instance,
+            new CacheObservabilidadeNula());
 
         var segunda = await provedorNormal.ObterAsync(-23.55, -45.13, Dia);
 
@@ -278,7 +330,7 @@ public sealed class CondicoesCacheTests
         using var http = new HttpClient(handler);
         var logger = new LoggerEspiao();
         var provedor = new OpenMeteoProvedorDeCondicoes(
-            http, CriarHybridCache(), new CondicoesOptions(), logger);
+            http, CriarHybridCache(), new CondicoesOptions(), logger, new CacheObservabilidadeNula());
 
         var resultado = await provedor.ObterAsync(-23.551, -45.134, Dia);
 

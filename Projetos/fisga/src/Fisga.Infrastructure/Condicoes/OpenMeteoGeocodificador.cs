@@ -2,13 +2,15 @@ using System.Globalization;
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Hybrid;
 using Fisga.Application.Condicoes;
+using Fisga.Application.Observabilidade;
 
 namespace Fisga.Infrastructure.Condicoes;
 
 public sealed class OpenMeteoGeocodificador(
     HttpClient http,
     HybridCache cache,
-    NominatimThrottle throttle) : IGeocodificador
+    NominatimThrottle throttle,
+    ICacheObservabilidade observabilidade) : IGeocodificador
 {
     private static readonly TimeSpan TtlDaBusca = TimeSpan.FromHours(24);
     private static readonly TimeSpan TtlDoReverso = TimeSpan.FromHours(12);
@@ -32,8 +34,14 @@ public sealed class OpenMeteoGeocodificador(
             chave,
             async token =>
             {
+                observabilidade.GeocodingUpstream("busca");
                 var lista = await BuscarNoUpstreamAsync(termo.Trim(), token);
                 recemCalculado = lista;
+                if (lista.Count == 0)
+                {
+                    observabilidade.GeocodingNegativo("busca");
+                }
+
                 return lista;
             },
             Opcoes(TtlDaBusca),
@@ -67,9 +75,15 @@ public sealed class OpenMeteoGeocodificador(
                 // O throttle fica dentro da factory: um cache hit não espera
                 // nem consome a cota de 1 req/s do Nominatim.
                 await throttle.AguardarAsync(token);
+                observabilidade.GeocodingUpstream("reverso");
                 var calculado = new ResultadoDeReverso(
                     await BuscarReversoNoUpstreamAsync(latitude, longitude, token));
                 recemCalculado = calculado;
+                if (calculado.Dados is null)
+                {
+                    observabilidade.GeocodingNegativo("reverso");
+                }
+
                 return calculado;
             },
             Opcoes(TtlDoReverso),

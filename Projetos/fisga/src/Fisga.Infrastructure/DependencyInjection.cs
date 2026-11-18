@@ -7,6 +7,7 @@ using Fisga.Application.Abstractions;
 using Fisga.Application.Condicoes;
 using Fisga.Application.Identidade;
 using Fisga.Application.Locais;
+using Fisga.Application.Observabilidade;
 using Fisga.Application.Pontos;
 using Fisga.Application.Trilhas;
 using Fisga.Application.Vision;
@@ -16,6 +17,7 @@ using Fisga.Infrastructure.Emails;
 using Fisga.Infrastructure.Events;
 using Fisga.Infrastructure.Identity;
 using Fisga.Infrastructure.Midia;
+using Fisga.Infrastructure.Observabilidade;
 using Fisga.Infrastructure.Pdf;
 using Fisga.Infrastructure.Persistence;
 using Fisga.Infrastructure.Persistence.Repositories;
@@ -45,6 +47,10 @@ public static class DependencyInjection
                 LocalCacheExpiration = TimeSpan.FromMinutes(20),
             };
         });
+
+        // A Api registra o adaptador de telemetria depois desta chamada e vence a
+        // resolução por último registro; aqui fica a implementação neutra.
+        services.AddSingleton<ICacheObservabilidade, CacheObservabilidadeNula>();
 
         services.Configure<AutenticacaoOptions>(configuration.GetSection("Auth"));
         services.AddSingleton(sp => sp.GetRequiredService<IOptions<AutenticacaoOptions>>().Value);

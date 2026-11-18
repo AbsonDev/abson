@@ -5,6 +5,7 @@ using System.Text;
 using Fisga.Application.Condicoes;
 using Fisga.Infrastructure;
 using Fisga.Infrastructure.Condicoes;
+using Fisga.Infrastructure.Observabilidade;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,7 +19,8 @@ public sealed class GeocodificadorCacheTests
     {
         var handler = new ContadorHandler();
         using var http = new HttpClient(handler);
-        var geocoder = new OpenMeteoGeocodificador(http, CriarHybridCache(), new NominatimThrottle());
+        var geocoder = new OpenMeteoGeocodificador(
+            http, CriarHybridCache(), new NominatimThrottle(), new CacheObservabilidadeNula());
 
         await geocoder.BuscarAsync("Paraty");
         await geocoder.BuscarAsync(" paraty ");
@@ -31,7 +33,8 @@ public sealed class GeocodificadorCacheTests
     {
         var handler = new ContadorHandler();
         using var http = new HttpClient(handler);
-        var geocoder = new OpenMeteoGeocodificador(http, CriarHybridCache(), new NominatimThrottle());
+        var geocoder = new OpenMeteoGeocodificador(
+            http, CriarHybridCache(), new NominatimThrottle(), new CacheObservabilidadeNula());
 
         await geocoder.BuscarAsync("Paraty");
         await geocoder.BuscarAsync("Angra dos Reis");
@@ -45,7 +48,8 @@ public sealed class GeocodificadorCacheTests
         var handler = new ContadorHandler();
         using var http = new HttpClient(handler);
         var cache = new CacheEspiao(CriarHybridCache());
-        var geocoder = new OpenMeteoGeocodificador(http, cache, new NominatimThrottle());
+        var geocoder = new OpenMeteoGeocodificador(
+            http, cache, new NominatimThrottle(), new CacheObservabilidadeNula());
 
         var resultados = await geocoder.BuscarAsync("Paraty");
 
@@ -66,7 +70,8 @@ public sealed class GeocodificadorCacheTests
         var handler = new ContadorHandler { ResultadoVazio = true };
         using var http = new HttpClient(handler);
         var cache = new CacheEspiao(CriarHybridCache());
-        var geocoder = new OpenMeteoGeocodificador(http, cache, new NominatimThrottle());
+        var geocoder = new OpenMeteoGeocodificador(
+            http, cache, new NominatimThrottle(), new CacheObservabilidadeNula());
 
         var primeira = await geocoder.BuscarAsync("Atlantida");
         var segunda = await geocoder.BuscarAsync("Atlantida");
@@ -86,7 +91,8 @@ public sealed class GeocodificadorCacheTests
         var handler = new ContadorHandler();
         using var http = new HttpClient(handler);
         var cache = new CacheEspiao(CriarHybridCache());
-        var geocoder = new OpenMeteoGeocodificador(http, cache, new NominatimThrottle());
+        var geocoder = new OpenMeteoGeocodificador(
+            http, cache, new NominatimThrottle(), new CacheObservabilidadeNula());
 
         string[] termos = ["", " ", "a", " a "];
         foreach (var termo in termos)
@@ -105,7 +111,8 @@ public sealed class GeocodificadorCacheTests
         var handler = new ContadorHandler();
         using var http = new HttpClient(handler);
         var cache = new CacheEspiao(CriarHybridCache());
-        var geocoder = new OpenMeteoGeocodificador(http, cache, new NominatimThrottle());
+        var geocoder = new OpenMeteoGeocodificador(
+            http, cache, new NominatimThrottle(), new CacheObservabilidadeNula());
 
         var primeira = await geocoder.ReversoAsync(-23.2178, -44.7131);
         var segunda = await geocoder.ReversoAsync(-23.2178, -44.7131);
@@ -128,7 +135,8 @@ public sealed class GeocodificadorCacheTests
         var handler = new ContadorHandler { FalharReverso = true };
         using var http = new HttpClient(handler);
         var cache = new CacheEspiao(CriarHybridCache());
-        var geocoder = new OpenMeteoGeocodificador(http, cache, new NominatimThrottle());
+        var geocoder = new OpenMeteoGeocodificador(
+            http, cache, new NominatimThrottle(), new CacheObservabilidadeNula());
 
         var primeira = await geocoder.ReversoAsync(-23.2178, -44.7131);
         var segunda = await geocoder.ReversoAsync(-23.2178, -44.7131);
@@ -147,7 +155,8 @@ public sealed class GeocodificadorCacheTests
     {
         var handler = new ContadorHandler();
         using var http = new HttpClient(handler);
-        var geocoder = new OpenMeteoGeocodificador(http, CriarHybridCache(), new NominatimThrottle());
+        var geocoder = new OpenMeteoGeocodificador(
+            http, CriarHybridCache(), new NominatimThrottle(), new CacheObservabilidadeNula());
 
         await geocoder.ReversoAsync(-23.2178, -44.7131);
 
@@ -159,6 +168,52 @@ public sealed class GeocodificadorCacheTests
         Assert.True(
             relogio.Elapsed < TimeSpan.FromMilliseconds(500),
             $"cache hit esperou {relogio.Elapsed}; o throttle só deve rodar dentro da factory");
+    }
+
+    [Fact]
+    public async Task Busca_emite_upstream_so_no_miss()
+    {
+        var handler = new ContadorHandler();
+        using var http = new HttpClient(handler);
+        var observabilidade = new CacheObservabilidadeEspiao();
+        var geocoder = new OpenMeteoGeocodificador(
+            http, CriarHybridCache(), new NominatimThrottle(), observabilidade);
+
+        await geocoder.BuscarAsync("Paraty");
+        await geocoder.BuscarAsync("Paraty");
+
+        Assert.Equal("busca", Assert.Single(observabilidade.GeocodingUpstreamChamadas));
+        Assert.Empty(observabilidade.GeocodingNegativoChamadas);
+    }
+
+    [Fact]
+    public async Task Busca_sem_resultado_emite_negativo_de_busca()
+    {
+        var handler = new ContadorHandler { ResultadoVazio = true };
+        using var http = new HttpClient(handler);
+        var observabilidade = new CacheObservabilidadeEspiao();
+        var geocoder = new OpenMeteoGeocodificador(
+            http, CriarHybridCache(), new NominatimThrottle(), observabilidade);
+
+        await geocoder.BuscarAsync("Atlantida");
+
+        Assert.Equal("busca", Assert.Single(observabilidade.GeocodingUpstreamChamadas));
+        Assert.Equal("busca", Assert.Single(observabilidade.GeocodingNegativoChamadas));
+    }
+
+    [Fact]
+    public async Task Reverso_sem_resultado_emite_negativo_de_reverso()
+    {
+        var handler = new ContadorHandler { FalharReverso = true };
+        using var http = new HttpClient(handler);
+        var observabilidade = new CacheObservabilidadeEspiao();
+        var geocoder = new OpenMeteoGeocodificador(
+            http, CriarHybridCache(), new NominatimThrottle(), observabilidade);
+
+        await geocoder.ReversoAsync(-23.2178, -44.7131);
+
+        Assert.Equal("reverso", Assert.Single(observabilidade.GeocodingUpstreamChamadas));
+        Assert.Equal("reverso", Assert.Single(observabilidade.GeocodingNegativoChamadas));
     }
 
     [Fact]

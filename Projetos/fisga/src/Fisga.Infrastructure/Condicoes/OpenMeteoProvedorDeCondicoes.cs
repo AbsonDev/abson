@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
 using Fisga.Application.Condicoes;
+using Fisga.Application.Observabilidade;
 
 namespace Fisga.Infrastructure.Condicoes;
 
@@ -10,7 +11,8 @@ public sealed class OpenMeteoProvedorDeCondicoes(
     HttpClient http,
     HybridCache cache,
     CondicoesOptions opcoes,
-    ILogger<OpenMeteoProvedorDeCondicoes> logger) : IProvedorDeCondicoes
+    ILogger<OpenMeteoProvedorDeCondicoes> logger,
+    ICacheObservabilidade observabilidade) : IProvedorDeCondicoes
 {
     private const string Fonte = "Open-Meteo";
     private static readonly TimeSpan TtlMaximo = TimeSpan.FromMinutes(20);
@@ -33,6 +35,7 @@ public sealed class OpenMeteoProvedorDeCondicoes(
             chave,
             async token =>
             {
+                observabilidade.CondicoesUpstream();
                 var calculado = await CalcularAsync(latitude, longitude, diaLocal, token);
                 recemCalculado = calculado;
                 return calculado;
