@@ -4,8 +4,9 @@ Este documento é a fonte da verdade do fluxo de revisão de PRs do Fisga. Ele d
 bloqueia o merge e o que é apenas advisory. As camadas de CI e CD estão em [ci-cd.md](./ci-cd.md);
 aqui está só o julgamento do diff.
 
-**Status em 18/11/2026:** o `gate` é a única camada implementada. As demais estão planejadas e
-marcadas como tal na tabela de estado. Nada neste documento deve ser lido como "já funciona".
+**Status em 18/11/2026:** `gate`, dependency-review e `/oc` já estão na `main`; CodeQL, reviewdog e
+PR-Agent aguardam merge. O que estiver marcado como planejado ou em PR não deve ser lido como "já
+funciona".
 
 ## Princípio
 
@@ -39,7 +40,7 @@ dos bugs conhecidos; a camada serve para o humano gastar atenção no que só hu
 | Segurança estática | CodeQL (`csharp`, `javascript-typescript`, `actions`) | em PR (#22) | sim, via regra `code_scanning` | R$ 0 (repo público) |
 | Qualidade inline | reviewdog | em PR (#23) | não | R$ 0 |
 | Revisor LLM | PR-Agent CLI + OpenCode Go | em PR (#27), validado | não | franquia Go |
-| Agente | OpenCode `/oc` | implementado | não (sob demanda) | franquia Go |
+| Agente | OpenCode `/oc` | implementado, validado | não (sob demanda) | franquia Go |
 
 O `gate` valida que o código compila, formata e passa nos testes; ele não lê a intenção da mudança.
 O revisor LLM cobre isso. dependency-review e `/oc` já estão na `main`; CodeQL, reviewdog e
@@ -212,8 +213,12 @@ env:
   Sem isso, qualquer pessoa em repo público queima a franquia.
 - **O que faz:** explica o diff, corrige, implementa, responde em linha. Pode commitar no branch do
   PR — por isso `contents: write` e uso sob demanda, nunca automático.
-- **Validação:** o workflow só passa a valer depois do merge, porque `issue_comment` usa sempre o
-  workflow da branch padrão. Testar com `/oc` em um PR interno após o merge.
+- **Validação (18/11/2026):** run `44367586522` (21 s) após o merge do workflow (#25) publicou a
+  resposta `ok` no PR #22. O teste só foi possível depois do merge, porque `issue_comment` sempre usa
+  o workflow da branch padrão. Dois avisos não bloqueantes: (1) o `actions/cache@v4` transitivo da
+  action ainda roda em Node 20 — a correção depende de release do `anomalyco/opencode`; (2)
+  `cache write denied` porque o job não tem `actions: write` — permissão mantida fora de propósito,
+  já que o cache não é crítico para uma execução de 21 s.
 
 ## Triagem
 
@@ -228,6 +233,7 @@ env:
 | PR-Agent não comentou | conferir secret `OPENCODE_API_KEY`, `CONFIG__MODEL=opencode_go/deepseek-v4.1-flash` e o log do job (`MissingSessionID` = header ausente) |
 | PR-Agent falhou no `pip install` | confirmar o extra `[github]` e o commit pinado do PR-Agent |
 | `/oc` não rodou | conferir `author_association` do comentário e se o workflow existe no branch padrão |
+| `/oc` com warning de Node 20 ou `cache write denied` | ignorar; são transitivos/não bloqueantes e não afetam a resposta |
 | `/oc` alterou código errado | reverter o commit no branch e responder no thread com a correção |
 
 ## Segurança do fluxo
@@ -250,6 +256,11 @@ Repo público muda as regras do jogo. O que vale:
 | `reviewdog` | `contents: read`, `pull-requests: write` |
 | `pr-review` | `contents: read`, `issues: write`, `pull-requests: write` |
 | `oc` | `contents: write`, `issues: write`, `pull-requests: write` |
+
+- **`oc` sem `actions: write`:** o `GITHUB_TOKEN` não pode gravar cache, então o post-step da action
+  anota `cache write denied`. É esperado e não falha o job; só não reaproveita o cache entre runs.
+  Não conceda `actions: write` só por causa disso — a permissão também permite cancelar runs e
+  apagar artefatos.
 
 - **Segredos:** só nomes. `OPENCODE_API_KEY` é a única chave de modelo; o resto é `GITHUB_TOKEN`
   efêmero do run. Nenhum valor vai para o repositório, para o documento ou para log.
@@ -327,7 +338,8 @@ Rollback é deletar o workflow. Nenhuma camada exige mudança no `fisga-pipeline
 
 Pendências conhecidas:
 
-- Testar `/oc` em um PR interno depois do merge; `issue_comment` só usa o workflow da branch padrão.
+- Acompanhar release do `anomalyco/opencode` que atualize o `actions/cache` transitivo para Node 24;
+  até lá o warning de deprecação aparece em todo run do `/oc` e é inofensivo.
 - Voltar o PR-Agent para a action Docker quando sair release com LiteLLM >= 1.109.1; aí pinar a
   imagem por digest e remover o `pip install`.
 - Validar o parser de `astro check` no reviewdog; se não encaixar, ficar só com `actionlint`.
