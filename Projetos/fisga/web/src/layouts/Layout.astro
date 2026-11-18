@@ -8,6 +8,7 @@ interface Props {
   descricao?: string;
   bodyClass?: string;
   noindex?: boolean;
+  foco?: boolean;
   imagem?: string;
   tipo?: string;
   jsonLd?: string;
@@ -18,6 +19,7 @@ const {
   descricao = 'Registre cada pescaria, as capturas, as condições e gere o card do troféu e um relatório em PDF. Grátis durante a validação.',
   bodyClass = '',
   noindex = false,
+  foco = false,
   imagem = '/og-fisga.png',
   tipo = 'website',
   jsonLd = ''
@@ -30,9 +32,9 @@ const imagemAbsoluta = /^https?:\/\//.test(imagem)
   ? imagem
   : new URL(imagem, site).toString();
 const caminho = Astro.url.pathname;
-const mostrarTabbar = !['/entrar', '/boas-vindas', '/registrar'].some((rota) =>
-  caminho.startsWith(rota)
-);
+const mostrarTabbar =
+  !foco &&
+  !['/entrar', '/boas-vindas', '/registrar'].some((rota) => caminho.startsWith(rota));
 const ativo = (...rotas: string[]) => rotas.some((rota) => caminho === rota || caminho.startsWith(`${rota}/`));
 ---
 
@@ -70,7 +72,7 @@ const ativo = (...rotas: string[]) => rotas.some((rota) => caminho === rota || c
       rel="stylesheet"
     />
   </head>
-  <body class={`${bodyClass} ${mostrarTabbar ? 'tem-tabbar' : ''}`.trim()} data-api={api}>
+  <body class={`${bodyClass} ${mostrarTabbar ? 'tem-tabbar' : ''} ${foco ? 'foco' : ''}`.trim()} data-api={api}>
     <a class="pular-conteudo" href="#conteudo" data-pagefind-ignore>Pular para o conteúdo</a>
 
     <header class="topo" data-pagefind-ignore>

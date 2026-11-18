@@ -1,0 +1,93 @@
+/* Fisga — canonical semantic tokens.
+ * Source of truth for the brand values used by the Astro app
+ * (Projetos/fisga/web/src/styles/global.css). Brand aliases live in the
+ * comments; consumers must use the semantic names below.
+ */
+
+:root {
+  /* Surface */
+  --bg: #f8f4ea;              /* --papel */
+  --surface: #fffdf8;         /* --superficie */
+  --surface-warm: #f1e9da;    /* --superficie-2 */
+
+  /* Foreground */
+  --fg: #172a2d;              /* --tinta */
+  --fg-2: var(--fg);
+  --muted: #657277;           /* --tinta-suave */
+  --meta: var(--muted);
+
+  /* Border */
+  --border: #e3d8c8;          /* --linha */
+  --border-soft: #ece3d5;
+
+  /* Accent */
+  --accent: #174e57;          /* --terracota (petróleo, apesar do nome legado) */
+  --accent-on: #fff9f0;       /* --creme */
+  --accent-hover: #10383f;    /* --terracota-escura */
+  --accent-active: #0c2c32;
+
+  /* Semantic */
+  --success: #56745c;         /* --verde */
+  --warn: #e6a15c;            /* --dourado */
+  --danger: #d9773f;          /* --acafrao */
+
+  /* Typography — families */
+  --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "SF Mono", ui-monospace, Menlo, Monaco, Consolas, monospace;
+
+  /* Typography — scale */
+  --text-xs: 11.5px;
+  --text-sm: 13.5px;
+  --text-base: 16px;
+  --text-lg: 20px;
+  --text-xl: 26px;
+  --text-2xl: 40px;
+  --text-3xl: 56px;
+  --text-4xl: 84px;
+
+  /* Typography — leading & tracking */
+  --leading-body: 1.6;
+  --leading-tight: 1.05;
+  --tracking-display: -0.025em;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  /* Section rhythm */
+  --section-y-desktop: 112px;
+  --section-y-tablet: 76px;
+  --section-y-phone: 42px;
+
+  /* Radius */
+  --radius-sm: 12px;          /* controls, chips */
+  --radius-md: 20px;          /* cards */
+  --radius-lg: 22px;          /* auth cards */
+  --radius-pill: 9999px;
+
+  /* Elevation */
+  --elev-flat: none;
+  --elev-ring: 0 0 0 1px var(--border);
+  --elev-raised: 0 10px 30px rgba(23, 42, 45, 0.06);
+
+  /* Focus */
+  --focus-ring: 0 0 0 3px rgba(23, 78, 87, 0.32);
+
+  /* Motion */
+  --motion-fast: 150ms;
+  --motion-base: 200ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Layout */
+  --container-max: 1120px;
+  --container-gutter-desktop: 20px;
+  --container-gutter-tablet: 20px;
+  --container-gutter-phone: 20px;
+}
