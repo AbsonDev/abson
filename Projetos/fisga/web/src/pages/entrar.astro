@@ -131,7 +131,16 @@ import AuthLayout from '../layouts/AuthLayout.astro';
 
   function alvo() {
     const explicito = parametros.get('destino') || parametros.get('voltar');
-    if (explicito) return destinoSeguro(explicito, '/hoje');
+    if (explicito) {
+      // O destino explícito vence; um retorno salvo de outra visita não deve
+      // reaparecer numa próxima entrada sem parâmetro.
+      try {
+        sessionStorage.removeItem('fisga:retorno');
+      } catch {
+        // armazenamento indisponível
+      }
+      return destinoSeguro(explicito, '/hoje');
+    }
     try {
       const salvo = sessionStorage.getItem('fisga:retorno');
       if (salvo !== null) sessionStorage.removeItem('fisga:retorno');

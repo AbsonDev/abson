@@ -56,7 +56,8 @@ const servidor = createServer((requisicao, resposta) => {
           }
         : null,
       consentimentoPendente: pendente,
-      googleConectado: false
+      googleConectado: false,
+      temSenha: false
     });
     return;
   }

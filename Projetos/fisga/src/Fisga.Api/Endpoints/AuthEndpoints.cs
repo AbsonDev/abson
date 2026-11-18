@@ -539,19 +539,26 @@ public static class AuthEndpoints
                 var usuario = http.UsuarioAtual();
                 if (usuario is null)
                 {
-                    return Results.Ok(new MeResponse(false, null, http.ConsentimentoPendente(), false));
+                    return Results.Ok(new MeResponse(
+                        false,
+                        null,
+                        http.ConsentimentoPendente(),
+                        false,
+                        false));
                 }
 
                 var conta = await usuarios.FindByIdAsync(usuario.Id.ToString());
                 var googleConectado = conta is not null
                     && (await usuarios.GetLoginsAsync(conta))
                         .Any(login => login.LoginProvider == GoogleIdentityValidator.Provider);
+                var temSenha = conta is not null && await usuarios.HasPasswordAsync(conta);
 
                 return Results.Ok(new MeResponse(
                     true,
                     UsuarioResponse.De(usuario),
                     http.ConsentimentoPendente(),
-                    googleConectado));
+                    googleConectado,
+                    temSenha));
             })
             .AllowAnonymous()
             .RequireRateLimiting("leitura");
@@ -657,6 +664,113 @@ public static class AuthEndpoints
             })
             .RequireRateLimiting("escrita");
 
+        app.MapPost("/api/conta/senha", async (
+                AlterarSenhaRequest entrada,
+                HttpContext http,
+                UserManager<ApplicationUser> usuarios,
+                IUserClaimsPrincipalFactory<ApplicationUser> fabricaDeClaims,
+                ISessaoRepository sessoes,
+                IUnitOfWork unidade,
+                IRelogio relogio,
+                CancellationToken ct) =>
+            {
+                var usuarioId = http.ExigirUsuarioId();
+                var novaSenha = entrada.NovaSenha ?? string.Empty;
+
+                // A Identity não tem máximo nativo: o limite é validado antes de
+                // qualquer chamada para não depender do provedor de hash.
+                if (novaSenha.Length < 10)
+                {
+                    throw new DomainException(
+                        "senha_curta",
+                        "A senha deve ter pelo menos 10 caracteres.");
+                }
+
+                if (novaSenha.Length > 128)
+                {
+                    throw new DomainException(
+                        "senha_longa",
+                        "A senha deve ter no máximo 128 caracteres.");
+                }
+
+                var conta = await usuarios.FindByIdAsync(usuarioId.ToString())
+                    ?? throw new InvalidOperationException(
+                        "Conta de autenticação não encontrada para o usuário da sessão.");
+
+                var temSenha = await usuarios.HasPasswordAsync(conta);
+                IdentityResult resultado;
+
+                if (temSenha)
+                {
+                    if (string.IsNullOrEmpty(entrada.SenhaAtual))
+                    {
+                        throw SenhaAtualIncorreta();
+                    }
+
+                    resultado = await usuarios.ChangePasswordAsync(
+                        conta,
+                        entrada.SenhaAtual,
+                        novaSenha);
+                }
+                else
+                {
+                    resultado = await usuarios.AddPasswordAsync(conta, novaSenha);
+                }
+
+                if (!resultado.Succeeded)
+                {
+                    // Erro de senha atual é sempre genérico: não revelamos qual
+                    // regra falhou nem detalhes do provedor.
+                    if (temSenha
+                        && resultado.Errors.Any(erro =>
+                            erro.Code == nameof(IdentityErrorDescriber.PasswordMismatch)))
+                    {
+                        throw SenhaAtualIncorreta();
+                    }
+
+                    throw new DomainException(
+                        "senha_invalida",
+                        "Não foi possível salvar a senha. Confira os dados e tente novamente.");
+                }
+
+                // A troca de senha é evento de segurança: revoga os outros
+                // dispositivos e preserva apenas a sessão que fez a alteração.
+                var sessaoAtual = http.SessaoAtual();
+                await sessoes.RevogarTodasAsync(
+                    usuarioId,
+                    relogio.Agora,
+                    exceto: sessaoAtual?.Id,
+                    ct);
+                await unidade.SalvarAsync(ct);
+
+                // AddPassword/ChangePassword rotacionam o SecurityStamp. Sem
+                // reemitir o cookie, a sessão atual seria recusada na próxima
+                // validação do stamp. O principal novo já carrega o stamp
+                // atualizado e recebe de volta o claim que aponta para a linha
+                // de dispositivo preservada.
+                if (sessaoAtual is not null)
+                {
+                    var principal = await fabricaDeClaims.CreateAsync(conta);
+                    if (principal.Identity is ClaimsIdentity identidade
+                        && !identidade.HasClaim(claim => claim.Type == ClaimSessaoId))
+                    {
+                        identidade.AddClaim(new Claim(ClaimSessaoId, sessaoAtual.Id.ToString()));
+                    }
+
+                    await http.SignInAsync(
+                        IdentityConstants.ApplicationScheme,
+                        principal,
+                        new AuthenticationProperties
+                        {
+                            IsPersistent = true,
+                            ExpiresUtc = sessaoAtual.ExpiraEm
+                        });
+                }
+
+                return Results.NoContent();
+            })
+            .RequireRateLimiting("escrita");
+
         app.MapGet("/api/conta/sessoes", async (
                 HttpContext http,
                 ServicoDeAutenticacao servico,
@@ -723,4 +837,7 @@ public static class AuthEndpoints
             IsEssential = true
         });
     }
+
+    private static DomainException SenhaAtualIncorreta() =>
+        new("senha_atual_incorreta", "A senha atual está incorreta.");
 }

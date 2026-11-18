@@ -34,6 +34,8 @@ public sealed record RegistrarConsentimentoRequest(string? TermosVersao, string?
 
 public sealed record ExcluirContaRequest(string? Confirmacao);
 
+public sealed record AlterarSenhaRequest(string? SenhaAtual, string? NovaSenha);
+
 public sealed record UsuarioResponse(
     Guid Id,
     string Email,
@@ -58,7 +60,8 @@ public sealed record MeResponse(
     bool Autenticado,
     UsuarioResponse? Usuario,
     bool ConsentimentoPendente,
-    bool GoogleConectado);
+    bool GoogleConectado,
+    bool TemSenha);
 
 public sealed record SessaoResponse(
     Guid Id,

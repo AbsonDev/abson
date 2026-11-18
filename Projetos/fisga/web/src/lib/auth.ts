@@ -20,6 +20,7 @@ export interface MeResponse {
   } | null;
   consentimentoPendente: boolean;
   googleConectado: boolean;
+  temSenha: boolean;
 }
 
 export interface RespostaApi<T> {
@@ -70,7 +71,8 @@ export async function obterSessao(base: string = apiBase()): Promise<MeResponse 
       consentimentoPendente: Boolean(
         lerCampo(bruto, 'consentimentoPendente', 'ConsentimentoPendente')
       ),
-      googleConectado: Boolean(lerCampo(bruto, 'googleConectado', 'GoogleConectado'))
+      googleConectado: Boolean(lerCampo(bruto, 'googleConectado', 'GoogleConectado')),
+      temSenha: Boolean(lerCampo(bruto, 'temSenha', 'TemSenha'))
     };
   } catch {
     return null;

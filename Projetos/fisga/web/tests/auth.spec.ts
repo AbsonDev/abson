@@ -174,6 +174,23 @@ test.describe('Entrar', () => {
     await expect(page).toHaveURL(/\/hoje/);
   });
 
+  test('destino explícito limpa o retorno salvo', async ({ page }) => {
+    await page.route('**/conta', (route) =>
+      route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><h1>Conta</h1>' })
+    );
+    await mockJson(page, '/api/auth/entrar', { autenticado: true, mensagem: null });
+    await mockMeAntesEDepoisDoLogin(page);
+    const checagemInicial = page.waitForResponse(`${API}/api/auth/me`);
+    await page.goto(url('entrar', '?destino=%2Fconta'));
+    await checagemInicial;
+    await page.evaluate(() => sessionStorage.setItem('fisga:retorno', '/mapa'));
+    await page.locator('#login-email').fill('pescador@fisga.app');
+    await page.locator('#login-password').fill('uma-senha-qualquer');
+    await page.locator('#login-submit').click();
+    await expect(page).toHaveURL(/\/conta$/);
+    expect(await page.evaluate(() => sessionStorage.getItem('fisga:retorno'))).toBeNull();
+  });
+
   test('login por senha com credenciais inválidas mostra erro', async ({ page }) => {
     await mockJson(page, '/api/auth/entrar', {
       autenticado: false,
@@ -396,14 +413,15 @@ test.describe('Confirmação de e-mail', () => {
     await expect(page.locator('#confirm-resend')).toBeVisible();
   });
 
-  test('sucesso oferece voltar para entrar', async ({ page }) => {
+  test('sucesso oferece uma única ação para entrar', async ({ page }) => {
     await mockJson(page, '/api/auth/confirmar-email', { mensagem: 'E-mail confirmado.' });
     await page.goto(url('confirmar-email', '?uid=1&token=abc'));
     await expect(page.locator('#confirm-success')).toBeVisible({ timeout: 10000 });
-    await expect(page.locator('#confirm-success').getByRole('link', { name: 'Voltar para entrar' })).toHaveAttribute(
+    await expect(page.locator('#confirm-success').getByRole('link', { name: 'Entrar' })).toHaveAttribute(
       'href',
       '/entrar'
     );
+    await expect(page.locator('#confirm-success').getByRole('link')).toHaveCount(1);
   });
 
   test('pedir novo link sem sessão explica o passo de entrar', async ({ page }) => {
@@ -418,6 +436,8 @@ test.describe('Confirmação de e-mail', () => {
     await page.locator('#confirm-resend').click();
     await expect(page.locator('#confirm-resend-note')).toBeVisible();
     await expect(page.locator('#confirm-resend-note')).toContainText('entre com seu e-mail e senha');
+    await expect(page.locator('#confirm-resend-note [data-icon="erro"]')).toBeVisible();
+    await expect(page.locator('#confirm-resend-note [data-icon="ok"]')).toBeHidden();
     await expect(page).toHaveURL(/\/confirmar-email/);
   });
 });

@@ -25,7 +25,6 @@ import AuthLayout from '../layouts/AuthLayout.astro';
         </header>
         <div class="stack-actions">
           <a class="btn btn-primary btn-block" href="/entrar">Entrar</a>
-          <a class="btn btn-ghost btn-block" href="/entrar">Voltar para entrar</a>
         </div>
       </div>
 
@@ -43,7 +42,8 @@ import AuthLayout from '../layouts/AuthLayout.astro';
           <a class="btn btn-ghost btn-block" href="/entrar">Voltar para entrar</a>
         </div>
         <p class="note note--success" id="confirm-resend-note" role="status" hidden style="margin-top: 16px;">
-          <svg class="od-icon od-icon--md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="m8.5 12 2.5 2.5 4.5-5"></path></svg>
+          <svg class="od-icon od-icon--md" data-icon="ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="m8.5 12 2.5 2.5 4.5-5"></path></svg>
+          <svg class="od-icon od-icon--md" data-icon="erro" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display: none"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5"></path><path d="M12 16h.01"></path></svg>
           <span id="confirm-resend-texto">Enviamos um novo link de confirmação. Confira a caixa de entrada e o spam.</span>
         </p>
       </div>
@@ -93,6 +93,11 @@ import AuthLayout from '../layouts/AuthLayout.astro';
     resendTexto.textContent = texto;
     resendNota.classList.toggle('note--error', erro);
     resendNota.classList.toggle('note--success', !erro);
+    resendNota.setAttribute('role', erro ? 'alert' : 'status');
+    const iconeOk = resendNota.querySelector<HTMLElement>('[data-icon="ok"]');
+    const iconeErro = resendNota.querySelector<HTMLElement>('[data-icon="erro"]');
+    if (iconeOk) iconeOk.style.display = erro ? 'none' : '';
+    if (iconeErro) iconeErro.style.display = erro ? '' : 'none';
     resendNota.hidden = false;
   }
 
