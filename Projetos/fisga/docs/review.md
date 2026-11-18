@@ -4,9 +4,8 @@ Este documento é a fonte da verdade do fluxo de revisão de PRs do Fisga. Ele d
 bloqueia o merge e o que é apenas advisory. As camadas de CI e CD estão em [ci-cd.md](./ci-cd.md);
 aqui está só o julgamento do diff.
 
-**Status em 18/11/2026:** `gate`, dependency-review e `/oc` já estão na `main`; CodeQL, reviewdog e
-PR-Agent aguardam merge. O que estiver marcado como planejado ou em PR não deve ser lido como "já
-funciona".
+**Status em 18/11/2026:** todas as camadas estão na `main` e validadas. Nenhuma delas, além do
+`gate`, é required check — a promoção depende do ciclo de métricas descrito abaixo.
 
 ## Princípio
 
@@ -15,10 +14,10 @@ diferente, e a regra é uma só: **se uma máquina consegue decidir com certeza,
 
 ```text
 1. determinístico   build · format · testes · astro check      (já existe: gate)
-2. segurança        CodeQL · dependency-review                 (planejado)
-3. qualidade inline reviewdog                                  (planejado)
-4. julgamento       PR-Agent                                   (planejado)
-5. ação             /oc                                        (planejado)
+2. segurança        CodeQL · dependency-review                 (implementado)
+3. qualidade inline reviewdog                                  (implementado)
+4. julgamento       PR-Agent                                   (implementado)
+5. ação             /oc                                        (implementado)
 ```
 
 - **Determinístico** decide binário: passou ou não passou. Pode bloquear.
@@ -37,9 +36,9 @@ dos bugs conhecidos; a camada serve para o humano gastar atenção no que só hu
 | CI | `gate` (build, format, 250 testes, `astro check`, Playwright) | implementado | sim, único required check | R$ 0 |
 | Dependências | Dependabot | implementado | não (propõe PRs) | R$ 0 |
 | Supply chain | `dependency-review-action@v5` | implementado, advisory | sim, quando promovido | R$ 0 |
-| Segurança estática | CodeQL (`csharp`, `javascript-typescript`, `actions`) | em PR (#22) | sim, via regra `code_scanning` | R$ 0 (repo público) |
-| Qualidade inline | reviewdog | em PR (#23) | não | R$ 0 |
-| Revisor LLM | PR-Agent CLI + OpenCode Go | em PR (#27), validado | não | franquia Go |
+| Segurança estática | CodeQL (`csharp`, `javascript-typescript`, `actions`) | implementado, advisory | sim, via regra `code_scanning` | R$ 0 (repo público) |
+| Qualidade inline | reviewdog | implementado, advisory | não | R$ 0 |
+| Revisor LLM | PR-Agent CLI + OpenCode Go | implementado, advisory | não | franquia Go |
 | Agente | OpenCode `/oc` | implementado, validado | não (sob demanda) | franquia Go |
 
 O `gate` valida que o código compila, formata e passa nos testes; ele não lê a intenção da mudança.
@@ -52,9 +51,9 @@ PR-Agent aguardam merge. Nenhuma camada nova é required check até passar pelo 
 PR aberto ou atualizado
 ├── fisga-pipeline / gate ........ bloqueia (build, format, testes, astro check, Playwright)
 ├── dependency-review ............ bloqueia CVE high+ (implementado, advisory até promover)
-├── codeql (3 linguagens) ........ bloqueia alerta high+ via ruleset (em PR)
-├── reviewdog .................... advisory: linter inline (em PR)
-└── pr-review (PR-Agent) ......... advisory: julgamento do diff (em PR)
+├── codeql (3 linguagens) ........ bloqueia alerta high+ via ruleset
+├── reviewdog .................... advisory: linter inline
+└── pr-review (PR-Agent) ......... advisory: julgamento do diff
         │
         ├── humano revisa e decide
         └── /oc sob demanda ...... explica, corrige, implementa (implementado)
@@ -78,8 +77,8 @@ Caminhos especiais:
 | Camada | Bloqueia? | Por quê |
 |---|---|---|
 | `gate` | **sim** | determinístico, reproduzível, é o contrato de merge |
-| dependency-review | **sim** | binário: CVE conhecida ou licença inválida não entram |
-| CodeQL (`high+`) | **sim**, via ruleset | binário quando a regra dispara; escopo estreito evita ruído |
+| dependency-review | **sim**, quando promovido | binário: CVE conhecida ou licença inválida não entram |
+| CodeQL (`high+`) | **sim**, quando a regra for ativada | binário quando a regra dispara; escopo estreito evita ruído |
 | reviewdog | não | só reporta linter no diff; vermelho não significa bug |
 | PR-Agent | não | probabilístico, muda com o modelo, custa token |
 | `/oc` | não | agente; pode alterar código e errar |
@@ -102,7 +101,7 @@ ensina o time a ignorar a ferramenta.
 ### dependency-review
 
 - **Quando roda:** `pull_request`.
-- **Onde:** `.github/workflows/dependency-review.yml` (a criar).
+- **Onde:** `.github/workflows/dependency-review.yml` (implementado).
 - **Pré-requisito:** o dependency graph do repositório precisa estar habilitado. Sem ele, a API de
   dependency review responde `403 Forbidden` e o job falha em segundos. O repo estava com o grafo
   desabilitado; habilitar em Settings → Code security, ou
@@ -131,7 +130,7 @@ ensina o time a ignorar a ferramenta.
 ### CodeQL
 
 - **Quando roda:** `push` em `main`, `pull_request` para `main` e semanalmente (fase final).
-- **Onde:** `.github/workflows/codeql.yml` e `.github/codeql/codeql-config.yml` (a criar).
+- **Onde:** `.github/workflows/codeql.yml` e `.github/codeql/codeql-config.yml` (implementado).
 - **Versão:** `github/codeql-action@v4` (bundle CodeQL 2.27.4 em nov/2026).
 - **Linguagens:** `csharp`, `javascript-typescript`, `actions`.
 - **Build mode:** `none` nas três. C# não precisa buildar; `.slnx` e .NET 10 são suportados.
@@ -139,7 +138,8 @@ ensina o time a ignorar a ferramenta.
   `Projetos/precifica` e `apps`. Isso evita alerta de código que não está em produção.
 - **Limite conhecido:** CodeQL não interpreta arquivos `.astro`. A cobertura de frontend é só
   `.ts`/`.js` em `Projetos/fisga/web/src`. Não prometa análise de componente Astro.
-- **Bloqueio:** regra `code_scanning` no ruleset `main-protection`, severidade `high_or_higher`.
+- **Bloqueio planejado:** regra `code_scanning` no ruleset `main-protection`, severidade
+  `high_or_higher`, depois da triagem da linha de base.
   Nunca `paths-ignore` no gatilho com essa regra ativa.
 - **Como ler:** `Security and quality` → Code scanning, ou
   `gh api "repos/AbsonDev/abson/code-scanning/alerts?state=open"`.
@@ -153,7 +153,7 @@ ensina o time a ignorar a ferramenta.
 ### reviewdog
 
 - **Quando roda:** `pull_request`.
-- **Onde:** `.github/workflows/reviewdog.yml` (a criar).
+- **Onde:** `.github/workflows/reviewdog.yml` (implementado).
 - **O que é:** um reporter, não um linter. Ele pega stdout de outra ferramenta e publica comentário
   na linha do diff (`-filter-mode=added`).
 - **Usos que valem:** `actionlint` nos workflows e sugestão de formatação (`action-suggester` com o
@@ -165,7 +165,7 @@ ensina o time a ignorar a ferramenta.
 
 - **Quando roda:** `pull_request` (`opened`, `reopened`, `ready_for_review`) e comandos em
   `issue_comment`.
-- **Onde:** `.github/workflows/pr-review.yml` (a criar).
+- **Onde:** `.github/workflows/pr-review.yml` (implementado).
 - **Como roda:** PR-Agent **CLI**, não a action Docker. A imagem publicada mais nova do PR-Agent
   (0.50.0, build de 08/11) fixa LiteLLM 1.105.1, que não tem o provider `opencode_go`; o provider e
   a derivação do `x-opencode-session` entraram no LiteLLM 1.109.1, que o `main` do PR-Agent só passou
