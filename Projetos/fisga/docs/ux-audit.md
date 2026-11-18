@@ -327,3 +327,34 @@ Implementado em 17/11/2026, depois da validação do protótipo `fisga-ux` no Op
 O protótipo mostra 3 passos de onboarding (nome → local → newsletter). A implementação mantém 2
 passos: nome/newsletter na primeira tela e local na segunda, para reduzir fricção sem perder o
 local padrão.
+
+## Telas de identidade (Identity 2A) — 2026-11-17
+
+Protótipo aprovado no OpenDesign, projeto `fisga-auth-screens`, arquivo `index.html` autocontido.
+Referência visual e de copy para as Tasks 11–13 do plano `docs/superpowers/plans/2026-11-17-identity-google.md`.
+
+### Telas
+
+`/entrar`, `/criar-conta`, `/esqueci-senha`, `/redefinir-senha`, `/confirmar-email`, `/aceite` e `/conta`.
+
+### Padrões observados e aplicáveis
+
+- Uma ação primária por tela; o resto é botão de contorno ou link discreto.
+- Tokens do `DESIGN-UX.md`: `--sand` de fundo, `--petrol` como única cor de ação, `--clay` de acento,
+  Fraunces nos títulos e Inter no corpo, divisórias de 1px em vez de cartões empilhados.
+- Copy em pt-BR em todos os estados: padrão, carregando, erro, sucesso e vazio.
+- `/aceite` exige os dois checkboxes (Termos e Privacidade, versão `2026-11-17`) antes de liberar o app.
+- `/conta` separa senha, Google (status/vínculo) e sessões ativas, com confirmação explícita para excluir conta.
+- O botão "Continuar com Google" só aparece quando `/api/auth/google/disponivel` retornar `disponivel: true`.
+- Acessibilidade: labels persistentes, `autocomplete`, `aria-live`, foco visível, alvos ≥44px e
+  `prefers-reduced-motion`. Responsividade verificável em 360, 390, 768, 1440 e 1920 px.
+
+### Diferenças em relação ao protótipo
+
+O protótipo usa um painel de revisão no rodapé para trocar de tela e simular estados; esse painel
+não vai para produção. Os links de Termos/Privacidade abrem um resumo no protótipo; na aplicação
+apontam para `/termos` e `/privacidade`.
+
+### Aprovação
+
+Protótipo aprovado pelo usuário em 2026-11-17 para implementação no Astro.
