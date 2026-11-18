@@ -1,6 +1,11 @@
 # CI/CD do Fisga
 
-Este documento descreve o pipeline, o deploy no Coolify, o rollback e as pendências da Fase B.
+Pipeline da Fase A: CI obrigatório em todo PR, CD separado no Coolify e verificação pelo SHA real
+em produção.
+
+**Última validação ponta a ponta:** 18/11/2026, commit `725afd5`, deploy automático
+[`44338998771`](https://github.com/AbsonDev/abson/actions/runs/44338998771) verde. API e web
+respondendo `/health` com `version=725afd5`.
 
 ## Visão geral
 
@@ -10,27 +15,59 @@ PR
     ├── changes   (detecta mudanças em Projetos/fisga/**)
     ├── api       (restore locked + format + build + 250 testes)
     ├── web       (npm ci + astro check + build + 61 Playwright mockados)
-    ├── docker    (build das imagens sem push, em PR)
+    ├── docker    (build das imagens sem push, em PR e workflow_dispatch)
     └── gate      (check obrigatório)
 
 push em main
-└── fisga-pipeline
-    ├── changes + api + web + gate
-    ├── deploy-api  (Coolify -> aguarda /health com o SHA)
-    └── deploy-web  (Coolify -> aguarda /health com o SHA + smoke)
+└── fisga-pipeline (CI: changes + api + web + gate)
+    └── fisga-deploy (workflow_run, só com CI verde na main)
+        ├── changes   (diff do commit que o CI validou)
+        ├── deploy-api  (Coolify -> /health = head_sha -> /ready -> smoke do web atual)
+        └── deploy-web  (Coolify -> /health = head_sha -> / e /condicoes)
 ```
 
-O workflow fica em `.github/workflows/fisga-pipeline.yml`. O check obrigatório da `main` é o job
-**`gate`** (a UI pode exibir `fisga-pipeline / gate`; confirme o contexto exato em
+Os workflows ficam em `.github/workflows/fisga-pipeline.yml` (CI) e
+`.github/workflows/fisga-deploy.yml` (CD). O check obrigatório da `main` é o job **`gate`** (a UI
+pode exibir `fisga-pipeline / gate`; confirme o contexto exato em
 `gh api repos/AbsonDev/abson/commits/<sha>/check-runs`).
+
+## Gatilhos e decisões de desenho
+
+### Por que não há `paths:` no CI
+
+Um workflow filtrado por `paths:` não roda em PRs que não tocam no Fisga; sem run, o check
+obrigatório fica "Expected" e o merge trava. Por isso o `fisga-pipeline` roda em **todo** PR e push
+para `main`, e o job `changes` decide o que executa.
+
+### Por que o deploy é um workflow separado
+
+Na primeira versão, `deploy-api` e `deploy-web` ficavam no fim do `fisga-pipeline`, com
+`if: github.ref == 'refs/heads/main'`. Mesmo com o `if` mínimo, os jobs eram **pulados** no evento
+`push`. O CD foi movido para `fisga-deploy.yml`, disparado por `workflow_run`. Ver
+[Histórico de incidentes](#histórico-de-incidentes-e-lições).
+
+Consequências do desenho atual:
+
+- O deploy não depende do contexto do evento `push`; usa `github.event.workflow_run.*`.
+- O `workflow_run` só existe depois que o CI termina; o deploy nunca começa antes do `gate`.
+- O SHA deployado é `github.event.workflow_run.head_sha`, o mesmo que o CI validou.
+- Se o CI falhar ou for cancelado na `main`, o deploy não roda.
+- Um novo push na `main` **não cancela** um deploy em andamento: o grupo `fisga-production` usa
+  `cancel-in-progress: false` e o próximo run espera na fila.
 
 ## Jobs de CI
 
 ### `changes`
 
-Roda em todo PR e push para `main`, sem `paths:` no gatilho. Isso evita o problema de um workflow
-pulado não reportar o check obrigatório. O job usa `git diff` para decidir se o Fisga mudou e expõe
-`needs.changes.outputs.fisga`.
+Roda em todo PR e push para `main`, sem `paths:` no gatilho. O job usa `git diff` para decidir se o
+Fisga mudou e expõe `needs.changes.outputs.fisga`.
+
+- PR: diff entre `base.sha` e `head.sha`.
+- Push: diff entre `github.event.before` e `github.sha`, com fallback para o commit raiz quando o
+  `before` não existe (branch nova ou force push).
+- `workflow_dispatch`: assume `fisga=true`.
+
+O filtro atual é `^Projetos/fisga/` ou o próprio workflow.
 
 ### `api`
 
@@ -39,14 +76,15 @@ pulado não reportar o check obrigatório. O job usa `git diff` para decidir se 
 - `dotnet build Fisga.slnx -c Release --no-restore -warnaserror`
 - `dotnet test Fisga.slnx -c Release --no-build` (250 testes)
 
-Os resultados TRX são enviados como artifact `fisga-test-results`.
+Os resultados TRX são enviados como artifact `fisga-test-results` (retenção de 7 dias). O job usa
+`actions/setup-dotnet` com `global-json-file` e cache baseado nos `packages.lock.json`.
 
 ### `web`
 
 - `npm ci`
 - `npm run check` (`astro check`)
 - `npm run build` (Astro + Pagefind + precache offline)
-- `npm run test:e2e` (61 testes Playwright mockados)
+- `npm run test:e2e` (61 testes Playwright mockados, Chromium)
 
 O E2E real (6 testes) fica no script `./scripts/e2e-real.sh`, fora do CI por exigir backend,
 SQLite, chaves e outbox temporários; pode virar um job nightly na Fase B.
@@ -65,28 +103,54 @@ check que precisa ser obrigatório na proteção da `main`.
 
 ## Deploy
 
-O deploy só roda em:
+O `fisga-deploy.yml` dispara com:
 
-- push para `main`; ou
-- `workflow_dispatch` **na branch `main`** com `deploy=true`.
+```yaml
+on:
+  workflow_run:
+    workflows: [fisga-pipeline]
+    types: [completed]
+    branches: [main]
+```
 
-Os webhooks e o `COOLIFY_URL` precisam ser HTTPS; o workflow recusa HTTP para não enviar o token em
-claro. O CI dispara o webhook, captura o `deployment_uuid`, acompanha o status no Coolify e só então
-valida `/health` e smoke tests.
+Os jobs de deploy só executam quando **todas** as condições são verdadeiras:
 
-### Ordem
+- `needs.changes.outputs.fisga == 'true'`;
+- `github.event.workflow_run.conclusion == 'success'`;
+- `github.event.workflow_run.head_branch == 'main'`.
+
+O job `changes` do deploy faz checkout de `head_sha` com `fetch-depth: 0` e diffa `HEAD^..HEAD`
+(ou o commit raiz, no primeiro commit). Ele usa o mesmo filtro do CI. Na prática, um merge de PR
+com Mudanças no Fisga gera diff contra a `main` anterior e marca `fisga=true`.
+
+> **Known behavior:** qualquer arquivo em `Projetos/fisga/**` conta, inclusive `docs/**` e
+> `README.md`. Um PR só de documentação dispara um deploy idempotente (mesmo código, SHA novo). Se
+> isso incomodar, a Fase B pode excluir `docs/**` e markdown raiz do filtro do deploy.
+
+O deploy não usa `inputs`, `github.ref` nem `github.event_name` no `if`:
+
+> **Nota de manutenção:** não reintroduzir jobs de deploy no `fisga-pipeline` nem trocar o `if` por
+> `github.ref`. O contexto correto é `github.event.workflow_run.*`; `workflow_run` aninhado e
+> `inputs` não existem nesse evento.
+
+### Ordem e verificações
 
 1. `deploy-api`: dispara o Coolify, acompanha o deployment até `finished`/`success` (até 20 min),
-   aguarda `https://api.fisga.abson.tech/health` com `version == github.sha` e valida `/ready`.
+   aguarda `https://api.fisga.abson.tech/health` com `version == workflow_run.head_sha` (até 5 min)
+   e valida `/ready`.
 2. Antes de trocar o web, o job da API valida o **web atual** em `/` e `/condicoes`. Se o web
    antigo quebrar com a API nova, o deploy do web não acontece e o rollback da API é obrigatório.
 3. `deploy-web`: dispara o Coolify, acompanha o deployment (até 20 min), aguarda o `/health` com
-   `version == github.sha` e valida `/` e `/condicoes`.
+   `version == workflow_run.head_sha` e valida `/` e `/condicoes`.
 
 Se a API falhar, o web não é deployado. Se o web falhar no smoke, faça rollback do web pelo Coolify;
 a API nova continua no ar e precisa ser compatível com a versão anterior do web.
 
-### Secrets e variáveis do GitHub
+Para deploy manual fora do fluxo (emergência), use o painel/API do Coolify. Não crie um
+`workflow_dispatch` paralelo no deploy: dois caminhos de deploy com o mesmo grupo de concorrência
+só aumentam a chance de SHA divergente.
+
+## Secrets e variáveis do GitHub
 
 Configurar em **Settings → Secrets and variables → Actions** (repositório):
 
@@ -103,7 +167,23 @@ no GitHub. O `SENTRY_AUTH_TOKEN` é usado no build do web; na Fase A ele fica no
 secret `sentry_auth_token` ou os source maps ficam desabilitados. Nunca passar esse token como
 `ARG`/`ENV` de Dockerfile nem como build variable comum.
 
-### Configuração do Coolify
+### Token do Coolify: escopo e rotação
+
+O token `github-actions-fisga-ci` foi criado escopado **apenas** aos apps `fisga-api` e `fisga-web`,
+com `read` + `deploy`, validade de 90 dias. Ele é o único token do Coolify que o GitHub usa.
+
+Rotação:
+
+1. No Coolify, criar um token novo com o mesmo escopo (`fisga-api` + `fisga-web`, read + deploy).
+2. Atualizar o secret `COOLIFY_TOKEN` no GitHub (`gh secret set COOLIFY_TOKEN`).
+3. Apagar o token antigo no Coolify (Keys & Tokens).
+4. Rodar um deploy de validação (merge na `main` ou deploy manual controlado) e confirmar o
+   `/health` com o SHA.
+
+Nunca colar token em chat, issue, arquivo do repositório ou log. Se um token for exposto, revogar
+imediatamente e rotacionar o secret.
+
+## Configuração do Coolify
 
 Para `fisga-api` e `fisga-web`:
 
@@ -113,21 +193,86 @@ Para `fisga-api` e `fisga-web`:
   rolling update.
 - **Container name**: não usar nome fixo/consistente, pelo mesmo motivo.
 - **Rolling update**: confirmar no log do deployment que o Coolify iniciou o novo container antes
-  de remover o antigo.
+  de remover o antigo. Configuração atual: stop grace 30s e rolling drain 30s.
+- **Retenção de imagens**: 10 imagens, suficiente para rollback sem inflar o disco do VPS.
 - **Source commit**: em **Advanced → Build → Source commit availability**, selecionar
   **Available during build**. O Dockerfile mapeia `SOURCE_COMMIT` para `GIT_SHA`; o `/health` usa
   esse valor.
 - **Sentry build secret**: usar BuildKit secret com ID `sentry_auth_token`; nunca configurar
-  `SENTRY_AUTH_TOKEN` como build variable/ARG. No primeiro build de produção, confirmar que o
-  **valor** do token não aparece em `docker history`/provenance; não usar `grep -i sentry`, porque o
-  nome do secret aparece na linha do `RUN`.
+  `SENTRY_AUTH_TOKEN` como build variable/ARG. Na Fase A o token está desabilitado como
+  buildtime/runtime no Coolify e os source maps ficam desligados.
 - **Docker da API**: o Dockerfile copia `Directory.Build.props`, `global.json` e os
   `packages.lock.json` e roda `dotnet restore --locked-mode`, para a imagem usar o mesmo grafo de
   dependências do CI.
+- **Runtime da API**: `aspnet:10.0` (o app target é `net10.0`). Não usar `aspnet:11.0`.
 - **Volume**: manter o volume de mídia do Fisga; ele não é afetado pelo deploy.
 
 O Coolify atualiza a imagem a partir do commit; o health check precisa retornar o SHA exato. Se
 `/health` retornar `dev`, o `SOURCE_COMMIT` não chegou ao build.
+
+## Verificação do estado atual
+
+```bash
+# Último CI e último deploy na main
+gh run list --repo AbsonDev/abson --workflow fisga-pipeline.yml --branch main --limit 1 \
+  --json databaseId,headSha,status,conclusion
+gh run list --repo AbsonDev/abson --workflow fisga-deploy.yml --branch main --limit 1 \
+  --json databaseId,headSha,status,conclusion
+
+# SHA em produção (deve ser igual ao merge da main)
+curl -fsS https://api.fisga.abson.tech/health
+curl -fsS https://fisga.abson.tech/health
+
+# Smoke
+curl -fsS -o /dev/null -w '%{http_code}\n' https://api.fisga.abson.tech/ready
+curl -fsS -o /dev/null -w '%{http_code}\n' https://fisga.abson.tech/
+curl -fsS -o /dev/null -w '%{http_code}\n' https://fisga.abson.tech/condicoes
+```
+
+Interpretação:
+
+- `version` igual ao SHA do merge → deploy concluído e health check do container novo.
+- `version` de um commit anterior → deploy ainda em andamento, falhou ou o Coolify não reconstruiu.
+- `version: dev` → `SOURCE_COMMIT`/`GIT_SHA` não chegou ao build.
+
+## Evidências de validação (18/11/2026)
+
+| O quê | Resultado |
+| --- | --- |
+| CI do PR #14 (`44338126881`) | `changes`, `api`, `web`, `docker`, `gate` verdes |
+| Merge do PR #14 | `725afd5` na `main` |
+| CI da `main` (`44338671367`) | verde |
+| Deploy automático (`44338998771`) | `changes` 12s, `deploy-api` 2m03s, `deploy-web` 2m46s, todos verdes |
+| API em produção | `/health` `version=725afd5`; `/ready` 200 |
+| Web em produção | `/health` `version=725afd5`; `/` e `/condicoes` 200 |
+| Deploy manual anterior (`44335514188`) | API/web em `9bc18e0`, usado para validar token/webhooks |
+
+## Proteção da main
+
+Estado atual: ruleset **`main-protection`** (id `27557615`), enforcement ativo, target `main`.
+
+- Require a pull request before merging (0 aprovações; projeto solo).
+- Require status checks: **`gate`**, strict (branch precisa estar atualizada).
+- Block force pushes.
+- Restrict deletions.
+- Merge por merge commit, squash ou rebase.
+
+Para recriar/verificar:
+
+```bash
+gh api repos/AbsonDev/abson/rulesets/27557615 \
+  --jq '{name,enforcement,rules:[.rules[]|{type,parameters}]}'
+```
+
+O check precisa existir no repositório antes de ser exigido. Confirme o nome real com:
+
+```bash
+gh api "repos/AbsonDev/abson/commits/$(git rev-parse HEAD)/check-runs" \
+  --jq '.check_runs[] | "\(.name)\t\(.app.slug)"' | sort -u
+```
+
+Use exatamente o `name` retornado (`gate`, salvo se o job for renomeado). O rótulo visual
+`fisga-pipeline / gate` não é o contexto do check.
 
 ## Rollback
 
@@ -177,83 +322,104 @@ Regras enquanto isso:
 A Fase B troca isso por um migration bundle executado antes da aplicação, com usuário de schema
 separado.
 
-## Fase B (pendente)
+## Histórico de incidentes e lições
 
-- Build/push de imagens no GHCR com tags `sha-<commit>`.
-- Migrar `fisga-api` e `fisga-web` para Docker Image apps no Coolify (build once).
-- Rollback automatizado por SHA.
-- EF Core migration bundle no entrypoint.
-- E2E real (6 testes) como job nightly/CI dedicado.
-- Preview deployments para PRs de UI.
-- Merge queue.
-- Dashboard simples de DORA metrics.
+### 1. Deploy pulado no `push` mesmo com `if` de `main`
 
-## Comandos úteis
+**Sintoma:** o `fisga-pipeline` terminava verde, mas `deploy-api` e `deploy-web` apareciam como
+`skipped` no push para `main`.
 
-```bash
-# Backend
-export PATH="$HOME/.dotnet:$PATH"   # neste host o SDK fica em ~/.dotnet
-cd Projetos/fisga
-dotnet restore Fisga.slnx --locked-mode
-dotnet format Fisga.slnx --verify-no-changes --no-restore
-dotnet build Fisga.slnx -c Release --no-restore -warnaserror
-dotnet test Fisga.slnx -c Release --no-build
+**Tentativas:** `if` com `github.ref == 'refs/heads/main'` (PR #11), remoção do input `deploy`
+(PR #12) e `if` mínimo só com ref (PR #13). Todas continuaram pulando.
 
-# Web
-cd Projetos/fisga/web
-npm ci
-npm run check
-npm run build
-npm run test:e2e   # 61 testes mockados; o build precisa existir
+**Causa:** o CD estava acoplado ao workflow de CI e ao contexto do evento `push`; os jobs de deploy
+não eram avaliados como esperado naquele grafo.
 
-# Workflow
-gh actions-lock --verify .github/workflows/fisga-pipeline.yml
-actionlint .github/workflows/fisga-pipeline.yml
-```
+**Correção:** PR #14 separou o CD em `fisga-deploy.yml`, disparado por `workflow_run` e usando
+`github.event.workflow_run.conclusion`, `head_branch` e `head_sha`.
 
-O Docker CLI não está disponível no ambiente do agente deste host; a validação de imagem é feita no
-job `docker` do GitHub Actions.
+**Lição:** deploy não é job de CI. Se o deploy precisa do resultado do CI, use `workflow_run` e
+trate o SHA do run como fonte de verdade. Não reintroduza deploy no pipeline de CI.
 
-## Proteção da main
+### 2. API não subia com runtime `aspnet:11.0`
 
-Depois que o workflow estiver na `main` e tiver rodado pelo menos uma vez:
+**Sintoma:** build da imagem passava, mas o container da API falhava no startup.
 
-1. Abrir **Settings → Rules → Rulesets → New branch ruleset**.
-2. Target: `main`.
-3. Ativar **Require a pull request before merging**.
-4. Ativar **Require status checks to pass** e selecionar o check **`gate`** (a UI pode exibir
-   `fisga-pipeline / gate`).
-5. Ativar **Require branches to be up to date before merging**.
-6. Ativar **Block force pushes**.
-7. Salvar.
+**Causa:** o app target é `net10.0`; `aspnet:11.0` só contém runtimes .NET 11 e não tem o runtime
+10. O CI não pega isso porque `dotnet publish` valida o TFM, não a imagem base.
 
-O check precisa existir no repositório antes de ser exigido. Rode o workflow em um PR e confirme o
-nome real:
+**Correção:** voltar o stage final para `aspnet:10.0`.
 
-```bash
-gh api "repos/AbsonDev/abson/commits/$(git rev-parse HEAD)/check-runs" \
-  --jq '.check_runs[] | "\(.name)\t\(.app.slug)"' | sort -u
-```
+**Lição:** a imagem base do runtime precisa corresponder ao major do TFM. Ao subir major de .NET,
+atualizar TFM e imagem juntos.
 
-Use exatamente o `name` retornado (`gate`, salvo se o job for renomeado).
+### 3. `SENTRY_AUTH_TOKEN` como build arg
 
-## Checklist de ativação (primeira vez)
+**Sintoma:** risco de o token aparecer em `docker history`/provenance e em cache de build.
 
-- [ ] Configurar `COOLIFY_URL` (HTTPS), `COOLIFY_TOKEN` (read+deploy),
-  `COOLIFY_WEBHOOK_FISGA_API`, `COOLIFY_WEBHOOK_FISGA_WEB` e a variável
-  `FISGA_PUBLIC_SENTRY_DSN`.
-- [ ] No Coolify, desligar auto deploy, configurar health checks, remover portas no host, ativar
-  **Source commit availability = Available during build** e configurar o BuildKit secret
-  `sentry_auth_token`.
-- [ ] Fazer push do branch e abrir PR.
-- [ ] Confirmar que o check `gate` aparece e passa.
-- [ ] Mergear o PR.
-- [ ] Criar a proteção da `main` exigindo `gate`.
-- [ ] Rodar `workflow_dispatch` na `main` com `deploy=true`.
-- [ ] Confirmar `/health` com o SHA do commit, status `finished` no Coolify e smoke tests.
-- [ ] Testar rollback uma vez e registrar o tempo.
+**Correção:** Dockerfile do web usa `RUN --mount=type=secret,id=sentry_auth_token`; o job `docker`
+falha se `SENTRY_AUTH_TOKEN` aparecer como `ARG`/`ENV`. Na Fase A o token está desabilitado no
+Coolify (buildtime/runtime `false`) e os source maps ficam desligados.
+
+**Lição:** segredo de build só entra por BuildKit secret. Build arg é público por definição.
+
+### 4. `/health` retornando `dev`
+
+**Sintoma:** o deploy pollava a versão e dava timeout; `/health` respondia `version: dev`.
+
+**Causa:** o build não recebia `SOURCE_COMMIT`.
+
+**Correção:** **Source commit availability = Available during build** no Coolify; Dockerfiles
+mapeiam `SOURCE_COMMIT` para `GIT_SHA`. Confirmado em `725afd5`.
+
+**Lição:** o health check só é confiável se a versão vier do build, não de um valor fixo.
+
+### 5. Push de workflow exige escopo `workflow`
+
+**Sintoma:** `git push` de `.github/workflows/**` era rejeitado com o token OAuth do `gh`
+(escopos `gist`, `read:org`, `repo`).
+
+**Correção:** usar PAT clássico com `repo` + `workflow` (efêmero, via `GH_TOKEN` e credential
+helper isolado) ou `gh auth refresh -s repo -s workflow -s read:org`. Nunca colar token em chat ou
+arquivo; se exposto, revogar e recriar.
+
+**Lição:** workflow é área sensível do GitHub; trate o token como credencial de curta duração.
+
+### 6. Dependabot com majors indesejados
+
+**Sintoma:** PRs de major de NuGet/npm/Docker abertos sem contexto.
+
+**Correção:** majors ignorados no `.github/dependabot.yml`; PRs #2/#3/#5/#8/#9/#10 fechados (e #6,
+lote de testes). Atualizações de major agora são decisão manual.
+
+**Lição:** em projeto solo, ruído de dependabot custa mais que benefício; deixar minors/patch
+automáticos e majors sob controle.
+
+### 7. Check obrigatório "Expected" com jobs verdes
+
+**Causa:** contexto errado (`fisga-pipeline / gate` em vez de `gate`).
+
+**Correção:** usar o `name` exato retornado por `check-runs`. O ruleset atual exige `gate`.
 
 ## Troubleshooting
+
+### O `fisga-deploy` não disparou
+
+Conferir, nesta ordem:
+
+1. O `fisga-pipeline` da `main` concluiu `success`? `workflow_run` não dispara em `failure`,
+   `cancelled` ou `skipped`.
+2. O evento foi push na `main`? O filtro `branches: [main]` do `workflow_run` olha a branch do run
+   de CI.
+3. O nome do workflow de CI ainda é `fisga-pipeline`? Renomear o `name:` quebra o gatilho.
+4. O run de deploy existe mas os jobs estão `skipped`? Conferir `conclusion`, `head_branch` e o
+   output `changes.fisga`.
+5. Ações do GitHub fora do ar ou fila lenta: ver **Actions → fisga-deploy**.
+
+### O deploy rodou, mas `changes.fisga=false`
+
+O diff do commit não tocou em `Projetos/fisga/**` nem nos workflows do Fisga. Se o merge era de um
+PR do Fisga, confira se o checkout usou `head_sha` correto e se o commit tem pai (merge commit).
 
 ### `/health` retorna `dev`
 
@@ -276,7 +442,8 @@ Se a regra estiver com `fisga-pipeline / gate`, remova e selecione `gate`.
 ### Deploy falha com 403 ao consultar o status
 
 O `COOLIFY_TOKEN` precisa de `read` **e** `deploy`. Token só com `deploy` consegue disparar o
-webhook, mas não consultar `/api/v1/deployments/{uuid}` nem listar rollback.
+webhook, mas não consultar `/api/v1/deployments/{uuid}` nem listar rollback. Token escopado nos
+apps errados também retorna 403/404.
 
 ### Webhook recusado por HTTP
 
@@ -299,6 +466,12 @@ Conferir:
 - se o Traefik está roteando para o container novo;
 - se o `version` no `/health` mudou.
 
+### Dois deploys ao mesmo tempo
+
+O workflow inteiro usa `concurrency: fisga-production` com `cancel-in-progress: false`: runs são
+enfileirados, não cancelados. Se aparecer deploy concorrente, alguém disparou pelo painel do
+Coolify; espere o primeiro terminar ou cancele o manual.
+
 ### Docker build falhou no PR
 
 Conferir o log do job `docker`. O build da API usa contexto `Projetos/fisga`; o do web usa
@@ -308,3 +481,65 @@ O job também falha se `SENTRY_AUTH_TOKEN` aparecer como `ARG`/`ENV` no Dockerfi
 ### Rollback não volta o banco
 
 Rollback de imagem não reverte migration. Restaurar backup ou aplicar uma migration corretiva.
+
+## Checklist de verificação ponta a ponta
+
+Feito em 18/11/2026:
+
+- [x] Secrets e variável configurados (`COOLIFY_URL`, `COOLIFY_TOKEN`, os dois webhooks,
+  `FISGA_PUBLIC_SENTRY_DSN`).
+- [x] Coolify: auto deploy off, health checks, sem porta no host, source commit disponível,
+  retenção e rolling update ajustados.
+- [x] Push do branch e PR com `gate` verde.
+- [x] Merge na `main`.
+- [x] Ruleset `main-protection` exigindo `gate`.
+- [x] `fisga-deploy` disparado por `workflow_run` e verde.
+- [x] `/health` da API e do web com o SHA do merge.
+- [x] Smoke `/ready`, `/`, `/condicoes`.
+- [ ] Testar rollback uma vez e registrar o tempo (procedimento documentado, execução pendente).
+- [x] Limpar token de setup do Coolify, chave SSH temporária e arquivos locais.
+
+## Fase B (pendente)
+
+- Build/push de imagens no GHCR com tags `sha-<commit>`.
+- Migrar `fisga-api` e `fisga-web` para Docker Image apps no Coolify (build once).
+- Rollback automatizado por SHA.
+- EF Core migration bundle no entrypoint.
+- E2E real (6 testes) como job nightly/CI dedicado.
+- Preview deployments para PRs de UI.
+- Merge queue.
+- Excluir `docs/**` e markdown do filtro de deploy para evitar deploy em mudança só de doc.
+- Pin de commit no deploy: PATCH `git_commit_sha` no Coolify antes do webhook, para o build não
+  pegar um HEAD mais novo que o SHA validado.
+- Dashboard simples de DORA metrics.
+
+## Comandos úteis
+
+```bash
+# Backend
+export PATH="$HOME/.dotnet:$PATH"   # neste host o SDK fica em ~/.dotnet
+cd Projetos/fisga
+dotnet restore Fisga.slnx --locked-mode
+dotnet format Fisga.slnx --verify-no-changes --no-restore
+dotnet build Fisga.slnx -c Release --no-restore -warnaserror
+dotnet test Fisga.slnx -c Release --no-build
+
+# Web
+cd Projetos/fisga/web
+npm ci
+npm run check
+npm run build
+npm run test:e2e   # 61 testes mockados; o build precisa existir
+
+# Workflows
+gh actions-lock --verify .github/workflows/fisga-pipeline.yml .github/workflows/fisga-deploy.yml
+actionlint .github/workflows/fisga-pipeline.yml .github/workflows/fisga-deploy.yml
+
+# Deploy e produção
+gh run list --repo AbsonDev/abson --workflow fisga-deploy.yml --branch main --limit 3
+curl -fsS https://api.fisga.abson.tech/health
+curl -fsS https://fisga.abson.tech/health
+```
+
+O Docker CLI não está disponível no ambiente do agente deste host; a validação de imagem é feita no
+job `docker` do GitHub Actions e no build do Coolify.

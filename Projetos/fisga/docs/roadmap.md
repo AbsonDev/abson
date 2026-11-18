@@ -127,14 +127,14 @@ quando houver fonte oficial estável e abrir o diretório de guias com perfis ve
 
 ## Infra e entrega
 
-**Status:** CI/CD do Fisga na Fase A.
+**Status:** CI/CD do Fisga na Fase A, validado em produção no commit `725afd5`.
 
-- GitHub Actions `fisga-pipeline` em todo PR e push para `main`.
-- `gate` obrigatório, 250 testes, `astro check`, 61 Playwright mockados, build Docker e deploy no
-  Coolify.
-- Deploy API → web com verificação de `/health` e smoke tests.
+- GitHub Actions com dois workflows: `fisga-pipeline` (CI em todo PR e push para `main`) e
+  `fisga-deploy` (CD por `workflow_run`, só com CI verde na `main`).
+- `gate` obrigatório, 250 testes, `astro check`, 61 Playwright mockados e build Docker.
+- Deploy API → web com verificação de `/health` pelo SHA e smoke tests; API e web em `725afd5`.
 - Pendente (Fase B): build once no GHCR, migration bundle, E2E real no CI/nightly, preview
-  deployments e merge queue.
+  deployments, merge queue e pin de commit no deploy.
 
 Runbook: [`docs/ci-cd.md`](ci-cd.md).
 

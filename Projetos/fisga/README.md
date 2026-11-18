@@ -13,6 +13,7 @@ transforma o dia em troféu, PDF e memória.
 [api.fisga.abson.tech](https://api.fisga.abson.tech/health).
 
 [![CI do Fisga](https://github.com/AbsonDev/abson/actions/workflows/fisga-pipeline.yml/badge.svg?branch=main)](https://github.com/AbsonDev/abson/actions/workflows/fisga-pipeline.yml)
+[![Deploy do Fisga](https://github.com/AbsonDev/abson/actions/workflows/fisga-deploy.yml/badge.svg?branch=main)](https://github.com/AbsonDev/abson/actions/workflows/fisga-deploy.yml)
 
 ---
 
@@ -466,20 +467,20 @@ npm run build   # astro build + pagefind + precache
 
 ## CI/CD
 
-O Fisga tem um pipeline próprio no GitHub Actions em
-[`.github/workflows/fisga-pipeline.yml`](../../.github/workflows/fisga-pipeline.yml). Ele roda em
-todo PR e em push para `main`, detecta mudanças em `Projetos/fisga/**` e executa:
+O Fisga tem dois workflows no GitHub Actions: `fisga-pipeline.yml` (CI) e `fisga-deploy.yml` (CD).
+O CI roda em todo PR e em push para `main`, detecta mudanças em `Projetos/fisga/**` e executa:
 
 - `api`: restore locked, `dotnet format --verify-no-changes`, build `-warnaserror` e os 250 testes
   xUnit.
 - `web`: `npm ci`, `astro check`, `npm run build` e `npm run test:e2e` (61 testes Playwright
   mockados).
-- `docker`: build das imagens da API e do web sem push (em PR).
+- `docker`: build das imagens da API e do web sem push (em PR e `workflow_dispatch`).
 - `gate`: job obrigatório; falha se qualquer job necessário falhar.
 
-No push para `main`, após o `gate`, o pipeline dispara o deploy do `fisga-api` e depois do
-`fisga-web` no Coolify, acompanha o deployment, aguarda o `/health` retornar o SHA do commit e roda
-smoke tests. O `workflow_dispatch` de deploy só é aceito na branch `main`.
+No push para `main`, quando o `fisga-pipeline` conclui verde, o `fisga-deploy` roda por
+`workflow_run`: dispara o `fisga-api`, depois o `fisga-web`, acompanha o deployment, aguarda o
+`/health` retornar o SHA do commit e roda smoke tests. O `workflow_dispatch` na `main` roda o CI e,
+ao concluir, o deploy. Validação ponta a ponta: 18/11/2026, commit `725afd5`, deploy `44338998771`.
 
 O check obrigatório da `main` é o job **`gate`** (a UI pode exibir `fisga-pipeline / gate`). Confirme
 o contexto exato com `gh api repos/AbsonDev/abson/commits/<sha>/check-runs`.
