@@ -65,4 +65,55 @@ public sealed class SentryScrubberTests
         Assert.DoesNotContain("S%C3%A3o", texto);
         Assert.Contains("q=[Filtered]", texto);
     }
+
+    [Fact]
+    public void ScrubEvent_preserva_id_e_remove_pii_do_usuario()
+    {
+        var evento = new SentryEvent
+        {
+            User = new SentryUser
+            {
+                Id = "usuario-123",
+                Email = "alguem@exemplo.com",
+                Username = "alguem",
+                IpAddress = "192.0.2.1",
+                Other = new Dictionary<string, string> { ["plano"] = "pro" }
+            }
+        };
+
+        var limpo = SentryScrubber.ScrubEvent(evento, new SentryHint());
+
+        Assert.Equal("usuario-123", limpo!.User!.Id);
+        Assert.Null(limpo.User.Email);
+        Assert.Null(limpo.User.Username);
+        Assert.Null(limpo.User.IpAddress);
+        Assert.Empty(limpo.User.Other);
+    }
+
+    [Fact]
+    public void ScrubEvent_mantem_sem_usuario_quando_anonimo()
+    {
+        var limpo = SentryScrubber.ScrubEvent(new SentryEvent(), new SentryHint());
+
+        // O SDK não aceita User nulo: um SentryUser sem Id é semanticamente anônimo.
+        Assert.Null(limpo!.User!.Id);
+        Assert.Null(limpo.User.Email);
+        Assert.Null(limpo.User.Username);
+        Assert.Null(limpo.User.IpAddress);
+        Assert.Empty(limpo.User.Other);
+    }
+
+    [Fact]
+    public void ScrubTransaction_preserva_id_e_remove_pii_do_usuario()
+    {
+        var transacao = new SentryTransaction("GET /api/x", "http.server")
+        {
+            User = new SentryUser { Id = "usuario-456", Email = "alguem@exemplo.com" }
+        };
+
+        var limpa = SentryScrubber.ScrubTransaction(transacao, new SentryHint());
+
+        Assert.Equal("usuario-456", limpa!.User!.Id);
+        Assert.Null(limpa.User.Email);
+    }
 }

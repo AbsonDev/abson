@@ -54,10 +54,30 @@ public static partial class SentryScrubber
     public static SentryEvent? ScrubEvent(SentryEvent evento, SentryHint _)
     {
         evento.ServerName = null;
-        evento.User = null!;
+        LimparUsuario(evento.User);
         LimparRequest(evento.Request);
         LimparMensagens(evento);
         return evento;
+    }
+
+    /// <summary>
+    /// Mantém apenas o identificador opaco. Sem Id, o usuário é semanticamente
+    /// anônimo — o SDK não aceita a propriedade User nula.
+    /// </summary>
+    private static void LimparUsuario(SentryUser? usuario)
+    {
+        if (usuario is null)
+        {
+            return;
+        }
+
+        usuario.Email = null;
+        usuario.Username = null;
+        usuario.IpAddress = null;
+        if (usuario.Other is { } outros)
+        {
+            outros.Clear();
+        }
     }
 
     private static void LimparMensagens(SentryEvent evento)
@@ -79,7 +99,7 @@ public static partial class SentryScrubber
 
     public static SentryTransaction? ScrubTransaction(SentryTransaction transacao, SentryHint _)
     {
-        transacao.User = null!;
+        LimparUsuario(transacao.User);
         LimparRequest(transacao.Request);
         return transacao;
     }
