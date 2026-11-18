@@ -1,13 +1,14 @@
 [config]
-model = "openai/deepseek-v4.1-flash"
+model = "opencode_go/deepseek-v4.1-flash"
 fallback_models = []
 custom_model_max_tokens = 128000
 restricted_mode = true
 response_language = "pt-BR"
+reasoning_effort = "none"
 
 [litellm]
-# OpenCode Go exige um session id por conversa; o PR-Agent monta a partir da URL do PR.
-add_session_id_to_requests = true
+# OpenCode Go rejeita requests sem x-opencode-session (MissingSessionID).
+extra_headers = '{"x-opencode-session": "pr-agent-absond"}'
 
 [pr_reviewer]
 num_max_findings = 6

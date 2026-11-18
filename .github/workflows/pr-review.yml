@@ -30,12 +30,11 @@ jobs:
         uses: the-pr-agent/pr-agent@v0.47.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          OPENAI.KEY: ${{ secrets.OPENCODE_API_KEY }}
-          OPENAI.API_BASE: https://opencode.ai/inference/go/v1
-          config.model: openai/deepseek-v4.1-flash
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          config.model: opencode_go/deepseek-v4.1-flash
           config.custom_model_max_tokens: "128000"
           config.fallback_models: '[]'
-          LITELLM.ADD_SESSION_ID_TO_REQUESTS: "true"
+          config.reasoning_effort: none
           github_action_config.auto_review: "true"
           github_action_config.auto_describe: "false"
           github_action_config.auto_improve: "false"
