@@ -330,13 +330,39 @@ const sugestoes = [
 
 <script>
   // @ts-nocheck
+  import { destinoSeguro } from '../lib/auth';
+
   const API = (document.body.dataset.api || 'http://localhost:5184').replace(/\/$/, '');
   const titulo = document.getElementById('boas-titulo');
   const status = document.getElementById('boas-local-status');
+  const busca = document.getElementById('boas-busca-local');
+  const resultados = document.getElementById('boas-resultados');
+  let timerBusca = 0;
+  let salvando = false;
 
   function primeiroNome(nome) {
     const limpo = String(nome || '').trim();
     return limpo ? limpo.split(/\s+/)[0] : 'pescador';
+  }
+
+  function destino() {
+    try {
+      const salvo = sessionStorage.getItem('fisga:retorno');
+      if (salvo !== null) sessionStorage.removeItem('fisga:retorno');
+      return destinoSeguro(salvo, '/hoje');
+    } catch {
+      return '/hoje';
+    }
+  }
+
+  function escreverStatus(mensagem) {
+    if (status) status.textContent = mensagem;
+  }
+
+  function esconderResultados() {
+    if (!resultados) return;
+    resultados.innerHTML = '';
+    resultados.classList.add('oculto');
   }
 
   async function iniciar() {
@@ -358,8 +384,112 @@ const sugestoes = [
 
       if (titulo) titulo.textContent = `Bem-vindo, ${primeiroNome(dados.usuario.nome)}.`;
     } catch {
-      if (status) status.textContent = 'Não foi possível carregar sua conta. Recarregue a página.';
+      escreverStatus('Não foi possível carregar sua conta. Recarregue a página.');
     }
+  }
+
+  async function salvarLocal(local) {
+    if (salvando) return;
+    salvando = true;
+    escreverStatus('Abrindo seu dia…');
+
+    const corpo = {
+      nome: local.nome,
+      latitude: local.latitude,
+      longitude: local.longitude,
+      ambiente: local.ambiente ?? 'Outro',
+      padrao: true
+    };
+    if (local.cidade != null) corpo.cidade = local.cidade;
+    if (local.estado != null) corpo.estado = local.estado;
+
+    try {
+      const resposta = await fetch(`${API}/api/locais`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(corpo)
+      });
+
+      if (resposta.status === 401) {
+        window.location.assign(`/entrar?voltar=${encodeURIComponent('/hoje')}`);
+        return;
+      }
+
+      const dados = await resposta.json().catch(() => ({}));
+      if (!resposta.ok) throw new Error(dados.detalhe || 'Não foi possível salvar o local.');
+      window.location.assign(destino());
+    } catch (falha) {
+      salvando = false;
+      escreverStatus(falha instanceof Error ? falha.message : 'Não foi possível salvar o local.');
+    }
+  }
+
+  async function buscarLocal(termo) {
+    const limpo = termo.trim();
+    if (limpo.length < 2) {
+      esconderResultados();
+      escreverStatus('');
+      return;
+    }
+
+    escreverStatus('Buscando…');
+    try {
+      const resposta = await fetch(`${API}/api/locais/buscar?q=${encodeURIComponent(limpo)}`);
+      if (!resposta.ok) throw new Error('busca');
+      const lista = await resposta.json();
+
+      if (!Array.isArray(lista) || lista.length === 0) {
+        esconderResultados();
+        escreverStatus('Nenhum lugar encontrado. Tente o nome da cidade.');
+        return;
+      }
+
+      resultados.innerHTML = '';
+      for (const item of lista) {
+        const linha = document.createElement('li');
+        const opcao = document.createElement('button');
+        opcao.type = 'button';
+        opcao.className = 'boas-resultado';
+        opcao.textContent = `${item.nome}${item.estado ? ` · ${item.estado}` : ''}`;
+        opcao.addEventListener('click', () =>
+          salvarLocal({
+            nome: item.nome ?? item.cidade ?? 'Meu local',
+            cidade: item.cidade ?? item.nome,
+            estado: item.estado ?? null,
+            latitude: Number(item.latitude),
+            longitude: Number(item.longitude),
+            ambiente: 'Outro'
+          })
+        );
+        linha.appendChild(opcao);
+        resultados.appendChild(linha);
+      }
+
+      escreverStatus('');
+      resultados.classList.remove('oculto');
+    } catch {
+      esconderResultados();
+      escreverStatus('Não foi possível buscar agora. Tente de novo.');
+    }
+  }
+
+  busca?.addEventListener('input', () => {
+    window.clearTimeout(timerBusca);
+    timerBusca = window.setTimeout(() => buscarLocal(busca.value), 320);
+  });
+
+  for (const botao of document.querySelectorAll('.boas-sugestao')) {
+    botao.addEventListener('click', () => {
+      salvarLocal({
+        nome: botao.dataset.nome,
+        cidade: botao.dataset.cidade,
+        estado: botao.dataset.estado,
+        latitude: Number(botao.dataset.latitude),
+        longitude: Number(botao.dataset.longitude),
+        ambiente: botao.dataset.ambiente
+      });
+    });
   }
 
   void iniciar();
