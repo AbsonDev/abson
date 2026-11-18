@@ -1,0 +1,85 @@
+name: pr-review
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: pr-review-${{ github.event.pull_request.number || github.event.issue.number }}
+  # Em issue_comment, não cancele um /ask em andamento quando chega outro comentário.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  review:
+    name: review
+    if: |
+      github.event.sender.type != 'Bot' &&
+      (
+        (github.event_name == 'pull_request' &&
+         github.event.pull_request.head.repo.full_name == github.repository) ||
+        (github.event_name == 'issue_comment' &&
+         github.event.issue.pull_request &&
+         contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'),
+                  github.event.comment.author_association) &&
+         (startsWith(github.event.comment.body, '/review') ||
+          startsWith(github.event.comment.body, '/describe') ||
+          startsWith(github.event.comment.body, '/ask ') ||
+          startsWith(github.event.comment.body, '/improve')))
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GITHUB__USER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+      CONFIG__MODEL: opencode_go/deepseek-v4.1-flash
+      CONFIG__FALLBACK_MODELS: '[]'
+      CONFIG__CUSTOM_MODEL_MAX_TOKENS: '128000'
+      CONFIG__RESTRICTED_MODE: 'true'
+      CONFIG__RESPONSE_LANGUAGE: pt-BR
+      CONFIG__REASONING_EFFORT: none
+      LITELLM__ADD_SESSION_ID_TO_REQUESTS: 'true'
+      PR_REVIEWER__NUM_MAX_FINDINGS: '6'
+      PR_REVIEWER__REQUIRE_TESTS_REVIEW: 'false'
+      PR_REVIEWER__EXTRA_INSTRUCTIONS: |
+        Monorepo Abson. Só Projetos/fisga/** está em produção.
+        Priorize bugs de lógica, segurança (OAuth/callback, secrets), contratos de API,
+        migrações e violação das invariantes de CI/CD descritas em docs/ci-cd.md.
+        Ignore estilo já coberto por dotnet format e astro check. Não comente em docs/**.
+      EVENT_NAME: ${{ github.event_name }}
+      PR_URL: ${{ github.event.pull_request.html_url || github.event.issue.html_url }}
+      COMMENT_BODY: ${{ github.event.comment.body }}
+    steps:
+      - name: Setup Python
+        uses: actions/setup-python@v6.3.0
+        with:
+          python-version: '3.13'
+
+      - name: Install PR-Agent
+        run: |
+          set -euo pipefail
+          pip install --disable-pip-version-check --no-input \
+            "pr-agent[github] @ git+https://github.com/The-PR-Agent/pr-agent@78bd82caa9ea9d369a15bb008c36fd2c29c48f82"
+
+      - name: Run PR-Agent
+        run: |
+          set -euo pipefail
+
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            pr-agent --pr_url "$PR_URL" review
+            exit 0
+          fi
+
+          case "$COMMENT_BODY" in
+            "/ask "*)      pr-agent --pr_url "$PR_URL" ask -- "${COMMENT_BODY#/ask }" ;;
+            "/describe"*)  pr-agent --pr_url "$PR_URL" describe ;;
+            "/improve"*)   pr-agent --pr_url "$PR_URL" improve ;;
+            "/review"*)    pr-agent --pr_url "$PR_URL" review ;;
+            *) echo "Comando não reconhecido; nada a fazer." ;;
+          esac
