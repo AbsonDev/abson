@@ -242,7 +242,7 @@ jobs:
           COOLIFY_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK_FISGA_API }}
         run: |
           set -euo pipefail
-          curl --fail-with-body -sS -X POST "$COOLIFY_WEBHOOK" \
+          curl --fail-with-body -sS --max-time 30 -X POST "$COOLIFY_WEBHOOK" \
             -H "Authorization: Bearer $COOLIFY_TOKEN"
 
       - name: Aguardar a versão da API
@@ -298,7 +298,7 @@ jobs:
           COOLIFY_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK_FISGA_WEB }}
         run: |
           set -euo pipefail
-          curl --fail-with-body -sS -X POST "$COOLIFY_WEBHOOK" \
+          curl --fail-with-body -sS --max-time 30 -X POST "$COOLIFY_WEBHOOK" \
             -H "Authorization: Bearer $COOLIFY_TOKEN"
 
       - name: Aguardar a versão do web

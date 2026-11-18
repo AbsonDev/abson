@@ -192,6 +192,35 @@ actionlint .github/workflows/fisga-pipeline.yml
 O Docker CLI não está disponível no ambiente do agente deste host; a validação de imagem é feita no
 job `docker` do GitHub Actions.
 
+## Proteção da main
+
+Depois que o workflow estiver na `main` e tiver rodado pelo menos uma vez:
+
+1. Abrir **Settings → Rules → Rulesets → New branch ruleset**.
+2. Target: `main`.
+3. Ativar **Require a pull request before merging**.
+4. Ativar **Require status checks to pass** e selecionar `fisga-pipeline / gate`.
+5. Ativar **Require branches to be up to date before merging**.
+6. Ativar **Block force pushes**.
+7. Salvar.
+
+O check precisa existir no repositório antes de ser exigido. Se o GitHub não listar
+`fisga-pipeline / gate`, rodar o workflow em um PR primeiro.
+
+## Checklist de ativação (primeira vez)
+
+- [ ] Configurar `COOLIFY_TOKEN`, `COOLIFY_WEBHOOK_FISGA_API`, `COOLIFY_WEBHOOK_FISGA_WEB` e a
+  variável `FISGA_PUBLIC_SENTRY_DSN`.
+- [ ] No Coolify, desligar auto deploy, configurar health checks, remover portas no host e confirmar
+  que `SOURCE_COMMIT` chega ao build.
+- [ ] Fazer push do branch e abrir PR.
+- [ ] Confirmar que `fisga-pipeline / gate` aparece e passa.
+- [ ] Mergear o PR.
+- [ ] Criar a proteção da `main` exigindo `fisga-pipeline / gate`.
+- [ ] Rodar `workflow_dispatch` com `deploy=true`.
+- [ ] Confirmar `/health` com o SHA do commit e smoke tests.
+- [ ] Testar rollback uma vez e registrar o tempo.
+
 ## Troubleshooting
 
 ### `/health` retorna `dev`
