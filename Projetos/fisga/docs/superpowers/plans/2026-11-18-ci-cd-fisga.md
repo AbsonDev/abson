@@ -147,16 +147,31 @@
 **Files:**
 - Modify: `Projetos/fisga/README.md`
 - Create: `Projetos/fisga/docs/ci-cd.md`
+- Modify: `Projetos/README.md`
 
 - [ ] Documentar fluxo PR → CI → gate → merge → deploy API → deploy web → smoke.
 - [ ] Documentar check obrigatório, secrets/vars, configuração do Coolify e rollback.
 - [ ] Documentar política de migrations: só aditivas na Fase A; expand/contract para mudanças quebráveis.
 - [ ] Documentar troubleshooting e roadmap da Fase B.
+- [ ] Atualizar o README de `Projetos` com o estado de CI/CD do Fisga.
 - [ ] Commit: `docs(fisga): document ci cd and rollback runbook`.
 
 ---
 
-### Task 7: Fase B (backlog, não implementar agora)
+### Task 7: Atualizar o prompt principal
+
+**Files:**
+- Modify: `~/.config/opencode/AGENTS.md`
+
+- [ ] Adicionar uma seção “Fisga — CI/CD” com workflow, check obrigatório, secrets (apenas nomes), apps Coolify, comandos locais e pendências da Fase B.
+- [ ] Registrar que `dotnet` fica em `~/.dotnet/dotnet` e não está no `PATH` padrão deste host.
+- [ ] Registrar que o Docker CLI não está disponível neste host; builds de imagem são validados no CI.
+- [ ] Não incluir valores de secrets, tokens ou DSNs.
+- [ ] Commit não se aplica (arquivo fora do repositório); validar com leitura.
+
+---
+
+### Task 8: Fase B (backlog, não implementar agora)
 
 - [ ] Build/push de imagens no GHCR com tags `sha-<commit>`.
 - [ ] Migrar `fisga-api` e `fisga-web` para Docker Image apps no Coolify.
