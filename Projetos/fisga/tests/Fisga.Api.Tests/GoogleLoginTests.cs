@@ -70,6 +70,14 @@ public sealed class GoogleLoginTests : IAsyncLifetime
         return Task.CompletedTask;
     }
 
+    [Fact]
+    public void GoogleUsuario_nao_presume_email_verificado()
+    {
+        var google = new GoogleUsuario(NovoSubject(), Email.Criar("pescador@exemplo.com"), null);
+
+        Assert.False(google.EmailVerified);
+    }
+
     // ---------------------------------------------------------------------
     // Serviço de linking — quatro caminhos vinculantes do brief
     // ---------------------------------------------------------------------

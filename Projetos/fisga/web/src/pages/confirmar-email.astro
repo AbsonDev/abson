@@ -58,6 +58,10 @@ import AuthLayout from '../layouts/AuthLayout.astro';
   const parametros = new URLSearchParams(window.location.search);
   const uid = parametros.get('uid') ?? '';
   const token = parametros.get('token') ?? '';
+  // O token não deve ficar na barra de endereço, no histórico ou em Referer.
+  if (uid || token) {
+    window.history.replaceState(null, '', window.location.pathname);
+  }
 
   function mostrar(id: string) {
     ['confirm-loading', 'confirm-success', 'confirm-fail'].forEach((view) => {

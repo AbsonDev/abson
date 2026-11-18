@@ -12,7 +12,7 @@ public sealed class OutboxStartupGuardTests
     public void Outbox_em_producao_e_recusado()
     {
         var excecao = Assert.Throws<InvalidOperationException>(() =>
-            ConfiguracaoDeEmail.Validar("Outbox", desenvolvimento: false));
+            ConfiguracaoDeEmail.Validar("Outbox", resendApiKey: null, desenvolvimento: false));
 
         Assert.Contains("Outbox", excecao.Message);
         Assert.Contains("Development", excecao.Message);
@@ -24,16 +24,24 @@ public sealed class OutboxStartupGuardTests
     [InlineData("Outbox")]
     public void Outbox_em_development_e_permitido(string provedor)
     {
-        ConfiguracaoDeEmail.Validar(provedor, desenvolvimento: true);
+        ConfiguracaoDeEmail.Validar(provedor, resendApiKey: null, desenvolvimento: true);
+    }
+
+    [Fact]
+    public void Resend_com_chave_e_aceito_em_producao()
+    {
+        ConfiguracaoDeEmail.Validar("Resend", "chave-de-teste", desenvolvimento: false);
     }
 
     [Theory]
-    [InlineData("Resend")]
     [InlineData("Console")]
+    [InlineData("Outbox")]
     [InlineData(null)]
-    public void Outros_provedores_seguem_normais_em_producao(string? provedor)
+    [InlineData("Resend")]
+    public void Producao_sem_resend_e_chave_falha(string? provedor)
     {
-        ConfiguracaoDeEmail.Validar(provedor, desenvolvimento: false);
+        Assert.Throws<InvalidOperationException>(() =>
+            ConfiguracaoDeEmail.Validar(provedor, resendApiKey: null, desenvolvimento: false));
     }
 
     [Fact]

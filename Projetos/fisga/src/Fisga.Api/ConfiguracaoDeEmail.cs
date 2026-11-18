@@ -2,23 +2,36 @@ namespace Fisga.Api;
 
 /// <summary>
 /// Guardas de configuração que precisam falhar no start, antes de a aplicação
-/// aceitar requisições. O outbox de e-mail grava links com token em disco e só
-/// pode existir em Development; em produção o envio é sempre Resend.
+/// aceitar requisições. Produção exige Resend com chave; Console/Outbox são
+/// exclusivos de Development (o outbox grava links com token em disco).
 /// </summary>
 public static class ConfiguracaoDeEmail
 {
-    public static void Validar(string? provedor, bool desenvolvimento)
+    public static void Validar(string? provedor, string? resendApiKey, bool desenvolvimento)
     {
-        if (!string.Equals(provedor, "Outbox", StringComparison.OrdinalIgnoreCase))
+        if (desenvolvimento)
         {
             return;
         }
 
-        if (!desenvolvimento)
+        if (string.Equals(provedor, "Outbox", StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException(
                 "Email:Provider=Outbox é exclusivo de Development: ele grava tokens em arquivo. " +
-                "Configure Email:Provider=Resend (ou remova a variável) em produção.");
+                "Configure Email:Provider=Resend em produção.");
+        }
+
+        if (!string.Equals(provedor, "Resend", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                "Em produção Email:Provider deve ser Resend. Console/Outbox são exclusivos de " +
+                "Development e não enviam e-mail real.");
+        }
+
+        if (string.IsNullOrWhiteSpace(resendApiKey))
+        {
+            throw new InvalidOperationException(
+                "Em produção Email:ResendApiKey não pode ser vazio: sem chave o envio falha aberto.");
         }
     }
 }

@@ -56,7 +56,9 @@ public sealed class LegacyCookieStartupGuardTests
                     builder.ConfigureAppConfiguration((_, configuracao) =>
                         configuracao.AddInMemoryCollection(new Dictionary<string, string?>
                         {
-                            ["Email:Provider"] = "Console",
+                            ["Email:Provider"] = "Resend",
+                            ["Email:ResendApiKey"] = "chave-de-teste",
+                            ["Email:From"] = "Fisga <acesso@abson.tech>",
                             ["Auth:CookieSecure"] = "false",
                             ["DataProtection:KeysPath"] = Path.Combine(pasta, "keys"),
                             ["Media:Path"] = Path.Combine(pasta, "media"),
@@ -88,7 +90,10 @@ public sealed class LegacyCookieStartupGuardTests
                 builder.ConfigureAppConfiguration((_, configuracao) =>
                     configuracao.AddInMemoryCollection(new Dictionary<string, string?>
                     {
-                        ["Auth:LegacyCookieName"] = "fisga_auth"
+                        ["Auth:LegacyCookieName"] = "fisga_auth",
+                        ["Email:Provider"] = "Resend",
+                        ["Email:ResendApiKey"] = "chave-de-teste",
+                        ["Email:From"] = "Fisga <acesso@abson.tech>"
                     }));
             });
 

@@ -14,6 +14,7 @@ public sealed class ServicoDeContaTests
         SessaoRepositorioFake Sessoes,
         PescariaRepositorioFake Pescarias,
         MidiaStorageFake Midia,
+        ExclusaoDeIdentidadeFake Identidade,
         UnitOfWorkFake Unidade,
         Usuario Usuario);
 
@@ -23,6 +24,7 @@ public sealed class ServicoDeContaTests
         var sessoes = new SessaoRepositorioFake();
         var pescarias = new PescariaRepositorioFake();
         var midia = new MidiaStorageFake();
+        var identidade = new ExclusaoDeIdentidadeFake();
         var unidade = new UnitOfWorkFake();
         var relogio = new RelogioFixo(Agora);
 
@@ -37,8 +39,8 @@ public sealed class ServicoDeContaTests
             Agora,
             TimeSpan.FromDays(30)));
 
-        var servico = new ServicoDeConta(usuarios, sessoes, pescarias, midia, unidade, relogio);
-        return new Cenario(servico, usuarios, sessoes, pescarias, midia, unidade, usuario);
+        var servico = new ServicoDeConta(usuarios, sessoes, pescarias, midia, identidade, unidade, relogio);
+        return new Cenario(servico, usuarios, sessoes, pescarias, midia, identidade, unidade, usuario);
     }
 
     [Fact]
@@ -49,6 +51,7 @@ public sealed class ServicoDeContaTests
         await cenario.Servico.ExcluirAsync(cenario.Usuario.Id, "EXCLUIR");
 
         Assert.Empty(cenario.Usuarios.Usuarios);
+        Assert.Contains(cenario.Usuario.Id, cenario.Identidade.Excluidos);
         Assert.Empty(cenario.Pescarias.Pescarias);
         Assert.All(cenario.Sessoes.Sessoes, sessao => Assert.NotNull(sessao.RevogadaEm));
         Assert.Contains("/media/tucunare.jpg", cenario.Midia.Excluidos);

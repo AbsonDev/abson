@@ -1,5 +1,6 @@
 using Fisga.Api.Contracts;
 using Fisga.Application.Identidade;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Fisga.Api.Middleware;
 
@@ -33,7 +34,7 @@ public sealed class ConsentimentoMiddleware(RequestDelegate next)
 
         if (!pendente
             || !context.Request.Path.StartsWithSegments("/api")
-            || EstaNaAllowlist(context))
+            || PermiteSemConsentimento(context))
         {
             await next(context);
             return;
@@ -41,6 +42,17 @@ public sealed class ConsentimentoMiddleware(RequestDelegate next)
 
         await EscreverAsync(context);
     }
+
+    private static bool PermiteSemConsentimento(HttpContext context) =>
+        EhAnonimo(context) || EstaNaAllowlist(context);
+
+    /// <summary>
+    /// Endpoints marcados com <see cref="IAllowAnonymous"/> não pertencem à área
+    /// de dados do usuário: catálogo, login, recuperação, descadastro, PDF
+    /// público etc. O endpoint já está resolvido porque o roteamento roda antes.
+    /// </summary>
+    private static bool EhAnonimo(HttpContext context) =>
+        context.GetEndpoint()?.Metadata.GetMetadata<IAllowAnonymous>() is not null;
 
     private static bool EstaNaAllowlist(HttpContext context)
     {

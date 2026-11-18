@@ -43,8 +43,12 @@ public sealed class IdentityCookieSecureTests
             var cookie = provider
                 .GetRequiredService<IOptionsMonitor<CookieAuthenticationOptions>>()
                 .Get(IdentityConstants.ApplicationScheme);
+            var externo = provider
+                .GetRequiredService<IOptionsMonitor<CookieAuthenticationOptions>>()
+                .Get(IdentityConstants.ExternalScheme);
 
             Assert.Equal(esperado, cookie.Cookie.SecurePolicy);
+            Assert.Equal(esperado, externo.Cookie.SecurePolicy);
         }
         finally
         {

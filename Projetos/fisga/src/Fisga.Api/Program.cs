@@ -93,7 +93,10 @@ builder.Services.AddRateLimiter(opcoes =>
 
 var app = builder.Build();
 
-ConfiguracaoDeEmail.Validar(app.Configuration["Email:Provider"], app.Environment.IsDevelopment());
+ConfiguracaoDeEmail.Validar(
+    app.Configuration["Email:Provider"],
+    app.Configuration["Email:ResendApiKey"],
+    app.Environment.IsDevelopment());
 ConfiguracaoDeAutenticacao.Validar(
     app.Services.GetRequiredService<IOptions<AutenticacaoOptions>>().Value.LegacyCookieName);
 

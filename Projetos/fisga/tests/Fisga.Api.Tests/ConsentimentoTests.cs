@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -170,6 +171,44 @@ public sealed class ConsentimentoTests : IAsyncLifetime
         {
             _opcoesLegais.TermsVersion = versaoAnterior;
         }
+    }
+
+    [Fact]
+    public async Task Rotas_anonimas_e_de_compliance_nao_sao_bloqueadas_pelo_consentimento()
+    {
+        var usuario = await CriarUsuarioConfirmadoAsync();
+        await EntrarAsync(usuario.Email.Valor);
+
+        var catalogo = await _cliente.GetAsync("/api/catalogo");
+        Assert.Equal(HttpStatusCode.OK, catalogo.StatusCode);
+
+        var descadastrar = await _cliente.GetAsync("/api/newsletter/descadastrar");
+        Assert.NotEqual(HttpStatusCode.Forbidden, descadastrar.StatusCode);
+
+        var pdfPublico = await _cliente.GetAsync("/api/pescarias/token-inexistente/pdf");
+        Assert.NotEqual(HttpStatusCode.Forbidden, pdfPublico.StatusCode);
+
+        var entrar = await _cliente.PostAsJsonAsync(
+            "/api/auth/entrar", new { email = usuario.Email.Valor, senha = "senha-errada-999" });
+        Assert.NotEqual(HttpStatusCode.Forbidden, entrar.StatusCode);
+
+        var esqueci = await _cliente.PostAsJsonAsync(
+            "/api/auth/esqueci-senha", new { email = usuario.Email.Valor });
+        Assert.NotEqual(HttpStatusCode.Forbidden, esqueci.StatusCode);
+
+        var privado = await _cliente.GetAsync("/api/conta/sessoes");
+        Assert.Equal(HttpStatusCode.Forbidden, privado.StatusCode);
+    }
+
+    [Fact]
+    public async Task Versoes_legais_sao_publicas_e_refletem_a_configuracao()
+    {
+        var resposta = await _cliente.GetAsync("/api/legal/versoes");
+
+        Assert.Equal(HttpStatusCode.OK, resposta.StatusCode);
+        var corpo = await resposta.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(_opcoesLegais.TermsVersion, corpo.GetProperty("termosVersao").GetString());
+        Assert.Equal(_opcoesLegais.PrivacyVersion, corpo.GetProperty("privacidadeVersao").GetString());
     }
 
     [Fact]

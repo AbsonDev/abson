@@ -15,7 +15,7 @@ public sealed record GoogleUsuario(
     string Subject,
     Email Email,
     string? Nome,
-    bool EmailVerified = true);
+    bool EmailVerified = false);
 
 /// <summary>
 /// Valida o <see cref="ExternalLoginInfo"/> produzido pelo handler OAuth do

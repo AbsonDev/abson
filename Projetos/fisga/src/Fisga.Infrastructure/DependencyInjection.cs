@@ -80,6 +80,7 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddScoped<IDomainEventDispatcher, DomainEventDispatcher>();
         services.AddScoped<ICadastroDeUsuario, CadastroDeUsuario>();
+        services.AddScoped<IExclusaoDeIdentidade, ExclusaoDeIdentidade>();
         services.AddScoped<GoogleIdentityValidator>();
         services.AddScoped<GoogleIdentityService>();
         services.AddScoped<IMidiaStorage, ArmazenamentoDeMidiaLocal>();

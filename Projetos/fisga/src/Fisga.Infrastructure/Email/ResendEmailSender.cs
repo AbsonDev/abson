@@ -64,8 +64,9 @@ public sealed class ResendEmailSender(HttpClient http, EmailOptions opcoes) : IE
             return;
         }
 
-        var corpo = await resposta.Content.ReadAsStringAsync(ct);
+        // Nunca propague o corpo do provedor: ele pode ecoar destinatário,
+        // conteúdo ou token. Status é suficiente para diagnóstico seguro.
         throw new InvalidOperationException(
-            $"O Resend recusou o envio ({(int)resposta.StatusCode}): {corpo}");
+            $"O Resend recusou o envio (HTTP {(int)resposta.StatusCode}).");
     }
 }

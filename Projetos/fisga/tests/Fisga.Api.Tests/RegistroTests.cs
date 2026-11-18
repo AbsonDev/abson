@@ -25,6 +25,7 @@ public sealed class RegistroTests : IAsyncLifetime
     {
         await _db.Usuarios.ExecuteDeleteAsync();
         await _db.Users.ExecuteDeleteAsync();
+        EmailSenderFake.Limpar();
     }
 
     public Task DisposeAsync()
@@ -57,6 +58,29 @@ public sealed class RegistroTests : IAsyncLifetime
         Assert.Equal(usuario.Id, conta.Id);
         Assert.Null(usuario.EmailVerificadoEm);
         Assert.False(conta.EmailConfirmed);
+    }
+
+    [Fact]
+    public async Task Registrar_envia_aviso_para_quem_nao_criou_a_conta()
+    {
+        var email = $"aviso-{Guid.NewGuid():N}@exemplo.com";
+
+        var resposta = await _client.PostAsJsonAsync("/api/auth/registrar", new
+        {
+            nome = "Pescador",
+            email,
+            senha = "senha-segura-123"
+        });
+
+        Assert.Equal(HttpStatusCode.Created, resposta.StatusCode);
+
+        var enviado = Assert.Single(
+            EmailSenderFake.Enviados,
+            e => e.Destino == email && e.Assunto == "Confirme seu e-mail no Fisga");
+
+        Assert.Contains("não criou", enviado.Texto, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("não confirme", enviado.Texto, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("não criou", enviado.Html, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

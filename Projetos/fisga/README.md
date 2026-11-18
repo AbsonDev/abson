@@ -331,6 +331,9 @@ docker compose up --build
 
 Nunca commite chaves, tokens ou senhas. Use variáveis de ambiente do provedor.
 
+> **Produção exige `ASPNETCORE_ENVIRONMENT=Production`.** Nunca exponha o perfil Development: ele
+> devolve `linkDesenvolvimento` em `/api/auth/solicitar`, um vetor de tomada de conta.
+
 ### Banco e API
 
 | Variável | Descrição |
@@ -421,7 +424,7 @@ npm run check && npm run build
 npx playwright test
 ```
 
-Atualmente: **224 testes de backend** (36 de domínio + 48 de aplicação + 140 de API) e checagem de
+Atualmente: **243 testes de backend** (36 de domínio + 48 de aplicação + 159 de API) e checagem de
 tipos do Astro. Cobrem:
 
 - criação/edição de pescaria, IDs de captura, validações e isolamento entre usuários;
@@ -431,7 +434,7 @@ tipos do Astro. Cobrem:
 - pontos e trilhas privadas, com ownership;
 - fallback manual da sugestão de espécie.
 
-O fluxo completo também é validado com Playwright: **58 testes mockados** (UI e estados) e
+O fluxo completo também é validado com Playwright: **61 testes mockados** (UI e estados) e
 **6 testes com backend real** para a migração de identidade. Os reais rodam com SQLite, chaves e
 outbox temporários:
 
@@ -462,6 +465,7 @@ npm run build   # astro build + pagefind + precache
 | `GET` | `/api/catalogo` | Público | Espécies, iscas, opções e exemplo |
 | `POST` | `/api/midia` | Sessão | Upload de foto (`multipart`, campo `arquivo`) |
 | `POST` | `/api/auth/solicitar` | Público | Envia link mágico (resposta genérica; `linkDesenvolvimento` em dev) |
+| `GET` | `/api/legal/versoes` | Público | Versões vigentes de Termos e Privacidade |
 | `GET` | `/api/auth/confirmar?token=` | Público | Confirma link, cria sessão e redireciona |
 | `POST` | `/api/auth/registrar` | Público | Cadastro por nome/e-mail/senha e envio de confirmação |
 | `POST` | `/api/auth/entrar` | Público | Login por senha (exige e-mail confirmado) |
@@ -481,7 +485,7 @@ npm run build   # astro build + pagefind + precache
 | `POST` | `/api/conta/senha` | Sessão | Cria/alterar senha e revoga outras sessões |
 | `GET` | `/api/conta/sessoes` | Sessão | Sessões ativas |
 | `GET` | `/api/conta/exportar` | Sessão | Exportação JSON da conta/diário |
-| `DELETE` | `/api/conta` | Sessão | Exclui conta, diário, sessões e fotos (`confirmacao: "EXCLUIR"`) |
+| `DELETE` | `/api/conta` | Sessão | Exclui conta, credencial Identity, tokens, diário, sessões e fotos (`confirmacao: "EXCLUIR"`) |
 | `POST` | `/api/newsletter/enviar` | Admin | Envia o digest mensal (`X-Admin-Token`) |
 | `GET` | `/api/newsletter/preview` | Admin | Prévia HTML do digest |
 | `GET` | `/api/newsletter/descadastrar?token=` | Token | Descadastra via link assinado |

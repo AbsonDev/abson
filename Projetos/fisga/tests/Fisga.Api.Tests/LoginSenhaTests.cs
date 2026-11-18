@@ -187,6 +187,60 @@ public sealed class LoginSenhaTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Entrar_com_email_nao_confirmado_e_senha_errada_tambem_conta_lockout()
+    {
+        var email = $"{Guid.NewGuid():N}@exemplo.com";
+        var usuario = await CriarUsuarioAsync(email, confirmado: false);
+
+        for (var i = 0; i < 5; i++)
+        {
+            var resposta = await _client.PostAsJsonAsync(
+                "/api/auth/entrar", new { email, senha = "senha-errada-999" });
+
+            Assert.Equal(HttpStatusCode.OK, resposta.StatusCode);
+            Assert.False((await resposta.Content.ReadFromJsonAsync<EntrarResponse>())!.Autenticado);
+        }
+
+        var conta = await _db.Users.AsNoTracking().SingleAsync(u => u.Id == usuario.Id);
+        Assert.NotNull(conta.LockoutEnd);
+        Assert.True(conta.LockoutEnd > DateTimeOffset.UtcNow);
+
+        var bloqueada = await _client.PostAsJsonAsync(
+            "/api/auth/entrar", new { email, senha = "senha-errada-999" });
+        var corpo = await bloqueada.Content.ReadFromJsonAsync<EntrarResponse>();
+        Assert.False(corpo!.Autenticado);
+        Assert.Contains("Muitas tentativas", corpo.Mensagem);
+    }
+
+    [Fact]
+    public async Task Entrar_recusa_senha_acima_de_128_antes_da_identity()
+    {
+        var email = $"{Guid.NewGuid():N}@exemplo.com";
+        var usuario = await CriarUsuarioAsync(email, confirmado: true);
+
+        var resposta = await _client.PostAsJsonAsync(
+            "/api/auth/entrar", new { email, senha = new string('a', 129) });
+
+        Assert.Equal(HttpStatusCode.OK, resposta.StatusCode);
+        Assert.False((await resposta.Content.ReadFromJsonAsync<EntrarResponse>())!.Autenticado);
+
+        var conta = await _db.Users.AsNoTracking().SingleAsync(u => u.Id == usuario.Id);
+        Assert.Equal(0, conta.AccessFailedCount);
+    }
+
+    [Fact]
+    public async Task Entrar_recusa_email_acima_de_254_antes_da_identity()
+    {
+        var email = $"{new string('a', 243)}@exemplo.com";
+
+        var resposta = await _client.PostAsJsonAsync(
+            "/api/auth/entrar", new { email, senha = Senha });
+
+        Assert.Equal(HttpStatusCode.OK, resposta.StatusCode);
+        Assert.False((await resposta.Content.ReadFromJsonAsync<EntrarResponse>())!.Autenticado);
+    }
+
+    [Fact]
     public async Task Entrar_com_email_inexistente_retorna_mesma_mensagem_generica()
     {
         var respostaInexistente = await _client.PostAsJsonAsync(

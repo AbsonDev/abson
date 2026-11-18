@@ -401,6 +401,19 @@ test.describe('Confirmação de e-mail', () => {
     await expect(page.locator('#confirm-success')).toBeVisible({ timeout: 10000 });
   });
 
+  test('limpa uid e token da URL e envia Referrer-Policy no-referrer', async ({ page }) => {
+    await mockJson(page, '/api/auth/confirmar-email', { mensagem: 'E-mail confirmado.' });
+
+    await page.goto(url('confirmar-email', '?uid=1&token=segredo'));
+    await expect(page.locator('#confirm-success')).toBeVisible({ timeout: 10000 });
+
+    await expect(page).toHaveURL(/\/confirmar-email$/);
+    await expect(page.locator('meta[name="referrer"]')).toHaveAttribute('content', 'no-referrer');
+
+    await page.goto(url('redefinir-senha', '?uid=1&token=outro-segredo'));
+    await expect(page).toHaveURL(/\/redefinir-senha$/);
+  });
+
   test('confirmação inválida permite pedir novo link', async ({ page }) => {
     await mockJson(
       page,
@@ -487,6 +500,52 @@ test.describe('Aceite de termos', () => {
       await route.fulfill({ status: 204, body: '' });
     });
     await page.goto(url('aceite', '?destino=%2Fhoje'));
+    await page.locator('#accept-terms').check();
+    await page.locator('#accept-privacy').check();
+    await page.locator('#accept-submit').click();
+    await expect(page).toHaveURL(/\/hoje/);
+    expect(corpo).toEqual({ termosVersao: '2026-11-17', privacidadeVersao: '2026-11-17' });
+  });
+
+  test('aceite busca as versões vigentes e envia exatamente elas', async ({ page }) => {
+    await mockDestinoHoje(page);
+    await mockJson(page, '/api/legal/versoes', {
+      termosVersao: '2030-01-02',
+      privacidadeVersao: '2030-02-03'
+    });
+    let corpo: unknown = null;
+    await page.route(`${API}/api/conta/consentimento`, async (route) => {
+      corpo = JSON.parse(route.request().postData() || '{}');
+      await route.fulfill({ status: 204, body: '' });
+    });
+
+    await page.goto(url('aceite', '?destino=%2Fhoje'));
+    await expect(page.locator('#aceite-versoes')).toContainText('2030-01-02');
+    await expect(page.locator('#aceite-versoes')).toContainText('2030-02-03');
+
+    await page.locator('#accept-terms').check();
+    await page.locator('#accept-privacy').check();
+    await page.locator('#accept-submit').click();
+    await expect(page).toHaveURL(/\/hoje/);
+    expect(corpo).toEqual({ termosVersao: '2030-01-02', privacidadeVersao: '2030-02-03' });
+  });
+
+  test('aceite usa as versões atuais como fallback quando a API falha', async ({ page }) => {
+    await mockDestinoHoje(page);
+    await mockJson(
+      page,
+      '/api/legal/versoes',
+      { codigo: 'indisponivel', detalhe: 'Sem rede.' },
+      500
+    );
+    let corpo: unknown = null;
+    await page.route(`${API}/api/conta/consentimento`, async (route) => {
+      corpo = JSON.parse(route.request().postData() || '{}');
+      await route.fulfill({ status: 204, body: '' });
+    });
+
+    await page.goto(url('aceite', '?destino=%2Fhoje'));
+    await expect(page.locator('#aceite-versoes')).toContainText('2026-11-17');
     await page.locator('#accept-terms').check();
     await page.locator('#accept-privacy').check();
     await page.locator('#accept-submit').click();

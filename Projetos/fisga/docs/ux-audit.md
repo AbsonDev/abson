@@ -373,15 +373,20 @@ no runbook [`docs/superpowers/runbooks/2026-11-17-identity-rollout.md`](superpow
 - `/conta` com criação/alteração de senha, vínculo Google, nome/newsletter, exportação JSON, lista de
   sessões com “sair desta”/“sair de todos” e zona sensível.
 - Cookie `fisga_auth` da Identity; `fisga_sessao` apenas apagado como legado.
+- Exclusão de conta remove credencial da Identity, logins/tokens externos e tokens de link
+  mágico/reset antes dos dados de domínio.
+- `/aceite` consulta `GET /api/legal/versoes` e envia exatamente as versões vigentes.
+- E-mail de confirmação avisa para não confirmar se a conta não foi criada pelo destinatário
+  (mitigação de pré-sequestro; risco residual documentado no runbook).
 - Data Protection persistido no volume `fisga_keys` (`/app/data/keys`), exigido também em produção.
 
 **Verificação executada**
 
-- **224 testes .NET** aprovados (36 domínio, 48 aplicação, 140 API), incluindo confirmação, reset,
+- **243 testes .NET** aprovados (36 domínio, 48 aplicação, 159 API), incluindo confirmação, reset,
   consentimento, senha, sessões, Google e outbox de e-mail.
 - **`npm run check`**: 0 erros/avisos/hints em 89 arquivos; **`npm run build`** aprovado.
-- **Playwright mockado: 58/58** — UI, estados e contratos continuam iguais.
-- **Playwright com backend real: 6/6** em 20,9 s (12/12 com `--repeat-each=2`, 37,8 s) — cadastro por senha →
+- **Playwright mockado: 61/61** — UI, estados e contratos continuam iguais.
+- **Playwright com backend real: 6/6** em 18,4 s (12/12 com `--repeat-each=2`, 37,3 s) — cadastro por senha →
   confirmação → consentimento → app; retorno por link mágico → consentimento → diário com pescaria
   preservada; reset de senha; “sair desta”/“sair de todos” com dois navegadores; `/conta`
   (senha, perfil, newsletter, exportação JSON) e Google indisponível.

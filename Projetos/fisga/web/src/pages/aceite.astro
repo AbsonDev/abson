@@ -9,7 +9,7 @@ import AuthLayout from '../layouts/AuthLayout.astro';
   <section class="screen">
     <div class="screen-inner">
       <header class="screen-head">
-        <p class="eyebrow">Termos · versão 2026-11-17</p>
+        <p class="eyebrow" id="aceite-versoes">Termos · versão 2026-11-17</p>
         <h1 tabindex="-1">Antes de continuar.</h1>
         <p class="sub">Antes de continuar, leia e aceite os Termos de Uso e a Política de Privacidade.</p>
       </header>
@@ -62,15 +62,51 @@ import AuthLayout from '../layouts/AuthLayout.astro';
   import { apiBase, destinoSeguro, postJson } from '../lib/auth';
 
   const API = apiBase();
-  const TERMOS_VERSAO = '2026-11-17';
-  const PRIVACIDADE_VERSAO = '2026-11-17';
+  const TERMOS_FALLBACK = '2026-11-17';
+  const PRIVACIDADE_FALLBACK = '2026-11-17';
+  let versoes = { termosVersao: TERMOS_FALLBACK, privacidadeVersao: PRIVACIDADE_FALLBACK };
   const termos = document.getElementById('accept-terms') as HTMLInputElement;
   const privacidade = document.getElementById('accept-privacy') as HTMLInputElement;
   const botao = document.getElementById('accept-submit') as HTMLButtonElement;
   const dica = document.getElementById('accept-hint') as HTMLElement;
   const erro = document.getElementById('accept-error') as HTMLElement;
   const erroTexto = document.getElementById('accept-error-texto') as HTMLElement;
+  const versoesEl = document.getElementById('aceite-versoes') as HTMLElement | null;
   const parametros = new URLSearchParams(window.location.search);
+
+  function exibirVersoes() {
+    if (versoesEl) {
+      versoesEl.textContent = `Termos ${versoes.termosVersao} · Privacidade ${versoes.privacidadeVersao}`;
+    }
+  }
+
+  async function carregarVersoes() {
+    try {
+      const resposta = await fetch(`${API}/api/legal/versoes`);
+      if (!resposta.ok) return;
+      const dados = (await resposta.json()) as {
+        termosVersao?: string;
+        privacidadeVersao?: string;
+      };
+      if (
+        typeof dados.termosVersao === 'string' &&
+        dados.termosVersao.trim() &&
+        typeof dados.privacidadeVersao === 'string' &&
+        dados.privacidadeVersao.trim()
+      ) {
+        versoes = {
+          termosVersao: dados.termosVersao.trim(),
+          privacidadeVersao: dados.privacidadeVersao.trim()
+        };
+        exibirVersoes();
+      }
+    } catch {
+      // Sem rede, mantém o fallback para não bloquear o aceite.
+    }
+  }
+
+  exibirVersoes();
+  void carregarVersoes();
 
   const destino = destinoSeguro(parametros.get('destino'), '/hoje');
 
@@ -107,7 +143,10 @@ import AuthLayout from '../layouts/AuthLayout.astro';
     setLoading(true, 'Registrando aceite…');
     const resposta = await postJson(
       '/api/conta/consentimento',
-      { termosVersao: TERMOS_VERSAO, privacidadeVersao: PRIVACIDADE_VERSAO },
+      {
+        termosVersao: versoes.termosVersao,
+        privacidadeVersao: versoes.privacidadeVersao
+      },
       API
     );
 

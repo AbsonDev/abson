@@ -125,6 +125,35 @@ public sealed class ConfirmacaoResetTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Redefinir_senha_limpa_lockout_da_conta()
+    {
+        var email = $"{Guid.NewGuid():N}@exemplo.com";
+        var usuario = await _cadastro.CriarComSenhaAsync(email, "Pescador", Senha);
+        var conta = await _usuarios.FindByIdAsync(usuario.Id.ToString());
+        Assert.NotNull(conta);
+
+        for (var i = 0; i < 5; i++)
+        {
+            await _usuarios.AccessFailedAsync(conta!);
+        }
+
+        conta = await _usuarios.FindByIdAsync(usuario.Id.ToString());
+        Assert.True(await _usuarios.IsLockedOutAsync(conta!));
+
+        var token = await _usuarios.GeneratePasswordResetTokenAsync(conta!);
+        var resposta = await _client.PostAsJsonAsync(
+            "/api/auth/redefinir-senha",
+            new { uid = usuario.Id.ToString(), token, senha = SenhaNova });
+
+        Assert.Equal(HttpStatusCode.OK, resposta.StatusCode);
+
+        conta = await _db.Users.AsNoTracking().SingleAsync(u => u.Id == usuario.Id);
+        Assert.Null(conta.LockoutEnd);
+        Assert.Equal(0, conta.AccessFailedCount);
+        Assert.False(await _usuarios.IsLockedOutAsync(conta));
+    }
+
+    [Fact]
     public async Task Redefinir_senha_token_reutilizado_falha()
     {
         var email = $"{Guid.NewGuid():N}@exemplo.com";

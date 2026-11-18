@@ -88,6 +88,10 @@ import AuthLayout from '../layouts/AuthLayout.astro';
   const parametros = new URLSearchParams(window.location.search);
   const uid = parametros.get('uid') ?? '';
   const token = parametros.get('token') ?? '';
+  // O token não deve ficar na barra de endereço, no histórico ou em Referer.
+  if (uid || token) {
+    window.history.replaceState(null, '', window.location.pathname);
+  }
   const nova = document.getElementById('reset-new') as HTMLInputElement;
   const confirmacao = document.getElementById('reset-confirm') as HTMLInputElement;
   const resetErro = document.getElementById('reset-error') as HTMLElement;

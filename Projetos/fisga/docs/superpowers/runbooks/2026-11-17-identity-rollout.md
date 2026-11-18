@@ -74,6 +74,7 @@ Nunca commite valores. Configure no cofre/Coolify:
 
 | Variável | Valor esperado em produção |
 | --- | --- |
+| `ASPNETCORE_ENVIRONMENT` | `Production` (obrigatório) |
 | `Database__Provider` | `Postgres` |
 | `Database__ConnectionString` | conexão do PostgreSQL de produção |
 | `Auth__LinkBaseUrl` | `https://api.fisga.abson.tech` |
@@ -93,6 +94,23 @@ Nunca commite valores. Configure no cofre/Coolify:
 > `Auth__CookieName` não é mais lida. Remova-a do ambiente para evitar configuração morta.
 > `Auth__LegacyCookieName` é validada no start: vazio ou igual a `fisga_auth` derruba a API, pois
 > o login apagaria a sessão recém-emitida.
+> **Nunca rode Development em produção:** `/api/auth/solicitar` devolve `linkDesenvolvimento`,
+> um vetor direto de tomada de conta. O startup de produção exige `Email:Provider=Resend` com
+> `Email:ResendApiKey` não vazia; Console/Outbox são recusados.
+
+### 3.2.1 Variáveis da web
+
+| Variável | Valor esperado em produção |
+| --- | --- |
+| `PUBLIC_API_URL` | `https://api.fisga.abson.tech` |
+| `API_URL` | `https://api.fisga.abson.tech` (SSR) |
+| `PUBLIC_SITE_URL` | `https://fisga.abson.tech` |
+| `PUBLIC_SENTRY_DSN` | DSN do projeto web no navegador |
+| `SENTRY_DSN` | DSN do projeto web no SSR |
+
+`PUBLIC_API_URL`, `PUBLIC_SITE_URL` e `PUBLIC_SENTRY_DSN` são **build-time** no Astro: mudá-las exige
+rebuild/redeploy da web. `API_URL` é usada pelo SSR em runtime; mantenha as duas apontando para a API
+pública.
 
 ### 3.3 Volume de chaves
 
@@ -144,7 +162,10 @@ docker compose -p fisga-migracao -f docker-compose.migracao.yml up -d --wait pos
 
 export PGPASSWORD=fisga
 
-~/.dotnet/dotnet tool restore
+~/.dotnet/dotnet ef --version || {
+  ~/.dotnet/dotnet tool install --global dotnet-ef --version 10.0.15
+  ~/.dotnet/dotnet ef --version
+}
 
 # 0) Garante que o modelo bate com a última migration (sem drift).
 Database__Provider=Postgres \
@@ -235,26 +256,32 @@ docker compose -p fisga-migracao -f docker-compose.migracao.yml down -v
 
 1. **Congelar mudanças de schema** e iniciar a janela.
 2. **Backup** do banco e das chaves (seção 3.1).
-3. **Configurar envs e volume** (seções 3.2 e 3.3), sem trocar a imagem ainda.
-4. **Deploy da API** (nova imagem). O start aplica a migration aditiva.
+3. **Revogar sessões legadas** antes do corte (uma vez; encerra cookies `fisga_sessao`):
+   ```bash
+   psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PROD_DB" -v ON_ERROR_STOP=1 \
+     -c 'UPDATE fisga.sessoes SET "RevogadaEm" = NOW() WHERE "RevogadaEm" IS NULL;'
+   ```
+   Confirme que `select count(*) from fisga.sessoes where "RevogadaEm" is null;` retorna 0.
+4. **Configurar envs e volume** (seções 3.2 e 3.3), sem trocar a imagem ainda.
+5. **Deploy da API** (nova imagem). O start aplica a migration aditiva.
 
    > **Janela API → web:** a API nova ignora o cookie antigo `fisga_sessao`; até a web nova
    > terminar o deploy, quem ainda tem só esse cookie fica efetivamente deslogado. Faça os dois
    > deploys em sequência, sem pausa longa, e avise que um novo login pode ser pedido.
 
-5. **Verificar API:**
+6. **Verificar API:**
    ```bash
    curl -fsS https://api.fisga.abson.tech/health
    curl -fsS https://api.fisga.abson.tech/ready
    ```
    `ready` confirma conexão com o banco. Se falhar, pare e investigue antes de seguir.
-6. **Deploy da web** (nova imagem).
-7. **Verificar web:**
+7. **Deploy da web** (nova imagem).
+8. **Verificar web:**
    ```bash
    curl -fsS https://fisga.abson.tech/health
    ```
-8. **Smoke de login** (seção 6).
-9. **Monitorar** Sentry, logs do proxy e taxa de 401/403/500 por 30–60 minutos.
+9. **Smoke de login** (seção 6).
+10. **Monitorar** Sentry, logs do proxy e taxa de 401/403/500 por 30–60 minutos.
 
 Entre a API nova e a web nova, quem só tem o cookie antigo `fisga_sessao` fica efetivamente
 deslogado: a API nova ignora esse cookie. Os contratos de API são compatíveis entre as duas versões,
@@ -294,6 +321,21 @@ Use uma conta de teste real, nunca uma conta de cliente:
    `ConsoleEmailSender` registra apenas domínio/assunto; em produção o Resend não loga corpo.
 
 Se qualquer item falhar: pare a janela, avalie rollback (seção 8) e não “conserte em produção”.
+
+### 6.3 Risco residual — pré-sequestro de conta
+
+O e-mail de confirmação traz o aviso: **se você não criou a conta, ignore e não confirme**. Ainda
+assim, existe um risco residual aceito nesta entrega:
+
+1. Um atacante registra o e-mail da vítima primeiro, definindo uma senha.
+2. A vítima recebe o link de confirmação e, se confirmar, a conta passa a existir para ela.
+3. A senha criada pelo atacante **permanece válida**; depois a vítima pode vincular Google ou usar
+   link mágico, mas não há merge automático que expulse a credencial antiga.
+
+Não implementamos uma política complexa de merge/expulsão. Mitigações desta entrega: aviso claro no
+e-mail, confirmação obrigatória, e a orientação de suporte para redefinir a senha e revisar
+`AspNetUserLogins` em caso de relato. O risco deve ser reavaliado antes de habilitar cadastro
+público em escala.
 
 ---
 
@@ -502,11 +544,11 @@ link de acesso ou senha”. Não prometa que a sessão atual será preservada.
 
 | Verificação | Resultado |
 | --- | --- |
-| `~/.dotnet/dotnet test` | **224 aprovados**, 0 falhas (36 domínio + 48 aplicação + 140 API) |
+| `~/.dotnet/dotnet test` | **243 aprovados**, 0 falhas (36 domínio + 48 aplicação + 159 API) |
 | `npm run check` | 0 erros, 0 avisos, 0 hints (89 arquivos) |
 | `npm run build` | aprovado (Astro + Pagefind + precache) |
-| Playwright mockado | **58/58 aprovados** |
-| Playwright backend real (`scripts/e2e-real.sh`) | **6/6 aprovados** em 20,9 s; **12/12** com `--repeat-each=2` (37,8 s) |
+| Playwright mockado | **61/61 aprovados** |
+| Playwright backend real (`scripts/e2e-real.sh`) | **6/6 aprovados** em 18,4 s; **12/12** com `--repeat-each=2` (37,3 s) |
 | Migration em PostgreSQL local | **NÃO EXECUTADO** (sem Docker/Postgres nesta máquina) |
 | OAuth Google real | **NÃO EXECUTADO** (sem credenciais) |
 | Sentry em produção | **NÃO VERIFICADO** (DSN ausente no E2E) |

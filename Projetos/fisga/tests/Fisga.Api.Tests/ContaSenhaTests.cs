@@ -220,6 +220,38 @@ public sealed class ContaSenhaTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Cookie_copiado_antes_da_troca_de_senha_deixa_de_autenticar()
+    {
+        var conta = await CriarContaComSenhaAsync();
+        using var atual = await ClienteAutenticadoAsync(conta, "Atual");
+        var cookieAntigo = atual.DefaultRequestHeaders.GetValues("Cookie").Single();
+
+        using var roubado = _fixture.Factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = false
+        });
+        roubado.DefaultRequestHeaders.Add("Cookie", cookieAntigo);
+
+        var troca = await atual.PostAsJsonAsync(
+            "/api/conta/senha",
+            new { senhaAtual = Senha, novaSenha = NovaSenha });
+        Assert.Equal(HttpStatusCode.NoContent, troca.StatusCode);
+
+        var cookieNovo = troca.Headers.GetValues("Set-Cookie")
+            .First(c => c.StartsWith("fisga_auth=", StringComparison.OrdinalIgnoreCase))
+            .Split(';')[0];
+        atual.DefaultRequestHeaders.Remove("Cookie");
+        atual.DefaultRequestHeaders.Add("Cookie", cookieNovo);
+
+        var respostaRoubada = await roubado.GetAsync("/api/conta/sessoes");
+        Assert.Equal(HttpStatusCode.Unauthorized, respostaRoubada.StatusCode);
+
+        var respostaAtual = await atual.GetAsync("/api/conta/sessoes");
+        Assert.Equal(HttpStatusCode.OK, respostaAtual.StatusCode);
+    }
+
+    [Fact]
     public async Task Endpoint_exige_autenticacao()
     {
         var resposta = await _client.PostAsJsonAsync(

@@ -21,12 +21,17 @@ public sealed class EmailDeIdentidade(IEmailSender email, AutenticacaoOptions op
         CancellationToken ct = default)
     {
         var link = MontarLink($"{opcoes.WebUrl.TrimEnd('/')}/confirmar-email", usuarioId, token);
+        const string aviso =
+            "Se você não criou uma conta no Fisga, ignore este e-mail e não confirme. " +
+            "Alguém pode ter informado seu endereço por engano.";
 
         return email.EnviarAsync(
             destino,
             AssuntoConfirmacao,
-            $"<p>Confirme seu e-mail no Fisga acessando o link:</p><p><a href=\"{link}\">{link}</a></p>",
-            $"Confirme seu e-mail no Fisga acessando: {link}",
+            $"<p>Confirme seu e-mail no Fisga acessando o link:</p><p><a href=\"{link}\">{link}</a></p>" +
+            $"<p><strong>Se você não criou uma conta no Fisga, ignore este e-mail e não confirme.</strong> " +
+            "Alguém pode ter informado seu endereço por engano.</p>",
+            $"Confirme seu e-mail no Fisga acessando: {link}\n\n{aviso}",
             ct: ct);
     }
 

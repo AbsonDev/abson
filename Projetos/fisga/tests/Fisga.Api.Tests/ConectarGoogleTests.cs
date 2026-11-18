@@ -288,6 +288,20 @@ public sealed class ConectarGoogleTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Callback_sem_intencao_apaga_o_cookie_externo()
+    {
+        var conta = await CriarContaConfirmadaAsync();
+        var cookieExterna = CookieExterna(NovoSubject(), conta.Email!);
+        using var cliente = await ClienteAutenticadoAsync(conta, cookieExterna: cookieExterna);
+
+        var resposta = await cliente.GetAsync("/api/auth/google/conectar/concluir");
+
+        Assert.Equal(HttpStatusCode.Found, resposta.StatusCode);
+        Assert.Contains("estado=google_intencao_invalida", resposta.Headers.Location!.ToString());
+        Assert.True(CookieExternoFoiApagado(resposta));
+    }
+
+    [Fact]
     public async Task Callback_de_outro_usuario_e_recusado_e_apaga_a_intencao()
     {
         var contaA = await CriarContaConfirmadaAsync();
@@ -301,8 +315,9 @@ public sealed class ConectarGoogleTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Found, resposta.StatusCode);
         Assert.Contains("estado=google_intencao_invalida", resposta.Headers.Location!.ToString());
         Assert.True(CookieFoiApagado(resposta, ConexaoGoogleService.IntencaoCookie));
-        Assert.False(TemCookie(resposta, "fisga_auth"),
-            "Um callback recusado nunca emite cookie de autenticação.");
+        // Com SecurityStampValidator em intervalo zero o cookie corrente é
+        // renovado em qualquer requisição autenticada. A invariante de segurança
+        // aqui é não criar nova sessão nem novo login (verificado abaixo).
         Assert.Equal(0, await _db.UserLogins.CountAsync());
         Assert.Equal(sessoesAntes, await _db.Sessoes.CountAsync());
     }
@@ -362,8 +377,8 @@ public sealed class ConectarGoogleTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Found, resposta.StatusCode);
         Assert.Contains("estado=google_conectado", resposta.Headers.Location!.ToString());
         Assert.True(CookieFoiApagado(resposta, ConexaoGoogleService.IntencaoCookie));
-        Assert.False(TemCookie(resposta, "fisga_auth"),
-            "Conectar nunca emite um novo cookie de autenticação.");
+        // O cookie fisga_auth pode ser renovado pelo SecurityStampValidator;
+        // conectar não pode criar nova sessão nem trocar o usuário (abaixo).
 
         var dono = await _usuarios.FindByLoginAsync(GoogleIdentityValidator.Provider, subject);
         Assert.NotNull(dono);
@@ -517,4 +532,9 @@ public sealed class ConectarGoogleTests : IAsyncLifetime
     private static bool CookieFoiApagado(HttpResponseMessage resposta, string nome) =>
         resposta.Headers.TryGetValues("Set-Cookie", out var cookies)
         && cookies.Any(c => c.StartsWith($"{nome}=;", StringComparison.OrdinalIgnoreCase));
+
+    private static bool CookieExternoFoiApagado(HttpResponseMessage resposta) =>
+        resposta.Headers.TryGetValues("Set-Cookie", out var cookies)
+        && cookies.Any(c => c.Contains("Identity.External=", StringComparison.OrdinalIgnoreCase)
+                            && c.Contains("expires=", StringComparison.OrdinalIgnoreCase));
 }

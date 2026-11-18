@@ -73,6 +73,46 @@ public static class IdentityExtensions
             opcoes.SlidingExpiration = true;
         });
 
+        // A API já consulta o banco por requisição (sessão de dispositivo). Zerar
+        // o intervalo faz o cookie roubado antes de troca de senha/reset perder a
+        // validade imediatamente, sem esperar os 30 min padrão da Identity.
+        services.Configure<SecurityStampValidatorOptions>(opcoes =>
+        {
+            opcoes.ValidationInterval = TimeSpan.Zero;
+            opcoes.OnRefreshingPrincipal = contexto =>
+            {
+                // O validator renova o principal a partir do UserManager e perde
+                // claims customizados; sem preservar sessao_id o middleware de
+                // dispositivo trataria toda requisição como anônima.
+                var atual = contexto.CurrentPrincipal;
+                var novo = contexto.NewPrincipal;
+                if (atual is null || novo is null)
+                {
+                    return Task.CompletedTask;
+                }
+
+                var sessaoId = atual.FindFirst("sessao_id")?.Value;
+                if (sessaoId is not null && novo.Identity is System.Security.Claims.ClaimsIdentity identidade)
+                {
+                    identidade.AddClaim(new System.Security.Claims.Claim("sessao_id", sessaoId));
+                }
+
+                return Task.CompletedTask;
+            };
+        });
+
+        // O cookie externo (Google) carrega o ticket OAuth e também precisa das
+        // mesmas garantias de transporte do cookie principal em produção.
+        services.ConfigureExternalCookie(opcoes =>
+        {
+            opcoes.Cookie.Name = ".AspNetCore.Identity.External";
+            opcoes.Cookie.HttpOnly = true;
+            opcoes.Cookie.SameSite = SameSiteMode.Lax;
+            opcoes.Cookie.SecurePolicy = cookieSecure
+                ? CookieSecurePolicy.Always
+                : CookieSecurePolicy.SameAsRequest;
+        });
+
         var clientId = configuration["Google:ClientId"];
         var clientSecret = configuration["Google:ClientSecret"];
 

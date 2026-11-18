@@ -16,6 +16,8 @@ public sealed record EntrarResponse(bool Autenticado, string? Mensagem);
 
 public sealed record GoogleDisponivelResponse(bool Disponivel);
 
+public sealed record VersoesLegaisResponse(string TermosVersao, string PrivacidadeVersao);
+
 public sealed record ConfirmarEmailRequest(string? Uid, string? Token);
 
 public sealed record ConfirmarEmailResponse(string Mensagem);

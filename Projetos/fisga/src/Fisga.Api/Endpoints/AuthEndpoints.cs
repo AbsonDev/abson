@@ -23,6 +23,11 @@ public static class AuthEndpoints
     private const string ChaveProvedorExterno = "LoginProvider";
     public static IEndpointRouteBuilder MapAuthEndpoints(this IEndpointRouteBuilder app)
     {
+        app.MapGet("/api/legal/versoes", (LegalOptions opcoes) =>
+                Results.Ok(new VersoesLegaisResponse(opcoes.TermsVersion, opcoes.PrivacyVersion)))
+            .AllowAnonymous()
+            .RequireRateLimiting("leitura");
+
         app.MapPost("/api/auth/solicitar", async (
                 SolicitarLinkRequest entrada,
                 ServicoDeAutenticacao servico,
@@ -82,6 +87,15 @@ public static class AuthEndpoints
                 CancellationToken ct) =>
             {
                 var email = (entrada.Email ?? string.Empty).Trim();
+                var senha = entrada.Senha ?? string.Empty;
+
+                // Limites do contrato: não chegam ao Identity nem ao rate de lockout.
+                if (email.Length > 254 || senha.Length > 128)
+                {
+                    Metricas.LoginFalhou("credenciais_invalidas");
+                    return Results.Ok(new EntrarResponse(false, MensagemCredenciaisInvalidas));
+                }
+
                 var conta = await usuarios.FindByEmailAsync(email);
 
                 if (conta is null)
@@ -136,6 +150,17 @@ public static class AuthEndpoints
                         return Results.Ok(new EntrarResponse(
                             false,
                             "Confirme seu e-mail para entrar. Enviamos um link de confirmação."));
+                    }
+
+                    // A senha estava errada: conta para o lockout mesmo com o
+                    // e-mail ainda não confirmado (antes esse caminho não somava).
+                    await usuarios.AccessFailedAsync(conta);
+                    if (await usuarios.IsLockedOutAsync(conta))
+                    {
+                        Metricas.LoginFalhou("bloqueado");
+                        return Results.Ok(new EntrarResponse(
+                            false,
+                            "Muitas tentativas. Tente novamente em alguns minutos."));
                     }
 
                     Metricas.LoginFalhou("credenciais_invalidas");
@@ -262,6 +287,11 @@ public static class AuthEndpoints
                         "link_invalido",
                         "Este link de redefinição é inválido ou expirado. Peça um novo.");
                 }
+
+                // Reset é evento de recuperação: além de rotacionar o stamp, limpa
+                // o lockout para o usuário poder entrar com a senha nova.
+                await usuarios.ResetAccessFailedCountAsync(conta);
+                await usuarios.SetLockoutEndDateAsync(conta, null);
 
                 // O SecurityStamp já é rotacionado pelo ResetPasswordAsync; este segundo
                 // UpdateSecurityStampAsync torna explícita a invalidação de cookies antigos
@@ -482,12 +512,14 @@ public static class AuthEndpoints
                 var usuarioId = http.UsuarioId();
                 if (usuarioId is null)
                 {
+                    await http.SignOutAsync(IdentityConstants.ExternalScheme);
                     return Results.Redirect($"{web}/conta?estado=google_conexao_nao_autenticado");
                 }
 
                 var intencao = http.Request.Cookies[ConexaoGoogleService.IntencaoCookie];
                 if (string.IsNullOrWhiteSpace(intencao))
                 {
+                    await http.SignOutAsync(IdentityConstants.ExternalScheme);
                     return Results.Redirect($"{web}/conta?estado=google_intencao_invalida");
                 }
 
@@ -500,6 +532,7 @@ public static class AuthEndpoints
                     var autenticacao = await http.AuthenticateAsync(IdentityConstants.ExternalScheme);
                     if (autenticacao is null || !autenticacao.Succeeded || autenticacao.Principal is null)
                     {
+                        await http.SignOutAsync(IdentityConstants.ExternalScheme);
                         return Results.Redirect($"{web}/conta?estado=google_sessao_externa_invalida");
                     }
 

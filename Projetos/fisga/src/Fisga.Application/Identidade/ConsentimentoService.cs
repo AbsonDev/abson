@@ -38,6 +38,26 @@ public sealed class ConsentimentoService(
             consentimentos.Adicionar(Consentimento.Criar(usuarioId, TipoDeConsentimento.Privacidade, privacidadeVersao, agora));
         }
 
-        await unidade.SalvarAsync(ct);
+        try
+        {
+            await unidade.SalvarAsync(ct);
+        }
+        catch (Exception excecao) when (EhViolacaoUnica(excecao))
+        {
+            // Duas abas/requisições aceitaram a mesma versão ao mesmo tempo:
+            // o índice único garantiu um só registro; o resultado desejado é 204.
+        }
+    }
+
+    private static bool EhViolacaoUnica(Exception excecao)
+    {
+        if (excecao.GetType().FullName != "Microsoft.EntityFrameworkCore.DbUpdateException")
+        {
+            return false;
+        }
+
+        var texto = excecao.ToString();
+        return texto.Contains("duplicate key", StringComparison.OrdinalIgnoreCase)
+               || texto.Contains("UNIQUE constraint failed", StringComparison.OrdinalIgnoreCase);
     }
 }
