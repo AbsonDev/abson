@@ -11,7 +11,7 @@ RUN dotnet restore src/Fisga.Api/Fisga.Api.csproj --locked-mode
 COPY src/ src/
 RUN dotnet publish src/Fisga.Api/Fisga.Api.csproj -c Release -o /app/publish --no-restore
 
-FROM mcr.microsoft.com/dotnet/aspnet:11.0 AS final
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 ARG GIT_SHA=
 ARG SOURCE_COMMIT=
 ENV GIT_SHA=${GIT_SHA:-$SOURCE_COMMIT}
