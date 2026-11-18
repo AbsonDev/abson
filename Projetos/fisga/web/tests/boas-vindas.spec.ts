@@ -181,9 +181,53 @@ test('erro de busca tem mensagem', async ({ page }) => {
 
   await page.getByLabel('Onde você pesca?').fill('aracaju');
 
-  await expect(page.locator('#boas-local-status')).toHaveText(
+  await expect(page.locator('#boas-local-status')).toContainText(
     'Não foi possível buscar agora. Tente de novo.'
   );
+});
+
+test('tentar de novo refaz a busca', async ({ page }) => {
+  await mockMe(page, USUARIO);
+  let chamadas = 0;
+  await page.route(`${API}/api/locais/buscar**`, (route) => {
+    chamadas += 1;
+    if (chamadas === 1) {
+      return route.fulfill({ status: 500, contentType: 'application/json', body: '{}' });
+    }
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          nome: 'Aracaju',
+          cidade: 'Aracaju',
+          estado: 'SE',
+          latitude: '-10.911',
+          longitude: '-37.071'
+        }
+      ])
+    });
+  });
+  await page.goto('/boas-vindas');
+
+  await page.getByLabel('Onde você pesca?').fill('aracaju');
+  await page.getByRole('button', { name: 'Tentar de novo' }).click();
+
+  await expect(page.getByRole('button', { name: 'Aracaju · SE' })).toBeVisible();
+});
+
+test('Como funciona abre a explicação de privacidade', async ({ page }) => {
+  await mockMe(page, USUARIO);
+  await page.goto('/boas-vindas');
+
+  await page.getByRole('button', { name: 'Como funciona' }).click();
+
+  const dialogo = page.getByRole('dialog', { name: 'Como o Fisga usa seu local' });
+  await expect(dialogo).toBeVisible();
+  await expect(dialogo).toContainText('Seu diário nasce privado.');
+
+  await dialogo.getByRole('button', { name: 'Entendi' }).click();
+  await expect(dialogo).toBeHidden();
 });
 
 test('geolocalização aceita salva e navega', async ({ page }) => {

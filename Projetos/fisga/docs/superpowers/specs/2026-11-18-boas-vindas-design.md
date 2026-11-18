@@ -79,13 +79,14 @@ com a marca Fisga à esquerda e “Agora não” discreto à direita.
 ### Copy
 
 - Eyebrow: `Primeiro acesso`
-- H1: `Bem-vindo, {primeiro nome}.` ou `Bem-vindo, pescador.`
+- H1: `Bem-vindo, {primeiro nome}.` ou `Bem-vindo, pescador.` O primeiro nome
+  aparece em itálico (Fraunces), como um cumprimento escrito à mão.
 - Subtítulo: `Escolha onde você pesca para abrir a janela de hoje e começar seu diário.`
 - Label: `Onde você pesca?`
 - Placeholder: `Cidade, praia ou represa`
 - Secundário: `Usar minha localização`
 - Sugestões: `Ou comece por` + Aracaju, Ilhabela, Campinas
-- Privacidade: `Privado por padrão. Nada é publicado até você compartilhar.` + link `Como funciona` para `/privacidade`
+- Privacidade: `Privado por padrão. Nada é publicado até você compartilhar.` + botão `Como funciona`, que abre um diálogo nativo com a explicação de local e privacidade, sem sair da tela
 - Pular: `Agora não`
 
 ### Comportamento
@@ -99,8 +100,11 @@ com a marca Fisga à esquerda e “Agora não” discreto à direita.
 - Aceite pendente → `/aceite?destino=<rota atual>`.
 - Falha ao carregar a conta → mensagem em `role="status"`, sem UI morta.
 - Salvar → “Abrindo seu dia…” e controles desabilitados contra duplo envio.
+- Erro de busca → mensagem + `Tentar de novo` com o último termo preservado.
 - Geolocalização negada → “Não conseguimos usar sua localização. Busque pelo nome.”
   e botão restaurado.
+- O rodapé de privacidade continua visível no mobile; o diálogo “Como funciona”
+  abre com foco no botão e fecha por “Entendi”, Escape ou clique no backdrop.
 
 ### Estados
 
@@ -120,5 +124,6 @@ localização negada · sem sessão · aceite pendente.
 
 - A composição visual final (respiro, proporção do título, detalhe de marca no
   fundo), guiada pelo artefato do OpenDesign.
-- A decisão de manter o link “Como funciona” apontando para `/privacidade`.
 - Ajustes de responsividade abaixo de 390 px.
+- O diálogo de privacidade foi escolhido no lugar do link para `/privacidade`:
+  explica o uso do local sem tirar a pessoa do primeiro acesso.

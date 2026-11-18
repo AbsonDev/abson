@@ -16,8 +16,31 @@ const sugestoes = [
   foco
 >
   <section class="boas">
+    <svg
+      class="boas-fundo"
+      viewBox="0 0 1440 900"
+      fill="none"
+      preserveAspectRatio="xMidYMid slice"
+      aria-hidden="true"
+    >
+      <g stroke="#E3D8C8" stroke-width="1" opacity=".9">
+        <path d="M946 940c34-124 128-188 274-208s214-66 240-154"></path>
+        <path d="M982 952c40-116 130-172 272-190s198-68 224-148"></path>
+        <path d="M1020 962c46-108 132-156 268-172s184-70 210-142"></path>
+        <path d="M1060 972c52-100 134-140 264-154s170-72 196-136"></path>
+      </g>
+      <g stroke="#E6A15C" stroke-width="1" opacity=".5">
+        <path d="M-40 946c104-86 104-186 52-256s-42-182 40-262"></path>
+      </g>
+      <g stroke="#E3D8C8" stroke-width="1" opacity=".95">
+        <circle cx="196" cy="712" r="56"></circle>
+        <circle cx="196" cy="712" r="94"></circle>
+        <circle cx="196" cy="712" r="138"></circle>
+      </g>
+    </svg>
+
     <div class="boas-topo">
-      <Logo compacto />
+      <Logo compacto tagline={false} />
       <button id="boas-pular" class="boas-pular" type="button">Agora não</button>
     </div>
 
@@ -40,6 +63,7 @@ const sugestoes = [
             type="search"
             placeholder="Cidade, praia ou represa"
             autocomplete="off"
+            spellcheck="false"
           />
         </div>
 
@@ -56,7 +80,7 @@ const sugestoes = [
       </div>
 
       <div class="boas-sugestoes">
-        <p class="boas-sugestoes-rotulo">Ou comece por</p>
+        <span class="boas-sugestoes-rotulo">Ou comece por</span>
         <div class="boas-chips">
           {sugestoes.map((sugestao) => (
             <button
@@ -74,101 +98,156 @@ const sugestoes = [
           ))}
         </div>
       </div>
+    </div>
 
+    <div class="boas-rodape">
       <p class="boas-privacidade">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <rect x="5" y="10" width="14" height="10" rx="2"></rect>
-          <path d="M8 10V7a4 4 0 0 1 8 0v3"></path>
+          <rect x="5" y="10.5" width="14" height="9.5" rx="2"></rect>
+          <path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"></path>
         </svg>
-        <span>
-          Privado por padrão. Nada é publicado até você compartilhar.
-          <a href="/privacidade">Como funciona</a>
-        </span>
+        <span>Privado por padrão. Nada é publicado até você compartilhar.</span>
       </p>
+      <button id="boas-como-abrir" class="boas-como" type="button">Como funciona</button>
     </div>
   </section>
+
+  <dialog id="boas-como" class="boas-dialog" aria-labelledby="boas-como-titulo">
+    <span class="eyebrow">Privacidade</span>
+    <h2 id="boas-como-titulo">Como o Fisga usa seu local</h2>
+    <p>
+      O lugar que você escolhe abre a janela de pesca de hoje — maré, vento e luz — e fica salvo só
+      no seu diário.
+    </p>
+    <p>
+      Seu diário nasce privado. Nada aparece para outras pessoas até você compartilhar uma captura.
+    </p>
+    <form method="dialog">
+      <button class="btn btn--contorno" type="submit">Entendi</button>
+    </form>
+  </dialog>
 </Layout>
 
 <style>
   .boas {
-    display: flex;
+    position: relative;
+    display: grid;
     min-height: 100dvh;
-    flex-direction: column;
-    padding: 20px 20px 44px;
-    background:
-      radial-gradient(circle at 92% 4%, rgba(23, 78, 87, 0.055), transparent 26rem),
-      radial-gradient(circle at 4% 96%, rgba(217, 119, 63, 0.07), transparent 24rem),
-      var(--papel);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    padding: 28px clamp(20px, 4vw, 56px) 0;
+    background: var(--papel);
+    overflow-x: clip;
+  }
+
+  .boas-fundo {
+    position: absolute;
+    z-index: 0;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  .boas-topo,
+  .boas-conteudo,
+  .boas-rodape {
+    position: relative;
+    z-index: 1;
   }
 
   .boas-topo {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    width: min(100%, 1000px);
+    width: 100%;
+    max-width: 1328px;
     margin: 0 auto;
-    gap: 16px;
+    gap: 24px;
   }
 
   .boas-pular {
     min-height: 44px;
-    padding: 0 6px;
+    padding: 0 2px;
     border: 0;
-    background: transparent;
+    border-radius: 6px;
+    background: none;
     color: var(--tinta-suave);
-    font-size: 0.78rem;
-    font-weight: 600;
-    text-decoration: underline;
-    text-underline-offset: 4px;
+    font-size: 0.86rem;
+    font-weight: 500;
   }
 
   .boas-pular:hover {
     color: var(--tinta);
+    text-decoration: underline;
+    text-underline-offset: 3px;
   }
 
   .boas-conteudo {
     width: min(100%, 620px);
     margin: auto;
-    padding: clamp(40px, 10vh, 110px) 0 clamp(24px, 5vh, 48px);
+    padding: clamp(36px, 8vh, 84px) 0 clamp(28px, 6vh, 56px);
+  }
+
+  .boas :global(.eyebrow),
+  .boas-dialog .eyebrow {
+    color: var(--tinta-suave);
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+  }
+
+  .boas :global(.eyebrow)::before,
+  .boas-dialog .eyebrow::before {
+    width: 28px;
+    background: var(--acafrao);
   }
 
   .boas-conteudo h1 {
-    margin-top: 14px;
-    font-size: clamp(2.3rem, 6vw, 3.7rem);
+    margin-top: 12px;
+    font-size: clamp(2.4rem, 5.4vw, 3.5rem);
+    line-height: 1.06;
+  }
+
+  .boas-conteudo h1 :global(em) {
+    color: inherit;
+    font-style: italic;
   }
 
   .boas-lead {
-    max-width: 50ch;
+    max-width: 56ch;
     margin-top: 16px;
     color: var(--tinta-suave);
-    font-size: 0.98rem;
-    line-height: 1.7;
+    font-size: clamp(0.98rem, 1.2vw, 1.1rem);
+    line-height: 1.6;
   }
 
   .boas-busca {
-    margin-top: 34px;
+    margin-top: clamp(26px, 4vh, 36px);
   }
 
   .boas-rotulo {
     display: block;
     margin-bottom: 8px;
     color: var(--tinta);
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
+    font-size: 0.94rem;
+    font-weight: 600;
   }
 
   .boas-campo {
     position: relative;
+    border-radius: var(--raio-pequeno);
+  }
+
+  .boas-campo:focus-within {
+    outline: 3px solid var(--terracota);
+    outline-offset: 2px;
   }
 
   .boas-lupa {
     position: absolute;
     top: 50%;
-    left: 16px;
-    width: 18px;
-    height: 18px;
+    left: 14px;
+    width: 20px;
+    height: 20px;
     color: var(--tinta-suave);
     pointer-events: none;
     transform: translateY(-50%);
@@ -176,107 +255,151 @@ const sugestoes = [
 
   .boas-campo input {
     width: 100%;
-    min-height: 52px;
-    padding: 0 16px 0 46px;
-    border: 1px solid var(--linha-forte);
-    border-radius: 14px;
+    height: 48px;
+    padding: 0 14px 0 44px;
+    border: 1px solid var(--linha);
+    border-radius: var(--raio-pequeno);
     background: var(--superficie);
     color: var(--tinta);
     font-size: 1rem;
+    line-height: 1;
   }
 
-  .boas-campo input:focus {
-    border-color: var(--terracota);
-    box-shadow: 0 0 0 3px rgba(23, 78, 87, 0.14);
+  .boas-campo input:hover {
+    border-color: var(--linha-forte);
+  }
+
+  .boas-campo input:focus-visible {
     outline: none;
   }
 
   .boas-campo input::placeholder {
     color: var(--tinta-suave);
-    opacity: 0.8;
+    opacity: 1;
   }
 
   .boas-geo {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
-    min-height: 44px;
-    margin-top: 12px;
+    min-height: 46px;
+    margin-top: 18px;
     padding: 0 16px;
-    font-size: 0.8rem;
+    font-size: 0.88rem;
   }
 
   .boas-geo svg {
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
   }
 
   .boas-resultados {
-    margin: 10px 0 0;
-    padding: 6px;
+    max-height: 232px;
+    margin: 8px 0 0;
+    padding: 0;
     border: 1px solid var(--linha);
-    border-radius: 14px;
+    border-radius: var(--raio-pequeno);
     background: var(--superficie);
-    box-shadow: var(--sombra-suave);
     list-style: none;
+    overflow-y: auto;
   }
 
-  .boas-resultados li + li {
+  .boas-resultados :global(li + li) {
     border-top: 1px solid var(--linha);
   }
 
-  .boas-resultado {
-    display: block;
+  .boas-resultados :global(.boas-resultado) {
+    display: flex;
+    align-items: center;
+    gap: 12px;
     width: 100%;
     min-height: 44px;
-    padding: 10px 12px;
+    padding: 0 14px;
     border: 0;
-    border-radius: 8px;
     background: transparent;
     color: var(--tinta);
-    font-size: 0.9rem;
     text-align: left;
   }
 
-  .boas-resultado:hover,
-  .boas-resultado:focus-visible {
-    background: var(--superficie-2);
+  .boas-resultados :global(.boas-resultado:hover),
+  .boas-resultados :global(.boas-resultado:focus-visible) {
+    background: var(--creme);
+  }
+
+  .boas-resultados :global(.boas-resultado-nome) {
+    font-size: 0.94rem;
+    font-weight: 500;
+  }
+
+  .boas-resultados :global(.boas-resultado-uf) {
+    margin-left: auto;
+    color: var(--tinta-suave);
+    font-size: 0.78rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
   }
 
   .boas-status {
     min-height: 1.5em;
-    margin-top: 10px;
-    color: var(--tinta-suave);
-    font-size: 0.8rem;
+    margin-top: 12px;
+    color: var(--tinta);
+    font-size: 0.86rem;
     line-height: 1.5;
   }
 
+  .boas-status:empty {
+    margin-top: 0;
+  }
+
+  .boas-status :global(.boas-tentar) {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+    margin-left: 6px;
+    padding: 0 12px;
+    border: 1px solid var(--terracota);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--terracota);
+    font-size: 0.82rem;
+    font-weight: 500;
+  }
+
+  .boas-status :global(.boas-tentar:hover) {
+    background: var(--terracota-clara);
+  }
+
   .boas-sugestoes {
-    margin-top: 26px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+    margin-top: 30px;
   }
 
   .boas-sugestoes-rotulo {
     color: var(--tinta-suave);
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.04em;
+    font-size: 0.8rem;
   }
 
   .boas-chips {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    margin-top: 10px;
   }
 
   .boas-sugestao {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     min-height: 44px;
-    padding: 0 18px;
-    border: 1px solid var(--linha-forte);
-    border-radius: 999px;
+    padding: 0 15px;
+    border: 1px solid var(--linha);
+    border-radius: var(--raio-pequeno);
     background: transparent;
     color: var(--tinta);
-    font-size: 0.84rem;
+    font-size: 0.88rem;
     font-weight: 500;
   }
 
@@ -286,44 +409,134 @@ const sugestoes = [
     background: var(--terracota-clara);
   }
 
+  .boas-rodape {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 1328px;
+    margin: 0 auto;
+    padding: 18px 0 24px;
+    border-top: 1px solid var(--linha);
+    gap: 8px 16px;
+  }
+
   .boas-privacidade {
     display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    margin-top: clamp(40px, 8vh, 72px);
-    padding-top: 18px;
-    border-top: 1px solid var(--linha);
+    align-items: center;
+    gap: 8px;
+    margin: 0;
     color: var(--tinta-suave);
-    font-size: 0.74rem;
-    line-height: 1.6;
+    font-size: 0.8rem;
+    line-height: 1.45;
   }
 
   .boas-privacidade svg {
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
     flex: 0 0 auto;
-    margin-top: 2px;
   }
 
-  .boas-privacidade a {
-    color: var(--terracota);
-    font-weight: 600;
+  .boas-como {
+    min-height: 40px;
+    padding: 8px 2px;
+    border: 0;
+    border-radius: 4px;
+    background: none;
+    color: var(--tinta);
+    font-size: 0.8rem;
+    font-weight: 500;
     text-decoration: underline;
+    text-decoration-color: var(--linha-forte);
     text-underline-offset: 3px;
   }
 
-  @media (max-width: 560px) {
+  .boas-como:hover {
+    text-decoration-color: var(--terracota);
+  }
+
+  .boas-dialog {
+    width: min(440px, calc(100vw - 32px));
+    margin: auto;
+    padding: 28px;
+    border: 1px solid var(--linha);
+    border-radius: 12px;
+    background: var(--papel);
+    color: var(--tinta);
+    box-shadow: 0 34px 64px -34px rgba(16, 56, 63, 0.55);
+  }
+
+  .boas-dialog::backdrop {
+    background: rgba(16, 56, 63, 0.48);
+  }
+
+  .boas-dialog h2 {
+    margin: 10px 0 12px;
+    font-size: 1.75rem;
+    line-height: 1.15;
+    letter-spacing: -0.012em;
+  }
+
+  .boas-dialog p {
+    margin: 0 0 14px;
+    color: var(--tinta-suave);
+    font-size: 0.94rem;
+    line-height: 1.6;
+  }
+
+  .boas-dialog .btn {
+    margin-top: 4px;
+  }
+
+  .boas :global(:is(button, a, input)):focus-visible,
+  .boas-dialog button:focus-visible {
+    outline: 3px solid var(--terracota);
+    outline-offset: 2px;
+  }
+
+  .boas :global(input):focus-visible {
+    outline: none;
+  }
+
+  @media (max-width: 640px) {
     .boas {
-      padding: 16px 18px 36px;
+      padding: 18px 20px 0;
     }
 
     .boas-conteudo {
-      padding-top: clamp(32px, 7vh, 64px);
+      margin: 0;
+      padding: 34px 0 24px;
+    }
+
+    .boas-conteudo h1 {
+      font-size: 39px;
+    }
+
+    .boas-lead {
+      margin-top: 14px;
+    }
+
+    .boas-busca {
+      margin-top: 26px;
     }
 
     .boas-geo {
       width: 100%;
-      justify-content: center;
+      min-height: 48px;
+      margin-top: 16px;
+    }
+
+    .boas-sugestoes {
+      margin-top: 26px;
+    }
+
+    .boas-rodape {
+      padding: 14px 0 16px;
+    }
+
+    .boas-resultados {
+      max-height: 270px;
     }
   }
 </style>
@@ -340,12 +553,31 @@ const sugestoes = [
   const localizacao = document.getElementById('boas-usar-localizacao');
   const geoLabel = document.getElementById('boas-geo-label');
   const pular = document.getElementById('boas-pular');
+  const comoAbrir = document.getElementById('boas-como-abrir');
+  const comoDialog = document.getElementById('boas-como');
   let timerBusca = 0;
+  let ultimoTermo = '';
   let salvando = false;
 
   function primeiroNome(nome) {
     const limpo = String(nome || '').trim();
     return limpo ? limpo.split(/\s+/)[0] : 'pescador';
+  }
+
+  function escreverSaudacao(nome) {
+    if (!titulo) return;
+    const limpo = String(nome || '').trim();
+    if (!limpo) {
+      titulo.textContent = 'Bem-vindo, pescador.';
+      return;
+    }
+    const destaque = document.createElement('em');
+    destaque.textContent = primeiroNome(limpo);
+    titulo.replaceChildren(
+      document.createTextNode('Bem-vindo, '),
+      destaque,
+      document.createTextNode('.')
+    );
   }
 
   function destino() {
@@ -385,7 +617,7 @@ const sugestoes = [
         return;
       }
 
-      if (titulo) titulo.textContent = `Bem-vindo, ${primeiroNome(dados.usuario.nome)}.`;
+      escreverSaudacao(dados.usuario.nome);
     } catch {
       escreverStatus('Não foi possível carregar sua conta. Recarregue a página.');
     }
@@ -428,6 +660,17 @@ const sugestoes = [
     }
   }
 
+  function escreverErroBusca() {
+    if (!status) return;
+    status.textContent = 'Não foi possível buscar agora. Tente de novo. ';
+    const tentar = document.createElement('button');
+    tentar.type = 'button';
+    tentar.className = 'boas-tentar';
+    tentar.textContent = 'Tentar de novo';
+    tentar.addEventListener('click', () => buscarLocal(ultimoTermo));
+    status.appendChild(tentar);
+  }
+
   async function buscarLocal(termo) {
     const limpo = termo.trim();
     if (limpo.length < 2) {
@@ -436,6 +679,7 @@ const sugestoes = [
       return;
     }
 
+    ultimoTermo = limpo;
     escreverStatus('Buscando…');
     try {
       const resposta = await fetch(`${API}/api/locais/buscar?q=${encodeURIComponent(limpo)}`);
@@ -454,7 +698,23 @@ const sugestoes = [
         const opcao = document.createElement('button');
         opcao.type = 'button';
         opcao.className = 'boas-resultado';
-        opcao.textContent = `${item.nome}${item.estado ? ` · ${item.estado}` : ''}`;
+        opcao.setAttribute(
+          'aria-label',
+          `${item.nome}${item.estado ? ` · ${item.estado}` : ''}`
+        );
+
+        const nome = document.createElement('span');
+        nome.className = 'boas-resultado-nome';
+        nome.textContent = item.nome ?? item.cidade ?? 'Meu local';
+        opcao.appendChild(nome);
+
+        if (item.estado) {
+          const uf = document.createElement('span');
+          uf.className = 'boas-resultado-uf';
+          uf.textContent = item.estado;
+          opcao.appendChild(uf);
+        }
+
         opcao.addEventListener('click', () =>
           salvarLocal({
             nome: item.nome ?? item.cidade ?? 'Meu local',
@@ -473,7 +733,7 @@ const sugestoes = [
       resultados.classList.remove('oculto');
     } catch {
       esconderResultados();
-      escreverStatus('Não foi possível buscar agora. Tente de novo.');
+      escreverErroBusca();
     }
   }
 
@@ -523,6 +783,14 @@ const sugestoes = [
 
   pular?.addEventListener('click', () => {
     window.location.assign(destino());
+  });
+
+  comoAbrir?.addEventListener('click', () => {
+    comoDialog?.showModal();
+  });
+
+  comoDialog?.addEventListener('click', (evento) => {
+    if (evento.target === comoDialog) comoDialog.close();
   });
 
   void iniciar();
