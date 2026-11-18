@@ -199,6 +199,9 @@ internal sealed class SessaoRepositorioFake : ISessaoRepository
 {
     public List<Sessao> Sessoes { get; } = [];
 
+    public Task<Sessao?> ObterPorIdAsync(Guid id, CancellationToken ct = default) =>
+        Task.FromResult(Sessoes.FirstOrDefault(sessao => sessao.Id == id));
+
     public Task<Sessao?> ObterPorHashAsync(string tokenHash, CancellationToken ct = default) =>
         Task.FromResult(Sessoes.FirstOrDefault(sessao => sessao.TokenHash == tokenHash));
 

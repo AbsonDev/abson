@@ -6,6 +6,9 @@ namespace Fisga.Infrastructure.Persistence.Repositories;
 
 public sealed class EfSessaoRepository(FisgaDbContext db) : ISessaoRepository
 {
+    public async Task<Sessao?> ObterPorIdAsync(Guid id, CancellationToken ct = default) =>
+        await db.Sessoes.FirstOrDefaultAsync(sessao => sessao.Id == id, ct);
+
     public async Task<Sessao?> ObterPorHashAsync(string tokenHash, CancellationToken ct = default) =>
         await db.Sessoes.FirstOrDefaultAsync(sessao => sessao.TokenHash == tokenHash, ct);
 

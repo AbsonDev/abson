@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Fisga.Api.Contracts;
 using Fisga.Api.Observabilidade;
@@ -13,6 +14,7 @@ namespace Fisga.Api.Endpoints;
 public static class AuthEndpoints
 {
     private const string MensagemCredenciaisInvalidas = "E-mail ou senha incorretos.";
+    private const string ClaimSessaoId = "sessao_id";
     public static IEndpointRouteBuilder MapAuthEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapPost("/api/auth/solicitar", async (
@@ -64,8 +66,11 @@ public static class AuthEndpoints
 
         app.MapPost("/api/auth/entrar", async (
                 EntrarRequest entrada,
+                HttpContext http,
                 SignInManager<ApplicationUser> signIn,
                 UserManager<ApplicationUser> usuarios,
+                ICadastroDeUsuario cadastro,
+                IdentitySessionService identidade,
                 EmailDeIdentidade emails,
                 CancellationToken ct) =>
             {
@@ -78,14 +83,20 @@ public static class AuthEndpoints
                     return Results.Ok(new EntrarResponse(false, MensagemCredenciaisInvalidas));
                 }
 
-                var resultado = await signIn.PasswordSignInAsync(
+                var resultado = await signIn.CheckPasswordSignInAsync(
                     conta,
                     entrada.Senha ?? string.Empty,
-                    isPersistent: false,
                     lockoutOnFailure: true);
 
                 if (resultado.Succeeded)
                 {
+                    var usuario = await cadastro.ObterUsuarioAsync(conta.Id, ct)
+                                  ?? throw new InvalidOperationException(
+                                      "Usuário de domínio não encontrado para a conta autenticada.");
+
+                    // CheckPasswordSignInAsync só verifica a senha: o cookie é emitido
+                    // uma única vez aqui, já com o claim que liga ao dispositivo.
+                    await identidade.AssinarAsync(conta, usuario, http, ct);
                     Metricas.LoginConfirmado(false);
                     return Results.Ok(new EntrarResponse(true, null));
                 }
@@ -301,15 +312,26 @@ public static class AuthEndpoints
 
         app.MapPost("/api/auth/sair", async (
                 HttpContext http,
-                ServicoDeAutenticacao servico,
+                ISessaoRepository sessoes,
+                IUnitOfWork unidade,
+                IRelogio relogio,
                 AutenticacaoOptions opcoes,
                 CancellationToken ct) =>
             {
-                if (http.Request.Cookies.TryGetValue(opcoes.CookieName, out var token))
+                var claim = http.User.FindFirst(ClaimSessaoId)?.Value;
+                if (http.User.Identity?.IsAuthenticated == true
+                    && Guid.TryParse(claim, out var sessaoId)
+                    && http.UsuarioId() is { } usuarioId)
                 {
-                    await servico.SairAsync(token, ct);
+                    var sessao = await sessoes.ObterPorIdAsync(sessaoId, ct);
+                    if (sessao is not null && sessao.UsuarioId == usuarioId)
+                    {
+                        sessao.Revogar(relogio.Agora);
+                        await unidade.SalvarAsync(ct);
+                    }
                 }
 
+                await http.SignOutAsync(IdentityConstants.ApplicationScheme);
                 LimparCookie(http, opcoes);
                 return Results.NoContent();
             })
@@ -318,12 +340,27 @@ public static class AuthEndpoints
 
         app.MapPost("/api/auth/sair-de-todos", async (
                 HttpContext http,
-                ServicoDeAutenticacao servico,
+                UserManager<ApplicationUser> usuarios,
+                ISessaoRepository sessoes,
+                IUnitOfWork unidade,
+                IRelogio relogio,
                 AutenticacaoOptions opcoes,
                 CancellationToken ct) =>
             {
                 var usuarioId = http.ExigirUsuarioId();
-                await servico.SairDeTodosAsync(usuarioId, ct);
+
+                // Invalidação primária: revoga todas as linhas de dispositivo.
+                await sessoes.RevogarTodasAsync(usuarioId, relogio.Agora, exceto: null, ct);
+                await unidade.SalvarAsync(ct);
+
+                // Defesa em profundidade: cookies antigos deixam de ser aceitos.
+                var conta = await usuarios.FindByIdAsync(usuarioId.ToString());
+                if (conta is not null)
+                {
+                    await usuarios.UpdateSecurityStampAsync(conta);
+                }
+
+                await http.SignOutAsync(IdentityConstants.ApplicationScheme);
                 LimparCookie(http, opcoes);
                 return Results.NoContent();
             })

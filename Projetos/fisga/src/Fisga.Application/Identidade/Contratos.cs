@@ -45,6 +45,8 @@ public interface IUsuarioRepository
 
 public interface ISessaoRepository
 {
+    Task<Sessao?> ObterPorIdAsync(Guid id, CancellationToken ct = default);
+
     Task<Sessao?> ObterPorHashAsync(string tokenHash, CancellationToken ct = default);
 
     Task<IReadOnlyList<Sessao>> ListarAtivasAsync(Guid usuarioId, DateTimeOffset agora, CancellationToken ct = default);

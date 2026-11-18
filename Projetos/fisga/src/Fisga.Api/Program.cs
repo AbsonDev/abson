@@ -48,6 +48,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(opcoes =>
 
 builder.Services.AdicionarAplicacao();
 builder.Services.AdicionarInfraestrutura(builder.Configuration);
+builder.Services.AddScoped<IdentitySessionService>();
 
 var origens = (builder.Configuration["Cors:AllowedOrigins"] ?? string.Empty)
     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
@@ -98,6 +99,7 @@ app.UseMiddleware<MetricasDeRequisicaoMiddleware>();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseMiddleware<ProtecaoCsrfMiddleware>();
 app.UseAuthentication();
+app.UseMiddleware<SessaoIdentityMiddleware>();
 app.UseMiddleware<SessaoMiddleware>();
 app.UseRateLimiter();
 

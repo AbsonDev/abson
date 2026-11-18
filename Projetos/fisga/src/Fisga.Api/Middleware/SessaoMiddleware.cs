@@ -16,6 +16,14 @@ public sealed class SessaoMiddleware(RequestDelegate next)
             return;
         }
 
+        // Fallback legado: só atua quando a ponte da Identity não resolveu a sessão.
+        // A Task 6 remove este middleware ao migrar o link mágico.
+        if (context.SessaoAtual() is not null)
+        {
+            await next(context);
+            return;
+        }
+
         if (context.Request.Cookies.TryGetValue(opcoes.CookieName, out var token))
         {
             var sessao = await servico.ValidarSessaoAsync(token, context.RequestAborted);
