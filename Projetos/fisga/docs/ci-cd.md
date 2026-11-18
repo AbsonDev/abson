@@ -3,9 +3,9 @@
 Pipeline da Fase A: CI obrigatório em todo PR, CD separado no Coolify e verificação pelo SHA real
 em produção.
 
-**Última validação ponta a ponta:** 18/11/2026, commit `725afd5`, deploy automático
-[`44338998771`](https://github.com/AbsonDev/abson/actions/runs/44338998771) verde. API e web
-respondendo `/health` com `version=725afd5`.
+**Validações de referência:** 18/11/2026 — primeiro deploy automático em `725afd5` (run
+`44338998771`) e consolidação da documentação em `f50560a` (run `44348792718`). Em ambas, API e web
+responderam `/health` com o SHA do merge, além de `/ready`, `/` e `/condicoes` 200.
 
 ## Visão geral
 
@@ -246,6 +246,7 @@ Interpretação:
 | API em produção | `/health` `version=725afd5`; `/ready` 200 |
 | Web em produção | `/health` `version=725afd5`; `/` e `/condicoes` 200 |
 | Deploy manual anterior (`44335514188`) | API/web em `9bc18e0`, usado para validar token/webhooks |
+| Deploy da consolidação dos docs (`44348792718`) | `f50560a`: `deploy-api` 1m58s, `deploy-web` 2m49s, verdes |
 
 ## Proteção da main
 
