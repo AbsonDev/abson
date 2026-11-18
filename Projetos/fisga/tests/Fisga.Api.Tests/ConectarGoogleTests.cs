@@ -1,6 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -341,6 +344,73 @@ public sealed class ConectarGoogleTests : IAsyncLifetime
         Assert.True(depois!.GoogleConectado);
     }
 
+    // O sucesso do callback sem credenciais reais: semeamos o cookie do esquema
+    // externo via IAuthenticationService.SignInAsync no host de teste. Prova que
+    // o fluxo só grava o vínculo — sem novo cookie fisga_auth e sem nova Sessao.
+    [Fact]
+    public async Task Callback_bem_sucedido_vincula_sem_novo_cookie_de_autenticacao_nem_sessao()
+    {
+        var conta = await CriarContaConfirmadaAsync();
+        var subject = NovoSubject();
+        var valorIntencao = await _conexao.CriarIntencaoAsync(conta.Id);
+        var cookieExterna = CookieExterna(subject, conta.Email!);
+        using var cliente = await ClienteAutenticadoAsync(conta, valorIntencao, cookieExterna);
+        var sessoesAntes = await _db.Sessoes.CountAsync();
+
+        var resposta = await cliente.GetAsync("/api/auth/google/conectar/concluir");
+
+        Assert.Equal(HttpStatusCode.Found, resposta.StatusCode);
+        Assert.Contains("estado=google_conectado", resposta.Headers.Location!.ToString());
+        Assert.True(CookieFoiApagado(resposta, ConexaoGoogleService.IntencaoCookie));
+        Assert.False(TemCookie(resposta, "fisga_auth"),
+            "Conectar nunca emite um novo cookie de autenticação.");
+
+        var dono = await _usuarios.FindByLoginAsync(GoogleIdentityValidator.Provider, subject);
+        Assert.NotNull(dono);
+        Assert.Equal(conta.Id, dono!.Id);
+        Assert.Equal(1, await _db.UserLogins.CountAsync(l =>
+            l.LoginProvider == GoogleIdentityValidator.Provider && l.ProviderKey == subject));
+        Assert.Equal(sessoesAntes, await _db.Sessoes.CountAsync());
+
+        // Mesma identidade: o cookie fisga_auth original continua válido.
+        var me = await cliente.GetFromJsonAsync<MeResponse>("/api/auth/me");
+        Assert.NotNull(me);
+        Assert.True(me!.Autenticado);
+        Assert.Equal(conta.Id, me.Usuario!.Id);
+        Assert.True(me.GoogleConectado);
+    }
+
+    [Fact]
+    public async Task Me_anonimo_devolve_GoogleConectado_falso()
+    {
+        using var cliente = _fixture.Factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false
+        });
+
+        var me = await cliente.GetFromJsonAsync<MeResponse>("/api/auth/me");
+
+        Assert.NotNull(me);
+        Assert.False(me!.Autenticado);
+        Assert.False(me.GoogleConectado);
+    }
+
+    [Fact]
+    public async Task Callback_com_consentimento_pendente_e_bloqueado_pelo_gate()
+    {
+        var conta = await CriarContaConfirmadaAsync(registrarConsentimento: false);
+        var valorIntencao = await _conexao.CriarIntencaoAsync(conta.Id);
+        using var cliente = await ClienteAutenticadoAsync(conta, valorIntencao);
+
+        var resposta = await cliente.GetAsync("/api/auth/google/conectar/concluir");
+
+        Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
+        var erro = await resposta.Content.ReadFromJsonAsync<ErroResponse>();
+        Assert.NotNull(erro);
+        Assert.Equal("consentimento_pendente", erro!.Codigo);
+        Assert.Equal(0, await _db.UserLogins.CountAsync());
+    }
+
     // ---------------------------------------------------------------------
     // Auxiliares
     // ---------------------------------------------------------------------
@@ -368,9 +438,11 @@ public sealed class ConectarGoogleTests : IAsyncLifetime
 
     private async Task<HttpClient> ClienteAutenticadoAsync(
         ApplicationUser conta,
-        string? cookieIntencao = null)
+        string? cookieIntencao = null,
+        string? cookieExterna = null)
     {
-        var login = await _fixture.Factory.CreateClient().PostAsJsonAsync(
+        using var clienteLogin = _fixture.Factory.CreateClient();
+        var login = await clienteLogin.PostAsJsonAsync(
             "/api/auth/entrar", new { email = conta.Email, senha = Senha });
         Assert.Equal(HttpStatusCode.OK, login.StatusCode);
 
@@ -388,8 +460,46 @@ public sealed class ConectarGoogleTests : IAsyncLifetime
             cookies.Add($"{ConexaoGoogleService.IntencaoCookie}={cookieIntencao}");
         }
 
+        if (cookieExterna is not null)
+        {
+            cookies.Add(cookieExterna);
+        }
+
         cliente.DefaultRequestHeaders.Add("Cookie", cookies);
         return cliente;
+    }
+
+    /// <summary>
+    /// Semeia o cookie do esquema externo da Identity sem passar pelo Google:
+    /// o handler de cookie grava o ticket no Set-Cookie de um HttpContext
+    /// sintético, usando o mesmo anel de chaves do host de teste.
+    /// </summary>
+    private string CookieExterna(string subject, string email)
+    {
+        using var scope = _fixture.Factory.Services.CreateScope();
+        var autenticacao = scope.ServiceProvider.GetRequiredService<IAuthenticationService>();
+        var contexto = new DefaultHttpContext { RequestServices = scope.ServiceProvider };
+
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, subject),
+            new(ClaimTypes.Email, email),
+            new(GoogleIdentityValidator.EmailVerifiedClaim, "True")
+        };
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+            claims, "Google", ClaimTypes.NameIdentifier, ClaimTypes.Role));
+        var propriedades = new AuthenticationProperties();
+        propriedades.Items["LoginProvider"] = GoogleIdentityValidator.Provider;
+
+        autenticacao.SignInAsync(
+            contexto,
+            IdentityConstants.ExternalScheme,
+            principal,
+            propriedades).GetAwaiter().GetResult();
+
+        var setCookie = contexto.Response.Headers["Set-Cookie"].ToString();
+        Assert.False(string.IsNullOrWhiteSpace(setCookie));
+        return setCookie.Split(';')[0];
     }
 
     private static GoogleUsuario NovoGoogle(string subject, string email, bool verified) =>
