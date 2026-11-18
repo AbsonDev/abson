@@ -40,7 +40,7 @@
 ### Task 1: Identity schema, ApplicationUser e Consentimento
 
 **Files:**
-- Create: `tests/Fisga.Api.Tests/Fisga.Api.Tests.csproj`
+- Modify: `tests/Fisga.Api.Tests/Fisga.Api.Tests.csproj` (já criado no plano de CI/CD; adicionar `Microsoft.AspNetCore.Mvc.Testing` e `Microsoft.EntityFrameworkCore.Sqlite`)
 - Create: `tests/Fisga.Api.Tests/TestWebApplicationFactory.cs`
 - Create: `tests/Fisga.Api.Tests/IdentitySchemaTests.cs`
 - Create: `src/Fisga.Infrastructure/Identity/ApplicationUser.cs`

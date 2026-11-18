@@ -27,10 +27,20 @@ export default defineConfig({
       timeout: 30_000
     },
     {
-      command: `npm run dev -- --port ${porta}`,
+      // `astro dev` inicia um daemon e o processo pai encerra; o Playwright
+      // interpreta isso como "exited early". Usar o servidor standalone do
+      // build mantém o processo em foreground e é o mesmo artefato do deploy.
+      command: 'npm run start',
       url: baseURL,
       reuseExistingServer: !process.env.CI,
-      timeout: 120_000
+      timeout: 120_000,
+      env: {
+        PORT: String(porta),
+        HOST: '127.0.0.1',
+        API_URL: 'http://localhost:5184',
+        PUBLIC_API_URL: 'http://localhost:5184',
+        PUBLIC_SITE_URL: baseURL
+      }
     }
   ]
 });

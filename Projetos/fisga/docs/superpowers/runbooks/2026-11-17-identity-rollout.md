@@ -551,7 +551,7 @@ link de acesso ou senha”. Não prometa que a sessão atual será preservada.
 
 | Verificação | Resultado |
 | --- | --- |
-| `~/.dotnet/dotnet test` | **243 aprovados**, 0 falhas (36 domínio + 48 aplicação + 159 API) |
+| `~/.dotnet/dotnet test` | **250 aprovados**, 0 falhas (36 domínio + 48 aplicação + 166 API) |
 | `npm run check` | 0 erros, 0 avisos, 0 hints (89 arquivos) |
 | `npm run build` | aprovado (Astro + Pagefind + precache) |
 | Playwright mockado | **61/61 aprovados** |

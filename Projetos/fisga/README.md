@@ -12,6 +12,8 @@ transforma o dia em troféu, PDF e memória.
 **No ar:** [fisga.abson.tech](https://fisga.abson.tech) · API em
 [api.fisga.abson.tech](https://api.fisga.abson.tech/health).
 
+[![CI do Fisga](https://github.com/AbsonDev/abson/actions/workflows/fisga-pipeline.yml/badge.svg?branch=main)](https://github.com/AbsonDev/abson/actions/workflows/fisga-pipeline.yml)
+
 ---
 
 ## Visão geral
@@ -194,7 +196,8 @@ nunca são publicados.
 | Conteúdo | Astro Content Collections (Markdown tipado) |
 | Busca | Pagefind (índice estático, offline) |
 | Web | Astro 7 SSR + TypeScript + CSS próprio |
-| Testes | xUnit + verificação de tipos do Astro + Playwright |
+| CI/CD | GitHub Actions + Coolify |
+| Testes | xUnit + Astro check + Playwright (mock no CI; suíte real via script) |
 | Infra local | Docker Compose |
 
 ### Observabilidade
@@ -208,7 +211,8 @@ nunca são publicados.
   bloqueados. Sem analytics de navegação.
 - Source maps do web são enviados no build quando `SENTRY_AUTH_TOKEN` está presente; sem ele,
   stack traces de produção ficam minificados.
-- `/health` verifica o processo; `/ready` verifica o banco. O Docker reinicia containers doentes.
+- `/health` verifica o processo e retorna o SHA do build; `/ready` verifica o banco. O Docker
+  reinicia containers doentes.
 - Logs continuam disponíveis no Coolify para investigação imediata.
 
 ---
@@ -358,8 +362,9 @@ Nunca commite chaves, tokens ou senhas. Use variáveis de ambiente do provedor.
 | `RateLimiting__Auth` | limite por minuto/IP da autenticação (padrão 8; só testes elevam) |
 | `SENTRY_DSN` | DSN do projeto `fisga-api` |
 | `SENTRY_ENVIRONMENT` | `production` ou `development` |
-| `SENTRY_RELEASE` | commit/deploy para agrupar erros e traces |
+| `SENTRY_RELEASE` | não usado diretamente pela API; o release vem de `GIT_SHA`/`SOURCE_COMMIT` |
 | `SENTRY_TRACES_SAMPLE_RATE` | amostragem de traces (padrão 0.1 em produção) |
+| `SOURCE_COMMIT` | commit passado pelo Coolify no build; vira `GIT_SHA` e release do Sentry |
 
 ### Web (build/SSR)
 
@@ -371,8 +376,9 @@ Nunca commite chaves, tokens ou senhas. Use variáveis de ambiente do provedor.
 | `SENTRY_DSN` | DSN do projeto `fisga-web` no SSR |
 | `PUBLIC_SENTRY_DSN` | DSN do navegador (build) |
 | `SENTRY_ENVIRONMENT` | `production` ou `development` (build e runtime) |
-| `SENTRY_RELEASE` | commit/deploy (build e runtime) |
-| `SENTRY_AUTH_TOKEN` | token de upload de source maps (somente build; opcional) |
+| `SENTRY_RELEASE` | runtime; o Dockerfile define a partir de `GIT_SHA` |
+| `PUBLIC_SENTRY_RELEASE` | release do navegador (build arg; fallback para `SENTRY_RELEASE`) |
+| `SENTRY_AUTH_TOKEN` | token de upload de source maps; usar BuildKit secret `sentry_auth_token`, nunca ARG/ENV |
 
 ### E-mail e newsletter
 
@@ -424,7 +430,7 @@ npm run check && npm run build
 npx playwright test
 ```
 
-Atualmente: **243 testes de backend** (36 de domínio + 48 de aplicação + 159 de API) e checagem de
+Atualmente: **250 testes de backend** (36 de domínio + 48 de aplicação + 166 de API) e checagem de
 tipos do Astro. Cobrem:
 
 - criação/edição de pescaria, IDs de captura, validações e isolamento entre usuários;
@@ -432,7 +438,8 @@ tipos do Astro. Cobrem:
 - consentimento, `/conta`, exportação e Google indisponível;
 - exportação, locais salvos, condições, lua/solunar, janela e comparação com histórico;
 - pontos e trilhas privadas, com ownership;
-- fallback manual da sugestão de espécie.
+- fallback manual da sugestão de espécie;
+- resolução da versão exposta em `/health`.
 
 O fluxo completo também é validado com Playwright: **61 testes mockados** (UI e estados) e
 **6 testes com backend real** para a migração de identidade. Os reais rodam com SQLite, chaves e
@@ -454,6 +461,34 @@ Build da web (wiki + Pagefind + precache offline):
 cd web
 npm run build   # astro build + pagefind + precache
 ```
+
+---
+
+## CI/CD
+
+O Fisga tem um pipeline próprio no GitHub Actions em
+[`.github/workflows/fisga-pipeline.yml`](../../.github/workflows/fisga-pipeline.yml). Ele roda em
+todo PR e em push para `main`, detecta mudanças em `Projetos/fisga/**` e executa:
+
+- `api`: restore locked, `dotnet format --verify-no-changes`, build `-warnaserror` e os 250 testes
+  xUnit.
+- `web`: `npm ci`, `astro check`, `npm run build` e `npm run test:e2e` (61 testes Playwright
+  mockados).
+- `docker`: build das imagens da API e do web sem push (em PR).
+- `gate`: job obrigatório; falha se qualquer job necessário falhar.
+
+No push para `main`, após o `gate`, o pipeline dispara o deploy do `fisga-api` e depois do
+`fisga-web` no Coolify, acompanha o deployment, aguarda o `/health` retornar o SHA do commit e roda
+smoke tests. O `workflow_dispatch` de deploy só é aceito na branch `main`.
+
+O check obrigatório da `main` é o job **`gate`** (a UI pode exibir `fisga-pipeline / gate`). Confirme
+o contexto exato com `gh api repos/AbsonDev/abson/commits/<sha>/check-runs`.
+
+Segredos e variáveis necessários no GitHub: `COOLIFY_URL`, `COOLIFY_TOKEN` (read+deploy),
+`COOLIFY_WEBHOOK_FISGA_API`, `COOLIFY_WEBHOOK_FISGA_WEB` e a variável `FISGA_PUBLIC_SENTRY_DSN`.
+Os webhooks e o `COOLIFY_URL` precisam ser HTTPS.
+
+Runbook completo, configuração do Coolify e rollback: [docs/ci-cd.md](docs/ci-cd.md).
 
 ---
 

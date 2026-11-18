@@ -1,0 +1,438 @@
+name: fisga-pipeline
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: "Executar deploy após o CI"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fisga-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+  NODE_VERSION: "24"
+
+jobs:
+  changes:
+    name: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      fisga: ${{ steps.diff.outputs.fisga }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Detectar mudanças do Fisga
+        id: diff
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "fisga=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+            HEAD="${{ github.event.pull_request.head.sha }}"
+          else
+            BASE="${{ github.event.before }}"
+            HEAD="${{ github.sha }}"
+          fi
+
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            BASE="$(git rev-list --max-parents=0 "$HEAD" | tail -n 1)"
+          fi
+
+          FILES="$(git diff --name-only "$BASE" "$HEAD")"
+
+          if echo "$FILES" | grep -qE '^Projetos/fisga/|^\.github/workflows/fisga-pipeline\.yml$'; then
+            echo "fisga=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "fisga=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  api:
+    name: api
+    needs: changes
+    if: needs.changes.outputs.fisga == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: Projetos/fisga
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6.1.0
+        with:
+          global-json-file: Projetos/fisga/global.json
+          cache: true
+          cache-dependency-path: Projetos/fisga/**/packages.lock.json
+
+      - name: Restore
+        run: dotnet restore Fisga.slnx --locked-mode
+
+      - name: Format
+        run: dotnet format Fisga.slnx --verify-no-changes --no-restore
+
+      - name: Build
+        run: dotnet build Fisga.slnx -c Release --no-restore -warnaserror
+
+      - name: Test
+        run: >
+          dotnet test Fisga.slnx -c Release --no-build
+          --logger "trx;LogFileName=fisga-tests.trx"
+          --results-directory artifacts/test-results
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: fisga-test-results
+          path: Projetos/fisga/artifacts/test-results
+          if-no-files-found: ignore
+          retention-days: 7
+
+  web:
+    name: web
+    needs: changes
+    if: needs.changes.outputs.fisga == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: Projetos/fisga/web
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Setup Node
+        uses: actions/setup-node@v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: Projetos/fisga/web/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run check
+
+      - name: Build (E2E)
+        run: npm run build
+        env:
+          PUBLIC_API_URL: http://localhost:5184
+          PUBLIC_SITE_URL: http://localhost:4323
+          PUBLIC_SENTRY_DSN: ""
+          PUBLIC_SENTRY_ENVIRONMENT: test
+          PUBLIC_SENTRY_RELEASE: ${{ github.sha }}
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E (mock)
+        run: npm run test:e2e
+
+  docker:
+    name: docker
+    needs: changes
+    if: |
+      needs.changes.outputs.fisga == 'true' &&
+      (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Verificar token do Sentry no Dockerfile
+        run: |
+          set -euo pipefail
+          if grep -qE '^(ARG|ENV) SENTRY_AUTH_TOKEN' Projetos/fisga/web/Dockerfile; then
+            echo "SENTRY_AUTH_TOKEN não pode ser ARG/ENV; use BuildKit secret."
+            exit 1
+          fi
+          grep -q 'type=secret,id=sentry_auth_token' Projetos/fisga/web/Dockerfile
+
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@v4.4.1
+
+      - name: Build API image
+        uses: docker/build-push-action@v7.4.0
+        with:
+          context: Projetos/fisga
+          file: Projetos/fisga/src/Fisga.Api/Dockerfile
+          push: false
+          load: false
+          build-args: |
+            GIT_SHA=${{ github.sha }}
+          cache-from: type=gha,scope=fisga-api
+          cache-to: type=gha,mode=max,scope=fisga-api
+
+      - name: Build web image
+        uses: docker/build-push-action@v7.4.0
+        with:
+          context: Projetos/fisga/web
+          push: false
+          load: false
+          build-args: |
+            GIT_SHA=${{ github.sha }}
+            PUBLIC_API_URL=https://api.fisga.abson.tech
+            PUBLIC_SITE_URL=https://fisga.abson.tech
+            PUBLIC_SENTRY_DSN=${{ vars.FISGA_PUBLIC_SENTRY_DSN }}
+            PUBLIC_SENTRY_RELEASE=${{ github.sha }}
+            SENTRY_RELEASE=${{ github.sha }}
+          cache-from: type=gha,scope=fisga-web
+          cache-to: type=gha,mode=max,scope=fisga-web
+
+  gate:
+    name: gate
+    if: always()
+    needs:
+      - changes
+      - api
+      - web
+      - docker
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Mostrar resultados
+        run: echo '${{ toJSON(needs) }}'
+
+      - name: Falhar se algum job necessário falhou
+        run: |
+          if [ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" = "true" ]; then
+            echo "Um job necessário falhou ou foi cancelado."
+            exit 1
+          fi
+
+  deploy-api:
+    name: deploy-api
+    needs:
+      - changes
+      - gate
+    if: |
+      needs.changes.outputs.fisga == 'true' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy))
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: production
+      url: https://api.fisga.abson.tech
+    concurrency:
+      group: fisga-production
+      cancel-in-progress: false
+    steps:
+      - name: Validar secrets e HTTPS
+        env:
+          COOLIFY_URL: ${{ secrets.COOLIFY_URL }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+          COOLIFY_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK_FISGA_API }}
+        run: |
+          set -euo pipefail
+          : "${COOLIFY_URL:?Configure o secret COOLIFY_URL (ex.: https://manager.abson.tech)}"
+          : "${COOLIFY_TOKEN:?Configure o secret COOLIFY_TOKEN com read+deploy}"
+          : "${COOLIFY_WEBHOOK:?Configure o secret COOLIFY_WEBHOOK_FISGA_API}"
+          case "$COOLIFY_URL" in https://*) ;; *) echo "COOLIFY_URL deve usar HTTPS"; exit 1 ;; esac
+          case "$COOLIFY_WEBHOOK" in https://*) ;; *) echo "COOLIFY_WEBHOOK_FISGA_API deve usar HTTPS"; exit 1 ;; esac
+
+      - name: Disparar deploy da API
+        id: deploy
+        env:
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+          COOLIFY_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK_FISGA_API }}
+        run: |
+          set -euo pipefail
+          RESPONSE="$(curl --fail-with-body -sS --max-time 30 --proto '=https' -X POST "$COOLIFY_WEBHOOK" \
+            -H "Authorization: Bearer $COOLIFY_TOKEN")"
+          DEPLOYMENT_UUID="$(printf '%s' "$RESPONSE" | jq -r '.deployments[0].deployment_uuid // .deployment_uuid // empty' 2>/dev/null || true)"
+          if [ -z "$DEPLOYMENT_UUID" ]; then
+            echo "Coolify não retornou deployment_uuid. Resposta:"
+            printf '%s\n' "$RESPONSE"
+            exit 1
+          fi
+          echo "deployment_uuid=$DEPLOYMENT_UUID" >> "$GITHUB_OUTPUT"
+
+      - name: Aguardar deployment da API
+        env:
+          COOLIFY_URL: ${{ secrets.COOLIFY_URL }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+          DEPLOYMENT_UUID: ${{ steps.deploy.outputs.deployment_uuid }}
+        run: |
+          set -euo pipefail
+          API="${COOLIFY_URL%/}"
+          API="${API%/api/v1}"
+          for i in $(seq 1 120); do
+            STATUS="$(curl -fsS --max-time 15 --proto '=https' \
+              "$API/api/v1/deployments/$DEPLOYMENT_UUID" \
+              -H "Authorization: Bearer $COOLIFY_TOKEN" | jq -r '.status // empty' | tr '[:upper:]' '[:lower:]' || true)"
+            case "$STATUS" in
+              finished|success)
+                echo "Deployment $DEPLOYMENT_UUID concluído ($STATUS)"
+                exit 0
+                ;;
+              failed|cancelled)
+                echo "Deployment $DEPLOYMENT_UUID terminou com status $STATUS"
+                exit 1
+                ;;
+            esac
+            echo "Aguardando deployment: status=${STATUS:-indisponível} (tentativa $i/120)"
+            sleep 10
+          done
+          echo "Timeout aguardando o deployment $DEPLOYMENT_UUID"
+          exit 1
+
+      - name: Aguardar a versão da API
+        env:
+          EXPECTED: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 60); do
+            VERSION="$(curl -fsS --max-time 10 https://api.fisga.abson.tech/health | jq -r '.version // empty' || true)"
+            if [ "$VERSION" = "$EXPECTED" ]; then
+              echo "API no ar na versão $EXPECTED"
+              exit 0
+            fi
+            echo "Aguardando API: versão atual=${VERSION:-indisponível} (tentativa $i/60)"
+            sleep 5
+          done
+          echo "Timeout aguardando a API na versão $EXPECTED"
+          exit 1
+
+      - name: Smoke da API
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 10 https://api.fisga.abson.tech/ready
+
+      - name: Smoke do web atual antes do deploy do web
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 10 https://fisga.abson.tech/ >/dev/null || {
+            echo "O web atual não respondeu com a API nova. Faça rollback da API no Coolify antes de continuar."
+            exit 1
+          }
+          curl -fsS --max-time 10 https://fisga.abson.tech/condicoes >/dev/null || {
+            echo "O web atual não respondeu em /condicoes com a API nova. Faça rollback da API no Coolify antes de continuar."
+            exit 1
+          }
+
+  deploy-web:
+    name: deploy-web
+    needs:
+      - deploy-api
+    if: |
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy))
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: production
+      url: https://fisga.abson.tech
+    concurrency:
+      group: fisga-production
+      cancel-in-progress: false
+    steps:
+      - name: Validar secrets e HTTPS
+        env:
+          COOLIFY_URL: ${{ secrets.COOLIFY_URL }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+          COOLIFY_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK_FISGA_WEB }}
+        run: |
+          set -euo pipefail
+          : "${COOLIFY_URL:?Configure o secret COOLIFY_URL (ex.: https://manager.abson.tech)}"
+          : "${COOLIFY_TOKEN:?Configure o secret COOLIFY_TOKEN com read+deploy}"
+          : "${COOLIFY_WEBHOOK:?Configure o secret COOLIFY_WEBHOOK_FISGA_WEB}"
+          case "$COOLIFY_URL" in https://*) ;; *) echo "COOLIFY_URL deve usar HTTPS"; exit 1 ;; esac
+          case "$COOLIFY_WEBHOOK" in https://*) ;; *) echo "COOLIFY_WEBHOOK_FISGA_WEB deve usar HTTPS"; exit 1 ;; esac
+
+      - name: Disparar deploy do web
+        id: deploy
+        env:
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+          COOLIFY_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK_FISGA_WEB }}
+        run: |
+          set -euo pipefail
+          RESPONSE="$(curl --fail-with-body -sS --max-time 30 --proto '=https' -X POST "$COOLIFY_WEBHOOK" \
+            -H "Authorization: Bearer $COOLIFY_TOKEN")"
+          DEPLOYMENT_UUID="$(printf '%s' "$RESPONSE" | jq -r '.deployments[0].deployment_uuid // .deployment_uuid // empty' 2>/dev/null || true)"
+          if [ -z "$DEPLOYMENT_UUID" ]; then
+            echo "Coolify não retornou deployment_uuid. Resposta:"
+            printf '%s\n' "$RESPONSE"
+            exit 1
+          fi
+          echo "deployment_uuid=$DEPLOYMENT_UUID" >> "$GITHUB_OUTPUT"
+
+      - name: Aguardar deployment do web
+        env:
+          COOLIFY_URL: ${{ secrets.COOLIFY_URL }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+          DEPLOYMENT_UUID: ${{ steps.deploy.outputs.deployment_uuid }}
+        run: |
+          set -euo pipefail
+          API="${COOLIFY_URL%/}"
+          API="${API%/api/v1}"
+          for i in $(seq 1 120); do
+            STATUS="$(curl -fsS --max-time 15 --proto '=https' \
+              "$API/api/v1/deployments/$DEPLOYMENT_UUID" \
+              -H "Authorization: Bearer $COOLIFY_TOKEN" | jq -r '.status // empty' | tr '[:upper:]' '[:lower:]' || true)"
+            case "$STATUS" in
+              finished|success)
+                echo "Deployment $DEPLOYMENT_UUID concluído ($STATUS)"
+                exit 0
+                ;;
+              failed|cancelled)
+                echo "Deployment $DEPLOYMENT_UUID terminou com status $STATUS"
+                exit 1
+                ;;
+            esac
+            echo "Aguardando deployment: status=${STATUS:-indisponível} (tentativa $i/120)"
+            sleep 10
+          done
+          echo "Timeout aguardando o deployment $DEPLOYMENT_UUID"
+          exit 1
+
+      - name: Aguardar a versão do web
+        env:
+          EXPECTED: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 60); do
+            VERSION="$(curl -fsS --max-time 10 https://fisga.abson.tech/health | jq -r '.version // empty' || true)"
+            if [ "$VERSION" = "$EXPECTED" ]; then
+              echo "Web no ar na versão $EXPECTED"
+              exit 0
+            fi
+            echo "Aguardando web: versão atual=${VERSION:-indisponível} (tentativa $i/60)"
+            sleep 5
+          done
+          echo "Timeout aguardando o web na versão $EXPECTED"
+          exit 1
+
+      - name: Smoke do web
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 10 https://fisga.abson.tech/ >/dev/null || {
+            echo "Smoke do web falhou em /. Faça rollback do web no Coolify (runbook em docs/ci-cd.md)."
+            exit 1
+          }
+          curl -fsS --max-time 10 https://fisga.abson.tech/condicoes >/dev/null || {
+            echo "Smoke do web falhou em /condicoes. Faça rollback do web no Coolify (runbook em docs/ci-cd.md)."
+            exit 1
+          }

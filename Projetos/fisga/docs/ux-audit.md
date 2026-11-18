@@ -320,7 +320,8 @@ Implementado em 17/11/2026, depois da validação do protótipo `fisga-ux` no Op
 - Fluxo real testado: link mágico → onboarding com local → `/hoje` → mapa com abas → `/aprender` →
   registrar em 4 etapas → revisão → pescaria salva → diário com abas.
 - Bottom nav autenticada validada em 390 px, com Diário e Registrar visíveis.
-- `astro check`, build, 75 testes .NET e testes Playwright passando.
+- `astro check`, build e 250 testes .NET passando; Playwright mockado 61/61 no CI. O E2E real roda
+  via `scripts/e2e-real.sh`.
 
 ### Diferença em relação ao protótipo
 
@@ -382,7 +383,7 @@ no runbook [`docs/superpowers/runbooks/2026-11-17-identity-rollout.md`](superpow
 
 **Verificação executada**
 
-- **243 testes .NET** aprovados (36 domínio, 48 aplicação, 159 API), incluindo confirmação, reset,
+- **250 testes .NET** aprovados (36 domínio, 48 aplicação, 166 API), incluindo confirmação, reset,
   consentimento, senha, sessões, Google e outbox de e-mail.
 - **`npm run check`**: 0 erros/avisos/hints em 89 arquivos; **`npm run build`** aprovado.
 - **Playwright mockado: 61/61** — UI, estados e contratos continuam iguais.

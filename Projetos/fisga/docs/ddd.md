@@ -391,5 +391,8 @@ lembretes e e-mail.
 `Fisga.Domain.Tests` cobre invariantes, criação, edição, preservação de IDs e ownership.
 `Fisga.Application.Tests` cobre casos de uso, link mágico, expiração, uso único, sessão, logout,
 isolamento entre usuários, exclusão, exportação, locais salvos, agregação de condições, lua/solunar,
-janela, comparação com o histórico e pontos privados. A experiência completa (login, onboarding,
-registro, foto, troféu, PDF, conta, condições, locais, mapa e logout) é validada com Playwright.
+janela, comparação com o histórico e pontos privados. `Fisga.Api.Tests` cobre a API (identidade,
+consentimento, senha, sessões, Google e outbox) e a resolução da versão exposta em `/health`. A
+experiência completa (login, onboarding, registro, foto, troféu, PDF, conta, condições, locais, mapa
+e logout) é validada com Playwright: 61 testes mockados no CI e 6 com backend real via
+`scripts/e2e-real.sh`.
