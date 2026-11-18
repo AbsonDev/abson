@@ -8,8 +8,8 @@ Este documento descreve o pipeline, o deploy no Coolify, o rollback e as pendên
 PR
 └── fisga-pipeline
     ├── changes   (detecta mudanças em Projetos/fisga/**)
-    ├── api       (restore locked + format + build + 82 testes)
-    ├── web       (npm ci + astro check + build)
+    ├── api       (restore locked + format + build + 250 testes)
+    ├── web       (npm ci + astro check + build + 61 Playwright mockados)
     ├── docker    (build das imagens sem push, em PR)
     └── gate      (check obrigatório)
 
@@ -37,7 +37,7 @@ pulado não reportar o check obrigatório. O job usa `git diff` para decidir se 
 - `dotnet restore Fisga.slnx --locked-mode`
 - `dotnet format Fisga.slnx --verify-no-changes --no-restore`
 - `dotnet build Fisga.slnx -c Release --no-restore -warnaserror`
-- `dotnet test Fisga.slnx -c Release --no-build`
+- `dotnet test Fisga.slnx -c Release --no-build` (250 testes)
 
 Os resultados TRX são enviados como artifact `fisga-test-results`.
 
@@ -46,6 +46,10 @@ Os resultados TRX são enviados como artifact `fisga-test-results`.
 - `npm ci`
 - `npm run check` (`astro check`)
 - `npm run build` (Astro + Pagefind + precache offline)
+- `npm run test:e2e` (61 testes Playwright mockados)
+
+O E2E real (6 testes) fica no script `./scripts/e2e-real.sh`, fora do CI por exigir backend,
+SQLite, chaves e outbox temporários; pode virar um job nightly na Fase B.
 
 ### `docker`
 
@@ -179,7 +183,7 @@ separado.
 - Migrar `fisga-api` e `fisga-web` para Docker Image apps no Coolify (build once).
 - Rollback automatizado por SHA.
 - EF Core migration bundle no entrypoint.
-- Playwright smoke no CI.
+- E2E real (6 testes) como job nightly/CI dedicado.
 - Preview deployments para PRs de UI.
 - Merge queue.
 - Dashboard simples de DORA metrics.
@@ -200,6 +204,7 @@ cd Projetos/fisga/web
 npm ci
 npm run check
 npm run build
+npm run test:e2e   # 61 testes mockados; o build precisa existir
 
 # Workflow
 gh actions-lock --verify .github/workflows/fisga-pipeline.yml

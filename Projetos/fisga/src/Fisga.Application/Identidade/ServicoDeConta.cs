@@ -10,6 +10,7 @@ public sealed class ServicoDeConta(
     ISessaoRepository sessoes,
     IPescariaRepository pescarias,
     IMidiaStorage midia,
+    IExclusaoDeIdentidade identidade,
     IUnitOfWork unidade,
     IRelogio relogio)
 {
@@ -25,6 +26,10 @@ public sealed class ServicoDeConta(
 
         var usuario = await usuarios.ObterPorIdAsync(usuarioId, ct)
                        ?? throw new RecursoNaoEncontradoException("usuario_nao_encontrado", "Conta não encontrada.");
+
+        // Credenciais primeiro: nunca deixamos uma ApplicationUser/token órfão
+        // apontando para um e-mail que já pode ser recadastrado.
+        await identidade.ExcluirAsync(usuario, ct);
 
         var fotos = await pescarias.RemoverPorUsuarioAsync(usuarioId, ct);
         await sessoes.RevogarTodasAsync(usuarioId, relogio.Agora, exceto: null, ct);

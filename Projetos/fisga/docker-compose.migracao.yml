@@ -1,0 +1,28 @@
+# Compose isolado para o ensaio de migration (Task 13).
+#
+# Projeto/volume/porta/container próprios: não compartilha `fisga_pgdata`,
+# `fisga_media` nem `fisga_keys` do stack local/produção. Sempre use:
+#
+#   docker compose -p fisga-migracao -f docker-compose.migracao.yml <cmd>
+#
+# `down -v` deste arquivo remove apenas o volume deste projeto de ensaio.
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: fisga-migracao-postgres
+    environment:
+      POSTGRES_USER: fisga
+      POSTGRES_PASSWORD: fisga
+      POSTGRES_DB: fisga
+    ports:
+      - "5436:5432"
+    volumes:
+      - fisga_migracao_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fisga -d fisga"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  fisga_migracao_pgdata:

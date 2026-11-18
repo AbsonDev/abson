@@ -192,12 +192,11 @@ a Identity, sem perder o diário e sem depender de suporte manual.
 ## 9. Migração
 
 1. Criar as tabelas da Identity.
-2. Para cada `usuarios`:
-   - criar `AspNetUsers` com o mesmo `Id`;
-   - `Email` e `UserName` = e-mail atual;
-   - `EmailConfirmed = true` quando `EmailVerificadoEm` existe;
-   - sem hash de senha.
-3. Invalidar as sessões atuais; todos entram uma vez.
+2. **Não fazer backfill de `AspNetUsers`.** O provisionamento é lazy e essa é a decisão aceita:
+   a `ApplicationUser` é criada com o mesmo `Id` no primeiro login (link mágico, Google ou senha)
+   via `ICadastroDeUsuario`. A migration só cria as tabelas; `usuarios` e `pescarias` permanecem
+   intactos. Isso evita uma migração massiva de credenciais sem senha e mantém o rollout reversível.
+3. Revogar as sessões antigas no corte; todos entram uma vez.
 4. Manter o link mágico funcionando para todos.
 5. Não apagar nenhum dado de pescaria/local.
 6. `logins_externos` não existe em produção; remover apenas do código/migration local, sem ação

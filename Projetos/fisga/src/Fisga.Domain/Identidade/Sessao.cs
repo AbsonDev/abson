@@ -57,25 +57,32 @@ public sealed class Sessao
         string? userAgent,
         string? ipHash,
         DateTimeOffset agora,
+        TimeSpan duracao) =>
+        Criar(Guid.NewGuid(), usuarioId, tokenHash, userAgent, ipHash, agora, duracao);
+
+    public static Sessao Criar(
+        Guid id,
+        Guid usuarioId,
+        string tokenHash,
+        string? userAgent,
+        string? ipHash,
+        DateTimeOffset agora,
         TimeSpan duracao)
     {
+        if (id == Guid.Empty)
+        {
+            throw new DomainException("sessao_sem_id", "Sessão sem identificador.");
+        }
+
         if (usuarioId == Guid.Empty)
         {
             throw new DomainException("sessao_sem_usuario", "Sessão sem usuário.");
         }
 
-        if (string.IsNullOrWhiteSpace(tokenHash) || tokenHash.Length != 64)
-        {
-            throw new DomainException("sessao_sem_token", "Sessão sem token válido.");
-        }
-
-        if (duracao <= TimeSpan.Zero || duracao > TimeSpan.FromDays(90))
-        {
-            throw new DomainException("sessao_duracao_invalida", "Duração de sessão inválida.");
-        }
+        ValidarTokenEDuracao(tokenHash, duracao);
 
         return new Sessao(
-            Guid.NewGuid(),
+            id,
             usuarioId,
             tokenHash,
             Limitar(userAgent, 300),
@@ -95,6 +102,19 @@ public sealed class Sessao
     public void Revogar(DateTimeOffset agora)
     {
         RevogadaEm ??= agora;
+    }
+
+    private static void ValidarTokenEDuracao(string tokenHash, TimeSpan duracao)
+    {
+        if (string.IsNullOrWhiteSpace(tokenHash) || tokenHash.Length != 64)
+        {
+            throw new DomainException("sessao_sem_token", "Sessão sem token válido.");
+        }
+
+        if (duracao <= TimeSpan.Zero || duracao > TimeSpan.FromDays(90))
+        {
+            throw new DomainException("sessao_duracao_invalida", "Duração de sessão inválida.");
+        }
     }
 
     private static string? Limitar(string? valor, int maximo) =>

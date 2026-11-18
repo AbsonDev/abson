@@ -53,7 +53,7 @@
 - [ ] Criar `.github/dependabot.yml` para `github-actions`, `nuget` em `/Projetos/fisga`, `npm` em `/Projetos/fisga/web` e `docker` em `/Projetos/fisga`, `/Projetos/fisga/src/Fisga.Api` e `/Projetos/fisga/web`.
 - [ ] Commit: `chore(fisga): add reproducible dotnet build baseline`.
 
-**Verificação:** `dotnet restore Fisga.slnx --locked-mode`, build e os 82 testes passam; `dotnet format --verify-no-changes` passa.
+**Verificação:** `dotnet restore Fisga.slnx --locked-mode`, build e os 250 testes passam; `dotnet format --verify-no-changes` passa.
 
 ---
 
@@ -105,7 +105,7 @@
 - [ ] `permissions: contents: read` no topo; `concurrency` cancela runs antigos só em PR.
 - [ ] Usar `actions/checkout@v7`, `actions/setup-dotnet@v6`, `actions/setup-node@v7`, `actions/upload-artifact@v7`.
 - [ ] No `api`: `dotnet restore Fisga.slnx --locked-mode`, `dotnet format Fisga.slnx --verify-no-changes --no-restore`, `dotnet build Fisga.slnx -c Release --no-restore -warnaserror`, `dotnet test Fisga.slnx -c Release --no-build --logger "trx;LogFileName=fisga-tests.trx" --results-directory artifacts/test-results`.
-- [ ] No `web`: `npm ci`, `npm run check`, `npm run build`.
+- [ ] No `web`: `npm ci`, `npm run check`, `npm run build`, `npx playwright install --with-deps chromium` e `npm run test:e2e` (61 mockados).
 - [ ] No `gate`: `if: always()`, `needs: [changes, api, web, docker]`, falhar em `failure` ou `cancelled`.
 - [ ] Adicionar `workflow_dispatch` com input booleano `deploy` default `false`.
 - [ ] Validar com `actionlint`.
@@ -179,7 +179,7 @@
 - [ ] Migrar `fisga-api` e `fisga-web` para Docker Image apps no Coolify.
 - [ ] Rollback automatizado por SHA.
 - [ ] EF Core migration bundle no entrypoint.
-- [ ] Playwright smoke no CI.
+- [ ] E2E real (6 testes) no CI/nightly.
 - [ ] Preview deployments para PRs de UI.
 - [ ] Merge queue.
 - [ ] Dashboard simples de DORA metrics.

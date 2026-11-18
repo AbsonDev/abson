@@ -1,0 +1,199 @@
+---
+import AuthLayout from '../layouts/AuthLayout.astro';
+---
+
+<AuthLayout
+  titulo="Redefinir senha"
+  descricao="Escolha uma nova senha para o seu diário no Fisga."
+>
+  <section class="screen">
+    <div class="screen-inner">
+      <div id="reset-form-view">
+        <header class="screen-head">
+          <p class="eyebrow">Nova senha</p>
+          <h1 tabindex="-1">Escolha uma nova senha.</h1>
+          <p class="sub">Uma senha nova para o seu diário. Você vai usá-la para entrar no Fisga.</p>
+        </header>
+
+        <form id="reset-form" class="auth-form" novalidate>
+          <div class="field">
+            <label class="label" for="reset-new">Nova senha</label>
+            <div class="control">
+              <input class="input input--reveal" id="reset-new" name="new-password" type="password" autocomplete="new-password" minlength="10" maxlength="128" required aria-describedby="reset-new-help reset-new-error" />
+              <button type="button" class="reveal" data-reveal="reset-new" aria-pressed="false" aria-label="Mostrar senha">
+                <svg class="od-icon od-icon--lg" data-icon="eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12s3.5-5.5 9.5-5.5S21.5 12 21.5 12s-3.5 5.5-9.5 5.5S2.5 12 2.5 12Z"></path><circle cx="12" cy="12" r="2.6"></circle></svg>
+                <svg class="od-icon od-icon--lg" data-icon="eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display: none"><path d="m4 4 16 16"></path><path d="M10.6 6.7A9.6 9.6 0 0 1 12 6.5c6 0 9.5 5.5 9.5 5.5a16 16 0 0 1-3.1 3.5"></path><path d="M6.4 8.4A16 16 0 0 0 2.5 12s3.5 5.5 9.5 5.5a9 9 0 0 0 3.2-.6"></path><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"></path></svg>
+              </button>
+            </div>
+            <p class="help" id="reset-new-help">De 10 a 128 caracteres. Sem exigir maiúscula, número ou símbolo.</p>
+            <p class="field-error" id="reset-new-error" role="alert" hidden>
+              <svg class="od-icon od-icon--sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5"></path><path d="M12 16h.01"></path></svg>
+              <span data-err-text></span>
+            </p>
+          </div>
+
+          <div class="field">
+            <label class="label" for="reset-confirm">Confirmar nova senha</label>
+            <div class="control">
+              <input class="input" id="reset-confirm" name="confirm-password" type="password" autocomplete="new-password" required aria-describedby="reset-confirm-error" />
+            </div>
+            <p class="field-error" id="reset-confirm-error" role="alert" hidden>
+              <svg class="od-icon od-icon--sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5"></path><path d="M12 16h.01"></path></svg>
+              <span data-err-text></span>
+            </p>
+          </div>
+
+          <p class="note note--error" id="reset-error" role="alert" hidden>
+            <svg class="od-icon od-icon--md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5"></path><path d="M12 16h.01"></path></svg>
+            <span id="reset-error-texto">Não foi possível salvar sua nova senha. Tente novamente.</span>
+          </p>
+
+          <button type="submit" class="btn btn-primary btn-block" id="reset-submit">
+            <span class="spinner" hidden></span>
+            <span data-btn-label>Salvar nova senha</span>
+          </button>
+        </form>
+      </div>
+
+      <div id="reset-expired-view" class="swap" hidden>
+        <header class="screen-head">
+          <p class="eyebrow">Nova senha</p>
+          <h1 tabindex="-1">Este link expirou.</h1>
+          <p class="sub">O link de redefinição pode ter expirado ou já ter sido usado. Peça um novo para escolher sua senha.</p>
+        </header>
+        <div class="stack-actions">
+          <a class="btn btn-primary btn-block" id="reset-new-link" href="/esqueci-senha">Pedir novo link</a>
+          <a class="btn btn-ghost btn-block" href="/entrar">Voltar para entrar</a>
+        </div>
+      </div>
+
+      <div id="reset-success-view" class="swap" hidden>
+        <header class="screen-head">
+          <p class="eyebrow">Nova senha</p>
+          <h1 tabindex="-1">Senha alterada.</h1>
+          <p class="sub">Sua nova senha já vale. Entre para voltar ao seu diário.</p>
+        </header>
+        <div class="stack-actions">
+          <a class="btn btn-primary btn-block" href="/entrar">Entrar</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</AuthLayout>
+
+<script>
+  import { apiBase, postJson } from '../lib/auth';
+
+  const API = apiBase();
+  const parametros = new URLSearchParams(window.location.search);
+  const uid = parametros.get('uid') ?? '';
+  const token = parametros.get('token') ?? '';
+  // O token não deve ficar na barra de endereço, no histórico ou em Referer.
+  if (uid || token) {
+    window.history.replaceState(null, '', window.location.pathname);
+  }
+  const nova = document.getElementById('reset-new') as HTMLInputElement;
+  const confirmacao = document.getElementById('reset-confirm') as HTMLInputElement;
+  const resetErro = document.getElementById('reset-error') as HTMLElement;
+  const resetErroTexto = document.getElementById('reset-error-texto') as HTMLElement;
+
+  function mostrar(id: string) {
+    ['reset-form-view', 'reset-expired-view', 'reset-success-view'].forEach((view) => {
+      const bloco = document.getElementById(view);
+      if (bloco) bloco.hidden = view !== id;
+    });
+    (document.querySelector(`#${id} h1`) as HTMLElement)?.focus();
+  }
+
+  function setLoading(botao: HTMLButtonElement, ocupado: boolean, rotulo?: string) {
+    const label = botao.querySelector('[data-btn-label]') as HTMLElement | null;
+    const spinner = botao.querySelector('.spinner') as HTMLElement | null;
+    if (label && !botao.dataset.idleLabel) botao.dataset.idleLabel = label.textContent ?? '';
+    if (spinner) spinner.hidden = !ocupado;
+    if (label) label.textContent = ocupado ? rotulo ?? botao.dataset.idleLabel ?? '' : botao.dataset.idleLabel ?? '';
+    botao.disabled = ocupado;
+    botao.setAttribute('aria-busy',ocupado ? 'true' : 'false');
+  }
+
+  function erroCampo(id: string, mensagem: string) {
+    const input = document.getElementById(id) as HTMLInputElement | null;
+    const bloco = document.getElementById(`${id}-error`) as HTMLElement | null;
+    input?.setAttribute('aria-invalid', 'true');
+    const texto = bloco?.querySelector('[data-err-text]') as HTMLElement | null;
+    if (texto) texto.textContent = mensagem;
+    if (bloco) bloco.hidden = false;
+    input?.focus();
+  }
+
+  function limparErroCampo(id: string) {
+    document.getElementById(id)?.removeAttribute('aria-invalid');
+    const bloco = document.getElementById(`${id}-error`);
+    if (bloco) bloco.hidden = true;
+  }
+
+  [nova, confirmacao].forEach((campo) => {
+    campo?.addEventListener('input', () => limparErroCampo(campo.id));
+  });
+
+  document.querySelectorAll<HTMLButtonElement>('[data-reveal]').forEach((botao) => {
+    const input = document.getElementById(botao.dataset.reveal ?? '') as HTMLInputElement | null;
+    if (!input) return;
+    botao.addEventListener('click', () => {
+      const mostrando = input.type === 'text';
+      input.type = mostrando ? 'password' : 'text';
+      botao.setAttribute('aria-pressed', String(!mostrando));
+      botao.setAttribute('aria-label', mostrando ? 'Mostrar senha' : 'Ocultar senha');
+      const eye = botao.querySelector('[data-icon="eye"]') as HTMLElement | null;
+      const eyeOff = botao.querySelector('[data-icon="eye-off"]') as HTMLElement | null;
+      if (eye) eye.style.display = mostrando ? 'none' : '';
+      if (eyeOff) eyeOff.style.display = mostrando ? '' : 'none';
+      input.focus();
+    });
+  });
+
+  if (!uid || !token) {
+    mostrar('reset-expired-view');
+  }
+
+  document.getElementById('reset-form')!.addEventListener('submit', async (evento) => {
+    evento.preventDefault();
+    resetErro.hidden = true;
+    limparErroCampo('reset-new');
+    limparErroCampo('reset-confirm');
+
+    const senha = nova.value;
+    if (senha.length < 10 || senha.length > 128) {
+      erroCampo('reset-new', 'Use entre 10 e 128 caracteres.');
+      return;
+    }
+    if (confirmacao.value !== senha) {
+      erroCampo('reset-confirm', 'As senhas não coincidem. Digite a mesma senha nos dois campos.');
+      return;
+    }
+    if (!uid || !token) {
+      mostrar('reset-expired-view');
+      return;
+    }
+
+    const botao = document.getElementById('reset-submit') as HTMLButtonElement;
+    setLoading(botao, true, 'Salvando…');
+    const resposta = await postJson('/api/auth/redefinir-senha', { uid, token, senha }, API);
+    setLoading(botao, false);
+
+    if (!resposta.ok) {
+      const codigo = resposta.codigo ?? '';
+      const linkVencido =
+        (resposta.status === 400 || resposta.status === 422) &&
+        (codigo === 'link_invalido' || codigo === 'link_expirado');
+      if (linkVencido) {
+        mostrar('reset-expired-view');
+        return;
+      }
+      resetErroTexto.textContent =
+        resposta.mensagem?.trim() || 'Não foi possível salvar sua nova senha. Tente novamente.';
+      resetErro.hidden = false;
+      return;
+    }
+    mostrar('reset-success-view');
+  });
+</script>

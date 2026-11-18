@@ -1150,6 +1150,12 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         const resposta = await fetch(`${API}/api/auth/me`, { credentials: 'include' });
         const dados = await resposta.json().catch(() => ({}));
         autenticado = Boolean(dados.autenticado);
+        if (autenticado && dados.consentimentoPendente) {
+          window.location.replace(
+            '/aceite?destino=' + encodeURIComponent(window.location.pathname + window.location.search)
+          );
+          return;
+        }
       } catch {
         autenticado = false;
       }

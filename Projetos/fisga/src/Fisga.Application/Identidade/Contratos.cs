@@ -14,7 +14,11 @@ public sealed class AutenticacaoOptions
 
     public string WebUrl { get; set; } = "http://localhost:4323";
 
-    public string CookieName { get; set; } = "fisga_sessao";
+    /// <summary>
+    /// Nome do cookie legado <c>fisga_sessao</c>, mantido apenas para apagá-lo no
+    /// logout/exclusão. A sessão atual usa o cookie <c>fisga_auth</c> da Identity.
+    /// </summary>
+    public string LegacyCookieName { get; set; } = "fisga_sessao";
 
     public bool CookieSecure { get; set; } = true;
 }
@@ -28,6 +32,12 @@ public sealed class EmailOptions
     public string? ResendApiKey { get; set; }
 
     public string? ReplyTo { get; set; }
+
+    /// <summary>
+    /// Diretório do outbox de teste (<c>Email:Provider=Outbox</c>). Vazio em
+    /// produção; nunca aponte para um diretório versionado.
+    /// </summary>
+    public string? OutboxPath { get; set; }
 }
 
 public interface IUsuarioRepository
@@ -45,6 +55,8 @@ public interface IUsuarioRepository
 
 public interface ISessaoRepository
 {
+    Task<Sessao?> ObterPorIdAsync(Guid id, CancellationToken ct = default);
+
     Task<Sessao?> ObterPorHashAsync(string tokenHash, CancellationToken ct = default);
 
     Task<IReadOnlyList<Sessao>> ListarAtivasAsync(Guid usuarioId, DateTimeOffset agora, CancellationToken ct = default);
@@ -90,6 +102,9 @@ public interface IEmailSender
 
 public sealed record ResultadoDaSolicitacao(string Email, string Link);
 
-public sealed record SessaoValida(Sessao Sessao, Usuario Usuario);
-
-public sealed record SessaoCriada(string Token, DateTimeOffset ExpiraEm, Usuario Usuario, bool PrimeiroAcesso);
+/// <summary>
+/// Resultado da confirmação do link mágico. O serviço apenas garante o usuário e
+/// atualiza o acesso; a sessão de dispositivo e o cookie são criados pelo endpoint
+/// via IdentitySessionService.AssinarAsync.
+/// </summary>
+public sealed record ResultadoDaConfirmacao(Usuario Usuario, bool PrimeiroAcesso);

@@ -1,5 +1,7 @@
+using Fisga.Application.Abstractions;
 using Fisga.Application.Identidade;
 using Fisga.Domain.Common;
+using Fisga.Domain.Identidade;
 using Fisga.Domain.Identidade.Eventos;
 
 namespace Fisga.Application.Tests;
@@ -27,6 +29,7 @@ public sealed class ServicoDeAutenticacaoTests
         var unidade = new UnitOfWorkFake();
         var relogio = new RelogioFixo(Agora);
         var eventos = new DispatcherFake();
+        var cadastro = new CadastroDeUsuarioFake(usuarios, relogio, eventos);
         var opcoes = new AutenticacaoOptions
         {
             ValidadeDoLinkEmMinutos = 15,
@@ -43,7 +46,7 @@ public sealed class ServicoDeAutenticacaoTests
             email,
             unidade,
             relogio,
-            eventos,
+            cadastro,
             opcoes);
 
         return new Cenario(servico, usuarios, sessoes, tokens, email, unidade, relogio, eventos);
@@ -101,23 +104,25 @@ public sealed class ServicoDeAutenticacaoTests
     }
 
     [Fact]
-    public async Task Confirmar_cria_usuario_sessao_e_publica_eventos()
+    public async Task Confirmar_cria_usuario_sem_sessao_e_publica_eventos()
     {
         var cenario = Criar();
         await cenario.Servico.SolicitarLinkAsync("abson@exemplo.com");
         var token = TokenDoEmail(cenario.Email);
 
-        var sessao = await cenario.Servico.ConfirmarAsync(token, "Playwright", "127.0.0.1");
+        var resultado = await cenario.Servico.ConfirmarAsync(token);
 
         var usuario = Assert.Single(cenario.Usuarios.Usuarios);
+        Assert.Equal(usuario, resultado.Usuario);
         Assert.NotNull(usuario.EmailVerificadoEm);
-        Assert.Single(cenario.Sessoes.Sessoes);
-        Assert.Equal(usuario.Id, cenario.Sessoes.Sessoes[0].UsuarioId);
-        Assert.Equal(32, sessao.Token.Length);
-        Assert.True(sessao.ExpiraEm > cenario.Relogio.Agora);
-        Assert.True(sessao.PrimeiroAcesso);
+        Assert.True(resultado.PrimeiroAcesso);
+
+        // O serviço de token não cria sessão nem emissor de cookie: a sessão
+        // é criada pelo endpoint via IdentitySessionService.AssinarAsync.
+        Assert.Empty(cenario.Sessoes.Sessoes);
+
         Assert.Contains(cenario.Eventos.Publicados, evento => evento is UsuarioCriado);
-        Assert.Contains(cenario.Eventos.Publicados, evento => evento is SessaoIniciada);
+        Assert.DoesNotContain(cenario.Eventos.Publicados, evento => evento is SessaoIniciada);
     }
 
     [Fact]
@@ -126,18 +131,18 @@ public sealed class ServicoDeAutenticacaoTests
         var cenario = Criar();
         await cenario.Servico.SolicitarLinkAsync("abson@exemplo.com");
         var token = TokenDoEmail(cenario.Email);
-        await cenario.Servico.ConfirmarAsync(token, null, null);
+        await cenario.Servico.ConfirmarAsync(token);
 
         var excecao = await Assert.ThrowsAsync<DomainException>(() =>
-            cenario.Servico.ConfirmarAsync(token, null, null));
+            cenario.Servico.ConfirmarAsync(token));
 
         Assert.Equal("link_ja_usado", excecao.Codigo);
         Assert.Single(cenario.Usuarios.Usuarios);
-        Assert.Single(cenario.Sessoes.Sessoes);
+        Assert.Empty(cenario.Sessoes.Sessoes);
     }
 
     [Fact]
-    public async Task Link_expirado_nao_cria_sessao()
+    public async Task Link_expirado_nao_cria_usuario_nem_sessao()
     {
         var cenario = Criar();
         await cenario.Servico.SolicitarLinkAsync("abson@exemplo.com");
@@ -145,7 +150,7 @@ public sealed class ServicoDeAutenticacaoTests
         cenario.Relogio.Avancar(TimeSpan.FromMinutes(16));
 
         var excecao = await Assert.ThrowsAsync<DomainException>(() =>
-            cenario.Servico.ConfirmarAsync(token, null, null));
+            cenario.Servico.ConfirmarAsync(token));
 
         Assert.Equal("link_expirado", excecao.Codigo);
         Assert.Empty(cenario.Usuarios.Usuarios);
@@ -153,46 +158,18 @@ public sealed class ServicoDeAutenticacaoTests
     }
 
     [Fact]
-    public async Task Valida_sessao_e_logout_revoga()
-    {
-        var cenario = Criar();
-        await cenario.Servico.SolicitarLinkAsync("abson@exemplo.com");
-        var criada = await cenario.Servico.ConfirmarAsync(TokenDoEmail(cenario.Email), null, null);
-
-        var valida = await cenario.Servico.ValidarSessaoAsync(criada.Token);
-        Assert.NotNull(valida);
-        Assert.Equal("abson@exemplo.com", valida.Usuario.Email.Valor);
-
-        await cenario.Servico.SairAsync(criada.Token);
-
-        Assert.Null(await cenario.Servico.ValidarSessaoAsync(criada.Token));
-        Assert.NotNull(cenario.Sessoes.Sessoes[0].RevogadaEm);
-    }
-
-    [Fact]
-    public async Task Sessao_expira_em_30_dias()
-    {
-        var cenario = Criar();
-        await cenario.Servico.SolicitarLinkAsync("abson@exemplo.com");
-        var criada = await cenario.Servico.ConfirmarAsync(TokenDoEmail(cenario.Email), null, null);
-        cenario.Relogio.Avancar(TimeSpan.FromDays(31));
-
-        Assert.Null(await cenario.Servico.ValidarSessaoAsync(criada.Token));
-    }
-
-    [Fact]
     public async Task Segundo_login_reutiliza_o_mesmo_usuario()
     {
         var cenario = Criar();
         await cenario.Servico.SolicitarLinkAsync("abson@exemplo.com");
-        await cenario.Servico.ConfirmarAsync(TokenDoEmail(cenario.Email), null, null);
+        await cenario.Servico.ConfirmarAsync(TokenDoEmail(cenario.Email));
 
         cenario.Relogio.Avancar(TimeSpan.FromSeconds(61));
         await cenario.Servico.SolicitarLinkAsync("abson@exemplo.com");
-        var segundo = await cenario.Servico.ConfirmarAsync(TokenDoEmail(cenario.Email), null, null);
+        var segundo = await cenario.Servico.ConfirmarAsync(TokenDoEmail(cenario.Email));
 
         Assert.Single(cenario.Usuarios.Usuarios);
-        Assert.Equal(2, cenario.Sessoes.Sessoes.Count);
+        Assert.Empty(cenario.Sessoes.Sessoes);
         Assert.False(segundo.PrimeiroAcesso);
     }
 
@@ -206,5 +183,50 @@ public sealed class ServicoDeAutenticacaoTests
 
         Assert.Equal("email_invalido", excecao.Codigo);
         Assert.Empty(cenario.Tokens.Tokens);
+    }
+
+    /// <summary>
+    /// Fake de ICadastroDeUsuario que reproduz o contrato novo: garante o usuário
+    /// de domínio (e, na implementação real, a ApplicationUser) publicando o
+    /// evento de criação — exatamente o que o serviço de token passa a consumir.
+    /// </summary>
+    private sealed class CadastroDeUsuarioFake(
+        IUsuarioRepository usuarios,
+        IRelogio relogio,
+        IDomainEventDispatcher eventos) : ICadastroDeUsuario
+    {
+        public async Task<Usuario> GarantirUsuarioAsync(
+            Email email,
+            string? nome,
+            bool emailVerificado,
+            CancellationToken ct = default)
+        {
+            var existente = await usuarios.ObterPorEmailAsync(email, ct);
+            if (existente is not null)
+            {
+                return existente;
+            }
+
+            var usuario = Usuario.Criar(email, nome, relogio.Agora);
+            if (emailVerificado)
+            {
+                usuario.VerificarEmail(relogio.Agora);
+            }
+
+            usuarios.Adicionar(usuario);
+            await eventos.PublicarAsync(usuario.Eventos.ToList(), ct);
+            usuario.LimparEventos();
+            return usuario;
+        }
+
+        public Task<Usuario> CriarComSenhaAsync(
+            string email,
+            string? nome,
+            string senha,
+            CancellationToken ct = default) =>
+            GarantirUsuarioAsync(Email.Criar(email), nome, emailVerificado: false, ct);
+
+        public Task<Usuario?> ObterUsuarioAsync(Guid id, CancellationToken ct = default) =>
+            usuarios.ObterPorIdAsync(id, ct);
     }
 }

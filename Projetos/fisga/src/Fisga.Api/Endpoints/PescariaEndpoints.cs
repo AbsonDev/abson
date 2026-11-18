@@ -14,6 +14,7 @@ public static class PescariaEndpoints
     public static IEndpointRouteBuilder MapPescariaEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapGet("/api/catalogo", (ICatalogoDePesca catalogo) => Results.Ok(catalogo.ObterCatalogo()))
+            .AllowAnonymous()
             .RequireRateLimiting("leitura");
 
         var grupo = app.MapGroup("/api/pescarias");

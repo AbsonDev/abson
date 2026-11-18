@@ -13,6 +13,7 @@ using Fisga.Application.Newsletter;
 using Fisga.Infrastructure.Condicoes;
 using Fisga.Infrastructure.Emails;
 using Fisga.Infrastructure.Events;
+using Fisga.Infrastructure.Identity;
 using Fisga.Infrastructure.Midia;
 using Fisga.Infrastructure.Pdf;
 using Fisga.Infrastructure.Persistence;
@@ -27,7 +28,8 @@ public static class DependencyInjection
 {
     public static IServiceCollection AdicionarInfraestrutura(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        bool desenvolvimento)
     {
         services.Configure<WebOptions>(configuration.GetSection("Web"));
 
@@ -71,11 +73,16 @@ public static class DependencyInjection
         services.AddScoped<IUsuarioRepository, EfUsuarioRepository>();
         services.AddScoped<ISessaoRepository, EfSessaoRepository>();
         services.AddScoped<ITokenDeLoginRepository, EfTokenDeLoginRepository>();
+        services.AddScoped<IConsentimentoRepository, EfConsentimentoRepository>();
         services.AddScoped<ILocalDePescaRepository, EfLocalDePescaRepository>();
         services.AddScoped<IPontoPrivadoRepository, EfPontoPrivadoRepository>();
         services.AddScoped<ITrilhaPrivadaRepository, EfTrilhaPrivadaRepository>();
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddScoped<IDomainEventDispatcher, DomainEventDispatcher>();
+        services.AddScoped<ICadastroDeUsuario, CadastroDeUsuario>();
+        services.AddScoped<IExclusaoDeIdentidade, ExclusaoDeIdentidade>();
+        services.AddScoped<GoogleIdentityValidator>();
+        services.AddScoped<GoogleIdentityService>();
         services.AddScoped<IMidiaStorage, ArmazenamentoDeMidiaLocal>();
         services.AddSingleton<IRelogio, RelogioDoSistema>();
         services.AddSingleton<IGeradorDePdf, QuestPdfGerador>();
@@ -111,15 +118,35 @@ public static class DependencyInjection
             servicos.GetRequiredService<OpenMeteoGeocodificador>());
 
         services.AddSingleton<ConsoleEmailSender>();
+        if (desenvolvimento)
+        {
+            // Defesa em profundidade: o outbox grava tokens em arquivo e sequer
+            // é registrado fora de Development. O guard de startup continua ativo.
+            services.AddSingleton<OutboxEmailSender>();
+        }
         services.AddHttpClient<ResendEmailSender>();
         services.AddScoped<IEmailSender>(sp =>
         {
             var opcoes = sp.GetRequiredService<EmailOptions>();
+            if (string.Equals(opcoes.Provider, "Outbox", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!desenvolvimento)
+                {
+                    throw new InvalidOperationException(
+                        "Email:Provider=Outbox é exclusivo de Development.");
+                }
+
+                return sp.GetRequiredService<OutboxEmailSender>();
+            }
+
             return string.Equals(opcoes.Provider, "Resend", StringComparison.OrdinalIgnoreCase)
                    && !string.IsNullOrWhiteSpace(opcoes.ResendApiKey)
                 ? sp.GetRequiredService<ResendEmailSender>()
                 : sp.GetRequiredService<ConsoleEmailSender>();
         });
+        services.AddScoped<EmailDeIdentidade>();
+
+        services.AdicionarIdentity(configuration);
 
         return services;
     }
