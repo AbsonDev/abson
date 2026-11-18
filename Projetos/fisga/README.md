@@ -47,12 +47,22 @@ nunca são publicados.
 
 ### Conta e acesso
 
-- **Login por link mágico**: e-mail, link de uso único (15 min), sem senha.
-- Sessão de 30 dias em cookie `HttpOnly`, `Secure` e `SameSite=Lax`.
-- Tokens de login e sessão armazenados apenas como hash SHA-256.
+- **Login por senha** para contas com senha (10 a 128 caracteres, sem exigir maiúscula/número) e
+  **link mágico** de uso único (15 min) para quem prefere entrar sem senha.
+- **Cadastro por senha** com confirmação de e-mail; o login por senha só é liberado depois da
+  confirmação. O link mágico confirma o e-mail no primeiro acesso.
+- **Google opcional**: o botão só aparece quando `Google__ClientId`/`Google__ClientSecret` estão
+  configurados. Em `/conta` é possível vincular/entrar com Google sem trocar de usuário.
+- Sessão de 30 dias no cookie `fisga_auth` da Identity (`HttpOnly`, `Secure`, `SameSite=Lax`),
+  com uma linha de dispositivo por login. O cookie legado `fisga_sessao` é apagado e não autentica.
+- **Aceite formal** dos Termos e da Política de Privacidade (`2026-11-17`) antes de acessar o app.
 - **Boas-vindas** no primeiro acesso, com nome, preferência de e-mail e local padrão (busca ou GPS).
-- **Minha conta**: perfil, troca de e-mail por novo link, sessões ativas, encerrar sessão/dispositivo,
-  exportação JSON e exclusão com confirmação `EXCLUIR`.
+- **Minha conta**: senha, Google, sessões ativas (“sair desta” e “sair de todos”), exportação JSON,
+  exclusão com confirmação `EXCLUIR` e alteração de nome/preferência de e-mail.
+- **Recuperação**: confirmação de e-mail e redefinição de senha por link; o link de reset vale
+  15 min e invalida as sessões antigas.
+- Data Protection persistido em `/app/data/keys`; sem esse volume, todo deploy invalidaria os
+  cookies e os links em circulação.
 - **Conta obrigatória apenas para o diário e recursos privados**; condições, wiki e ferramentas são
   públicas.
 
@@ -170,7 +180,7 @@ nunca são publicados.
 | Domínio/aplicação | .NET 10 / C# 13 |
 | API | ASP.NET Core 10, Minimal APIs, OpenAPI |
 | Persistência | EF Core 10 + PostgreSQL 17 (SQLite no desenvolvimento) |
-| Autenticação | Link mágico + sessão em cookie; hashes SHA-256 |
+| Autenticação | ASP.NET Core Identity: senha + link mágico + Google opcional; cookie `fisga_auth`; hashes SHA-256 nos tokens |
 | E-mail | Resend (produção) e sender de console (desenvolvimento) |
 | PDF | QuestPDF + QRCoder |
 | Dados ambientais | Open-Meteo (tempo, ondas, corrente e nível do mar) + MET Norway (lua) |
@@ -263,8 +273,17 @@ dotnet run
 API em `http://localhost:5184`; o SQLite é criado no primeiro start. As fotos ficam em
 `bin/Debug/net10.0/media`.
 
-Em desenvolvimento, o link mágico é impresso no log da API **e** aparece um botão
-“Abrir link de acesso (desenvolvimento)” na tela `/entrar`. Nenhum e-mail real é enviado.
+Em desenvolvimento, `/api/auth/solicitar` devolve `linkDesenvolvimento` e a tela `/entrar` informa
+que o link foi “enviado”. Para testar confirmação de e-mail e reset sem provedor real, use o outbox:
+
+```bash
+cd Projetos/fisga/src/Fisga.Api
+Email__Provider=Outbox Email__OutboxPath="$PWD/.outbox" dotnet run
+```
+
+Cada e-mail vira um JSON em `.outbox/` (destino, assunto e link). A pasta contém dados pessoais:
+use apenas localmente e nunca a versione. Com o sender `Console` (padrão), nenhum link é gravado em
+log — só domínio e assunto.
 
 ### Web
 
@@ -290,7 +309,8 @@ Abra **`http://localhost:4323`**.
 7. Revise o resumo, salve a pescaria, abra o troféu e baixe a imagem/PDF.
 8. Em `/meu-diario`, alterne Visão geral/Pescarias/Insights.
 9. Em `/aprender`, busque “robalo” ou “nó” e confira os selos offline.
-10. Em `/conta`, edite o perfil, veja sessões, exporte os dados e teste a exclusão.
+10. Em `/conta`, edite o perfil, crie/altere a senha, veja sessões, exporte os dados e teste a
+    exclusão.
 
 ### Docker Compose
 
@@ -303,12 +323,16 @@ docker compose up --build
 - API: `http://localhost:5184`
 - Postgres: `localhost:5435` (`fisga` / `fisga` / `fisga`)
 - Fotos: volume `fisga_media` em `/app/media`
+- Chaves de Data Protection: volume `fisga_keys` em `/app/data/keys` (obrigatório)
 
 ---
 
 ## Configuração
 
 Nunca commite chaves, tokens ou senhas. Use variáveis de ambiente do provedor.
+
+> **Produção exige `ASPNETCORE_ENVIRONMENT=Production`.** Nunca exponha o perfil Development: ele
+> devolve `linkDesenvolvimento` em `/api/auth/solicitar`, um vetor de tomada de conta.
 
 ### Banco e API
 
@@ -324,6 +348,14 @@ Nunca commite chaves, tokens ou senhas. Use variáveis de ambiente do provedor.
 | `Auth__CookieSecure` | `true` em produção |
 | `Auth__ValidadeDoLinkEmMinutos` | padrão 15 |
 | `Auth__DuracaoDaSessaoEmDias` | padrão 30 |
+| `Auth__LegacyCookieName` | nome do cookie obsoleto a apagar (padrão `fisga_sessao`) |
+| `DataProtection__KeysPath` | pasta persistente das chaves (padrão `data/keys`; produção `/app/data/keys`) |
+| `Google__ClientId` | Client ID OAuth (opcional; sem ele o Google fica oculto) |
+| `Google__ClientSecret` | Client Secret OAuth (opcional) |
+| `Google__CallbackPath` | caminho do callback (padrão `/signin-google`) |
+| `Legal__TermsVersion` | versão vigente dos Termos (padrão `2026-11-17`) |
+| `Legal__PrivacyVersion` | versão vigente da Privacidade (padrão `2026-11-17`) |
+| `RateLimiting__Auth` | limite por minuto/IP da autenticação (padrão 8; só testes elevam) |
 | `SENTRY_DSN` | DSN do projeto `fisga-api` |
 | `SENTRY_ENVIRONMENT` | `production` ou `development` |
 | `SENTRY_RELEASE` | commit/deploy para agrupar erros e traces |
@@ -346,10 +378,11 @@ Nunca commite chaves, tokens ou senhas. Use variáveis de ambiente do provedor.
 
 | Variável | Descrição |
 | --- | --- |
-| `Email__Provider` | `Console` (dev) ou `Resend` (produção) |
+| `Email__Provider` | `Console` (dev), `Outbox` (E2E) ou `Resend` (produção) |
 | `Email__From` | remetente verificado |
 | `Email__ResendApiKey` | chave do Resend |
 | `Email__ReplyTo` | resposta opcional |
+| `Email__OutboxPath` | pasta dos JSONs de e-mail quando `Provider=Outbox` (somente teste) |
 | `Newsletter__AdminToken` | token do endpoint administrativo |
 | `Newsletter__Secret` | segredo HMAC do descadastro |
 | `Newsletter__MaximoPorEnvio` | limite por execução |
@@ -386,20 +419,34 @@ produção é `Fisga <acesso@abson.tech>`. O cron mensal da newsletter fica no s
 ```bash
 cd Projetos/fisga
 dotnet test
-cd web && npm run check
+cd web
+npm run check && npm run build
+npx playwright test
 ```
 
-Atualmente: **75 testes de backend** (25 de domínio + 50 de aplicação) e checagem de tipos do
-Astro. Cobrem:
+Atualmente: **243 testes de backend** (36 de domínio + 48 de aplicação + 159 de API) e checagem de
+tipos do Astro. Cobrem:
 
 - criação/edição de pescaria, IDs de captura, validações e isolamento entre usuários;
-- link mágico, expiração, uso único, sessão, logout e exclusão de conta;
+- link mágico, senha, confirmação de e-mail, reset, sessões, logout e exclusão de conta;
+- consentimento, `/conta`, exportação e Google indisponível;
 - exportação, locais salvos, condições, lua/solunar, janela e comparação com histórico;
 - pontos e trilhas privadas, com ownership;
 - fallback manual da sugestão de espécie.
 
-O fluxo completo também é validado com Playwright: login, onboarding, condições, locais, mapa com
-camadas, pontos, trilhas, GPX, EXIF, defeso, troféu, PDF, conta e mobile.
+O fluxo completo também é validado com Playwright: **61 testes mockados** (UI e estados) e
+**6 testes com backend real** para a migração de identidade. Os reais rodam com SQLite, chaves e
+outbox temporários:
+
+```bash
+cd web
+./scripts/e2e-real.sh
+```
+
+Eles cobrem cadastro por senha → confirmação → consentimento → app; link mágico de usuário existente
+→ consentimento → diário com dados preservados; reset de senha; “sair desta” e “sair de todos”;
+`/conta` (senha, perfil/newsletter, exportação) e Google indisponível. O fluxo OAuth real e a
+migration em PostgreSQL ficam no runbook de rollout, condicionados a credenciais e backup.
 
 Build da web (wiki + Pagefind + precache offline):
 
@@ -417,15 +464,28 @@ npm run build   # astro build + pagefind + precache
 | `GET` | `/health`, `/ready` | Público | Saúde/readiness |
 | `GET` | `/api/catalogo` | Público | Espécies, iscas, opções e exemplo |
 | `POST` | `/api/midia` | Sessão | Upload de foto (`multipart`, campo `arquivo`) |
-| `POST` | `/api/auth/solicitar` | Público | Envia link mágico (resposta genérica) |
+| `POST` | `/api/auth/solicitar` | Público | Envia link mágico (resposta genérica; `linkDesenvolvimento` em dev) |
+| `GET` | `/api/legal/versoes` | Público | Versões vigentes de Termos e Privacidade |
 | `GET` | `/api/auth/confirmar?token=` | Público | Confirma link, cria sessão e redireciona |
-| `GET` | `/api/auth/me` | Público | Usuário da sessão ou `{ autenticado: false }` |
-| `POST` | `/api/auth/sair` | Sessão | Encerra a sessão atual |
-| `POST` | `/api/auth/sair-de-todos` | Sessão | Encerra todas as sessões |
+| `POST` | `/api/auth/registrar` | Público | Cadastro por nome/e-mail/senha e envio de confirmação |
+| `POST` | `/api/auth/entrar` | Público | Login por senha (exige e-mail confirmado) |
+| `POST` | `/api/auth/confirmar-email` | Público | Confirma e-mail com `uid` + `token` |
+| `POST` | `/api/auth/esqueci-senha` | Público | Envia link de reset (resposta genérica) |
+| `POST` | `/api/auth/redefinir-senha` | Público | Troca a senha, invalida sessões e o token |
+| `GET` | `/api/auth/google/disponivel` | Público | Se o Google está configurado |
+| `GET` | `/api/auth/google/iniciar` | Público | Inicia OAuth de login (503 sem credenciais) |
+| `GET` | `/api/auth/google/concluir` | Público | Callback pós-Google de login |
+| `GET` | `/api/auth/google/conectar` | Sessão | Inicia vínculo do Google em `/conta` |
+| `GET` | `/api/auth/google/conectar/concluir` | Sessão | Callback do vínculo do Google |
+| `GET` | `/api/auth/me` | Público | Usuário, consentimento, Google e senha |
+| `POST` | `/api/auth/sair` | Público (idempotente) | Encerra a sessão atual e apaga `fisga_sessao` legado |
+| `POST` | `/api/auth/sair-de-todos` | Sessão | Encerra todas as sessões/dispositivos |
 | `PATCH` | `/api/auth/perfil` | Sessão | Nome e preferência de e-mail |
+| `POST` | `/api/conta/consentimento` | Sessão | Registra aceite das versões vigentes |
+| `POST` | `/api/conta/senha` | Sessão | Cria/alterar senha e revoga outras sessões |
 | `GET` | `/api/conta/sessoes` | Sessão | Sessões ativas |
 | `GET` | `/api/conta/exportar` | Sessão | Exportação JSON da conta/diário |
-| `DELETE` | `/api/conta` | Sessão | Exclui conta, diário, sessões e fotos (`confirmacao: "EXCLUIR"`) |
+| `DELETE` | `/api/conta` | Sessão | Exclui conta, credencial Identity, tokens, diário, sessões e fotos (`confirmacao: "EXCLUIR"`) |
 | `POST` | `/api/newsletter/enviar` | Admin | Envia o digest mensal (`X-Admin-Token`) |
 | `GET` | `/api/newsletter/preview` | Admin | Prévia HTML do digest |
 | `GET` | `/api/newsletter/descadastrar?token=` | Token | Descadastra via link assinado |
@@ -466,7 +526,15 @@ navegador. Sessões e links mágicos são armazenados apenas como hash SHA-256.
 - O local pode ser exato, aproximado (cidade/UF) ou oculto; a escolha vale para link, troféu e PDF.
 - Locais salvos, pontos e trilhas são privados e não têm endpoint público.
 - Links mágicos são de uso único, valem 15 minutos e só o mais recente funciona.
-- Sessões duram 30 dias, ficam em cookie `HttpOnly`/`Secure`/`SameSite=Lax` e podem ser encerradas.
+- Login por senha exige e-mail confirmado; a senha tem 10–128 caracteres e o reset invalida sessões.
+- Sessões duram 30 dias no cookie `fisga_auth` da Identity (`HttpOnly`/`Secure`/`SameSite=Lax`), com
+  uma linha por dispositivo e encerramento individual ou total. O cookie legado `fisga_sessao` é
+  apagado e não autentica.
+- As chaves de Data Protection ficam em volume persistente (`/app/data/keys`); perdê-las invalida
+  cookies e links em circulação, não dados.
+- Termos e Privacidade têm versão (`2026-11-17`) e o aceite é registrado com data/hora por usuário.
+- Google é opcional e só é habilitado quando as duas credenciais existem; sem elas, o botão não
+  aparece e o endpoint responde `disponivel: false`.
 - Fotos são reencodadas no navegador e têm EXIF removido do arquivo enviado. O EXIF é lido antes,
   localmente, apenas para sugerir data/período/cidade; o GPS não é armazenado sem ação do usuário.
 - A sugestão de espécie nunca tem autoridade: o pescador confirma ou corrige. Sem provedor, o fluxo
@@ -534,6 +602,8 @@ Roadmap completo em [`docs/roadmap.md`](docs/roadmap.md).
 - [`docs/ddd.md`](docs/ddd.md) — contextos, agregados, invariantes e limites.
 - [`docs/roadmap.md`](docs/roadmap.md) — módulos, fases, dados e métricas.
 - [`docs/ux-audit.md`](docs/ux-audit.md) — auditoria de UX, arquitetura de informação e prioridades.
+- [`docs/superpowers/runbooks/2026-11-17-identity-rollout.md`](docs/superpowers/runbooks/2026-11-17-identity-rollout.md)
+  — rollout, backup, migration, Google, rollback e evidências da identidade.
 - [`docs/adr`](docs/adr) — decisões arquiteturais (0001–0012).
 - [`docs/referencias`](docs/referencias) — estudos de referência (Fishing World Guide, Tábua de Marés).
 - [`docs/ddd.md#testes`](docs/ddd.md#testes) — estratégia de testes.

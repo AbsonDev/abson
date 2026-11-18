@@ -1,0 +1,129 @@
+---
+import AuthLayout from '../layouts/AuthLayout.astro';
+---
+
+<AuthLayout
+  titulo="Confirmar e-mail"
+  descricao="Confirmando seu e-mail no Fisga."
+>
+  <section class="screen">
+    <div class="screen-inner">
+      <div id="confirm-loading" role="status" aria-live="polite">
+        <header class="screen-head">
+          <p class="eyebrow">Confirmação de e-mail</p>
+          <h1 tabindex="-1">Confirmando seu e-mail…</h1>
+          <p class="sub">Isso leva só um instante.</p>
+        </header>
+        <div class="progress" role="progressbar" aria-label="Confirmando e-mail"><span></span></div>
+      </div>
+
+      <div id="confirm-success" class="swap" hidden>
+        <header class="screen-head">
+          <p class="eyebrow">Confirmação de e-mail</p>
+          <h1 tabindex="-1">E-mail confirmado.</h1>
+          <p class="sub">Sua conta está pronta. Bem-vindo ao seu diário.</p>
+        </header>
+        <div class="stack-actions">
+          <a class="btn btn-primary btn-block" href="/entrar">Entrar</a>
+        </div>
+      </div>
+
+      <div id="confirm-fail" class="swap" hidden>
+        <header class="screen-head">
+          <p class="eyebrow">Confirmação de e-mail</p>
+          <h1 tabindex="-1">Não conseguimos confirmar seu e-mail.</h1>
+          <p class="sub">O link pode ter expirado ou já ter sido usado. Você pode pedir um novo.</p>
+        </header>
+        <div class="stack-actions">
+          <button type="button" class="btn btn-primary btn-block" id="confirm-resend">
+            <span class="spinner" hidden></span>
+            <span data-btn-label>Pedir novo link</span>
+          </button>
+          <a class="btn btn-ghost btn-block" href="/entrar">Voltar para entrar</a>
+        </div>
+        <p class="note note--success" id="confirm-resend-note" role="status" hidden style="margin-top: 16px;">
+          <svg class="od-icon od-icon--md" data-icon="ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="m8.5 12 2.5 2.5 4.5-5"></path></svg>
+          <svg class="od-icon od-icon--md" data-icon="erro" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display: none"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5"></path><path d="M12 16h.01"></path></svg>
+          <span id="confirm-resend-texto">Enviamos um novo link de confirmação. Confira a caixa de entrada e o spam.</span>
+        </p>
+      </div>
+    </div>
+  </section>
+</AuthLayout>
+
+<script>
+  import { apiBase, obterSessao, postJson } from '../lib/auth';
+
+  const API = apiBase();
+  const parametros = new URLSearchParams(window.location.search);
+  const uid = parametros.get('uid') ?? '';
+  const token = parametros.get('token') ?? '';
+  // O token não deve ficar na barra de endereço, no histórico ou em Referer.
+  if (uid || token) {
+    window.history.replaceState(null, '', window.location.pathname);
+  }
+
+  function mostrar(id: string) {
+    ['confirm-loading', 'confirm-success', 'confirm-fail'].forEach((view) => {
+      const bloco = document.getElementById(view);
+      if (bloco) bloco.hidden = view !== id;
+    });
+    (document.querySelector(`#${id} h1`) as HTMLElement)?.focus();
+  }
+
+  function setLoading(botao: HTMLButtonElement, ocupado: boolean, rotulo?: string) {
+    const label = botao.querySelector('[data-btn-label]') as HTMLElement | null;
+    const spinner = botao.querySelector('.spinner') as HTMLElement | null;
+    if (label && !botao.dataset.idleLabel) botao.dataset.idleLabel = label.textContent ?? '';
+    if (spinner) spinner.hidden = !ocupado;
+    if (label) label.textContent = ocupado ? rotulo ?? botao.dataset.idleLabel ?? '' : botao.dataset.idleLabel ?? '';
+    botao.disabled = ocupado;
+    botao.setAttribute('aria-busy',ocupado ? 'true' : 'false');
+  }
+
+  (async () => {
+    if (!uid || !token) {
+      mostrar('confirm-fail');
+      return;
+    }
+    const resposta = await postJson('/api/auth/confirmar-email', { uid, token }, API);
+    mostrar(resposta.ok ? 'confirm-success' : 'confirm-fail');
+  })();
+
+  const resendNota = document.getElementById('confirm-resend-note') as HTMLElement;
+  const resendTexto = document.getElementById('confirm-resend-texto') as HTMLElement;
+
+  function mostrarNotaReenvio(texto: string, erro = false) {
+    resendTexto.textContent = texto;
+    resendNota.classList.toggle('note--error', erro);
+    resendNota.classList.toggle('note--success', !erro);
+    resendNota.setAttribute('role', erro ? 'alert' : 'status');
+    const iconeOk = resendNota.querySelector<HTMLElement>('[data-icon="ok"]');
+    const iconeErro = resendNota.querySelector<HTMLElement>('[data-icon="erro"]');
+    if (iconeOk) iconeOk.style.display = erro ? 'none' : '';
+    if (iconeErro) iconeErro.style.display = erro ? '' : 'none';
+    resendNota.hidden = false;
+  }
+
+  document.getElementById('confirm-resend')!.addEventListener('click', async () => {
+    const botao = document.getElementById('confirm-resend') as HTMLButtonElement;
+    resendNota.hidden = true;
+    const sessao = await obterSessao(API);
+    const email = sessao?.usuario?.email;
+    if (!email) {
+      mostrarNotaReenvio(
+        'Para pedir um novo link, entre com seu e-mail e senha. Depois, use o reenvio na tela de entrada.',
+        true
+      );
+      return;
+    }
+    setLoading(botao, true, 'Enviando…');
+    const resposta = await postJson('/api/auth/solicitar', { email }, API);
+    setLoading(botao, false);
+    if (!resposta.ok) {
+      mostrarNotaReenvio('Não foi possível enviar agora. Tente de novo em instantes.', true);
+      return;
+    }
+    mostrarNotaReenvio('Enviamos um novo link de confirmação. Confira a caixa de entrada e o spam.');
+  });
+</script>

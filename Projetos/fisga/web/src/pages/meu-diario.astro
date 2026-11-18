@@ -346,6 +346,13 @@ import Layout from '../layouts/Layout.astro';
           return;
         }
 
+        if (dados.consentimentoPendente) {
+          window.location.replace(
+            '/aceite?destino=' + encodeURIComponent(window.location.pathname + window.location.search)
+          );
+          return;
+        }
+
         acoesLogado.classList.remove('oculto');
         acoesDeslogado.classList.add('oculto');
         saudacao.textContent = `Diário de ${dados.usuario.nomeExibicao}`;

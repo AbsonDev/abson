@@ -1,1219 +1,561 @@
 ---
-import Layout from '../layouts/Layout.astro';
+import AuthLayout from '../layouts/AuthLayout.astro';
 ---
 
-<Layout
-  titulo="Sua conta — Fisga"
-  descricao="Gerencie seu perfil, suas sessões e seus dados na conta do Fisga."
-  noindex
+<AuthLayout
+  titulo="Conta"
+  descricao="Seu e-mail, sua senha, o Google e os dispositivos conectados à conta do Fisga."
 >
-  <section class="calc-topo conta-topo">
-    <div class="container">
-      <span class="eyebrow">Minha conta</span>
-      <h1>Sua história, <em>bem guardada.</em></h1>
-      <p>
-        Perfil, segurança e dados da sua conta. O que você registrou no Fisga fica aqui — e é seu.
-      </p>
-    </div>
-  </section>
-
-  <section class="container conta-pagina">
-    <div id="carregando" class="conta-carregando" role="status" aria-live="polite">
-      <span class="conta-carregando-marca" aria-hidden="true">F</span>
-      <p>Carregando sua conta...</p>
-    </div>
-
-    <div id="falha-carregamento" class="conta-falha oculto">
-      <div class="erro-caixa visivel" role="alert">
-        <span id="falha-texto">Não foi possível carregar sua conta. Confira sua conexão e tente novamente.</span>
-        <button class="btn btn--contorno btn--pequeno" type="button" id="recarregar">Tentar de novo</button>
+  <section class="screen">
+    <div class="screen-inner screen-inner--wide">
+      <div id="conta-loading" role="status" aria-live="polite">
+        <header class="screen-head">
+          <p class="eyebrow">Conta</p>
+          <h1 tabindex="-1">Carregando sua conta…</h1>
+          <p class="sub">Um instante para reunir seu acesso e seus dispositivos.</p>
+        </header>
+        <div class="progress" role="progressbar" aria-label="Carregando sua conta"><span></span></div>
       </div>
-    </div>
 
-    <div id="conta-conteudo" class="conta-conteudo oculto">
-      <header class="cartao conta-identidade">
-        <div class="conta-identidade-interno">
-          <div class="conta-avatar" id="avatar-conta" aria-hidden="true">··</div>
-          <div class="conta-identidade-texto">
-            <span class="eyebrow">Pescador</span>
-            <h2 id="nome-conta">Sua conta</h2>
-            <p class="conta-email" id="email-conta"></p>
-            <div class="conta-selos">
-              <span class="selo">Conta gratuita</span>
-              <span class="selo selo--neutro" id="desde-conta">Conta Fisga</span>
+      <div id="conta-load-error" role="alert" hidden>
+        <header class="screen-head">
+          <p class="eyebrow">Conta</p>
+          <h1 id="conta-load-error-titulo" tabindex="-1">Não carregamos sua conta.</h1>
+          <p class="sub" id="conta-load-error-texto">
+            Confira sua conexão e tente de novo. Se continuar, entre novamente.
+          </p>
+        </header>
+        <button type="button" class="btn btn-primary" id="conta-retry">Tentar de novo</button>
+      </div>
+
+      <div id="conta-content" hidden>
+        <header class="screen-head">
+          <p class="eyebrow">Conta</p>
+          <h1 tabindex="-1">Sua história, <em>bem guardada.</em></h1>
+          <p class="sub">Seu e-mail, seu acesso e os dispositivos conectados ao diário.</p>
+        </header>
+
+        <div class="note" id="conta-aviso" role="status" hidden>
+          <svg class="od-icon od-icon--md" data-aviso-icon="ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="m8.5 12 2.5 2.5 4.5-5"></path></svg>
+          <svg class="od-icon od-icon--md" data-aviso-icon="erro" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display: none"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5"></path><path d="M12 16h.01"></path></svg>
+          <span id="conta-aviso-texto"></span>
+        </div>
+
+        <section class="acct-section" aria-labelledby="sec-acesso">
+          <div class="acct-head">
+            <h2 id="sec-acesso">E-mail e senha</h2>
+            <p>O essencial para voltar ao diário com segurança.</p>
+          </div>
+
+          <div class="acct-list">
+            <div class="acct-row">
+              <div class="row-main">
+                <p class="row-title">E-mail</p>
+                <p class="row-value">
+                  <span id="conta-email">—</span>
+                  <span class="badge">
+                    <svg class="od-icon od-icon--xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4 4L19 7"></path></svg>
+                    Confirmado
+                  </span>
+                </p>
+                <p class="row-note">Quem controla este e-mail consegue entrar na conta. Mantenha a caixa de entrada protegida.</p>
+              </div>
+            </div>
+
+            <div class="acct-row">
+              <div class="row-main">
+                <p class="row-title">Senha</p>
+                <p class="row-value" id="conta-senha-valor">—</p>
+                <p class="row-note">De 10 a 128 caracteres. Não exigimos maiúscula, número ou símbolo.</p>
+              </div>
+              <div class="row-action">
+                <button type="button" class="btn btn-ghost" id="conta-senha-acao">Criar senha</button>
+              </div>
             </div>
           </div>
-          <a class="btn btn--primario btn--pequeno conta-identidade-acao" href="/registrar">Registrar pescaria</a>
-        </div>
-      </header>
 
-      <div class="conta-grade">
-        <div class="conta-coluna">
-          <section class="cartao conta-secao" aria-labelledby="titulo-perfil">
-            <span class="eyebrow">Perfil</span>
-            <h2 id="titulo-perfil">Seu perfil</h2>
-            <p class="conta-descricao">
-              É assim que você aparece no seu diário e nos cards das suas pescarias.
-            </p>
+          <p class="note note--success conta-feedback" id="senha-feedback" role="status" hidden>
+            <svg class="od-icon od-icon--md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="m8.5 12 2.5 2.5 4.5-5"></path></svg>
+            <span id="senha-feedback-texto"></span>
+          </p>
+        </section>
 
-            <form id="form-perfil" novalidate>
-              <div class="campo conta-campo-nome">
-                <label for="nome-perfil">Nome de exibição</label>
-                <input
-                  id="nome-perfil"
-                  name="nome"
-                  type="text"
-                  maxlength="80"
-                  autocomplete="name"
-                  placeholder="Como podemos te chamar?"
-                  aria-describedby="nome-dica"
-                />
-                <small id="nome-dica">
-                  Até 80 caracteres. <span id="nome-contador" class="conta-contador">0/80</span>
-                </small>
+        <section class="acct-section" aria-labelledby="sec-google">
+          <div class="acct-head">
+            <h2 id="sec-google">Google</h2>
+            <p>Entre com um toque quando estiver fora de casa.</p>
+          </div>
+
+          <div class="acct-row">
+            <div class="row-main">
+              <p class="row-title">Google</p>
+              <p class="row-value" id="google-status">Verificando…</p>
+              <p class="row-note" id="google-note">Conferindo a conexão com sua conta Google.</p>
+              <p class="row-note" id="google-indisponivel" hidden>
+                A conexão com Google não está disponível agora. Use seu e-mail e senha.
+              </p>
+            </div>
+            <div class="row-action">
+              <button type="button" class="btn btn-ghost" id="google-acao" hidden>
+                <span class="spinner" hidden></span>
+                <span data-btn-label>Conectar Google</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section class="acct-section" aria-labelledby="sec-dados">
+          <div class="acct-head">
+            <h2 id="sec-dados">Seus dados</h2>
+            <p>Corrija seu nome, escolha receber novidades e baixe uma cópia do que guardamos.</p>
+          </div>
+
+          <form id="form-dados" class="dados-form" novalidate>
+            <div class="acct-row">
+              <div class="row-main">
+                <div class="field">
+                  <label class="label" for="dados-nome">Nome</label>
+                  <input
+                    class="input"
+                    id="dados-nome"
+                    name="name"
+                    type="text"
+                    autocomplete="name"
+                    maxlength="80"
+                    aria-describedby="dados-nome-error"
+                  />
+                  <p class="field-error" id="dados-nome-error" role="alert" hidden>
+                    <svg class="od-icon od-icon--sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5"></path><path d="M12 16h.01"></path></svg>
+                    <span data-err-text></span>
+                  </p>
+                </div>
+                <p class="row-note">É o nome que aparece no seu diário. Deixe em branco para usar o e-mail.</p>
               </div>
+            </div>
 
-              <div class="conta-check">
-                <input id="aceita-novidades" name="aceitaNovidades" type="checkbox" />
-                <div>
-                  <label for="aceita-novidades">Quero receber novidades e conteúdo novo do Fisga</label>
-                  <small>Uma mensagem por mês, no máximo. Você cancela quando quiser.</small>
+            <div class="acct-row">
+              <div class="row-main">
+                <p class="row-title">Preferência de e-mail</p>
+                <div class="consent">
+                  <input type="checkbox" id="dados-novidades" />
+                  <div class="consent-body">
+                    <label class="consent-label" for="dados-novidades">
+                      Quero receber novidades e conteúdo do Fisga por e-mail.
+                    </label>
+                    <p class="row-note">Você pode desmarcar quando quiser. Avisos essenciais da conta continuam.</p>
+                  </div>
                 </div>
               </div>
-
-              <div class="conta-form-acoes">
-                <button class="btn btn--primario" type="submit" id="salvar-perfil">Salvar alterações</button>
-                <p id="perfil-feedback" class="conta-feedback" role="status" aria-live="polite"></p>
-              </div>
-            </form>
-          </section>
-
-          <section class="cartao conta-secao" aria-labelledby="titulo-email">
-            <span class="eyebrow">E-mail</span>
-            <h2 id="titulo-email">Sua chave de acesso</h2>
-            <p class="conta-descricao">
-              É para este endereço que enviamos o link mágico de entrada. Não existe senha.
-            </p>
-
-            <div class="conta-email-caixa">
-              <span class="conta-email-icone" aria-hidden="true">@</span>
-              <div>
-                <span class="conta-rotulo">E-mail da conta</span>
-                <strong id="email-caixa">—</strong>
-              </div>
             </div>
 
-            <p class="conta-texto">
-              Quem controla este e-mail consegue entrar na sua conta. Por isso, mantenha o endereço
-              sempre atualizado e proteja sua caixa de entrada.
-            </p>
-
-            <button
-              class="btn btn--contorno btn--pequeno"
-              type="button"
-              id="btn-trocar-email"
-              aria-expanded="false"
-              aria-controls="trocar-email"
-            >
-              Trocar e-mail
-            </button>
-
-            <div id="trocar-email" class="conta-explicacao oculto">
-              <p>
-                <strong>Para trocar, basta sair e entrar com o novo e-mail.</strong> O próximo link
-                mágico será enviado para o endereço que você usar na entrada. Ainda não fazemos a
-                troca automática por aqui — assim evitamos que alguém altere seu acesso sem confirmação.
-              </p>
-              <button class="link-seta conta-link-botao" type="button" id="sair-para-trocar">
-                Sair para trocar de e-mail
+            <div class="dados-actions">
+              <button type="submit" class="btn btn-primary" id="dados-salvar">
+                <span class="spinner" hidden></span>
+                <span data-btn-label>Salvar alterações</span>
               </button>
-            </div>
-          </section>
-        </div>
-
-        <aside class="conta-coluna" aria-label="Plano e segurança">
-          <section class="cartao conta-secao conta-plano" aria-labelledby="titulo-plano">
-            <span class="eyebrow">Plano</span>
-            <h2 id="titulo-plano">Fisga é grátis por enquanto</h2>
-            <p class="conta-descricao">Sem cartão, sem assinatura e sem cobrança automática.</p>
-
-            <div class="conta-preco">
-              <strong>R$ 0</strong>
-              <span>hoje e durante a validação</span>
-            </div>
-
-            <ul class="lista-check conta-lista">
-              <li>Pescarias e capturas ilimitadas</li>
-              <li>Card do troféu em PNG e relatório em PDF</li>
-              <li>Estatísticas, recordes e diário privado</li>
-              <li>Um link público para cada pescaria</li>
-            </ul>
-
-            <p class="conta-nota">
-              Se um dia houver cobrança, avisaremos com antecedência. Nada é cobrado sem sua
-              autorização.
-            </p>
-          </section>
-
-          <section class="cartao conta-secao" aria-labelledby="titulo-sessoes">
-            <span class="eyebrow">Segurança</span>
-            <h2 id="titulo-sessoes">Segurança e sessões</h2>
-            <p class="conta-descricao">
-              Cada link mágico cria uma sessão. Revise os aparelhos com acesso à sua conta.
-            </p>
-
-            <div id="sessoes-carregando" class="conta-sessoes-status" role="status">
-              Carregando sessões...
-            </div>
-
-            <div id="sessoes-erro" class="conta-sessoes-erro oculto">
-              <p id="sessoes-erro-texto" role="alert">Não foi possível carregar suas sessões.</p>
-              <button class="btn btn--contorno btn--pequeno" id="recarregar-sessoes" type="button">
-                Tentar de novo
+              <button type="button" class="btn btn-ghost" id="dados-exportar">
+                <span class="spinner" hidden></span>
+                <span data-btn-label>Baixar meus dados (JSON)</span>
               </button>
             </div>
 
-            <div id="sessoes-lista" class="conta-sessoes"></div>
-
-            <div class="conta-sessoes-acoes">
-              <button class="btn btn--contorno btn--pequeno" id="sair-atual" type="button">
-                Sair deste dispositivo
-              </button>
-              <button class="btn btn--contorno btn--pequeno" id="sair-todos" type="button">
-                Sair de todos os dispositivos
-              </button>
-            </div>
-
-            <p class="conta-nota">Ao sair, você vai precisar de um novo link mágico para entrar.</p>
-          </section>
-        </aside>
-      </div>
-
-      <section class="cartao conta-secao conta-dados" aria-labelledby="titulo-dados">
-        <div class="conta-dados-grade">
-          <div class="conta-dados-coluna">
-            <span class="eyebrow">Seus dados</span>
-            <h2 id="titulo-dados">Privacidade e controle</h2>
-            <p class="conta-descricao">
-              Seus dados são seus. Não vendemos seu perfil, seu e-mail ou suas pescarias. Você pode
-              levar o que registrou quando quiser, em um arquivo aberto e legível.
+            <p class="note note--success conta-feedback" id="dados-feedback" role="status" hidden>
+              <svg class="od-icon od-icon--md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="m8.5 12 2.5 2.5 4.5-5"></path></svg>
+              <span id="dados-feedback-texto"></span>
             </p>
 
-            <div class="conta-exportar">
-              <button class="btn btn--contorno" id="exportar-dados" type="button">
-                Exportar meus dados (JSON)
-              </button>
-              <p id="exportar-feedback" class="conta-feedback" role="status" aria-live="polite"></p>
-            </div>
-
-            <p class="aviso">
-              O arquivo reúne seu perfil, suas pescarias, capturas e condições registradas. O
-              download é gerado na hora e não fica armazenado em outro lugar.
+            <p class="note note--error" id="dados-erro" role="alert" hidden>
+              <svg class="od-icon od-icon--md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5"></path><path d="M12 16h.01"></path></svg>
+              <span id="dados-erro-texto"></span>
             </p>
+          </form>
+        </section>
 
-            <div class="mini-tabela conta-mini">
-              <div><span>O que vai no arquivo</span><strong>Perfil e pescarias</strong></div>
-              <div><span>Formato</span><strong>JSON legível</strong></div>
-              <div><span>Onde fica</span><strong>No seu dispositivo</strong></div>
+        <section class="acct-section" aria-labelledby="sec-sessoes">
+          <div class="acct-head">
+            <h2 id="sec-sessoes" tabindex="-1">Sessões ativas</h2>
+            <p>Dispositivos que entraram na sua conta. Encerre o que não reconhecer.</p>
+          </div>
+
+          <div id="sessoes-loading" class="sessions-loading" role="status" aria-label="Carregando sessões">
+            <div class="skeleton-row" aria-hidden="true">
+              <span class="skeleton skeleton--icon"></span>
+              <span class="skeleton skeleton--line"></span>
+            </div>
+            <div class="skeleton-row" aria-hidden="true">
+              <span class="skeleton skeleton--icon"></span>
+              <span class="skeleton skeleton--meta"></span>
+            </div>
+            <div class="skeleton-row" aria-hidden="true">
+              <span class="skeleton skeleton--icon"></span>
+              <span class="skeleton skeleton--wide"></span>
             </div>
           </div>
 
-          <div class="conta-perigo">
-            <span class="conta-perigo-rotulo">Zona de perigo</span>
-            <h3>Excluir minha conta</h3>
-            <p>
-              Apaga permanentemente seu perfil, suas pescarias, capturas e fotos. Não dá para
-              desfazer depois.
+          <div id="sessoes-erro" hidden>
+            <p class="note note--error" id="sessoes-erro-texto" role="alert">
+              Não foi possível carregar suas sessões. Tente novamente.
             </p>
-            <button class="btn btn--perigo" id="excluir-conta" type="button">
-              Excluir minha conta
-            </button>
+            <button type="button" class="btn btn-ghost" id="sessoes-retry">Tentar de novo</button>
           </div>
-        </div>
-      </section>
-    </div>
 
-    <div id="conta-encerrada" class="conta-encerrada oculto" role="status" aria-live="polite">
-      <span class="conta-encerrada-marca" aria-hidden="true">F</span>
-      <h2 id="conta-encerrada-titulo" tabindex="-1">Conta excluída.</h2>
-      <p>
-        Seu perfil, suas pescarias e suas fotos foram removidos. Estamos te levando para a página
-        inicial...
-      </p>
-      <a class="btn btn--contorno" href="/">Voltar agora</a>
-    </div>
+          <div class="session-list" id="sessoes-lista"></div>
 
-    <noscript>
-      <div class="erro-caixa visivel" style="margin-top: 16px;">
-        Ative o JavaScript no seu navegador para carregar e gerenciar sua conta.
+          <p class="empty" id="sessoes-vazio" hidden>
+            <strong>Nenhuma outra sessão ativa.</strong>
+            <span>Só este dispositivo está conectado à sua conta.</span>
+          </p>
+
+          <div class="acct-actions">
+            <button type="button" class="btn btn-ghost" id="sair-atual">Sair desta sessão</button>
+            <button type="button" class="btn btn-quiet" id="sair-todos">Sair de todos</button>
+          </div>
+        </section>
+
+        <section class="acct-section" aria-labelledby="sec-perigo">
+          <div class="acct-head">
+            <h2 id="sec-perigo">Zona sensível</h2>
+            <p>O que apaga uma história não pode ser desfeito.</p>
+          </div>
+
+          <div class="acct-row">
+            <div class="row-main">
+              <p class="row-title">Excluir conta</p>
+              <p class="row-value">Apaga o diário, as pescarias e as fotos.</p>
+              <p class="row-note">A exclusão é permanente e não pode ser desfeita depois de confirmada.</p>
+            </div>
+            <div class="row-action">
+              <button type="button" class="btn btn-danger" id="excluir-conta">Excluir conta</button>
+            </div>
+          </div>
+        </section>
       </div>
-    </noscript>
+    </div>
   </section>
 
-  <div id="modal" class="modal-fundo" hidden>
-    <div
-      class="modal-caixa"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="modal-titulo"
-      aria-describedby="modal-descricao"
-      tabindex="-1"
-    >
-      <button class="modal-fechar" type="button" id="modal-fechar" aria-label="Fechar confirmação">
-        ×
-      </button>
-      <span class="modal-simbolo" id="modal-simbolo" aria-hidden="true">!</span>
-      <h2 id="modal-titulo">Confirmar ação</h2>
-      <p id="modal-descricao" class="modal-descricao"></p>
+  <section class="screen" id="conta-encerrada" hidden>
+    <div class="screen-inner">
+      <header class="screen-head">
+        <p class="eyebrow">Conta</p>
+        <h1 id="conta-encerrada-titulo" tabindex="-1">Conta excluída.</h1>
+        <p class="sub">
+          Seu perfil, suas pescarias e suas fotos foram removidos. Estamos te levando para a página
+          inicial...
+        </p>
+      </header>
+      <a class="btn btn-ghost" href="/">Voltar agora</a>
+    </div>
+  </section>
 
-      <div class="campo oculto" id="modal-campo">
-        <label for="modal-confirmacao">Digite <strong>EXCLUIR</strong> para liberar o botão</label>
+  <dialog id="dialog-senha" aria-labelledby="senha-titulo">
+    <form id="form-senha" class="dialog-body" novalidate>
+      <p class="eyebrow">Acesso</p>
+      <h2 id="senha-titulo">Alterar senha</h2>
+      <p class="dialog-copy" id="senha-dica">
+        Use de 10 a 128 caracteres. Não exigimos maiúscula, número ou símbolo.
+      </p>
+
+      <div class="field" id="campo-senha-atual">
+        <label class="label" for="senha-atual">Senha atual</label>
+        <div class="control">
+          <input
+            class="input input--reveal"
+            id="senha-atual"
+            name="current-password"
+            type="password"
+            autocomplete="current-password"
+            aria-describedby="senha-atual-error"
+          />
+          <button class="reveal" type="button" data-reveal="senha-atual" aria-pressed="false" aria-label="Mostrar senha">
+            <svg class="od-icon od-icon--lg" data-icon="eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12s3.5-5.5 9.5-5.5S21.5 12 21.5 12s-3.5 5.5-9.5 5.5S2.5 12 2.5 12Z"></path><circle cx="12" cy="12" r="2.6"></circle></svg>
+            <svg class="od-icon od-icon--lg" data-icon="eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display: none"><path d="m4 4 16 16"></path><path d="M10.6 6.7A9.6 9.6 0 0 1 12 6.5c6 0 9.5 5.5 9.5 5.5a16 16 0 0 1-3.1 3.5"></path><path d="M6.4 8.4A16 16 0 0 0 2.5 12s3.5 5.5 9.5 5.5a9 9 0 0 0 3.2-.6"></path><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"></path></svg>
+          </button>
+        </div>
+        <p class="field-error" id="senha-atual-error" role="alert" hidden>
+          <svg class="od-icon od-icon--sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5"></path><path d="M12 16h.01"></path></svg>
+          <span data-err-text></span>
+        </p>
+      </div>
+
+      <div class="field">
+        <label class="label" for="nova-senha">Nova senha</label>
+        <div class="control">
+          <input
+            class="input input--reveal"
+            id="nova-senha"
+            name="new-password"
+            type="password"
+            autocomplete="new-password"
+            minlength="10"
+            maxlength="128"
+            required
+            aria-describedby="nova-senha-error"
+          />
+          <button class="reveal" type="button" data-reveal="nova-senha" aria-pressed="false" aria-label="Mostrar senha">
+            <svg class="od-icon od-icon--lg" data-icon="eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12s3.5-5.5 9.5-5.5S21.5 12 21.5 12s-3.5 5.5-9.5 5.5S2.5 12 2.5 12Z"></path><circle cx="12" cy="12" r="2.6"></circle></svg>
+            <svg class="od-icon od-icon--lg" data-icon="eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display: none"><path d="m4 4 16 16"></path><path d="M10.6 6.7A9.6 9.6 0 0 1 12 6.5c6 0 9.5 5.5 9.5 5.5a16 16 0 0 1-3.1 3.5"></path><path d="M6.4 8.4A16 16 0 0 0 2.5 12s3.5 5.5 9.5 5.5a9 9 0 0 0 3.2-.6"></path><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"></path></svg>
+          </button>
+        </div>
+        <p class="field-error" id="nova-senha-error" role="alert" hidden>
+          <svg class="od-icon od-icon--sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5"></path><path d="M12 16h.01"></path></svg>
+          <span data-err-text></span>
+        </p>
+      </div>
+
+      <div class="field">
+        <label class="label" for="confirmar-senha">Confirmar nova senha</label>
+        <div class="control">
+          <input
+            class="input"
+            id="confirmar-senha"
+            name="confirm-password"
+            type="password"
+            autocomplete="new-password"
+            required
+            aria-describedby="confirmar-senha-error"
+          />
+        </div>
+        <p class="field-error" id="confirmar-senha-error" role="alert" hidden>
+          <svg class="od-icon od-icon--sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5"></path><path d="M12 16h.01"></path></svg>
+          <span data-err-text></span>
+        </p>
+      </div>
+
+      <p class="note note--error" id="senha-erro" role="alert" hidden>
+        <svg class="od-icon od-icon--md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5"></path><path d="M12 16h.01"></path></svg>
+        <span id="senha-erro-texto"></span>
+      </p>
+
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-ghost" data-fechar-senha>Cancelar</button>
+        <button type="submit" class="btn btn-primary" id="senha-salvar">
+          <span class="spinner" hidden></span>
+          <span data-btn-label>Salvar senha</span>
+        </button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dialog-sair" aria-labelledby="sair-titulo">
+    <div class="dialog-body">
+      <p class="eyebrow">Sessões</p>
+      <h2 id="sair-titulo">Sair desta sessão?</h2>
+      <p class="dialog-copy" id="sair-copia">
+        Você vai encerrar a sessão deste dispositivo. Para voltar, será preciso entrar novamente.
+      </p>
+      <p class="note note--error" id="sair-erro" role="alert" hidden>
+        <svg class="od-icon od-icon--md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5"></path><path d="M12 16h.01"></path></svg>
+        <span id="sair-erro-texto"></span>
+      </p>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-ghost" data-fechar-sair>Cancelar</button>
+        <button type="button" class="btn btn-primary" id="sair-confirmar">
+          <span class="spinner" hidden></span>
+          <span data-btn-label>Sair</span>
+        </button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="dialog-excluir" aria-labelledby="excluir-titulo">
+    <div class="dialog-body">
+      <p class="eyebrow">Zona sensível</p>
+      <h2 id="excluir-titulo">Excluir sua conta?</h2>
+      <p class="dialog-copy">
+        Isto apaga o diário, as pescarias e as fotos. A exclusão não pode ser desfeita depois de
+        confirmada.
+      </p>
+      <p class="dialog-note">Se mudar de ideia, cancele. Nada é apagado até você confirmar.</p>
+
+      <div class="field">
+        <label class="label" for="excluir-confirmacao">
+          Digite <strong>EXCLUIR</strong> para liberar o botão
+        </label>
         <input
-          id="modal-confirmacao"
+          class="input"
+          id="excluir-confirmacao"
           type="text"
           autocomplete="off"
           autocapitalize="characters"
           spellcheck="false"
         />
-        <small>Precisa ser exatamente EXCLUIR, em maiúsculas.</small>
+        <p class="help">Precisa ser exatamente EXCLUIR, em maiúsculas.</p>
       </div>
 
-      <p id="modal-erro" class="modal-erro oculto" role="alert"></p>
+      <p class="note note--error" id="excluir-erro" role="alert" hidden>
+        <svg class="od-icon od-icon--md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5"></path><path d="M12 16h.01"></path></svg>
+        <span id="excluir-erro-texto"></span>
+      </p>
 
-      <div class="modal-acoes">
-        <button class="btn btn--contorno" type="button" id="modal-cancelar">Cancelar</button>
-        <button class="btn btn--primario" type="button" id="modal-confirmar">Confirmar</button>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-ghost" data-fechar-excluir>Cancelar</button>
+        <button type="button" class="btn btn-danger-solid" id="excluir-confirmar" disabled>
+          <span class="spinner" hidden></span>
+          <span data-btn-label>Excluir definitivamente</span>
+        </button>
       </div>
     </div>
-  </div>
-
-  <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true" hidden></div>
-</Layout>
+  </dialog>
+</AuthLayout>
 
 <style>
-  .conta-topo {
-    padding-bottom: 26px;
-  }
-
-  .conta-topo p {
-    max-width: 660px;
-    text-wrap: balance;
-  }
-
-  .conta-pagina {
-    padding-bottom: clamp(60px, 8vw, 100px);
-  }
-
-  .conta-carregando {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    min-height: 150px;
-    padding: 24px;
-    border: 1px dashed var(--linha-forte);
-    border-radius: var(--raio);
-    background: rgba(255, 253, 249, 0.55);
-    color: var(--tinta-suave);
-    font-size: 0.9rem;
-  }
-
-  .conta-carregando-marca {
-    display: grid;
-    width: 42px;
-    height: 42px;
-    flex: 0 0 auto;
-    place-items: center;
-    border-radius: 50%;
-    background: var(--terracota-clara);
-    color: var(--terracota);
-    font-family: var(--fonte-titulo);
-    font-size: 1.15rem;
-    font-weight: 700;
-    animation: conta-pulso 1.5s ease-in-out infinite;
-  }
-
-  @keyframes conta-pulso {
-    50% {
-      opacity: 0.62;
-      transform: scale(0.94);
-    }
-  }
-
-  .conta-falha .erro-caixa.visivel {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  }
-
-  .conta-falha .erro-caixa {
-    margin: 0;
-    font-size: 0.82rem;
-  }
-
-  .conta-conteudo {
-    display: grid;
-    gap: 20px;
-    animation: conta-surgir 340ms ease both;
-  }
-
-  @keyframes conta-surgir {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-  }
-
-  .conta-identidade {
-    position: relative;
-    overflow: hidden;
-    padding: clamp(22px, 3.4vw, 34px);
-    background:
-      radial-gradient(circle at 92% 14%, rgba(217, 119, 63, 0.16), transparent 22rem),
-      var(--superficie);
-  }
-
-  .conta-identidade::after {
-    position: absolute;
-    right: -90px;
-    bottom: -155px;
-    width: 280px;
-    height: 280px;
-    border: 1px solid rgba(23, 78, 87, 0.1);
-    border-radius: 50%;
-    content: '';
-    pointer-events: none;
-  }
-
-  .conta-identidade-interno {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 20px;
-  }
-
-  .conta-avatar {
-    display: grid;
-    width: 84px;
-    height: 84px;
-    flex: 0 0 auto;
-    place-items: center;
-    border-radius: 50%;
-    background: linear-gradient(145deg, #1d5d66, var(--terracota-escura));
-    box-shadow: 0 14px 30px rgba(16, 56, 63, 0.22);
-    color: var(--creme);
-    font-family: var(--fonte-titulo);
-    font-size: 1.8rem;
-    font-weight: 600;
-    letter-spacing: -0.04em;
-  }
-
-  .conta-identidade-texto {
-    min-width: 0;
-    flex: 1 1 260px;
-  }
-
-  .conta-identidade-texto h2 {
-    margin-top: 10px;
-    overflow-wrap: anywhere;
-    font-family: var(--fonte-titulo);
-    font-size: clamp(1.9rem, 4.2vw, 2.9rem);
-    font-weight: 600;
-    letter-spacing: -0.04em;
-    line-height: 1.03;
-  }
-
-  .conta-email {
-    margin-top: 7px;
-    overflow-wrap: anywhere;
-    color: var(--tinta-suave);
-    font-size: 0.85rem;
-  }
-
-  .conta-selos {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 12px;
-  }
-
-  .conta-identidade-acao {
-    flex: 0 0 auto;
-    margin-left: auto;
-  }
-
-  .conta-grade {
-    display: grid;
-    align-items: start;
-    gap: 20px;
-    grid-template-columns: minmax(0, 1.22fr) minmax(0, 1fr);
-  }
-
-  .conta-coluna {
-    display: grid;
-    min-width: 0;
-    gap: 20px;
-  }
-
-  .conta-secao {
-    min-width: 0;
-  }
-
-  .conta-secao .eyebrow {
-    font-size: 0.64rem;
-  }
-
-  .conta-secao h2 {
-    margin-top: 10px;
-    font-family: var(--fonte-titulo);
-    font-size: clamp(1.45rem, 2.4vw, 1.85rem);
-    font-weight: 600;
-    letter-spacing: -0.03em;
-    line-height: 1.08;
-  }
-
-  .conta-secao .conta-descricao {
-    margin-top: 8px;
-    color: var(--tinta-suave);
-    font-size: 0.8rem;
-    line-height: 1.6;
-  }
-
-  .conta-texto {
-    margin-top: 12px;
-    color: var(--tinta-suave);
-    font-size: 0.76rem;
-    line-height: 1.6;
-  }
-
-  .conta-campo-nome {
-    margin-top: 18px;
-  }
-
-  .conta-contador {
-    color: var(--tinta-suave);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .conta-check {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    margin-top: 18px;
-    padding: 13px 14px;
-    border: 1px solid var(--linha);
-    border-radius: 12px;
-    background: var(--papel);
-  }
-
-  .conta-check input {
-    width: 18px;
-    height: 18px;
-    flex: 0 0 auto;
-    margin: 2px 0 0;
-    accent-color: var(--terracota);
-  }
-
-  .conta-check div {
-    min-width: 0;
-  }
-
-  .conta-check label {
-    display: block;
-    cursor: pointer;
-    font-size: 0.8rem;
-    font-weight: 600;
-    line-height: 1.4;
-  }
-
-  .conta-check small {
-    display: block;
-    margin-top: 2px;
-    color: var(--tinta-suave);
-    font-size: 0.68rem;
-    line-height: 1.45;
-  }
-
-  .conta-form-acoes {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 10px 14px;
-    margin-top: 18px;
+  #conta-aviso {
+    margin-bottom: var(--s5);
   }
 
   .conta-feedback {
-    min-height: 1.2em;
-    color: #4b6045;
-    font-size: 0.74rem;
-    line-height: 1.4;
+    margin-top: var(--s4);
   }
 
-  .conta-feedback:empty {
-    display: none;
-  }
-
-  .conta-feedback--ok {
-    color: #4b6045;
-  }
-
-  .conta-feedback--erro {
-    color: #8f3419;
-  }
-
-  .conta-email-caixa {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    min-width: 0;
-    margin-top: 16px;
-    padding: 13px 14px;
-    border: 1px solid var(--linha);
-    border-radius: 12px;
-    background: var(--creme);
-  }
-
-  .conta-email-icone {
+  .dados-form {
     display: grid;
-    width: 34px;
-    height: 34px;
-    flex: 0 0 auto;
-    place-items: center;
-    border-radius: 50%;
-    background: var(--terracota-clara);
-    color: var(--terracota);
-    font-weight: 700;
+    gap: var(--s3);
   }
 
-  .conta-email-caixa > div {
-    min-width: 0;
-  }
-
-  .conta-rotulo {
-    display: block;
-    color: var(--tinta-suave);
-    font-size: 0.62rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .conta-email-caixa strong {
-    display: block;
-    margin-top: 2px;
-    overflow-wrap: anywhere;
-    font-size: 0.85rem;
-    font-weight: 600;
-  }
-
-  .conta-secao > .btn--contorno {
-    margin-top: 16px;
-  }
-
-  .conta-explicacao {
-    margin-top: 14px;
-    padding: 14px 15px;
-    border-left: 3px solid var(--terracota);
-    border-radius: 0 12px 12px 0;
-    background: var(--terracota-clara);
-  }
-
-  .conta-explicacao p {
-    color: var(--tinta);
-    font-size: 0.78rem;
-    line-height: 1.6;
-  }
-
-  .conta-link-botao {
-    margin-top: 10px;
-    padding: 0;
-    border: 0;
-    background: none;
-  }
-
-  .conta-plano {
-    background:
-      radial-gradient(circle at 100% 0, rgba(217, 119, 63, 0.13), transparent 16rem),
-      var(--creme);
-  }
-
-  .conta-preco {
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-    margin-top: 14px;
-    padding-bottom: 14px;
-    border-bottom: 1px solid var(--linha);
-  }
-
-  .conta-preco strong {
-    color: var(--terracota);
-    font-family: var(--fonte-titulo);
-    font-size: 2.6rem;
-    font-weight: 600;
-    letter-spacing: -0.05em;
-    line-height: 1;
-  }
-
-  .conta-preco span {
-    color: var(--tinta-suave);
-    font-size: 0.68rem;
-    line-height: 1.4;
-  }
-
-  .conta-plano .lista-check {
-    gap: 8px;
-    margin-top: 16px;
-  }
-
-  .conta-plano .lista-check li {
-    color: var(--tinta);
-    font-size: 0.78rem;
-    line-height: 1.5;
-  }
-
-  .conta-plano .lista-check li::before {
-    color: var(--terracota);
-  }
-
-  .conta-nota {
-    margin-top: 16px;
-    color: var(--tinta-suave);
-    font-size: 0.66rem;
-    line-height: 1.5;
-  }
-
-  .conta-sessoes-status {
-    margin-top: 16px;
-    color: var(--tinta-suave);
-    font-size: 0.75rem;
-  }
-
-  .conta-sessoes-erro {
-    margin-top: 16px;
-  }
-
-  .conta-sessoes-erro p {
-    color: #8f3419;
-    font-size: 0.75rem;
-    line-height: 1.5;
-  }
-
-  .conta-sessoes-erro .btn {
-    margin-top: 9px;
-  }
-
-  .conta-sessoes {
-    display: grid;
-    gap: 9px;
-    margin-top: 16px;
-  }
-
-  .conta-sessoes :global(.sessao-item) {
-    display: flex;
-    align-items: flex-start;
-    gap: 11px;
-    min-width: 0;
-    padding: 12px;
-    border: 1px solid var(--linha);
-    border-radius: 12px;
-    background: var(--papel);
-  }
-
-  .conta-sessoes :global(.sessao-item--atual) {
-    border-color: rgba(23, 78, 87, 0.42);
-    background: #eef4f3;
-    box-shadow: inset 0 0 0 1px rgba(23, 78, 87, 0.18);
-  }
-
-  .conta-sessoes :global(.sessao-icone) {
-    display: grid;
-    width: 34px;
-    height: 34px;
-    flex: 0 0 auto;
-    place-items: center;
-    border: 1px solid var(--linha);
-    border-radius: 50%;
-    background: var(--superficie);
-    color: var(--terracota);
-    font-size: 0.95rem;
-  }
-
-  .conta-sessoes :global(.sessao-icone svg) {
-    width: 17px;
-    height: 17px;
-  }
-
-  .conta-sessoes :global(.sessao-corpo) {
-    min-width: 0;
-    flex: 1 1 auto;
-  }
-
-  .conta-sessoes :global(.sessao-topo) {
+  .dados-actions {
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
-    gap: 5px 8px;
+    gap: var(--s2);
   }
 
-  .conta-sessoes :global(.sessao-topo strong) {
-    min-width: 0;
-    overflow-wrap: anywhere;
-    font-size: 0.78rem;
-    font-weight: 600;
-    line-height: 1.35;
+  #dados-nome {
+    max-width: 34rem;
   }
 
-  .conta-sessoes :global(.sessao-topo .selo) {
-    padding: 3px 7px;
-    font-size: 0.58rem;
+  #dados-feedback,
+  #dados-erro {
+    margin-top: 0;
   }
 
-  .conta-sessoes :global(.sessao-meta) {
-    margin-top: 2px;
-    overflow-wrap: anywhere;
-    color: var(--tinta-suave);
-    font-size: 0.66rem;
-    line-height: 1.45;
+  #google-indisponivel {
+    margin-top: var(--s1);
   }
 
-  .conta-sessoes :global(.conta-sessoes-vazio) {
-    padding: 14px;
-    border: 1px dashed var(--linha-forte);
-    border-radius: 10px;
-    color: var(--tinta-suave);
-    font-size: 0.75rem;
-    text-align: center;
+  #sessoes-erro .btn {
+    margin-top: var(--s2);
   }
 
-  .conta-sessoes-acoes {
-    display: grid;
-    gap: 8px;
-    margin-top: 16px;
-  }
-
-  .conta-dados {
-    background:
-      radial-gradient(circle at 0 0, rgba(23, 78, 87, 0.05), transparent 20rem),
-      var(--superficie);
-  }
-
-  .conta-dados-grade {
-    display: grid;
-    align-items: start;
-    gap: 22px;
-    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
-  }
-
-  .conta-dados-coluna {
-    min-width: 0;
-  }
-
-  .conta-exportar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px 14px;
-    margin-top: 16px;
-  }
-
-  .conta-exportar .btn {
-    flex: 0 1 auto;
-  }
-
-  .conta-mini {
-    margin-top: 18px;
-    padding-top: 14px;
-    border-top: 1px solid var(--linha);
-  }
-
-  .conta-mini div {
-    font-size: 0.72rem;
-  }
-
-  .conta-perigo {
-    min-width: 0;
-    padding: 18px;
-    border: 1px solid #ecc9bb;
-    border-radius: 15px;
-    background: #fdf5f1;
-  }
-
-  .conta-perigo-rotulo {
-    color: #8f3419;
-    font-size: 0.62rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-  }
-
-  .conta-perigo h3 {
-    margin-top: 8px;
-    font-family: var(--fonte-titulo);
-    font-size: 1.3rem;
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    line-height: 1.1;
-  }
-
-  .conta-perigo p {
-    margin-top: 7px;
-    color: #7a5548;
-    font-size: 0.73rem;
-    line-height: 1.55;
-  }
-
-  .conta-perigo .btn {
-    width: 100%;
-    margin-top: 14px;
-  }
-
-  .btn--perigo {
-    background: #a8452b;
-    box-shadow: 0 8px 20px rgba(168, 69, 43, 0.18);
-    color: var(--creme);
-  }
-
-  .btn--perigo:hover {
-    background: #8f3419;
-  }
-
-  .conta-encerrada {
-    max-width: 560px;
-    margin: 20px auto 0;
-    padding: clamp(28px, 5vw, 44px);
-    border: 1px solid var(--linha);
-    border-radius: var(--raio);
-    background: var(--creme);
-    box-shadow: var(--sombra-suave);
-    scroll-margin-top: 96px;
-    text-align: center;
-  }
-
-  .conta-encerrada-marca {
-    display: grid;
-    width: 46px;
-    height: 46px;
-    margin-inline: auto;
-    place-items: center;
-    border-radius: 50%;
-    background: var(--terracota-clara);
-    color: var(--terracota);
-    font-family: var(--fonte-titulo);
-    font-size: 1.2rem;
-    font-weight: 700;
-  }
-
-  .conta-encerrada h2 {
-    margin-top: 14px;
-    font-family: var(--fonte-titulo);
-    font-size: clamp(1.7rem, 4vw, 2.2rem);
-    font-weight: 600;
-    letter-spacing: -0.03em;
-    line-height: 1.08;
-  }
-
-  .conta-encerrada p {
-    margin-top: 8px;
-    color: var(--tinta-suave);
-    font-size: 0.82rem;
-    line-height: 1.6;
-  }
-
-  .conta-encerrada .btn {
-    margin-top: 18px;
-  }
-
-  .modal-fundo {
-    position: fixed;
-    z-index: 120;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    background: rgba(36, 31, 27, 0.5);
-    backdrop-filter: blur(3px);
-  }
-
-  .modal-fundo[hidden] {
-    display: none;
-  }
-
-  .modal-caixa {
-    position: relative;
-    width: min(100%, 430px);
-    max-height: calc(100vh - 40px);
-    overflow-y: auto;
-    padding: 24px;
-    border-radius: var(--raio);
-    background: var(--superficie);
-    box-shadow: 0 30px 90px rgba(36, 31, 27, 0.3);
-    color: var(--tinta);
-    animation: modal-surgir 180ms ease both;
-  }
-
-  @keyframes modal-surgir {
-    from {
-      opacity: 0;
-      transform: translateY(8px) scale(0.985);
-    }
-  }
-
-  .modal-fechar {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    display: grid;
-    width: 32px;
-    height: 32px;
-    place-items: center;
-    padding: 0;
-    border: 1px solid var(--linha);
-    border-radius: 50%;
-    background: transparent;
-    color: var(--tinta-suave);
-    font-size: 1.1rem;
-    line-height: 1;
-  }
-
-  .modal-fechar:hover {
-    background: var(--superficie-2);
-  }
-
-  .modal-simbolo {
-    display: grid;
-    width: 38px;
-    height: 38px;
-    place-items: center;
-    border-radius: 50%;
-    background: var(--terracota-clara);
-    color: var(--terracota);
-    font-family: var(--fonte-titulo);
-    font-size: 1.1rem;
-    font-weight: 700;
-  }
-
-  .modal-simbolo--perigo {
-    background: #f8e2d9;
-    color: #8f3419;
-  }
-
-  .modal-caixa h2 {
-    margin-top: 14px;
-    padding-right: 28px;
-    font-family: var(--fonte-titulo);
-    font-size: 1.65rem;
-    font-weight: 600;
-    letter-spacing: -0.03em;
-    line-height: 1.08;
-  }
-
-  .modal-descricao {
-    margin-top: 8px;
-    color: var(--tinta-suave);
-    font-size: 0.8rem;
-    line-height: 1.6;
-  }
-
-  .modal-caixa .campo {
-    margin-top: 16px;
-  }
-
-  .modal-caixa .campo label {
-    font-size: 0.75rem;
-  }
-
-  .modal-caixa .campo strong {
-    color: #8f3419;
-    letter-spacing: 0.03em;
-  }
-
-  .modal-erro {
-    margin-top: 12px;
-    padding: 9px 11px;
-    border: 1px solid #efc9bb;
-    border-radius: 8px;
-    background: #fdf0ea;
-    color: #8f3419;
-    font-size: 0.74rem;
-    line-height: 1.5;
-  }
-
-  .modal-acoes {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-    margin-top: 20px;
-  }
-
-  .modal-acoes .btn {
-    min-height: 44px;
-    padding: 10px 18px;
-    font-size: 0.86rem;
-  }
-
-  .toast {
-    position: fixed;
-    z-index: 110;
-    bottom: 20px;
-    left: 50%;
-    width: fit-content;
-    max-width: min(calc(100% - 28px), 460px);
-    padding: 12px 16px;
-    border: 1px solid var(--linha);
-    border-left: 4px solid var(--verde);
-    border-radius: 12px;
-    background: var(--superficie);
-    box-shadow: var(--sombra);
-    color: var(--tinta);
-    font-size: 0.8rem;
-    line-height: 1.45;
-    opacity: 0;
-    transform: translateX(-50%) translateY(10px);
-    transition:
-      opacity 180ms ease,
-      transform 180ms ease;
-  }
-
-  .toast[hidden] {
-    display: none;
-  }
-
-  .toast.visivel {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-
-  .toast[data-tipo='erro'] {
-    border-left-color: #b7472d;
-  }
-
-  @media (max-width: 900px) {
-    .conta-grade,
-    .conta-dados-grade {
-      grid-template-columns: minmax(0, 1fr);
-    }
-  }
-
-  @media (max-width: 620px) {
-    .conta-identidade-interno {
-      align-items: flex-start;
-    }
-
-    .conta-avatar {
-      width: 68px;
-      height: 68px;
-      font-size: 1.45rem;
-    }
-
-    .conta-identidade-texto {
-      flex-basis: calc(100% - 88px);
-    }
-
-    .conta-identidade-acao {
-      width: 100%;
-      margin-left: 0;
-    }
-
-    .conta-form-acoes .btn {
-      width: 100%;
-    }
-
-    .conta-exportar,
-    .conta-exportar .btn {
-      width: 100%;
-    }
-  }
-
-  @media (max-width: 440px) {
-    .modal-fundo {
-      padding: 12px;
-    }
-
-    .modal-caixa {
-      max-height: calc(100vh - 24px);
-      padding: 20px;
-    }
-
-    .modal-acoes {
-      flex-direction: column;
-    }
-
-    .modal-acoes .btn {
-      width: 100%;
-    }
-
-    .toast {
-      bottom: 12px;
-      max-width: calc(100% - 20px);
-    }
+  #senha-erro,
+  #sair-erro,
+  #excluir-erro {
+    margin-top: 0;
   }
 </style>
 
 <script>
-  // @ts-nocheck
-  const API = (document.body.dataset.api || 'http://localhost:5184').replace(/\/$/, '');
+  import { apiBase } from '../lib/auth';
+
+  const API = apiBase();
   const URL_ENTRAR = '/entrar?voltar=/conta';
   const MENSAGEM_REDE =
     'Não foi possível falar com o servidor. Confira sua conexão e tente novamente.';
 
-  const porId = (id) => document.getElementById(id);
+  type TipoAviso = 'ok' | 'erro';
+  type ModoSenha = 'criar' | 'alterar';
+  type ModoSair = 'atual' | 'todos';
 
-  const carregando = porId('carregando');
-  const falhaCarregamento = porId('falha-carregamento');
-  const falhaTexto = porId('falha-texto');
-  const recarregar = porId('recarregar');
-  const conteudo = porId('conta-conteudo');
-  const avatar = porId('avatar-conta');
-  const nomeConta = porId('nome-conta');
-  const emailConta = porId('email-conta');
-  const desdeConta = porId('desde-conta');
-  const emailCaixa = porId('email-caixa');
-  const formPerfil = porId('form-perfil');
-  const nomePerfil = porId('nome-perfil');
-  const nomeContador = porId('nome-contador');
-  const aceitaNovidades = porId('aceita-novidades');
-  const salvarPerfil = porId('salvar-perfil');
-  const perfilFeedback = porId('perfil-feedback');
-  const btnTrocarEmail = porId('btn-trocar-email');
-  const trocarEmail = porId('trocar-email');
-  const sairParaTrocar = porId('sair-para-trocar');
-  const sessoesCarregando = porId('sessoes-carregando');
-  const sessoesErro = porId('sessoes-erro');
-  const sessoesErroTexto = porId('sessoes-erro-texto');
-  const sessoesLista = porId('sessoes-lista');
-  const recarregarSessoes = porId('recarregar-sessoes');
-  const sairAtual = porId('sair-atual');
-  const sairTodos = porId('sair-todos');
-  const exportarDados = porId('exportar-dados');
-  const exportarFeedback = porId('exportar-feedback');
-  const excluirConta = porId('excluir-conta');
-  const contaEncerrada = porId('conta-encerrada');
-  const contaEncerradaTitulo = porId('conta-encerrada-titulo');
-  const modal = porId('modal');
-  const modalCaixa = modal.querySelector('.modal-caixa');
-  const modalTitulo = porId('modal-titulo');
-  const modalDescricao = porId('modal-descricao');
-  const modalSimbolo = porId('modal-simbolo');
-  const modalCampo = porId('modal-campo');
-  const modalConfirmacao = porId('modal-confirmacao');
-  const modalErro = porId('modal-erro');
-  const modalConfirmar = porId('modal-confirmar');
-  const modalCancelar = porId('modal-cancelar');
-  const modalFechar = porId('modal-fechar');
-  const toast = porId('toast');
+  interface UsuarioConta {
+    email: string;
+    nome?: string | null;
+    nomeExibicao?: string;
+    aceitaNovidades?: boolean;
+  }
 
-  const fundoInerte = [
-    document.querySelector('.pular-conteudo'),
-    document.querySelector('.topo'),
-    document.querySelector('.conta-topo'),
-    document.querySelector('.conta-pagina'),
-    document.querySelector('.rodape')
-  ];
+  interface MeConta {
+    autenticado: boolean;
+    usuario: UsuarioConta | null;
+    consentimentoPendente: boolean;
+    googleConectado: boolean;
+    temSenha?: boolean;
+  }
+
+  interface SessaoConta {
+    id: string;
+    userAgent: string | null;
+    criadoEm: string;
+    ultimoUsoEm: string;
+    expiraEm: string;
+    atual: boolean;
+  }
+
+  class FalhaApi extends Error {
+    status: number;
+    codigo: string;
+
+    constructor(mensagem: string, status = 0, codigo = '') {
+      super(mensagem);
+      this.name = 'FalhaApi';
+      this.status = status;
+      this.codigo = codigo;
+    }
+  }
+
+  const porId = <T extends HTMLElement>(id: string) =>
+    document.getElementById(id) as T | null;
+
+  const carregando = porId<HTMLElement>('conta-loading');
+  const falhaCarregamento = porId<HTMLElement>('conta-load-error');
+  const falhaCarregamentoTexto = porId<HTMLElement>('conta-load-error-texto');
+  const recarregar = porId<HTMLButtonElement>('conta-retry');
+  const conteudo = porId<HTMLElement>('conta-content');
+  const aviso = porId<HTMLElement>('conta-aviso');
+  const avisoTexto = porId<HTMLElement>('conta-aviso-texto');
+  const email = porId<HTMLElement>('conta-email');
+  const senhaValor = porId<HTMLElement>('conta-senha-valor');
+  const senhaAcao = porId<HTMLButtonElement>('conta-senha-acao');
+  const senhaFeedback = porId<HTMLElement>('senha-feedback');
+  const senhaFeedbackTexto = porId<HTMLElement>('senha-feedback-texto');
+  const googleStatus = porId<HTMLElement>('google-status');
+  const googleNote = porId<HTMLElement>('google-note');
+  const googleIndisponivel = porId<HTMLElement>('google-indisponivel');
+  const googleAcao = porId<HTMLButtonElement>('google-acao');
+  const sessoesCarregando = porId<HTMLElement>('sessoes-loading');
+  const sessoesErro = porId<HTMLElement>('sessoes-erro');
+  const sessoesErroTexto = porId<HTMLElement>('sessoes-erro-texto');
+  const sessoesLista = porId<HTMLElement>('sessoes-lista');
+  const sessoesVazio = porId<HTMLElement>('sessoes-vazio');
+  const recarregarSessoes = porId<HTMLButtonElement>('sessoes-retry');
+  const sairAtual = porId<HTMLButtonElement>('sair-atual');
+  const sairTodos = porId<HTMLButtonElement>('sair-todos');
+  const excluirConta = porId<HTMLButtonElement>('excluir-conta');
+  const contaEncerrada = porId<HTMLElement>('conta-encerrada');
+  const contaEncerradaTitulo = porId<HTMLElement>('conta-encerrada-titulo');
+
+  const formDados = porId<HTMLFormElement>('form-dados');
+  const dadosNome = porId<HTMLInputElement>('dados-nome');
+  const dadosNomeErro = porId<HTMLElement>('dados-nome-error');
+  const dadosNovidades = porId<HTMLInputElement>('dados-novidades');
+  const dadosSalvar = porId<HTMLButtonElement>('dados-salvar');
+  const dadosExportar = porId<HTMLButtonElement>('dados-exportar');
+  const dadosFeedback = porId<HTMLElement>('dados-feedback');
+  const dadosFeedbackTexto = porId<HTMLElement>('dados-feedback-texto');
+  const dadosErro = porId<HTMLElement>('dados-erro');
+  const dadosErroTexto = porId<HTMLElement>('dados-erro-texto');
+
+  const dialogSenha = porId<HTMLDialogElement>('dialog-senha');
+  const formSenha = porId<HTMLFormElement>('form-senha');
+  const senhaTitulo = porId<HTMLElement>('senha-titulo');
+  const senhaDica = porId<HTMLElement>('senha-dica');
+  const campoSenhaAtual = porId<HTMLElement>('campo-senha-atual');
+  const senhaAtual = porId<HTMLInputElement>('senha-atual');
+  const novaSenha = porId<HTMLInputElement>('nova-senha');
+  const confirmarSenha = porId<HTMLInputElement>('confirmar-senha');
+  const senhaErro = porId<HTMLElement>('senha-erro');
+  const senhaErroTexto = porId<HTMLElement>('senha-erro-texto');
+  const senhaSalvar = porId<HTMLButtonElement>('senha-salvar');
+
+  const dialogSair = porId<HTMLDialogElement>('dialog-sair');
+  const sairTitulo = porId<HTMLElement>('sair-titulo');
+  const sairCopia = porId<HTMLElement>('sair-copia');
+  const sairErro = porId<HTMLElement>('sair-erro');
+  const sairErroTexto = porId<HTMLElement>('sair-erro-texto');
+  const sairConfirmar = porId<HTMLButtonElement>('sair-confirmar');
+
+  const dialogExcluir = porId<HTMLDialogElement>('dialog-excluir');
+  const excluirConfirmacao = porId<HTMLInputElement>('excluir-confirmacao');
+  const excluirErro = porId<HTMLElement>('excluir-erro');
+  const excluirErroTexto = porId<HTMLElement>('excluir-erro-texto');
+  const excluirConfirmar = porId<HTMLButtonElement>('excluir-confirmar');
 
   const formatoDataHora = new Intl.DateTimeFormat('pt-BR', {
     day: '2-digit',
@@ -1223,29 +565,18 @@ import Layout from '../layouts/Layout.astro';
     minute: '2-digit'
   });
 
-  const formatoData = new Intl.DateTimeFormat('pt-BR', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric'
-  });
-
-  let usuarioAtual = null;
+  let temSenha = false;
+  let googleConectado = false;
+  let sessoes: SessaoConta[] = [];
+  let outrasSessoes = 0;
+  let modoSenha: ModoSenha = 'alterar';
+  let modoSair: ModoSair = 'atual';
   let redirecionando = false;
-  let ultimoFoco = null;
-  let acaoConfirmar = null;
-  let textoExigido = null;
-  let modalEmEnvio = false;
-  let overflowAnterior = '';
-  let timerToast = null;
-  let versaoToast = 0;
-
-  class FalhaApi extends Error {
-    constructor(mensagem, status = 0) {
-      super(mensagem);
-      this.name = 'FalhaApi';
-      this.status = status;
-    }
-  }
+  let salvandoSenha = false;
+  let salvandoDados = false;
+  let exportandoDados = false;
+  let saindo = false;
+  let excluindo = false;
 
   function irParaEntrar() {
     if (redirecionando) return;
@@ -1253,30 +584,30 @@ import Layout from '../layouts/Layout.astro';
     window.location.replace(URL_ENTRAR);
   }
 
-  function mensagemDoStatus(status) {
+  function mensagemDoStatus(status: number) {
     if (status === 400) return 'Confira os dados e tente novamente.';
     if (status === 403) return 'Esta ação não foi permitida. Entre novamente na conta.';
-    if (status === 404) return 'Não encontramos o que você procura.';
-    if (status === 429) return 'Muitas tentativas em pouco tempo. Aguarde um minuto e tente de novo.';
+    if (status === 429) return 'Muitas tentativas em pouco tempo. Aguarde um minuto.';
     if (status >= 500) return 'Algo deu errado do nosso lado. Tente novamente em instantes.';
     return 'Não foi possível concluir a ação. Tente novamente.';
   }
 
-  async function pedir(caminho, opcoes = {}) {
-    const { metodo = 'GET', corpo, bruto = false } = opcoes;
-    const init = {
-      method: metodo,
+  async function pedir<T>(
+    caminho: string,
+    opcoes: { metodo?: string; corpo?: unknown } = {}
+  ): Promise<{ resposta: Response; dados: T | null }> {
+    const init: RequestInit = {
+      method: opcoes.metodo ?? 'GET',
       credentials: 'include',
       headers: { Accept: 'application/json' }
     };
 
-    if (corpo !== undefined) {
-      init.headers['Content-Type'] = 'application/json';
-      init.body = JSON.stringify(corpo);
+    if (opcoes.corpo !== undefined) {
+      init.headers = { ...init.headers, 'Content-Type': 'application/json' };
+      init.body = JSON.stringify(opcoes.corpo);
     }
 
-    let resposta;
-
+    let resposta: Response;
     try {
       resposta = await fetch(`${API}${caminho}`, init);
     } catch {
@@ -1289,149 +620,171 @@ import Layout from '../layouts/Layout.astro';
     }
 
     if (!resposta.ok) {
+      let codigo = '';
       let detalhe = '';
       try {
-        const dados = await resposta.json();
-        detalhe = dados?.detalhe || dados?.message || '';
+        const dados = (await resposta.json()) as Record<string, unknown>;
+        codigo = typeof dados?.codigo === 'string' ? dados.codigo : '';
+        detalhe =
+          typeof dados?.detalhe === 'string'
+            ? dados.detalhe
+            : typeof dados?.message === 'string'
+              ? dados.message
+              : '';
       } catch {
         detalhe = '';
       }
-      throw new FalhaApi(detalhe || mensagemDoStatus(resposta.status), resposta.status);
+
+      throw new FalhaApi(detalhe || mensagemDoStatus(resposta.status), resposta.status, codigo);
     }
 
-    if (bruto || resposta.status === 204) {
+    if (resposta.status === 204) {
       return { resposta, dados: null };
     }
 
-    const dados = await resposta.json().catch(() => null);
+    const dados = (await resposta.json().catch(() => null)) as T | null;
     return { resposta, dados };
   }
 
-  function formatarDataHora(iso) {
+  function setLoading(botao: HTMLButtonElement | null, ocupado: boolean, rotulo?: string) {
+    if (!botao) return;
+    const label = botao.querySelector('[data-btn-label]') as HTMLElement | null;
+    const spinner = botao.querySelector('.spinner') as HTMLElement | null;
+    if (label && !botao.dataset.idleLabel) botao.dataset.idleLabel = label.textContent ?? '';
+    if (spinner) spinner.hidden = !ocupado;
+    if (label) {
+      label.textContent = ocupado
+        ? rotulo ?? botao.dataset.idleLabel ?? ''
+        : botao.dataset.idleLabel ?? '';
+    }
+    botao.disabled = ocupado;
+    botao.setAttribute('aria-busy', ocupado ? 'true' : 'false');
+  }
+
+  function mostrarAviso(tipo: TipoAviso, texto: string) {
+    if (!aviso || !avisoTexto) return;
+    avisoTexto.textContent = texto;
+    aviso.classList.toggle('note--success', tipo === 'ok');
+    aviso.classList.toggle('note--error', tipo === 'erro');
+    aviso.setAttribute('role', tipo === 'erro' ? 'alert' : 'status');
+    aviso.querySelectorAll<HTMLElement>('[data-aviso-icon]').forEach((icone) => {
+      icone.style.display = icone.dataset.avisoIcon === tipo ? '' : 'none';
+    });
+    aviso.hidden = false;
+  }
+
+  function erroCampo(id: string, mensagem: string) {
+    const input = porId<HTMLInputElement>(id);
+    const bloco = porId<HTMLElement>(`${id}-error`);
+    if (input) {
+      input.setAttribute('aria-invalid', 'true');
+      input.focus();
+    }
+    if (bloco) {
+      const texto = bloco.querySelector('[data-err-text]') as HTMLElement | null;
+      if (texto) texto.textContent = mensagem;
+      bloco.hidden = false;
+    }
+  }
+
+  function limparErroCampo(id: string) {
+    porId<HTMLInputElement>(id)?.removeAttribute('aria-invalid');
+    const bloco = porId<HTMLElement>(`${id}-error`);
+    if (bloco) bloco.hidden = true;
+  }
+
+  function limparFeedbackDados() {
+    if (dadosFeedback) dadosFeedback.hidden = true;
+    if (dadosErro) dadosErro.hidden = true;
+  }
+
+  function limparErroNomeDados() {
+    dadosNome?.removeAttribute('aria-invalid');
+    if (dadosNomeErro) dadosNomeErro.hidden = true;
+  }
+
+  function preencherDados(usuario: UsuarioConta) {
+    if (dadosNome) dadosNome.value = usuario.nome ?? '';
+    if (dadosNovidades) dadosNovidades.checked = usuario.aceitaNovidades === true;
+  }
+
+  function mostrarFeedbackDados(texto: string) {
+    if (!dadosFeedback || !dadosFeedbackTexto) return;
+    if (dadosErro) dadosErro.hidden = true;
+    dadosFeedbackTexto.textContent = texto;
+    dadosFeedback.hidden = false;
+  }
+
+  function mostrarErroDados(texto: string) {
+    if (!dadosErro || !dadosErroTexto) return;
+    if (dadosFeedback) dadosFeedback.hidden = true;
+    dadosErroTexto.textContent = texto;
+    dadosErro.hidden = false;
+  }
+
+  function erroNomeDados(mensagem: string) {
+    dadosNome?.setAttribute('aria-invalid', 'true');
+    dadosNome?.focus();
+    if (!dadosNomeErro) return;
+    const texto = dadosNomeErro.querySelector('[data-err-text]') as HTMLElement | null;
+    if (texto) texto.textContent = mensagem;
+    dadosNomeErro.hidden = false;
+  }
+
+  function atualizarSenha() {
+    if (!senhaValor || !senhaAcao || !campoSenhaAtual) return;
+    senhaValor.textContent = temSenha
+      ? 'Sua senha permite entrar sem depender do link mágico.'
+      : 'Você ainda não tem uma senha. Crie uma para entrar sem depender do link mágico.';
+    senhaAcao.textContent = temSenha ? 'Alterar senha' : 'Criar senha';
+    campoSenhaAtual.hidden = !temSenha;
+  }
+
+  function atualizarGoogle() {
+    if (!googleStatus || !googleNote || !googleAcao) return;
+    googleStatus.textContent = googleConectado ? 'Conectado' : 'Não conectado';
+    googleNote.textContent = googleConectado
+      ? 'Você pode entrar com um toque usando esta conta do Google.'
+      : `Use o mesmo e-mail da sua conta: ${email?.textContent ?? 'seu e-mail'}.`;
+    googleAcao.hidden = googleConectado;
+    if (googleIndisponivel) googleIndisponivel.hidden = true;
+  }
+
+  async function verificarGoogleDisponivel() {
+    if (googleConectado || !googleAcao) return;
+
+    try {
+      const { dados } = await pedir<{ disponivel: boolean }>('/api/auth/google/disponivel');
+      const disponivel = dados?.disponivel === true;
+      googleAcao.hidden = !disponivel;
+      if (googleIndisponivel) googleIndisponivel.hidden = disponivel;
+    } catch (erro) {
+      if (erro instanceof FalhaApi && erro.status === 401) return;
+      googleAcao.hidden = true;
+      if (googleIndisponivel) googleIndisponivel.hidden = false;
+    }
+  }
+
+  function formatarDataHora(iso: string | null | undefined) {
     if (!iso) return '';
     const data = new Date(iso);
     if (Number.isNaN(data.getTime())) return '';
     return formatoDataHora.format(data);
   }
 
-  function formatarData(iso) {
-    if (!iso) return '';
-    const data = new Date(iso);
-    if (Number.isNaN(data.getTime())) return '';
-    return formatoData.format(data);
-  }
-
-  function iniciais(nome, email) {
-    const partes = String(nome || email || '?')
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean);
-
-    if (!partes.length) return '?';
-    if (partes.length === 1) {
-      return Array.from(partes[0]).slice(0, 2).join('').toUpperCase();
-    }
-
-    const primeira = Array.from(partes[0])[0] || '';
-    const ultima = Array.from(partes[partes.length - 1])[0] || '';
-    return `${primeira}${ultima}`.toUpperCase();
-  }
-
-  function definirFeedback(elemento, texto, tipo) {
-    if (!elemento) return;
-    elemento.textContent = texto;
-    elemento.classList.remove('conta-feedback--ok', 'conta-feedback--erro');
-    if (tipo === 'ok') elemento.classList.add('conta-feedback--ok');
-    if (tipo === 'erro') elemento.classList.add('conta-feedback--erro');
-  }
-
-  function mostrarToast(mensagem, tipo = 'ok', duracao = 4200) {
-    if (!toast) return;
-
-    const versao = ++versaoToast;
-    window.clearTimeout(timerToast);
-    toast.hidden = false;
-    toast.dataset.tipo = tipo;
-    toast.textContent = mensagem;
-
-    window.requestAnimationFrame(() => toast.classList.add('visivel'));
-
-    timerToast = window.setTimeout(() => {
-      if (versao !== versaoToast) return;
-      toast.classList.remove('visivel');
-      window.setTimeout(() => {
-        if (versao === versaoToast) toast.hidden = true;
-      }, 220);
-    }, duracao);
-  }
-
-  function atualizarContador() {
-    if (!nomeContador || !nomePerfil) return;
-    nomeContador.textContent = `${nomePerfil.value.length}/80`;
-  }
-
-  function preencherIdentidade(usuario) {
-    const nome = usuario.nomeExibicao || usuario.email || 'Pescador';
-
-    avatar.textContent = iniciais(nome, usuario.email);
-    nomeConta.textContent = nome;
-    emailConta.textContent = usuario.email || '';
-    emailCaixa.textContent = usuario.email || '—';
-    nomePerfil.value = usuario.nome ?? '';
-    nomePerfil.placeholder = usuario.nomeExibicao
-      ? `Ex.: ${usuario.nomeExibicao}`
-      : 'Como podemos te chamar?';
-    aceitaNovidades.checked = Boolean(usuario.aceitaNovidades);
-    atualizarContador();
-
-    const desde = formatarData(usuario.criadoEm);
-    desdeConta.textContent = desde ? `No Fisga desde ${desde}` : 'Conta Fisga';
-  }
-
-  function iniciarCarregamento() {
-    falhaCarregamento.classList.add('oculto');
-    conteudo.classList.add('oculto');
-    carregando.classList.remove('oculto');
-  }
-
-  async function carregarConta() {
-    iniciarCarregamento();
-
-    try {
-      const { dados } = await pedir('/api/auth/me');
-
-      if (!dados?.autenticado || !dados?.usuario) {
-        irParaEntrar();
-        return;
-      }
-
-      usuarioAtual = dados.usuario;
-      preencherIdentidade(usuarioAtual);
-      carregando.classList.add('oculto');
-      conteudo.classList.remove('oculto');
-      void carregarSessoes();
-    } catch (erro) {
-      if (erro?.status === 401) return;
-      carregando.classList.add('oculto');
-      falhaTexto.textContent =
-        erro?.message || 'Não foi possível carregar sua conta. Confira sua conexão e tente novamente.';
-      falhaCarregamento.classList.remove('oculto');
-    }
-  }
-
-  function svgDispositivo(tipo) {
+  function svgDispositivo(tipo: string) {
     if (tipo === 'tablet') {
-      return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="2.5" width="14" height="19" rx="2.5"></rect><path d="M11 18.5h2"></path></svg>';
+      return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="2.5" width="14" height="19" rx="2.5"></rect><path d="M11 18.5h2"></path></svg>';
     }
 
     if (tipo === 'celular') {
-      return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5"></rect><path d="M11 18.5h2"></path></svg>';
+      return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5"></rect><path d="M11 18.5h2"></path></svg>';
     }
 
-    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="12" rx="2"></rect><path d="M2 20h20"></path></svg>';
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="12" rx="2"></rect><path d="M2 20h20"></path></svg>';
   }
 
-  function descreverDispositivo(userAgent) {
+  function descreverDispositivo(userAgent: string | null) {
     if (!userAgent) {
       return { titulo: 'Dispositivo desconhecido', tipo: 'computador' };
     }
@@ -1470,79 +823,61 @@ import Layout from '../layouts/Layout.astro';
     const tipo = tablet ? 'tablet' : celular ? 'celular' : 'computador';
     const descricao = [navegador, sistema ? `no ${sistema}` : ''].filter(Boolean).join(' ');
 
-    return {
-      titulo: descricao || 'Dispositivo desconhecido',
-      tipo
-    };
+    return { titulo: descricao || 'Dispositivo desconhecido', tipo };
   }
 
-  function renderizarSessoes(sessoes) {
-    sessoesCarregando.classList.add('oculto');
-    sessoesErro.classList.add('oculto');
-    sessoesLista.innerHTML = '';
+  function renderizarSessoes(lista: SessaoConta[]) {
+    if (!sessoesLista || !sessoesCarregando) return;
 
-    if (!sessoes.length) {
-      const vazio = document.createElement('p');
-      vazio.className = 'conta-sessoes-vazio';
-      vazio.textContent = 'Nenhuma sessão ativa encontrada.';
-      sessoesLista.append(vazio);
-      return;
-    }
+    sessoesCarregando.hidden = true;
+    if (sessoesErro) sessoesErro.hidden = true;
+    sessoesLista.innerHTML = '';
+    if (sessoesVazio) sessoesVazio.hidden = lista.length > 0;
+
+    if (!lista.length) return;
 
     const fragmento = document.createDocumentFragment();
 
-    sessoes.forEach((sessao) => {
+    lista.forEach((sessao) => {
       const dispositivo = descreverDispositivo(sessao.userAgent);
-      const item = document.createElement('article');
-      item.className = `sessao-item${sessao.atual ? ' sessao-item--atual' : ''}`;
+      const item = document.createElement('div');
+      item.className = 'session';
 
       const icone = document.createElement('span');
-      icone.className = 'sessao-icone';
+      icone.className = 'session-icon';
       icone.setAttribute('aria-hidden', 'true');
       icone.innerHTML = svgDispositivo(dispositivo.tipo);
 
-      const corpo = document.createElement('div');
-      corpo.className = 'sessao-corpo';
+      const principal = document.createElement('div');
+      principal.className = 'session-main';
 
-      const topo = document.createElement('div');
-      topo.className = 'sessao-topo';
-
+      const nome = document.createElement('div');
+      nome.className = 'session-name';
       const titulo = document.createElement('strong');
       titulo.textContent = dispositivo.titulo;
-      topo.append(titulo);
+      nome.append(titulo);
 
       if (sessao.atual) {
         const selo = document.createElement('span');
-        selo.className = 'selo';
+        selo.className = 'badge badge--tint';
         selo.textContent = 'Sessão atual';
-        topo.append(selo);
+        nome.append(selo);
       }
-
-      corpo.append(topo);
 
       const criada = formatarDataHora(sessao.criadoEm);
-      if (criada) {
-        const linhaCriada = document.createElement('p');
-        linhaCriada.className = 'sessao-meta';
-        linhaCriada.textContent = `Iniciada em ${criada}`;
-        corpo.append(linhaCriada);
-      }
-
       const ultimoUso = formatarDataHora(sessao.ultimoUsoEm);
-      const linhaUltimoUso = document.createElement('p');
-      linhaUltimoUso.className = 'sessao-meta';
-      linhaUltimoUso.textContent = ultimoUso
-        ? `Último uso em ${ultimoUso}`
-        : 'Último uso não registrado';
-      corpo.append(linhaUltimoUso);
+      const meta = document.createElement('p');
+      meta.className = 'session-meta';
+      meta.textContent = [
+        criada ? `Iniciada em ${criada}` : '',
+        ultimoUso ? `Último uso em ${ultimoUso}` : ''
+      ]
+        .filter(Boolean)
+        .join(' · ');
 
-      const expira = formatarDataHora(sessao.expiraEm);
-      const linhaExpira = document.createElement('p');
-      linhaExpira.className = 'sessao-meta';
-      linhaExpira.textContent = expira ? `Expira em ${expira}` : 'Expiração não informada';
-      corpo.append(linhaExpira);
-
-      item.append(icone, corpo);
+      principal.append(nome);
+      if (meta.textContent) principal.append(meta);
+      item.append(icone, principal);
       fragmento.append(item);
     });
 
@@ -1550,13 +885,16 @@ import Layout from '../layouts/Layout.astro';
   }
 
   async function carregarSessoes() {
-    sessoesErro.classList.add('oculto');
+    if (!sessoesCarregando || !sessoesLista) return;
+
+    sessoesCarregando.hidden = false;
+    if (sessoesErro) sessoesErro.hidden = true;
     sessoesLista.innerHTML = '';
-    sessoesCarregando.classList.remove('oculto');
+    if (sessoesVazio) sessoesVazio.hidden = true;
 
     try {
-      const { dados } = await pedir('/api/conta/sessoes');
-      const sessoes = Array.isArray(dados) ? [...dados] : [];
+      const { dados } = await pedir<SessaoConta[]>('/api/conta/sessoes');
+      sessoes = Array.isArray(dados) ? [...dados] : [];
 
       sessoes.sort((a, b) => {
         if (Boolean(a.atual) !== Boolean(b.atual)) return a.atual ? -1 : 1;
@@ -1565,329 +903,509 @@ import Layout from '../layouts/Layout.astro';
         return dataB - dataA;
       });
 
+      outrasSessoes = sessoes.filter((sessao) => !sessao.atual).length;
       renderizarSessoes(sessoes);
     } catch (erro) {
-      if (erro?.status === 401) return;
-      sessoesCarregando.classList.add('oculto');
-      sessoesErroTexto.textContent =
-        erro?.message || 'Não foi possível carregar suas sessões. Tente novamente.';
-      sessoesErro.classList.remove('oculto');
+      if (erro instanceof FalhaApi && erro.status === 401) return;
+      sessoesCarregando.hidden = true;
+      if (sessoesErroTexto) {
+        sessoesErroTexto.textContent =
+          erro instanceof Error
+            ? erro.message
+            : 'Não foi possível carregar suas sessões. Tente novamente.';
+      }
+      if (sessoesErro) sessoesErro.hidden = false;
     }
   }
 
-  function abrirModalConfirmacao(opcoes) {
-    ultimoFoco = document.activeElement;
-    modalTitulo.textContent = opcoes.titulo;
-    modalDescricao.textContent = opcoes.descricao;
-    modalSimbolo.textContent = opcoes.simbolo || '!';
-    modalSimbolo.className = `modal-simbolo${opcoes.perigo ? ' modal-simbolo--perigo' : ''}`;
+  function limparEstadoDaConta() {
+    if (senhaFeedback) senhaFeedback.hidden = true;
+    if (senhaFeedbackTexto) senhaFeedbackTexto.textContent = '';
+    if (aviso) aviso.hidden = true;
+    limparFeedbackDados();
+    limparErroNomeDados();
+  }
 
-    modalConfirmar.className = `btn ${opcoes.perigo ? 'btn--perigo' : 'btn--primario'}`;
-    modalConfirmar.textContent = opcoes.rotuloConfirmar;
-    modalConfirmar.dataset.texto = opcoes.rotuloConfirmar;
+  async function carregarConta() {
+    limparEstadoDaConta();
+    if (!carregando || !falhaCarregamento || !conteudo) return;
 
-    modalErro.textContent = '';
-    modalErro.classList.add('oculto');
-    modalConfirmacao.value = '';
-    modalCampo.classList.toggle('oculto', !opcoes.exigirTexto);
-    textoExigido = opcoes.exigirTexto || null;
-    modalConfirmar.disabled = Boolean(textoExigido);
-    modalCancelar.disabled = false;
-    modalFechar.disabled = false;
-    modalConfirmacao.disabled = false;
+    carregando.hidden = false;
+    falhaCarregamento.hidden = true;
+    conteudo.hidden = true;
 
-    acaoConfirmar = opcoes.aoConfirmar;
+    try {
+      const { dados } = await pedir<MeConta>('/api/auth/me');
 
-    overflowAnterior = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    fundoInerte.forEach((elemento) => elemento?.setAttribute('inert', ''));
-    modal.hidden = false;
+      if (!dados?.autenticado || !dados.usuario) {
+        irParaEntrar();
+        return;
+      }
 
-    window.requestAnimationFrame(() => {
-      if (textoExigido) modalConfirmacao.focus();
-      else modalCancelar.focus();
+      if (dados.consentimentoPendente) {
+        window.location.replace(
+          '/aceite?destino=' +
+            encodeURIComponent(window.location.pathname + window.location.search)
+        );
+        return;
+      }
+
+      temSenha = dados.temSenha === true;
+      googleConectado = dados.googleConectado === true;
+      if (email) email.textContent = dados.usuario.email;
+      preencherDados(dados.usuario);
+      atualizarSenha();
+      atualizarGoogle();
+
+      aplicarEstadoDaUrl();
+      carregando.hidden = true;
+      conteudo.hidden = false;
+      void carregarSessoes();
+      void verificarGoogleDisponivel();
+    } catch (erro) {
+      if (erro instanceof FalhaApi && erro.status === 401) return;
+      carregando.hidden = true;
+      if (falhaCarregamentoTexto) {
+        falhaCarregamentoTexto.textContent =
+          erro instanceof Error
+            ? erro.message
+            : 'Não foi possível carregar sua conta. Confira sua conexão e tente novamente.';
+      }
+      falhaCarregamento.hidden = false;
+      porId<HTMLElement>('conta-load-error-titulo')?.focus();
+    }
+  }
+
+  function aplicarEstadoDaUrl() {
+    const parametros = new URLSearchParams(window.location.search);
+    const estado = parametros.get('estado');
+    if (!estado) return;
+
+    const mensagens: Record<string, { tipo: TipoAviso; texto: string }> = {
+      google_conectado: {
+        tipo: 'ok',
+        texto: 'Google conectado. Agora você pode entrar com um toque.'
+      },
+      google_email_divergente: {
+        tipo: 'erro',
+        texto: 'O e-mail do Google precisa ser o mesmo e-mail da sua conta Fisga.'
+      },
+      google_email_nao_verificado: {
+        tipo: 'erro',
+        texto: 'O e-mail da conta Google não está verificado. Tente com outra conta.'
+      },
+      google_email_nao_verificado_localmente: {
+        tipo: 'erro',
+        texto: 'Confirme seu e-mail no Fisga antes de conectar o Google.'
+      },
+      google_intencao_invalida: {
+        tipo: 'erro',
+        texto: 'A conexão expirou. Tente conectar o Google de novo.'
+      },
+      google_intencao_expirada: {
+        tipo: 'erro',
+        texto: 'A conexão expirou. Tente conectar o Google de novo.'
+      },
+      google_sessao_externa_invalida: {
+        tipo: 'erro',
+        texto: 'Não concluímos a conexão com Google. Tente de novo.'
+      },
+      google_conexao_nao_autenticado: {
+        tipo: 'erro',
+        texto: 'Sua sessão expirou. Entre novamente para conectar o Google.'
+      },
+      google_vinculo_falhou: {
+        tipo: 'erro',
+        texto: 'Esta conta do Google já está associada a outro usuário.'
+      },
+      google_indisponivel: {
+        tipo: 'erro',
+        texto: 'A conexão com Google não está disponível agora.'
+      }
+    };
+
+    const mensagem = mensagens[estado] ?? {
+      tipo: 'erro' as TipoAviso,
+      texto: 'Não concluímos a conexão com Google. Tente de novo.'
+    };
+
+    mostrarAviso(mensagem.tipo, mensagem.texto);
+
+    const url = new URL(window.location.href);
+    url.searchParams.delete('estado');
+    window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+  }
+
+  function resetarRevealSenha() {
+    document.querySelectorAll<HTMLButtonElement>('#dialog-senha [data-reveal]').forEach((botao) => {
+      const input = document.getElementById(botao.dataset.reveal ?? '') as HTMLInputElement | null;
+      if (input) input.type = 'password';
+      botao.setAttribute('aria-pressed', 'false');
+      botao.setAttribute('aria-label', 'Mostrar senha');
+      const eye = botao.querySelector('[data-icon="eye"]') as HTMLElement | null;
+      const eyeOff = botao.querySelector('[data-icon="eye-off"]') as HTMLElement | null;
+      if (eye) eye.style.display = '';
+      if (eyeOff) eyeOff.style.display = 'none';
     });
   }
 
-  function fecharModal() {
-    if (modal.hidden) return;
-
-    modal.hidden = true;
-    modalEmEnvio = false;
-    acaoConfirmar = null;
-    textoExigido = null;
-    document.body.style.overflow = overflowAnterior;
-    fundoInerte.forEach((elemento) => elemento?.removeAttribute('inert'));
-
-    if (ultimoFoco && typeof ultimoFoco.focus === 'function') {
-      ultimoFoco.focus();
-    }
-    ultimoFoco = null;
+  function atualizarDicaSenha() {
+    if (!senhaDica) return;
+    senhaDica.textContent =
+      modoSenha === 'alterar'
+        ? 'Informe a senha atual e escolha uma nova, de 10 a 128 caracteres. Não exigimos maiúscula, número ou símbolo.'
+        : 'Use de 10 a 128 caracteres. Não exigimos maiúscula, número ou símbolo.';
   }
 
-  async function confirmarModal() {
-    if (modalEmEnvio || !acaoConfirmar) return;
+  function abrirDialogoSenha() {
+    if (!dialogSenha || !senhaTitulo || !campoSenhaAtual) return;
 
-    if (textoExigido && modalConfirmacao.value.trim() !== textoExigido) {
-      modalErro.textContent = 'Digite EXCLUIR, em maiúsculas, para confirmar.';
-      modalErro.classList.remove('oculto');
-      modalConfirmacao.focus();
+    modoSenha = temSenha ? 'alterar' : 'criar';
+    senhaTitulo.textContent = modoSenha === 'alterar' ? 'Alterar senha' : 'Criar uma senha';
+    atualizarDicaSenha();
+    campoSenhaAtual.hidden = modoSenha === 'criar';
+    resetarRevealSenha();
+    if (senhaAtual) senhaAtual.value = '';
+    if (novaSenha) novaSenha.value = '';
+    if (confirmarSenha) confirmarSenha.value = '';
+    limparErroCampo('senha-atual');
+    limparErroCampo('nova-senha');
+    limparErroCampo('confirmar-senha');
+    if (senhaErro) senhaErro.hidden = true;
+    if (senhaFeedback) senhaFeedback.hidden = true;
+
+    dialogSenha.showModal();
+    // Foco síncrono após showModal: agendar em requestAnimationFrame permitia
+    // que o foco mudasse no meio da digitação/preenchimento (perda de caracteres).
+    (modoSenha === 'alterar' ? senhaAtual : novaSenha)?.focus();
+  }
+
+  function fecharDialogoSenha() {
+    if (salvandoSenha || !dialogSenha?.open) return;
+    dialogSenha.close();
+  }
+
+  function mostrarFeedbackSenha(texto: string) {
+    if (!senhaFeedback || !senhaFeedbackTexto) return;
+    const complemento =
+      outrasSessoes > 0 ? ' Os outros dispositivos foram desconectados.' : '';
+    senhaFeedbackTexto.textContent = `${texto}${complemento}`;
+    senhaFeedback.hidden = false;
+    senhaFeedback.scrollIntoView({ block: 'nearest' });
+  }
+
+  formSenha?.addEventListener('submit', async (evento) => {
+    evento.preventDefault();
+    if (salvandoSenha) return;
+
+    limparErroCampo('senha-atual');
+    limparErroCampo('nova-senha');
+    limparErroCampo('confirmar-senha');
+    if (senhaErro) senhaErro.hidden = true;
+
+    if (modoSenha === 'alterar' && !senhaAtual?.value) {
+      erroCampo('senha-atual', 'Informe sua senha atual.');
       return;
     }
 
-    modalEmEnvio = true;
-    const rotuloOriginal = modalConfirmar.dataset.texto || modalConfirmar.textContent;
+    const nova = novaSenha?.value ?? '';
+    if (nova.length < 10) {
+      erroCampo('nova-senha', 'Use pelo menos 10 caracteres.');
+      return;
+    }
+    if (nova.length > 128) {
+      erroCampo('nova-senha', 'Use no máximo 128 caracteres.');
+      return;
+    }
+    if (nova !== (confirmarSenha?.value ?? '')) {
+      erroCampo('confirmar-senha', 'As senhas não são iguais. Confira e tente de novo.');
+      return;
+    }
 
-    modalConfirmar.disabled = true;
-    modalConfirmar.textContent = 'Processando...';
-    modalCancelar.disabled = true;
-    modalFechar.disabled = true;
-    modalConfirmacao.disabled = true;
-    modalErro.classList.add('oculto');
+    salvandoSenha = true;
+    setLoading(senhaSalvar, true, 'Salvando…');
 
     try {
-      await acaoConfirmar();
+      await pedir('/api/conta/senha', {
+        metodo: 'POST',
+        corpo: {
+          senhaAtual: modoSenha === 'alterar' ? senhaAtual?.value ?? '' : null,
+          novaSenha: nova
+        }
+      });
+
+      const eraCriacao = modoSenha === 'criar';
+      temSenha = true;
+      atualizarSenha();
+      dialogSenha?.close();
+      mostrarFeedbackSenha(eraCriacao ? 'Senha criada.' : 'Senha alterada.');
+      void carregarSessoes();
     } catch (erro) {
-      if (erro?.status !== 401) {
-        modalErro.textContent =
-          erro?.message || 'Não foi possível concluir a ação. Tente novamente.';
-        modalErro.classList.remove('oculto');
+      if (erro instanceof FalhaApi && erro.status !== 401) {
+        if (erro.codigo === 'senha_atual_incorreta') {
+          // Outra aba pode ter criado a senha primeiro (ou uma API antiga não
+          // informou temSenha). Sem trocar de modo, o campo atual ficaria
+          // escondido e o erro pareceria um diálogo travado.
+          if (modoSenha === 'criar') {
+            modoSenha = 'alterar';
+            temSenha = true;
+            if (senhaTitulo) senhaTitulo.textContent = 'Alterar senha';
+            atualizarDicaSenha();
+            atualizarSenha();
+          }
+          erroCampo('senha-atual', 'A senha atual está incorreta.');
+        } else if (erro.codigo === 'senha_curta') {
+          erroCampo('nova-senha', 'Use pelo menos 10 caracteres.');
+        } else if (erro.codigo === 'senha_longa') {
+          erroCampo('nova-senha', 'Use no máximo 128 caracteres.');
+        } else if (senhaErro && senhaErroTexto) {
+          senhaErroTexto.textContent =
+            erro.message || 'Não foi possível salvar a senha. Tente novamente.';
+          senhaErro.hidden = false;
+        }
       }
     } finally {
-      modalEmEnvio = false;
-
-      if (!modal.hidden) {
-        modalCancelar.disabled = false;
-        modalFechar.disabled = false;
-        modalConfirmacao.disabled = false;
-        modalConfirmar.textContent = rotuloOriginal;
-        modalConfirmar.disabled =
-          Boolean(textoExigido) && modalConfirmacao.value.trim() !== textoExigido;
-      }
+      salvandoSenha = false;
+      setLoading(senhaSalvar, false);
     }
-  }
+  });
 
-  function abrirModalSairAtual(motivoTroca = false) {
-    const email = usuarioAtual?.email || 'seu e-mail';
-
-    abrirModalConfirmacao({
-      titulo: motivoTroca ? 'Sair para trocar de e-mail?' : 'Sair deste dispositivo?',
-      descricao: motivoTroca
-        ? `Você vai encerrar esta sessão. Depois, é só entrar com o novo e-mail para receber o link mágico no endereço certo.`
-        : `Você vai encerrar a sessão deste dispositivo. Para voltar, será preciso pedir um novo link mágico para ${email}.`,
-      rotuloConfirmar: motivoTroca ? 'Sair da conta' : 'Sair',
-      aoConfirmar: async () => {
-        await pedir('/api/auth/sair', { metodo: 'POST' });
-        fecharModal();
-        mostrarToast('Sessão encerrada. Até a próxima pescaria!', 'ok');
-        window.setTimeout(() => window.location.assign('/'), 1200);
-      }
-    });
-  }
-
-  formPerfil.addEventListener('submit', async (evento) => {
+  formDados?.addEventListener('submit', async (evento) => {
     evento.preventDefault();
+    if (salvandoDados) return;
 
-    const nome = nomePerfil.value.trim();
+    limparFeedbackDados();
+    limparErroNomeDados();
 
+    const nome = dadosNome?.value.trim() ?? '';
     if (nome.length > 80) {
-      definirFeedback(perfilFeedback, 'O nome deve ter até 80 caracteres.', 'erro');
-      nomePerfil.focus();
+      erroNomeDados('Use até 80 caracteres.');
       return;
     }
 
-    const rotuloOriginal = salvarPerfil.textContent;
-    salvarPerfil.disabled = true;
-    salvarPerfil.textContent = 'Salvando...';
-    definirFeedback(perfilFeedback, '', null);
+    salvandoDados = true;
+    setLoading(dadosSalvar, true, 'Salvando…');
 
     try {
-      const { dados } = await pedir('/api/auth/perfil', {
+      const { dados } = await pedir<UsuarioConta>('/api/auth/perfil', {
         metodo: 'PATCH',
         corpo: {
           nome: nome || null,
-          aceitaNovidades: aceitaNovidades.checked
+          aceitaNovidades: dadosNovidades?.checked === true
         }
       });
 
       if (dados) {
-        usuarioAtual = dados;
-        preencherIdentidade(dados);
+        if (dadosNome) dadosNome.value = dados.nome ?? '';
+        if (dadosNovidades) dadosNovidades.checked = dados.aceitaNovidades === true;
       }
-
-      definirFeedback(perfilFeedback, 'Alterações salvas.', 'ok');
-      mostrarToast('Perfil atualizado.', 'ok');
+      mostrarFeedbackDados('Dados salvos.');
     } catch (erro) {
-      if (erro?.status !== 401) {
-        definirFeedback(
-          perfilFeedback,
-          erro?.message || 'Não foi possível salvar suas alterações. Tente novamente.',
-          'erro'
-        );
+      if (erro instanceof FalhaApi && erro.status !== 401) {
+        if (erro.codigo === 'nome_longo') {
+          erroNomeDados('Use até 80 caracteres.');
+        } else {
+          mostrarErroDados(erro.message || 'Não foi possível salvar seus dados. Tente novamente.');
+        }
       }
     } finally {
-      salvarPerfil.disabled = false;
-      salvarPerfil.textContent = rotuloOriginal;
+      salvandoDados = false;
+      setLoading(dadosSalvar, false);
     }
   });
 
-  nomePerfil.addEventListener('input', atualizarContador);
+  dadosExportar?.addEventListener('click', async () => {
+    if (exportandoDados) return;
 
-  btnTrocarEmail.addEventListener('click', () => {
-    const vaiAbrir = trocarEmail.classList.contains('oculto');
-    trocarEmail.classList.toggle('oculto', !vaiAbrir);
-    btnTrocarEmail.setAttribute('aria-expanded', String(vaiAbrir));
-    btnTrocarEmail.textContent = vaiAbrir ? 'Fechar' : 'Trocar e-mail';
-  });
-
-  sairParaTrocar.addEventListener('click', () => abrirModalSairAtual(true));
-
-  sairAtual.addEventListener('click', () => abrirModalSairAtual(false));
-
-  sairTodos.addEventListener('click', () => {
-    abrirModalConfirmacao({
-      titulo: 'Sair de todos os dispositivos?',
-      descricao:
-        'Todos os navegadores e aparelhos conectados à sua conta serão desconectados. Cada um vai precisar de um novo link mágico para entrar.',
-      rotuloConfirmar: 'Sair de todos',
-      aoConfirmar: async () => {
-        await pedir('/api/auth/sair-de-todos', { metodo: 'POST' });
-        fecharModal();
-        mostrarToast('Todas as sessões foram encerradas.', 'ok');
-        window.setTimeout(() => window.location.assign('/'), 1200);
-      }
-    });
-  });
-
-  exportarDados.addEventListener('click', async () => {
-    const rotuloOriginal = exportarDados.textContent;
-    exportarDados.disabled = true;
-    exportarDados.textContent = 'Preparando arquivo...';
-    definirFeedback(exportarFeedback, '', null);
+    limparFeedbackDados();
+    exportandoDados = true;
+    setLoading(dadosExportar, true, 'Preparando…');
 
     try {
-      const { resposta } = await pedir('/api/conta/exportar', { bruto: true });
-      const blob = await resposta.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
+      const resposta = await fetch(`${API}/api/conta/exportar`, {
+        credentials: 'include',
+        headers: { Accept: 'application/json' }
+      });
 
+      if (resposta.status === 401) {
+        irParaEntrar();
+        return;
+      }
+
+      if (!resposta.ok) {
+        let mensagem = mensagemDoStatus(resposta.status);
+        try {
+          const dados = (await resposta.json()) as Record<string, unknown>;
+          if (typeof dados?.detalhe === 'string') mensagem = dados.detalhe;
+        } catch {
+          // resposta sem JSON: mantém a mensagem por status
+        }
+        mostrarErroDados(mensagem);
+        return;
+      }
+
+      const arquivo = await resposta.blob();
+      const disposicao = resposta.headers.get('Content-Disposition') ?? '';
+      const encontrado = /filename\*?=(?:UTF-8''|")?([^";]+)/i.exec(disposicao);
+      const nomeArquivo =
+        encontrado?.[1]?.trim() ||
+        `fisga-conta-${new Date().toISOString().slice(0, 10).replaceAll('-', '')}.json`;
+
+      const url = URL.createObjectURL(arquivo);
+      const link = document.createElement('a');
       link.href = url;
-      link.download = `fisga-conta-${new Date().toISOString().slice(0, 10)}.json`;
+      link.download = nomeArquivo;
       document.body.append(link);
       link.click();
       link.remove();
-      window.setTimeout(() => URL.revokeObjectURL(url), 1500);
-
-      definirFeedback(exportarFeedback, 'Exportação iniciada. Confira seus downloads.', 'ok');
-      mostrarToast('Seus dados estão sendo baixados.', 'ok');
-    } catch (erro) {
-      if (erro?.status !== 401) {
-        definirFeedback(
-          exportarFeedback,
-          erro?.message || 'Não foi possível exportar seus dados. Tente novamente.',
-          'erro'
-        );
-        mostrarToast('Não foi possível exportar seus dados.', 'erro');
-      }
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      mostrarFeedbackDados('Download iniciado. O arquivo JSON deve aparecer na sua pasta de downloads.');
+    } catch {
+      mostrarErroDados(MENSAGEM_REDE);
     } finally {
-      exportarDados.disabled = false;
-      exportarDados.textContent = rotuloOriginal;
+      exportandoDados = false;
+      setLoading(dadosExportar, false);
     }
   });
 
-  excluirConta.addEventListener('click', () => {
-    abrirModalConfirmacao({
-      titulo: 'Excluir sua conta?',
-      descricao:
-        'Esta ação é permanente. Vamos apagar seu perfil, suas pescarias, capturas e fotos. Não é possível recuperar depois.',
-      rotuloConfirmar: 'Excluir minha conta',
-      perigo: true,
-      exigirTexto: 'EXCLUIR',
-      aoConfirmar: async () => {
-        await pedir('/api/conta', {
-          metodo: 'DELETE',
-          corpo: { confirmacao: 'EXCLUIR' }
-        });
+  function abrirDialogoSair(modo: ModoSair) {
+    if (!dialogSair || !sairTitulo || !sairCopia || !sairConfirmar) return;
 
-        fecharModal();
-        conteudo.classList.add('oculto');
-        falhaCarregamento.classList.add('oculto');
-        contaEncerrada.classList.remove('oculto');
+    modoSair = modo;
+    sairTitulo.textContent =
+      modo === 'atual' ? 'Sair desta sessão?' : 'Sair de todos os dispositivos?';
+    sairCopia.textContent =
+      modo === 'atual'
+        ? 'Você vai encerrar a sessão deste dispositivo. Para voltar, será preciso entrar novamente.'
+        : 'Todos os navegadores e aparelhos conectados serão desconectados. Cada um vai precisar entrar novamente.';
+    const label = sairConfirmar.querySelector('[data-btn-label]') as HTMLElement | null;
+    const rotulo = modo === 'atual' ? 'Sair' : 'Sair de todos';
+    if (label) label.textContent = rotulo;
+    // O setLoading restaura o rótulo a partir daqui; sem atualizar junto com o
+    // modo, uma falha anterior poderia deixar "Sair de todos" em "Sair".
+    sairConfirmar.dataset.idleLabel = rotulo;
+    if (sairErro) sairErro.hidden = true;
 
-        const comportamentoAnterior = document.documentElement.style.scrollBehavior;
-        document.documentElement.style.scrollBehavior = 'auto';
-        contaEncerrada.scrollIntoView({ block: 'start' });
-        document.documentElement.style.scrollBehavior = comportamentoAnterior;
-        contaEncerradaTitulo.focus({ preventScroll: true });
+    dialogSair.showModal();
+    window.requestAnimationFrame(() => {
+      (document.querySelector('[data-fechar-sair]') as HTMLButtonElement | null)?.focus();
+    });
+  }
 
-        window.setTimeout(() => window.location.replace('/'), 2400);
+  sairConfirmar?.addEventListener('click', async () => {
+    if (saindo) return;
+
+    saindo = true;
+    setLoading(sairConfirmar, true, 'Saindo…');
+
+    try {
+      await pedir(modoSair === 'atual' ? '/api/auth/sair' : '/api/auth/sair-de-todos', {
+        metodo: 'POST'
+      });
+      window.location.assign('/entrar?saiu=1');
+    } catch (erro) {
+      if (erro instanceof FalhaApi && erro.status !== 401 && sairErro && sairErroTexto) {
+        sairErroTexto.textContent =
+          erro.message || 'Não foi possível sair agora. Tente novamente.';
+        sairErro.hidden = false;
       }
+    } finally {
+      saindo = false;
+      setLoading(sairConfirmar, false);
+    }
+  });
+
+  excluirConfirmacao?.addEventListener('input', () => {
+    if (!excluirConfirmar) return;
+    excluirConfirmar.disabled = excluirConfirmacao.value.trim() !== 'EXCLUIR';
+    if (!excluirConfirmar.disabled && excluirErro) excluirErro.hidden = true;
+  });
+
+  excluirConta?.addEventListener('click', () => {
+    if (!dialogExcluir || !excluirConfirmacao || !excluirConfirmar) return;
+    excluirConfirmacao.value = '';
+    excluirConfirmar.disabled = true;
+    if (excluirErro) excluirErro.hidden = true;
+    dialogExcluir.showModal();
+    window.requestAnimationFrame(() => excluirConfirmacao.focus());
+  });
+
+  excluirConfirmar?.addEventListener('click', async () => {
+    if (excluindo || excluirConfirmacao?.value.trim() !== 'EXCLUIR') return;
+
+    excluindo = true;
+    setLoading(excluirConfirmar, true, 'Excluindo…');
+
+    try {
+      await pedir('/api/conta', {
+        metodo: 'DELETE',
+        corpo: { confirmacao: 'EXCLUIR' }
+      });
+
+      dialogExcluir?.close();
+      if (conteudo) conteudo.hidden = true;
+      if (falhaCarregamento) falhaCarregamento.hidden = true;
+      if (carregando) carregando.hidden = true;
+      if (contaEncerrada) contaEncerrada.hidden = false;
+      contaEncerradaTitulo?.focus({ preventScroll: true });
+      contaEncerrada?.scrollIntoView({ block: 'start' });
+      window.setTimeout(() => window.location.replace('/'), 2400);
+    } catch (erro) {
+      if (erro instanceof FalhaApi && erro.status !== 401 && excluirErro && excluirErroTexto) {
+        excluirErroTexto.textContent =
+          erro.message || 'Não foi possível excluir a conta. Tente novamente.';
+        excluirErro.hidden = false;
+      }
+    } finally {
+      excluindo = false;
+      setLoading(excluirConfirmar, false);
+    }
+  });
+
+  document.querySelectorAll<HTMLButtonElement>('[data-reveal]').forEach((botao) => {
+    const input = document.getElementById(botao.dataset.reveal ?? '') as HTMLInputElement | null;
+    if (!input) return;
+
+    botao.addEventListener('click', () => {
+      const mostrando = input.type === 'text';
+      input.type = mostrando ? 'password' : 'text';
+      botao.setAttribute('aria-pressed', String(!mostrando));
+      botao.setAttribute('aria-label', mostrando ? 'Mostrar senha' : 'Ocultar senha');
+      const eye = botao.querySelector('[data-icon="eye"]') as HTMLElement | null;
+      const eyeOff = botao.querySelector('[data-icon="eye-off"]') as HTMLElement | null;
+      if (eye) eye.style.display = mostrando ? 'none' : '';
+      if (eyeOff) eyeOff.style.display = mostrando ? '' : 'none';
+      input.focus();
     });
   });
 
-  modalConfirmacao.addEventListener('input', () => {
-    if (modalEmEnvio) return;
-    const podeConfirmar = !textoExigido || modalConfirmacao.value.trim() === textoExigido;
-    modalConfirmar.disabled = !podeConfirmar;
-    if (podeConfirmar) modalErro.classList.add('oculto');
+  document.querySelector('[data-fechar-senha]')?.addEventListener('click', fecharDialogoSenha);
+  document.querySelector('[data-fechar-sair]')?.addEventListener('click', () => {
+    if (!saindo) dialogSair?.close();
+  });
+  document.querySelector('[data-fechar-excluir]')?.addEventListener('click', () => {
+    if (!excluindo) dialogExcluir?.close();
   });
 
-  modalConfirmacao.addEventListener('keydown', (evento) => {
-    if (evento.key === 'Enter' && !modalConfirmar.disabled) {
-      evento.preventDefault();
-      void confirmarModal();
-    }
+  dialogSenha?.addEventListener('cancel', (evento) => {
+    if (salvandoSenha) evento.preventDefault();
+  });
+  dialogSair?.addEventListener('cancel', (evento) => {
+    if (saindo) evento.preventDefault();
+  });
+  dialogExcluir?.addEventListener('cancel', (evento) => {
+    if (excluindo) evento.preventDefault();
   });
 
-  modalConfirmar.addEventListener('click', () => void confirmarModal());
-
-  modalCancelar.addEventListener('click', () => {
-    if (!modalEmEnvio) fecharModal();
+  senhaAcao?.addEventListener('click', abrirDialogoSenha);
+  googleAcao?.addEventListener('click', () => {
+    setLoading(googleAcao, true, 'Abrindo Google…');
+    window.location.assign(`${API}/api/auth/google/conectar`);
   });
-
-  modalFechar.addEventListener('click', () => {
-    if (!modalEmEnvio) fecharModal();
-  });
-
-  modal.addEventListener('click', (evento) => {
-    if (evento.target === modal && !modalEmEnvio) fecharModal();
-  });
-
-  document.addEventListener('keydown', (evento) => {
-    if (modal.hidden) return;
-
-    if (evento.key === 'Escape') {
-      evento.preventDefault();
-      if (!modalEmEnvio) fecharModal();
-      return;
-    }
-
-    if (evento.key !== 'Tab') return;
-
-    const focaveis = Array.from(
-      modal.querySelectorAll('button, input, a[href], [tabindex]:not([tabindex="-1"])')
-    ).filter((elemento) => !elemento.disabled && elemento.offsetParent !== null);
-
-    if (!focaveis.length) {
-      evento.preventDefault();
-      modalCaixa.focus();
-      return;
-    }
-
-    const primeiro = focaveis[0];
-    const ultimo = focaveis[focaveis.length - 1];
-
-    if (evento.shiftKey && document.activeElement === primeiro) {
-      evento.preventDefault();
-      ultimo.focus();
-    } else if (!evento.shiftKey && document.activeElement === ultimo) {
-      evento.preventDefault();
-      primeiro.focus();
-    }
-  });
-
-  recarregar.addEventListener('click', () => void carregarConta());
-  recarregarSessoes.addEventListener('click', () => void carregarSessoes());
+  sairAtual?.addEventListener('click', () => abrirDialogoSair('atual'));
+  sairTodos?.addEventListener('click', () => abrirDialogoSair('todos'));
+  recarregar?.addEventListener('click', () => void carregarConta());
+  recarregarSessoes?.addEventListener('click', () => void carregarSessoes());
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => void carregarConta(), { once: true });

@@ -242,6 +242,8 @@ import Layout from '../layouts/Layout.astro';
 
 <script>
   // @ts-nocheck
+  import { destinoSeguro } from '../lib/auth';
+
   const API = (document.body.dataset.api || 'http://localhost:5184').replace(/\/$/, '');
   const formulario = document.getElementById('boas-form');
   const nomeInput = document.getElementById('boas-nome');
@@ -262,12 +264,11 @@ import Layout from '../layouts/Layout.astro';
   function destino() {
     try {
       const salvo = sessionStorage.getItem('fisga:retorno');
-      if (salvo && salvo.startsWith('/') && !salvo.startsWith('//')) {
-        sessionStorage.removeItem('fisga:retorno');
-        return salvo;
-      }
-    } catch {}
-    return '/hoje';
+      if (salvo !== null) sessionStorage.removeItem('fisga:retorno');
+      return destinoSeguro(salvo, '/hoje');
+    } catch {
+      return '/hoje';
+    }
   }
 
   function iniciais(nome) {
@@ -282,6 +283,13 @@ import Layout from '../layouts/Layout.astro';
       const dados = await resposta.json().catch(() => ({}));
       if (!dados.autenticado || !dados.usuario) {
         window.location.replace('/entrar?voltar=/hoje');
+        return;
+      }
+
+      if (dados.consentimentoPendente) {
+        window.location.replace(
+          '/aceite?destino=' + encodeURIComponent(window.location.pathname + window.location.search)
+        );
         return;
       }
 

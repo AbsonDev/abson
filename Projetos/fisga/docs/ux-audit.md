@@ -35,7 +35,7 @@ O produto cresceu de “diário” para “copiloto”. A apresentação ainda c
 | `/wiki` | Conteúdo de referência | Público |
 | `/registrar` | Registro da pescaria | Conta (formulário visível) |
 | `/meu-diario` | Estatísticas, insights e histórico | Conta |
-| `/conta` | Perfil, sessões, exportação e exclusão | Conta |
+| `/conta` | Perfil (nome/preferência de e-mail), senha, Google, sessões, exportação e exclusão | Conta |
 | `/entrar`, `/boas-vindas` | Acesso e primeiro uso | Público |
 
 ## Achados
@@ -327,3 +327,84 @@ Implementado em 17/11/2026, depois da validação do protótipo `fisga-ux` no Op
 O protótipo mostra 3 passos de onboarding (nome → local → newsletter). A implementação mantém 2
 passos: nome/newsletter na primeira tela e local na segunda, para reduzir fricção sem perder o
 local padrão.
+
+## Telas de identidade (Identity 2A) — 2026-11-17
+
+Protótipo aprovado no OpenDesign, projeto `fisga-auth-screens`, arquivo `index.html` autocontido.
+Referência visual e de copy para as Tasks 11–13 do plano `docs/superpowers/plans/2026-11-17-identity-google.md`.
+
+### Telas
+
+`/entrar`, `/criar-conta`, `/esqueci-senha`, `/redefinir-senha`, `/confirmar-email`, `/aceite` e `/conta`.
+
+### Padrões observados e aplicáveis
+
+- Uma ação primária por tela; o resto é botão de contorno ou link discreto.
+- Tokens do `DESIGN-UX.md`: `--sand` de fundo, `--petrol` como única cor de ação, `--clay` de acento,
+  Fraunces nos títulos e Inter no corpo, divisórias de 1px em vez de cartões empilhados.
+- Copy em pt-BR em todos os estados: padrão, carregando, erro, sucesso e vazio.
+- `/aceite` exige os dois checkboxes (Termos e Privacidade, versão `2026-11-17`) antes de liberar o app.
+- `/conta` separa e-mail/senha, Google (status/vínculo), **Seus dados** (nome, preferência de e-mail e exportação JSON), sessões ativas e zona sensível, com confirmação explícita para excluir conta.
+- O botão "Continuar com Google" só aparece quando `/api/auth/google/disponivel` retornar `disponivel: true`.
+- Acessibilidade: labels persistentes, `autocomplete`, `aria-live`, foco visível, alvos ≥44px e
+  `prefers-reduced-motion`. Responsividade verificável em 360, 390, 768, 1440 e 1920 px.
+
+### Diferenças em relação ao protótipo
+
+O protótipo usa um painel de revisão no rodapé para trocar de tela e simular estados; esse painel
+não vai para produção. Os links de Termos/Privacidade abrem um resumo no protótipo; na aplicação
+apontam para `/termos` e `/privacidade`.
+
+### Aprovação
+
+Protótipo aprovado pelo usuário em 2026-11-17 para implementação no Astro.
+
+### Rollout e evidência — 18/11/2026
+
+A migração de identidade foi implementada e verificada de ponta a ponta. O rollout operacional está
+no runbook [`docs/superpowers/runbooks/2026-11-17-identity-rollout.md`](superpowers/runbooks/2026-11-17-identity-rollout.md).
+
+**Implementado**
+
+- `/entrar` com senha, link mágico e Google condicional; `/criar-conta`, `/esqueci-senha`,
+  `/redefinir-senha` e `/confirmar-email` com estados reais de carregando, erro, sucesso e expirado.
+- `/aceite` bloqueando Termos/Privacidade `2026-11-17` até os dois checkboxes e registrando o aceite
+  por usuário.
+- `/conta` com criação/alteração de senha, vínculo Google, nome/newsletter, exportação JSON, lista de
+  sessões com “sair desta”/“sair de todos” e zona sensível.
+- Cookie `fisga_auth` da Identity; `fisga_sessao` apenas apagado como legado.
+- Exclusão de conta remove credencial da Identity, logins/tokens externos e tokens de link
+  mágico/reset antes dos dados de domínio.
+- `/aceite` consulta `GET /api/legal/versoes` e envia exatamente as versões vigentes.
+- E-mail de confirmação avisa para não confirmar se a conta não foi criada pelo destinatário
+  (mitigação de pré-sequestro; risco residual documentado no runbook).
+- Data Protection persistido no volume `fisga_keys` (`/app/data/keys`), exigido também em produção.
+
+**Verificação executada**
+
+- **243 testes .NET** aprovados (36 domínio, 48 aplicação, 159 API), incluindo confirmação, reset,
+  consentimento, senha, sessões, Google e outbox de e-mail.
+- **`npm run check`**: 0 erros/avisos/hints em 89 arquivos; **`npm run build`** aprovado.
+- **Playwright mockado: 61/61** — UI, estados e contratos continuam iguais.
+- **Playwright com backend real: 6/6** em 18,4 s (12/12 com `--repeat-each=2`, 37,3 s) — cadastro por senha →
+  confirmação → consentimento → app; retorno por link mágico → consentimento → diário com pescaria
+  preservada; reset de senha; “sair desta”/“sair de todos” com dois navegadores; `/conta`
+  (senha, perfil, newsletter, exportação JSON) e Google indisponível.
+
+**Não verificado neste ambiente**
+
+- Migration em PostgreSQL local: `docker` ausente e nenhum Postgres disponível. Fica como checklist
+  pré-deploy no runbook, com contagens antes/depois de `usuarios`, `pescarias` e `AspNetUsers`.
+- OAuth Google real: sem `ClientId`/`ClientSecret`. O E2E cobre só o estado indisponível; o fluxo real
+  e os redirect URIs estão no checklist pós-credenciais.
+- Sentry em produção: sem DSN no E2E. O scrubber e os testes de API cobrem o comportamento, mas não
+  houve envio real para inspeção.
+
+**Reprodução**
+
+```bash
+cd Projetos/fisga
+~/.dotnet/dotnet test
+cd web && npm run check && npm run build && npx playwright test
+./scripts/e2e-real.sh   # 6 testes com backend real, dados descartáveis
+```

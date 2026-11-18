@@ -2,7 +2,6 @@ using Fisga.Application.Abstractions;
 using Fisga.Application.Seguranca;
 using Fisga.Domain.Common;
 using Fisga.Domain.Identidade;
-using Fisga.Domain.Identidade.Eventos;
 
 namespace Fisga.Application.Identidade;
 
@@ -13,7 +12,7 @@ public sealed class ServicoDeAutenticacao(
     IEmailSender email,
     IUnitOfWork unidade,
     IRelogio relogio,
-    IDomainEventDispatcher eventos,
+    ICadastroDeUsuario cadastro,
     AutenticacaoOptions opcoes)
 {
     public async Task<ResultadoDaSolicitacao> SolicitarLinkAsync(
@@ -55,10 +54,14 @@ public sealed class ServicoDeAutenticacao(
         return new ResultadoDaSolicitacao(emailNormalizado.Valor, url);
     }
 
-    public async Task<SessaoCriada> ConfirmarAsync(
+    /// <summary>
+    /// Valida o link mágico, garante o usuário de domínio (e a conta da Identity,
+    /// via <see cref="ICadastroDeUsuario"/>) e registra o acesso. Não cria sessão,
+    /// token de cookie nem publica eventos de sessão: isso é feito pelo endpoint
+    /// através de IdentitySessionService.AssinarAsync.
+    /// </summary>
+    public async Task<ResultadoDaConfirmacao> ConfirmarAsync(
         string? tokenCru,
-        string? userAgent,
-        string? ip,
         CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(tokenCru) || tokenCru.Trim().Length < 32)
@@ -74,89 +77,20 @@ public sealed class ServicoDeAutenticacao(
         registro.Consumir(agora);
 
         var emailNormalizado = Email.Criar(registro.Email);
-        var usuario = await usuarios.ObterPorEmailAsync(emailNormalizado, ct);
-
-        if (usuario is null)
-        {
-            usuario = Usuario.Criar(emailNormalizado, null, agora);
-            usuarios.Adicionar(usuario);
-        }
+        var usuario = await cadastro.GarantirUsuarioAsync(
+            emailNormalizado,
+            nome: null,
+            emailVerificado: true,
+            ct);
 
         var primeiroAcesso = usuario.BemVindoEm is null;
         usuario.VerificarEmail(agora);
         usuario.RegistrarAcesso(agora);
         usuario.MarcarBoasVindas(agora);
 
-        var tokenSessao = TokensSeguros.Novo();
-        var sessao = Sessao.Criar(
-            usuario.Id,
-            TokensSeguros.Hash(tokenSessao),
-            userAgent,
-            ip is null ? null : TokensSeguros.Hash(ip),
-            agora,
-            TimeSpan.FromDays(opcoes.DuracaoDaSessaoEmDias));
-
-        sessoes.Adicionar(sessao);
         await unidade.SalvarAsync(ct);
 
-        var pendentes = usuario.Eventos
-            .Concat([new SessaoIniciada(usuario.Id, sessao.Id, agora)])
-            .ToList();
-
-        await eventos.PublicarAsync(pendentes, ct);
-        usuario.LimparEventos();
-
-        return new SessaoCriada(tokenSessao, sessao.ExpiraEm, usuario, primeiroAcesso);
-    }
-
-    public async Task<SessaoValida?> ValidarSessaoAsync(string? tokenCru, CancellationToken ct = default)
-    {
-        if (string.IsNullOrWhiteSpace(tokenCru))
-        {
-            return null;
-        }
-
-        var hash = TokensSeguros.Hash(tokenCru.Trim());
-        var sessao = await sessoes.ObterPorHashAsync(hash, ct);
-        var agora = relogio.Agora;
-
-        if (sessao is null || !sessao.EstaAtiva(agora))
-        {
-            return null;
-        }
-
-        var usuario = await usuarios.ObterPorIdAsync(sessao.UsuarioId, ct);
-        if (usuario is null)
-        {
-            return null;
-        }
-
-        // Evita um UPDATE a cada requisição; registra o uso em janelas de 5 minutos.
-        if (agora - sessao.UltimoUsoEm > TimeSpan.FromMinutes(5))
-        {
-            sessao.RegistrarUso(agora);
-            await unidade.SalvarAsync(ct);
-        }
-
-        return new SessaoValida(sessao, usuario);
-    }
-
-    public async Task SairAsync(string? tokenCru, CancellationToken ct = default)
-    {
-        if (string.IsNullOrWhiteSpace(tokenCru))
-        {
-            return;
-        }
-
-        var hash = TokensSeguros.Hash(tokenCru.Trim());
-        var sessao = await sessoes.ObterPorHashAsync(hash, ct);
-        if (sessao is null)
-        {
-            return;
-        }
-
-        sessao.Revogar(relogio.Agora);
-        await unidade.SalvarAsync(ct);
+        return new ResultadoDaConfirmacao(usuario, primeiroAcesso);
     }
 
     public async Task SairDeTodosAsync(Guid usuarioId, CancellationToken ct = default)

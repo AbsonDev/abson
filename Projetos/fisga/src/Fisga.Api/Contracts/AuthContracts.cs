@@ -6,9 +6,37 @@ public sealed record SolicitarLinkRequest(string? Email);
 
 public sealed record SolicitarLinkResponse(string Mensagem, string? LinkDesenvolvimento);
 
+public sealed record RegistrarRequest(string? Nome, string? Email, string? Senha);
+
+public sealed record RegistrarResponse(string Mensagem);
+
+public sealed record EntrarRequest(string? Email, string? Senha);
+
+public sealed record EntrarResponse(bool Autenticado, string? Mensagem);
+
+public sealed record GoogleDisponivelResponse(bool Disponivel);
+
+public sealed record VersoesLegaisResponse(string TermosVersao, string PrivacidadeVersao);
+
+public sealed record ConfirmarEmailRequest(string? Uid, string? Token);
+
+public sealed record ConfirmarEmailResponse(string Mensagem);
+
+public sealed record EsqueciSenhaRequest(string? Email);
+
+public sealed record EsqueciSenhaResponse(string Mensagem);
+
+public sealed record RedefinirSenhaRequest(string? Uid, string? Token, string? Senha);
+
+public sealed record RedefinirSenhaResponse(string Mensagem);
+
 public sealed record AtualizarPerfilRequest(string? Nome, bool AceitaNovidades);
 
+public sealed record RegistrarConsentimentoRequest(string? TermosVersao, string? PrivacidadeVersao);
+
 public sealed record ExcluirContaRequest(string? Confirmacao);
+
+public sealed record AlterarSenhaRequest(string? SenhaAtual, string? NovaSenha);
 
 public sealed record UsuarioResponse(
     Guid Id,
@@ -30,7 +58,12 @@ public sealed record UsuarioResponse(
             usuario.UltimoAcessoEm);
 }
 
-public sealed record MeResponse(bool Autenticado, UsuarioResponse? Usuario);
+public sealed record MeResponse(
+    bool Autenticado,
+    UsuarioResponse? Usuario,
+    bool ConsentimentoPendente,
+    bool GoogleConectado,
+    bool TemSenha);
 
 public sealed record SessaoResponse(
     Guid Id,

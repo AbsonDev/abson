@@ -18,6 +18,25 @@ A entrada do produto foi reorganizada antes de novas features:
 
 Auditoria e decisões em [`docs/ux-audit.md`](ux-audit.md).
 
+## Identidade e acesso — entregue
+
+O login deixou de ser só link mágico e virou uma identidade completa, sem trocar a stack:
+
+- senha de 10 a 128 caracteres, com confirmação de e-mail e lockout de 5 tentativas por 15 min;
+- link mágico permanente como alternativa sem senha, de uso único e 15 minutos;
+- Google opcional no login, com auto-link apenas quando os dois lados do e-mail estão verificados;
+- consentimento formal de Termos e Privacidade, com versão e bloqueio até o aceite;
+- sessões de 30 dias com lista de dispositivos, “sair desta” e “sair de todos”;
+- `/conta` com senha, Google, perfil/newsletter, exportação JSON e exclusão;
+- recuperação de senha e confirmação de e-mail por link.
+
+Decisão em [`docs/adr/0013-identity-completa.md`](adr/0013-identity-completa.md), modelo em
+[`docs/ddd.md`](ddd.md) e rollout em
+[`docs/superpowers/runbooks/2026-11-17-identity-rollout.md`](superpowers/runbooks/2026-11-17-identity-rollout.md).
+
+Google fica desligado até existirem `Google:ClientId` e `Google:ClientSecret`; o restante do login
+não depende dele.
+
 ## Módulo A — Cockpit do Pescador
 
 **Status:** núcleo no ar.

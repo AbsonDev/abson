@@ -20,6 +20,7 @@ public static partial class SentryScrubber
         "pescador",
         "email",
         "token",
+        "uid",
         "shareToken",
         "handoff_code",
         "code"
@@ -30,7 +31,25 @@ public static partial class SentryScrubber
         evento.ServerName = null;
         evento.User = null!;
         LimparRequest(evento.Request);
+        LimparMensagens(evento);
         return evento;
+    }
+
+    private static void LimparMensagens(SentryEvent evento)
+    {
+        if (evento.Message is { } mensagem)
+        {
+            mensagem.Message = ScrubText(mensagem.Message);
+            mensagem.Formatted = ScrubText(mensagem.Formatted);
+        }
+
+        if (evento.SentryExceptions is { } excecoes)
+        {
+            foreach (var excecao in excecoes)
+            {
+                excecao.Value = ScrubText(excecao.Value);
+            }
+        }
     }
 
     public static SentryTransaction? ScrubTransaction(SentryTransaction transacao, SentryHint _)
@@ -100,6 +119,6 @@ public static partial class SentryScrubber
         return ParametroSensivel().Replace(texto, "$1[Filtered]");
     }
 
-    [GeneratedRegex(@"(?i)([?&](?:lat|lon|latitude|longitude|nome|cidade|pescador|email|token|handoff_code|code)=)[^&\s]+")]
+    [GeneratedRegex(@"(?i)([?&](?:lat|lon|latitude|longitude|nome|cidade|pescador|email|token|uid|handoff_code|code)=)[^&\s]+")]
     private static partial Regex ParametroSensivel();
 }

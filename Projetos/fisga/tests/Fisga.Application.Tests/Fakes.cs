@@ -199,6 +199,9 @@ internal sealed class SessaoRepositorioFake : ISessaoRepository
 {
     public List<Sessao> Sessoes { get; } = [];
 
+    public Task<Sessao?> ObterPorIdAsync(Guid id, CancellationToken ct = default) =>
+        Task.FromResult(Sessoes.FirstOrDefault(sessao => sessao.Id == id));
+
     public Task<Sessao?> ObterPorHashAsync(string tokenHash, CancellationToken ct = default) =>
         Task.FromResult(Sessoes.FirstOrDefault(sessao => sessao.TokenHash == tokenHash));
 
@@ -308,10 +311,20 @@ internal sealed class MidiaStorageFake : IMidiaStorage
 
     public Task<string> SalvarAsync(Stream conteudo, string contentType, CancellationToken ct = default) =>
         Task.FromResult("/media/teste.jpg");
-
     public Task ExcluirAsync(string url, CancellationToken ct = default)
     {
         Excluidos.Add(url);
+        return Task.CompletedTask;
+    }
+}
+
+internal sealed class ExclusaoDeIdentidadeFake : IExclusaoDeIdentidade
+{
+    public List<Guid> Excluidos { get; } = [];
+
+    public Task ExcluirAsync(Usuario usuario, CancellationToken ct = default)
+    {
+        Excluidos.Add(usuario.Id);
         return Task.CompletedTask;
     }
 }

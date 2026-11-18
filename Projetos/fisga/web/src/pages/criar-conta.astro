@@ -1,0 +1,195 @@
+---
+import AuthLayout from '../layouts/AuthLayout.astro';
+---
+
+<AuthLayout
+  titulo="Criar conta"
+  descricao="Comece seu diário de pesca do litoral de Sergipe no Fisga."
+>
+  <section class="screen">
+    <div class="screen-inner">
+      <div id="signup-main">
+        <header class="screen-head">
+          <p class="eyebrow">Novo diário</p>
+          <h1 tabindex="-1">Comece seu diário.</h1>
+          <p class="sub">Um caderno de campo para as pescarias do litoral de Sergipe.</p>
+        </header>
+
+        <form id="signup-form" class="auth-form" novalidate>
+          <div class="field">
+            <label class="label" for="signup-name">Nome</label>
+            <div class="control">
+              <input class="input" id="signup-name" name="name" type="text" autocomplete="name" maxlength="80" required aria-describedby="signup-name-error" />
+            </div>
+            <p class="field-error" id="signup-name-error" role="alert" hidden>
+              <svg class="od-icon od-icon--sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5"></path><path d="M12 16h.01"></path></svg>
+              <span data-err-text></span>
+            </p>
+          </div>
+
+          <div class="field">
+            <label class="label" for="signup-email">E-mail</label>
+            <div class="control">
+              <input class="input" id="signup-email" name="email" type="email" autocomplete="email" inputmode="email" spellcheck="false" maxlength="254" required aria-describedby="signup-email-help signup-email-error" />
+            </div>
+            <p class="help" id="signup-email-help">Usamos este e-mail para confirmar sua conta.</p>
+            <p class="field-error" id="signup-email-error" role="alert" hidden>
+              <svg class="od-icon od-icon--sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5"></path><path d="M12 16h.01"></path></svg>
+              <span data-err-text></span>
+            </p>
+            <p class="help" id="signup-inuse" hidden>
+              Já tem conta? <a class="linkish" href="/entrar">Entrar</a> ou <a class="linkish" href="/esqueci-senha">redefinir a senha</a>.
+            </p>
+          </div>
+
+          <div class="field">
+            <label class="label" for="signup-password">Senha</label>
+            <div class="control">
+              <input class="input input--reveal" id="signup-password" name="password" type="password" autocomplete="new-password" minlength="10" maxlength="128" required aria-describedby="signup-password-help signup-password-error" />
+              <button type="button" class="reveal" data-reveal="signup-password" aria-pressed="false" aria-label="Mostrar senha">
+                <svg class="od-icon od-icon--lg" data-icon="eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12s3.5-5.5 9.5-5.5S21.5 12 21.5 12s-3.5 5.5-9.5 5.5S2.5 12 2.5 12Z"></path><circle cx="12" cy="12" r="2.6"></circle></svg>
+                <svg class="od-icon od-icon--lg" data-icon="eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display: none"><path d="m4 4 16 16"></path><path d="M10.6 6.7A9.6 9.6 0 0 1 12 6.5c6 0 9.5 5.5 9.5 5.5a16 16 0 0 1-3.1 3.5"></path><path d="M6.4 8.4A16 16 0 0 0 2.5 12s3.5 5.5 9.5 5.5a9 9 0 0 0 3.2-.6"></path><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"></path></svg>
+              </button>
+            </div>
+            <p class="help" id="signup-password-help">De 10 a 128 caracteres. Sem exigir maiúscula, número ou símbolo.</p>
+            <p class="field-error" id="signup-password-error" role="alert" hidden>
+              <svg class="od-icon od-icon--sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5"></path><path d="M12 16h.01"></path></svg>
+              <span data-err-text></span>
+            </p>
+          </div>
+
+          <p class="legal-copy">
+            Ao criar sua conta, você concorda com os <a class="linkish" href="/termos">Termos de Uso</a> e a <a class="linkish" href="/privacidade">Política de Privacidade</a>.
+          </p>
+
+          <button type="submit" class="btn btn-primary btn-block" id="signup-submit">
+            <span class="spinner" hidden></span>
+            <span data-btn-label>Criar conta</span>
+          </button>
+        </form>
+
+        <div class="link-row link-row--start" style="margin-top: 20px;">
+          <span class="muted-copy">Já tem conta?</span>
+          <a class="linkish" href="/entrar">Entrar</a>
+        </div>
+      </div>
+
+      <div id="signup-success" class="swap" hidden>
+        <header class="screen-head">
+          <p class="eyebrow">Conta criada</p>
+          <h1 tabindex="-1">Confira seu e-mail.</h1>
+          <p class="sub">Enviamos um link de confirmação para o seu e-mail.</p>
+        </header>
+        <p class="lede">O link foi enviado para <strong id="signup-email-echo">seu e-mail</strong>. Se não aparecer, confira o spam.</p>
+        <div class="stack-actions">
+          <a class="btn btn-primary btn-block" id="signup-go-login" href="/entrar">Ir para entrar</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</AuthLayout>
+
+<script>
+  import { apiBase, postJson } from '../lib/auth';
+
+  const API = apiBase();
+  const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  const formulario = document.getElementById('signup-form') as HTMLFormElement;
+  const nome = document.getElementById('signup-name') as HTMLInputElement;
+  const email = document.getElementById('signup-email') as HTMLInputElement;
+  const senha = document.getElementById('signup-password') as HTMLInputElement;
+  const emUso = document.getElementById('signup-inuse') as HTMLElement;
+
+  function setLoading(botao: HTMLButtonElement, ocupado: boolean, rotulo?: string) {
+    const label = botao.querySelector('[data-btn-label]') as HTMLElement | null;
+    const spinner = botao.querySelector('.spinner') as HTMLElement | null;
+    if (label && !botao.dataset.idleLabel) botao.dataset.idleLabel = label.textContent ?? '';
+    if (spinner) spinner.hidden = !ocupado;
+    if (label) label.textContent = ocupado ? rotulo ?? botao.dataset.idleLabel ?? '' : botao.dataset.idleLabel ?? '';
+    botao.disabled = ocupado;
+    botao.setAttribute('aria-busy',ocupado ? 'true' : 'false');
+  }
+
+  function erroCampo(id: string, mensagem: string) {
+    const input = document.getElementById(id) as HTMLInputElement | null;
+    const bloco = document.getElementById(`${id}-error`) as HTMLElement | null;
+    input?.setAttribute('aria-invalid', 'true');
+    const texto = bloco?.querySelector('[data-err-text]') as HTMLElement | null;
+    if (texto) texto.textContent = mensagem;
+    if (bloco) bloco.hidden = false;
+    input?.focus();
+  }
+
+  function limparErroCampo(id: string) {
+    document.getElementById(id)?.removeAttribute('aria-invalid');
+    const bloco = document.getElementById(`${id}-error`);
+    if (bloco) bloco.hidden = true;
+  }
+
+  [nome, email, senha].forEach((campo) => {
+    campo?.addEventListener('input', () => limparErroCampo(campo.id));
+  });
+
+  document.querySelectorAll<HTMLButtonElement>('[data-reveal]').forEach((botao) => {
+    const input = document.getElementById(botao.dataset.reveal ?? '') as HTMLInputElement | null;
+    if (!input) return;
+    botao.addEventListener('click', () => {
+      const mostrando = input.type === 'text';
+      input.type = mostrando ? 'password' : 'text';
+      botao.setAttribute('aria-pressed', String(!mostrando));
+      botao.setAttribute('aria-label', mostrando ? 'Mostrar senha' : 'Ocultar senha');
+      const eye = botao.querySelector('[data-icon="eye"]') as HTMLElement | null;
+      const eyeOff = botao.querySelector('[data-icon="eye-off"]') as HTMLElement | null;
+      if (eye) eye.style.display = mostrando ? 'none' : '';
+      if (eyeOff) eyeOff.style.display = mostrando ? '' : 'none';
+      input.focus();
+    });
+  });
+
+  formulario.addEventListener('submit', async (evento) => {
+    evento.preventDefault();
+    emUso.hidden = true;
+    limparErroCampo('signup-name');
+    limparErroCampo('signup-email');
+    limparErroCampo('signup-password');
+
+    const valorNome = nome.value.trim();
+    const valorEmail = email.value.trim();
+    const valorSenha = senha.value;
+
+    if (valorNome.length < 2) {
+      erroCampo('signup-name', 'Informe seu nome.');
+      return;
+    }
+    if (!EMAIL.test(valorEmail)) {
+      erroCampo('signup-email', valorEmail ? 'Esse e-mail parece incompleto. Confira o endereço.' : 'Informe seu e-mail.');
+      return;
+    }
+    if (valorSenha.length < 10 || valorSenha.length > 128) {
+      erroCampo('signup-password', 'Use entre 10 e 128 caracteres.');
+      return;
+    }
+
+    const botao = document.getElementById('signup-submit') as HTMLButtonElement;
+    setLoading(botao, true, 'Criando conta…');
+    const resposta = await postJson('/api/auth/registrar', {
+      nome: valorNome,
+      email: valorEmail,
+      senha: valorSenha
+    }, API);
+    setLoading(botao, false);
+
+    if (!resposta.ok) {
+      const duplicado = /duplicad|em_uso|email_duplicado|ja_existe/i.test(resposta.codigo ?? '');
+      const mensagem = resposta.mensagem ?? 'Não foi possível criar sua conta agora. Tente novamente.';
+      erroCampo('signup-email', duplicado ? 'Este e-mail já tem uma conta.' : mensagem);
+      emUso.hidden = !duplicado;
+      return;
+    }
+
+    (document.getElementById('signup-email-echo') as HTMLElement).textContent = valorEmail;
+    document.getElementById('signup-main')!.hidden = true;
+    document.getElementById('signup-success')!.hidden = false;
+    (document.querySelector('#signup-success h1') as HTMLElement)?.focus();
+  });
+</script>

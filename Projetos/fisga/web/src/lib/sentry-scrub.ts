@@ -10,12 +10,13 @@ const CHAVES_SENSIVEIS = new Set([
   'pescador',
   'email',
   'token',
+  'uid',
   'handoff_code',
   'code'
 ]);
 
 const PARAMETRO_SENSIVEL =
-  /([?&](?:lat|lon|latitude|longitude|nome|cidade|pescador|email|token|handoff_code|code)=)[^&\s]+/gi;
+  /([?&](?:lat|lon|latitude|longitude|nome|cidade|pescador|email|token|uid|handoff_code|code)=)[^&\s]+/gi;
 
 function limparQuery(query: string): string {
   return query

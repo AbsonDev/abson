@@ -128,54 +128,117 @@ const estado = Astro.url.searchParams.get('estado') ?? '';
 </style>
 
 <script>
-  // @ts-nocheck
+  import { apiBase, destinoSeguro, obterSessao } from '../../lib/auth';
+
+  const API = apiBase();
   const estado = document.querySelector('[data-estado]')?.getAttribute('data-estado') || '';
-  const icone = document.getElementById('confirmar-icone');
-  const eyebrow = document.getElementById('confirmar-eyebrow');
-  const titulo = document.getElementById('confirmar-titulo');
-  const texto = document.getElementById('confirmar-texto');
-  const progresso = document.querySelector('.confirmar-progresso');
-  const acao = document.getElementById('confirmar-acao');
-  const secundaria = document.getElementById('confirmar-secundaria');
+  const icone = document.getElementById('confirmar-icone')!;
+  const eyebrow = document.getElementById('confirmar-eyebrow')!;
+  const titulo = document.getElementById('confirmar-titulo')!;
+  const texto = document.getElementById('confirmar-texto')!;
+  const progresso = document.querySelector('.confirmar-progresso')!;
+  const acao = document.getElementById('confirmar-acao') as HTMLAnchorElement;
+  const secundaria = document.getElementById('confirmar-secundaria') as HTMLAnchorElement;
+
+  // Estados de erro do link mágico e do retorno do Google (Task 8).
+  const ERROS: Record<string, { titulo: string; texto: string }> = {
+    link_expirado: {
+      titulo: 'Esse link <em>expirou.</em>',
+      texto: 'Links de acesso valem por 15 minutos. Peça um novo para entrar no seu diário.'
+    },
+    link_ja_usado: {
+      titulo: 'Esse link <em>já foi usado.</em>',
+      texto: 'Por segurança, cada link funciona uma única vez. Peça um novo acesso.'
+    },
+    link_invalido: {
+      titulo: 'Esse link <em>não é válido.</em>',
+      texto: 'O endereço pode estar incompleto ou ter sido alterado. Peça um novo link para entrar.'
+    },
+    sessao_expirada: {
+      titulo: 'Sua sessão <em>expirou.</em>',
+      texto: 'Entre novamente para continuar no seu diário.'
+    },
+    google_indisponivel: {
+      titulo: 'Google <em>indisponível.</em>',
+      texto: 'O acesso com Google não está configurado agora. Use seu e-mail e senha para entrar.'
+    },
+    google_sessao_externa_invalida: {
+      titulo: 'Não concluímos o <em>Google.</em>',
+      texto: 'A sessão com o Google expirou. Tente entrar de novo.'
+    },
+    google_email_ausente: {
+      titulo: 'O Google não <em>informou seu e-mail.</em>',
+      texto: 'Permita o acesso ao e-mail na conta Google e tente novamente.'
+    },
+    google_email_nao_verificado: {
+      titulo: 'E-mail do Google <em>não confirmado.</em>',
+      texto: 'Confirme seu e-mail no Google e tente novamente.'
+    },
+    google_email_nao_verificado_localmente: {
+      titulo: 'Não pudemos <em>vincular a conta.</em>',
+      texto: 'O e-mail local precisa estar confirmado antes de usar o Google. Entre com sua senha e confirme o e-mail.'
+    },
+    google_provider_invalido: {
+      titulo: 'Provedor <em>não reconhecido.</em>',
+      texto: 'Tente entrar com Google novamente.'
+    },
+    google_subject_invalido: {
+      titulo: 'Não concluímos o <em>Google.</em>',
+      texto: 'A identidade Google veio incompleta. Tente novamente.'
+    },
+    google_vinculo_falhou: {
+      titulo: 'Não foi possível <em>vincular o Google.</em>',
+      texto: 'Este acesso Google já está associado a outra conta. Tente novamente ou use seu e-mail.'
+    },
+    google_conta_inconsistente: {
+      titulo: 'Não encontramos <em>sua conta.</em>',
+      texto: 'Tente novamente ou fale com o suporte se o problema continuar.'
+    }
+  };
+
+  const PADRAO = {
+    titulo: 'Não foi possível <em>confirmar o acesso.</em>',
+    texto: 'O link pode estar incompleto ou ter sido alterado. Peça um novo para entrar no seu diário.'
+  };
 
   function destino() {
     try {
       const salvo = sessionStorage.getItem('fisga:retorno');
-      if (salvo && salvo.startsWith('/') && !salvo.startsWith('//')) {
-        sessionStorage.removeItem('fisga:retorno');
-        return salvo;
-      }
-    } catch {}
-    return '/hoje';
+      if (salvo !== null) sessionStorage.removeItem('fisga:retorno');
+      return destinoSeguro(salvo, '/hoje');
+    } catch {
+      return '/hoje';
+    }
+  }
+
+  async function concluir(alvo: string) {
+    const sessao = await obterSessao(API);
+    if (sessao?.consentimentoPendente) {
+      window.location.replace(`/aceite?destino=${encodeURIComponent(alvo)}`);
+      return;
+    }
+    window.location.replace(alvo);
   }
 
   if (estado === 'ok' || estado === '') {
     const alvo = destino();
     acao.href = alvo;
-    window.setTimeout(() => {
-      window.location.replace(alvo);
-    }, estado === 'ok' ? 1400 : 900);
+    acao.addEventListener('click', (evento) => {
+      evento.preventDefault();
+      concluir(alvo);
+    });
+    window.setTimeout(() => concluir(alvo), estado === 'ok' ? 1400 : 900);
   } else {
+    const mensagem = ERROS[estado] ?? PADRAO;
     icone.classList.add('erro');
-    eyebrow.textContent = 'Link não confirmado';
+    eyebrow.textContent = 'Acesso não confirmado';
+    titulo.innerHTML = mensagem.titulo;
+    texto.textContent = mensagem.texto;
     progresso.classList.add('oculto');
     acao.classList.remove('oculto');
     secundaria.classList.remove('oculto');
-    acao.href = '/meu-diario';
-    acao.textContent = 'Ir para o Fisga';
-    secundaria.classList.remove('oculto');
-
-    if (estado === 'link_expirado') {
-      titulo.innerHTML = 'Esse link <em>expirou.</em>';
-      texto.textContent = 'Links de acesso valem por 15 minutos. Peça um novo para entrar no seu diário.';
-    } else if (estado === 'link_ja_usado') {
-      titulo.innerHTML = 'Esse link <em>já foi usado.</em>';
-      texto.textContent = 'Por segurança, cada link funciona uma única vez. Peça um novo acesso.';
-    } else {
-      titulo.innerHTML = 'Esse link <em>não é válido.</em>';
-      texto.textContent = 'O endereço pode estar incompleto ou ter sido alterado. Peça um novo link para entrar.';
-    }
-
+    acao.href = '/entrar';
+    acao.textContent = 'Tentar entrar';
     secundaria.href = '/entrar';
     secundaria.textContent = 'Pedir um novo link';
   }

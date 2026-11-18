@@ -19,11 +19,21 @@ async function comSessao<T>(caminho: string): Promise<T | null> {
 }
 
 const sessao = cookie
-  ? await comSessao<{ autenticado: boolean; usuario?: { nomeExibicao: string; email: string } }>('/api/auth/me')
+  ? await comSessao<{
+      autenticado: boolean;
+      consentimentoPendente?: boolean;
+      usuario?: { nomeExibicao: string; email: string };
+    }>('/api/auth/me')
   : null;
 
 if (!sessao?.autenticado || !sessao.usuario) {
   return Astro.redirect('/condicoes');
+}
+
+// O aceite da versão vigente precisa acontecer antes de consultar dados
+// protegidos: o middleware da API devolve 403 para qualquer outra rota /api.
+if (sessao.consentimentoPendente) {
+  return Astro.redirect('/aceite?destino=%2Fhoje');
 }
 
 const locais = (await comSessao<LocalSalvo[]>('/api/locais')) ?? [];

@@ -5,12 +5,15 @@ using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Options;
 using Fisga.Api;
 using Fisga.Api.Endpoints;
 using Fisga.Api.Middleware;
 using Fisga.Api.Observabilidade;
 using Fisga.Application;
+using Fisga.Application.Identidade;
 using Fisga.Infrastructure;
+using Fisga.Infrastructure.Identity;
 using Fisga.Infrastructure.Midia;
 using Fisga.Infrastructure.Persistence;
 using Microsoft.Extensions.Logging;
@@ -47,7 +50,14 @@ builder.Services.Configure<ForwardedHeadersOptions>(opcoes =>
 });
 
 builder.Services.AdicionarAplicacao();
-builder.Services.AdicionarInfraestrutura(builder.Configuration);
+builder.Services.AdicionarInfraestrutura(builder.Configuration, builder.Environment.IsDevelopment());
+builder.Services.AddScoped<IdentitySessionService>();
+builder.Services.AddScoped<ConexaoGoogleService>();
+
+// Versões vigentes vêm da configuração (Legal); o aceite do usuário é lido do
+// banco a cada requisição, sem claims de versão no cookie e sem reemissão de cookie.
+builder.Services.Configure<LegalOptions>(builder.Configuration.GetSection("Legal"));
+builder.Services.AddSingleton(sp => sp.GetRequiredService<IOptions<LegalOptions>>().Value);
 
 var origens = (builder.Configuration["Cors:AllowedOrigins"] ?? string.Empty)
     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
@@ -71,14 +81,24 @@ builder.Services.AddCors(opcoes =>
 builder.Services.AddRateLimiter(opcoes =>
 {
     opcoes.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-    AdicionarPolitica(opcoes, "leitura", 180);
-    AdicionarPolitica(opcoes, "escrita", 40);
-    AdicionarPolitica(opcoes, "auth", 8);
-    AdicionarPolitica(opcoes, "pdf", 30);
-    AdicionarPolitica(opcoes, "midia", 30);
+    // Limites por minuto/IP. Os valores padrão são os de produção; ambientes de
+    // teste podem elevá-los por configuração (RateLimiting__Auth=1000) sem
+    // alterar o comportamento padrão.
+    AdicionarPolitica(opcoes, builder.Configuration, "leitura", 180);
+    AdicionarPolitica(opcoes, builder.Configuration, "escrita", 40);
+    AdicionarPolitica(opcoes, builder.Configuration, "auth", 8);
+    AdicionarPolitica(opcoes, builder.Configuration, "pdf", 30);
+    AdicionarPolitica(opcoes, builder.Configuration, "midia", 30);
 });
 
 var app = builder.Build();
+
+ConfiguracaoDeEmail.Validar(
+    app.Configuration["Email:Provider"],
+    app.Configuration["Email:ResendApiKey"],
+    app.Environment.IsDevelopment());
+ConfiguracaoDeAutenticacao.Validar(
+    app.Services.GetRequiredService<IOptions<AutenticacaoOptions>>().Value.LegacyCookieName);
 
 var pastaMidia = ArmazenamentoDeMidiaLocal.ObterPasta(app.Configuration);
 Directory.CreateDirectory(pastaMidia);
@@ -97,7 +117,9 @@ app.UseStaticFiles(new StaticFileOptions
 app.UseMiddleware<MetricasDeRequisicaoMiddleware>();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseMiddleware<ProtecaoCsrfMiddleware>();
-app.UseMiddleware<SessaoMiddleware>();
+app.UseAuthentication();
+app.UseMiddleware<SessaoIdentityMiddleware>();
+app.UseMiddleware<ConsentimentoMiddleware>();
 app.UseRateLimiter();
 
 if (app.Environment.IsDevelopment())
@@ -137,8 +159,13 @@ static double TaxaDeAmostragem(IWebHostEnvironment ambiente)
     return ambiente.IsDevelopment() ? 1.0 : 0.1;
 }
 
-static void AdicionarPolitica(Microsoft.AspNetCore.RateLimiting.RateLimiterOptions opcoes, string nome, int limitePorMinuto)
+static void AdicionarPolitica(
+    Microsoft.AspNetCore.RateLimiting.RateLimiterOptions opcoes,
+    IConfiguration configuration,
+    string nome,
+    int limitePadraoPorMinuto)
 {
+    var limitePorMinuto = configuration.GetValue<int?>($"RateLimiting:{nome}") ?? limitePadraoPorMinuto;
     opcoes.AddPolicy(nome, contexto =>
     {
         var chave = contexto.Connection.RemoteIpAddress?.ToString() ?? "anonimo";
