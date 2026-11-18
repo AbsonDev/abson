@@ -52,8 +52,8 @@ builder.Services.AdicionarAplicacao();
 builder.Services.AdicionarInfraestrutura(builder.Configuration);
 builder.Services.AddScoped<IdentitySessionService>();
 
-// Instância única e mutável: a versão vigente é lida do banco a cada requisição,
-// sem claims de versão no cookie e sem reemissão de cookie ao aceitar.
+// Versões vigentes vêm da configuração (Legal); o aceite do usuário é lido do
+// banco a cada requisição, sem claims de versão no cookie e sem reemissão de cookie.
 builder.Services.Configure<LegalOptions>(builder.Configuration.GetSection("Legal"));
 builder.Services.AddSingleton(sp => sp.GetRequiredService<IOptions<LegalOptions>>().Value);
 

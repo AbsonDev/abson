@@ -12,8 +12,9 @@ using Fisga.Infrastructure.Persistence;
 namespace Fisga.Api.Tests;
 
 /// <summary>
-/// Consentimento formal: a versão vigente é lida do banco a cada requisição
-/// autenticada, sem claims de versão no cookie e sem reemissão de cookie.
+/// Consentimento formal: as versões vigentes vêm da configuração (LegalOptions)
+/// e o aceite do usuário é lido do banco a cada requisição autenticada, sem
+/// claims de versão no cookie e sem reemissão de cookie.
 /// </summary>
 [Collection("api")]
 public sealed class ConsentimentoTests : IAsyncLifetime
@@ -64,6 +65,7 @@ public sealed class ConsentimentoTests : IAsyncLifetime
         var resposta = await _cliente.GetAsync("/api/diario");
 
         Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
+        Assert.Equal("application/problem+json", resposta.Content.Headers.ContentType?.MediaType);
         var erro = await resposta.Content.ReadFromJsonAsync<ErroResponse>();
         Assert.NotNull(erro);
         Assert.Equal("consentimento_pendente", erro!.Codigo);
@@ -180,6 +182,39 @@ public sealed class ConsentimentoTests : IAsyncLifetime
         Assert.NotNull(me);
         Assert.False(me!.Autenticado);
         Assert.False(me.ConsentimentoPendente);
+    }
+
+    [Fact]
+    public async Task Rotas_de_conta_fora_da_allowlist_recebem_403_com_consentimento_pendente()
+    {
+        var usuario = await CriarUsuarioConfirmadoAsync();
+        await EntrarAsync(usuario.Email.Valor);
+
+        var sairDeTodos = await _cliente.PostAsync("/api/auth/sair-de-todos", null);
+        Assert.Equal(HttpStatusCode.Forbidden, sairDeTodos.StatusCode);
+
+        using var exclusao = new HttpRequestMessage(HttpMethod.Delete, "/api/conta");
+        var excluir = await _cliente.SendAsync(exclusao);
+        Assert.Equal(HttpStatusCode.Forbidden, excluir.StatusCode);
+
+        var exportar = await _cliente.GetAsync("/api/conta/exportar");
+        Assert.Equal(HttpStatusCode.Forbidden, exportar.StatusCode);
+
+        // Nenhuma das rotas chegou ao endpoint: a conta continua intacta.
+        Assert.NotNull(await _db.Users.AsNoTracking().SingleAsync(u => u.Id == usuario.Id));
+    }
+
+    [Fact]
+    public async Task Allowlist_com_barra_final_continua_permitida_com_consentimento_pendente()
+    {
+        var usuario = await CriarUsuarioConfirmadoAsync();
+        await EntrarAsync(usuario.Email.Valor);
+
+        var me = await _cliente.GetFromJsonAsync<MeResponse>("/api/auth/me/");
+
+        Assert.NotNull(me);
+        Assert.True(me!.Autenticado);
+        Assert.True(me.ConsentimentoPendente);
     }
 
     private async Task<Usuario> CriarUsuarioConfirmadoAsync()

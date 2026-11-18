@@ -44,10 +44,24 @@ public sealed class ConsentimentoMiddleware(RequestDelegate next)
 
     private static bool EstaNaAllowlist(HttpContext context)
     {
-        foreach (var (metodo, caminho) in Allowlist)
+        var caminho = context.Request.Path.Value;
+        if (caminho is null)
+        {
+            return false;
+        }
+
+        // Remove no máximo UMA barra final: "/api/auth/me/" equivale a
+        // "/api/auth/me", mas "/api/auth/me//" e "/api/auth/me/x" continuam
+        // bloqueados. A comparação final é exata — sem correspondência por prefixo.
+        if (caminho.Length > 1 && caminho[^1] == '/')
+        {
+            caminho = caminho[..^1];
+        }
+
+        foreach (var (metodo, permitido) in Allowlist)
         {
             if (string.Equals(context.Request.Method, metodo, StringComparison.OrdinalIgnoreCase)
-                && string.Equals(context.Request.Path.Value, caminho, StringComparison.OrdinalIgnoreCase))
+                && string.Equals(caminho, permitido, StringComparison.OrdinalIgnoreCase))
             {
                 return true;
             }
@@ -65,10 +79,11 @@ public sealed class ConsentimentoMiddleware(RequestDelegate next)
 
         context.Response.Clear();
         context.Response.StatusCode = StatusCodes.Status403Forbidden;
-        context.Response.ContentType = "application/problem+json";
         await context.Response.WriteAsJsonAsync(
             new ErroResponse(
                 "consentimento_pendente",
-                "Aceite os termos e a privacidade vigentes para continuar."));
+                "Aceite os termos e a privacidade vigentes para continuar."),
+            options: null,
+            contentType: "application/problem+json");
     }
 }
