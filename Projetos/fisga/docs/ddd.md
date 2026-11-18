@@ -19,7 +19,7 @@ flowchart LR
   end
 
   subgraph Generic
-    identidade[Identidade e Acesso<br/>Usuario · Sessao · TokenDeLogin]
+    identidade[Identidade e Acesso<br/>Usuario · ApplicationUser · Sessao · TokenDeLogin · Consentimento]
     assinatura[Assinatura<br/>futuro]
   end
 
@@ -64,8 +64,9 @@ agregado que cresce sem limite e mantém cada pescaria pequena.
 | **Ambiente** | rio, mar, lagoa, represa, pesque-pague ou outro |
 | **Condições** | lua, maré, clima e clareza da água |
 | **Usuário** | pescador com conta, identificado pelo e-mail normalizado |
-| **Sessão** | acesso autenticado de um dispositivo; guardada por hash no banco |
+| **Sessão** | registro de dispositivo/revogação ligado ao cookie `fisga_auth` pela claim `sessao_id` |
 | **Link mágico** | token de uso único enviado por e-mail para entrar sem senha |
+| **Consentimento** | aceite versionado de Termos e Privacidade, com tipo, versão e data |
 | **Share token** | token público de uma pescaria |
 
 Não existem mais `Diary token` nem `Edit token`: o diário e a edição são resolvidos pela sessão do
@@ -99,7 +100,8 @@ novos apenas para capturas novas. Isso evita links quebrados de troféu.
 
 ## Identidade e Acesso
 
-Contexto genérico, sem dependência de ASP.NET ou do provedor de e-mail.
+Contexto genérico, sem dependência de ASP.NET ou do provedor de e-mail no domínio. A autenticação é
+feita pelo **ASP.NET Core Identity**; o domínio guarda o pescador e os fatos que o produto precisa.
 
 ### `Usuario` (agregado)
 
@@ -108,12 +110,25 @@ Contexto genérico, sem dependência de ASP.NET ou do provedor de e-mail.
 - `Criar`, `VerificarEmail`, `RegistrarAcesso`, `AtualizarPerfil`, `MarcarBoasVindas`.
 - Evento `UsuarioCriado`.
 
-### `Sessao` (entidade)
+### `ApplicationUser` (Identity)
+
+- `ApplicationUser : IdentityUser<Guid>` compartilha **o mesmo `Id`** do `Usuario`.
+- Tabelas da Identity no schema `fisga` (`AspNetUsers`, `AspNetUserLogins`, etc.).
+- `EmailVerificadoEm` é a fonte de verdade; `EmailConfirmed` espelha o estado.
+- `SecurityStamp` é rotacionado em “sair de todos” e após troca de senha, como defesa em
+  profundidade.
+
+### `Sessao` (entidade de dispositivo)
 
 - `Id`, `UsuarioId`, `TokenHash`, `UserAgent`, `IpHash`, `CriadoEm`, `UltimoUsoEm`, `ExpiraEm`,
   `RevogadaEm`.
+- `TokenHash` guarda o SHA-256 do próprio `Id` (64 caracteres); não existe token cru.
 - `EstaAtiva`, `RegistrarUso`, `Revogar`.
-- Duração padrão: 30 dias. O token cru vive apenas no cookie `HttpOnly`; o banco guarda SHA-256.
+- Duração padrão: 30 dias, renovada pelo cookie da Identity.
+- **Não autentica sozinha.** O cookie `fisga_auth` carrega a claim `sessao_id`; a cada `/api`
+  autenticado o middleware busca a linha por PK, recusa sessão revogada/expirada e recusa
+  `UsuarioId` diferente da claim `NameIdentifier`. `UltimoUsoEm` é atualizado no máximo a cada
+  5 minutos.
 
 ### `TokenDeLogin` (entidade)
 
@@ -121,33 +136,74 @@ Contexto genérico, sem dependência de ASP.NET ou do provedor de e-mail.
 - `Criar`, `EstaValido`, `Consumir`, `Invalidar`.
 - Validade padrão: 15 minutos. Uso único. Um novo pedido invalida os anteriores.
 
-### Fluxo do link mágico
+### `Consentimento` (entidade)
+
+- `Id`, `UsuarioId`, `Tipo` (Termos/Privacidade), `Versao`, `AceitoEm`.
+- As versões vigentes vêm de `Legal:TermsVersion`/`Legal:PrivacyVersion` (inicial `2026-11-17`).
+- O aceite é lido do banco a cada requisição autenticada, sem claims de versão no cookie.
+
+### Fluxos de autenticação
+
+**Cadastro e senha**
+
+1. `POST /api/auth/registrar` cria `Usuario` e `ApplicationUser` com o mesmo Id em uma transação e
+   envia o link de confirmação.
+2. O login por senha só é liberado com e-mail confirmado; `POST /api/auth/entrar` usa
+   `CheckPasswordSignInAsync` e assina pela Identity.
+3. Senha de 10 a 128 caracteres, sem exigir maiúscula, número ou símbolo. Lockout: 5 tentativas por
+   15 minutos.
+4. `POST /api/auth/esqueci-senha` responde de forma genérica; `POST /api/auth/redefinir-senha`
+   consome o token, troca a senha e invalida sessões.
+
+**Link mágico**
 
 1. `POST /api/auth/solicitar` recebe o e-mail e sempre responde de forma genérica.
 2. O serviço aplica um intervalo mínimo de reenvio (60 s em produção), invalida links pendentes e
    cria um token de 32 bytes; o banco guarda apenas o hash.
 3. `IEmailSender` envia o link `${Auth:LinkBaseUrl}/api/auth/confirmar?token=...`.
-4. `GET /api/auth/confirmar` consome o token, cria ou localiza o usuário, verifica o e-mail, cria a
-   sessão, define o cookie e redireciona:
+4. `GET /api/auth/confirmar` consome o token, garante `Usuario` e `ApplicationUser`, confirma os dois
+   lados do e-mail e assina com `IdentitySessionService`:
    - primeiro acesso → `/boas-vindas`;
    - demais → `/entrar/confirmar?estado=ok` → `/meu-diario`.
-5. Em desenvolvimento, o link também aparece na resposta de `/api/auth/solicitar` para testes.
+5. Em desenvolvimento, o link também aparece na resposta de `/api/auth/solicitar`.
 
-### Sessão e segurança
+**Google (opcional)**
 
-- Cookie `HttpOnly`, `Secure` em produção, `SameSite=Lax`, validade de 30 dias.
+- Sem `Google:ClientId`/`Google:ClientSecret`, o app boota, o botão fica oculto e `/iniciar`
+  responde 503 `google_indisponivel`.
+- `/api/auth/google/concluir` lê o `ExternalLoginInfo` do handler, exige e-mail Google verificado e
+  resolve nesta ordem: vínculo existente → conta da mesma conta; e-mail local já verificado →
+  vincula; e-mail local não verificado → recusa sem alterar nada; e-mail novo → cria conta e vínculo.
+- `Adicionar login` nunca promove uma conta local não confirmada, para evitar tomada de conta.
+- **Conectar Google** em `/conta` usa cookie de intenção protegido, exige o mesmo e-mail verificado,
+  recusa `subject` já vinculado a outra conta e chama apenas `AddLoginAsync` — sem novo cookie nem
+  nova sessão.
+
+### Consentimento e sessão
+
+- `/aceite` grava Termos e Privacidade da versão vigente via `POST /api/conta/consentimento`.
+- Enquanto o aceite estiver pendente, todo `/api` responde 403 `consentimento_pendente`, exceto
+  `GET /api/auth/me`, `POST /api/auth/sair` e `POST /api/conta/consentimento`. `/api/auth/me`
+  devolve `consentimentoPendente` para o frontend redirecionar.
+- Cookie `fisga_auth`: `HttpOnly`, `Secure` em produção, `SameSite=Lax`, 30 dias com renovação
+  deslizante.
 - A API e o site são same-site (`api.fisga.abson.tech` e `fisga.abson.tech`), então o cookie
-  funciona com CORS `credentials` e `SameSite=Lax`.
+  funciona com CORS `credentials`.
 - CORS restrito às origens do site; mutações com `Origin` de outro site são rejeitadas.
 - Rate limit específico para autenticação.
-- Logout revoga a sessão no servidor; “sair de todos” revoga todas.
-- Respostas de solicitação não revelam se o e-mail existe.
+- Logout revoga a sessão atual; “sair de todos” revoga todas as linhas e rotaciona o security stamp.
+- O cookie legado `fisga_sessao` é apagado no login/logout e **não autentica mais**.
+- Chaves de Data Protection ficam em `DataProtection:KeysPath` e precisam de volume persistente.
 
 ### Conta
 
 - `ServicoDeConta` exporta JSON (LGPD) e exclui a conta.
-- A exclusão remove pescarias, sessões, o usuário e os arquivos de foto referenciados.
+- A exclusão remove pescarias, sessões, o usuário, a conta Identity e os arquivos de foto referenciados.
 - Exige confirmação digitada `EXCLUIR`.
+- `POST /api/conta/senha` cria senha em conta sem senha ou troca exigindo a atual; a troca revoga as
+  outras sessões e mantém a atual.
+- `GET /api/conta/sessoes` lista dispositivos com `atual: true`.
+- Não há endpoint para desconectar o Google nesta entrega.
 
 ## Diário (read model)
 

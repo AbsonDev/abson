@@ -1,6 +1,9 @@
 # ADR 0004 — Login por link mágico e sessão em cookie
 
-**Status:** aceito · **Data:** 2026-11-17
+**Status:** substituído pelo [ADR 0013](0013-identity-completa.md) · **Data:** 2026-11-17
+
+> O link mágico continua existindo como alternativa sem senha, mas deixou de ser o único login.
+> A identidade completa está no ADR 0013.
 
 ## Contexto
 
