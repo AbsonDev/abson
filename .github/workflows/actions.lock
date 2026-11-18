@@ -22,6 +22,9 @@ workflows:
     '.github/workflows/oc.yml':
         - 'actions/checkout@v7.0.1'
         - 'anomalyco/opencode@latest'
+    '.github/workflows/reviewdog.yml':
+        - 'actions/checkout@v7.0.1'
+        - 'reviewdog/action-actionlint@v1.84.1'
 dependencies:
     'actions/cache@v4':
         ref: 'v4'
@@ -75,3 +78,8 @@ dependencies:
         commit: 'sha1-33d7b85da1a04171e211befe2c739303b9a4c066'
         owner_id: 9919
         repo_id: 259445878
+    'reviewdog/action-actionlint@v1.84.1':
+        ref: 'v1.84.1'
+        commit: 'sha1-ae857e78c1b42b3d0a49637181b09d3d56d402b4'
+        owner_id: 48765237
+        repo_id: 385059686
