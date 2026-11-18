@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
@@ -17,6 +18,7 @@ public sealed class OpenMeteoProvedorDeCondicoes(
     private const string Fonte = "Open-Meteo";
     private static readonly TimeSpan TtlMaximo = TimeSpan.FromMinutes(20);
     private static readonly TimeSpan TtlDaLua = TimeSpan.FromHours(12);
+    private const int TamanhoMaximoDoTrecho = 200;
 
     // CacheMinutos só encurta o TTL completo; nunca passa do teto da política.
     private TimeSpan TtlCompleto =>
@@ -180,8 +182,13 @@ public sealed class OpenMeteoProvedorDeCondicoes(
                 return null;
             }
 
-            await using var fluxo = await resposta.Content.ReadAsStreamAsync(ct);
-            using var json = await JsonDocument.ParseAsync(fluxo, cancellationToken: ct);
+            var corpo = await LerCorpoJsonAsync(resposta, "Open-Meteo clima", ct);
+            if (corpo is null)
+            {
+                return null;
+            }
+
+            using var json = JsonDocument.Parse(corpo);
             var raiz = json.RootElement;
 
             if (!raiz.TryGetProperty("hourly", out var hourly)
@@ -278,8 +285,13 @@ public sealed class OpenMeteoProvedorDeCondicoes(
                 return [];
             }
 
-            await using var fluxo = await resposta.Content.ReadAsStreamAsync(ct);
-            using var json = await JsonDocument.ParseAsync(fluxo, cancellationToken: ct);
+            var corpo = await LerCorpoJsonAsync(resposta, "Open-Meteo mar", ct);
+            if (corpo is null)
+            {
+                return [];
+            }
+
+            using var json = JsonDocument.Parse(corpo);
             var raiz = json.RootElement;
 
             if (!raiz.TryGetProperty("hourly", out var hourly)
@@ -366,8 +378,13 @@ public sealed class OpenMeteoProvedorDeCondicoes(
                 return null;
             }
 
-            await using var fluxo = await resposta.Content.ReadAsStreamAsync(ct);
-            using var json = await JsonDocument.ParseAsync(fluxo, cancellationToken: ct);
+            var corpo = await LerCorpoJsonAsync(resposta, "MET Norway lua", ct);
+            if (corpo is null)
+            {
+                return null;
+            }
+
+            using var json = JsonDocument.Parse(corpo);
             if (!json.RootElement.TryGetProperty("properties", out var propriedades))
             {
                 return null;
@@ -394,6 +411,38 @@ public sealed class OpenMeteoProvedorDeCondicoes(
             logger.LogInformation(excecao, "Lua indisponível em MET Norway");
             return null;
         }
+    }
+
+    // Um 200 nem sempre traz JSON: proxies/CDN do provedor às vezes devolvem
+    // texto (ex.: "Upstream ..."). Valida o primeiro byte antes de parsear e
+    // registra o que chegou, em vez de estourar JsonException sem contexto.
+    private async Task<byte[]?> LerCorpoJsonAsync(
+        HttpResponseMessage resposta,
+        string fonte,
+        CancellationToken ct)
+    {
+        var corpo = await resposta.Content.ReadAsByteArrayAsync(ct);
+        ReadOnlySpan<byte> inicio = corpo;
+        if (inicio.StartsWith(Encoding.UTF8.Preamble))
+        {
+            inicio = inicio[Encoding.UTF8.Preamble.Length..];
+        }
+
+        inicio = inicio.TrimStart(" \t\r\n"u8);
+        if (!inicio.IsEmpty && (inicio[0] == (byte)'{' || inicio[0] == (byte)'['))
+        {
+            return corpo;
+        }
+
+        var texto = Encoding.UTF8.GetString(corpo);
+        var trecho = texto.Length > TamanhoMaximoDoTrecho ? texto[..TamanhoMaximoDoTrecho] : texto;
+        logger.LogWarning(
+            "{Fonte} devolveu resposta não JSON: {Status} {ContentType} {Trecho}",
+            fonte,
+            (int)resposta.StatusCode,
+            resposta.Content.Headers.ContentType?.ToString() ?? "(sem content-type)",
+            trecho);
+        return null;
     }
 
     private static DateTimeOffset? LerTempo(JsonElement propriedades, string nome)
