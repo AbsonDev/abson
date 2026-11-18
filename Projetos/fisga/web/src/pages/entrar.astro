@@ -35,7 +35,7 @@ import AuthLayout from '../layouts/AuthLayout.astro';
           <span data-btn-label>Continuar com Google</span>
         </button>
 
-        <div class="divider"><span>ou</span></div>
+        <div class="divider" id="login-divider" hidden><span>ou</span></div>
 
         <form id="login-form" class="auth-form" novalidate>
           <div class="field">
@@ -67,7 +67,7 @@ import AuthLayout from '../layouts/AuthLayout.astro';
           <div class="note note--error" id="login-error" role="alert" hidden>
             <svg class="od-icon od-icon--md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5"></path><path d="M12 16h.01"></path></svg>
             <div class="note-body">
-              <strong>E-mail ou senha incorretos.</strong>
+              <strong id="login-error-title">Não foi possível continuar.</strong>
               <span id="login-error-detalhe">Confira os dados e tente de novo. Se continuar, redefina sua senha.</span>
             </div>
           </div>
@@ -114,7 +114,7 @@ import AuthLayout from '../layouts/AuthLayout.astro';
 </AuthLayout>
 
 <script>
-  import { apiBase, obterSessao, postJson } from '../lib/auth';
+  import { apiBase, destinoSeguro, obterSessao, postJson } from '../lib/auth';
 
   const API = apiBase();
   const parametros = new URLSearchParams(window.location.search);
@@ -131,21 +131,18 @@ import AuthLayout from '../layouts/AuthLayout.astro';
 
   function alvo() {
     const explicito = parametros.get('destino') || parametros.get('voltar');
-    if (explicito && explicito.startsWith('/') && !explicito.startsWith('//')) return explicito;
+    if (explicito) return destinoSeguro(explicito, '/hoje');
     try {
       const salvo = sessionStorage.getItem('fisga:retorno');
-      if (salvo && salvo.startsWith('/') && !salvo.startsWith('//')) {
-        sessionStorage.removeItem('fisga:retorno');
-        return salvo;
-      }
+      if (salvo !== null) sessionStorage.removeItem('fisga:retorno');
+      return destinoSeguro(salvo, '/hoje');
     } catch {
-      // armazenamento indisponível
+      return '/hoje';
     }
-    return '/hoje';
   }
 
-  const voltar = parametros.get('voltar');
-  if (voltar && voltar.startsWith('/') && !voltar.startsWith('//')) {
+  const voltar = destinoSeguro(parametros.get('voltar'), '');
+  if (voltar) {
     try {
       sessionStorage.setItem('fisga:retorno', voltar);
     } catch {
@@ -167,6 +164,19 @@ import AuthLayout from '../layouts/AuthLayout.astro';
     avisoGeralTexto.textContent = 'Você saiu da conta. Até a próxima pescaria.';
     avisoGeral.hidden = false;
   }
+
+  // Quem já tem sessão não deve ver o formulário: volta ao diário ou, se o
+  // aceite estiver pendente, ao consentimento (que agora sabe sair de verdade).
+  (async () => {
+    const sessao = await obterSessao(API);
+    if (!sessao?.autenticado) return;
+    const destino = alvo();
+    if (sessao.consentimentoPendente) {
+      window.location.replace(`/aceite?destino=${encodeURIComponent(destino)}`);
+      return;
+    }
+    window.location.replace(destino);
+  })();
 
   function mensagemErro(mensagem: string | undefined, padrao: string) {
     return mensagem && mensagem.trim() ? mensagem : padrao;
@@ -208,8 +218,26 @@ import AuthLayout from '../layouts/AuthLayout.astro';
   const emailInput = document.getElementById('login-email') as HTMLInputElement;
   const senhaInput = document.getElementById('login-password') as HTMLInputElement;
   const loginErro = document.getElementById('login-error') as HTMLElement;
+  const loginErroTitulo = document.getElementById('login-error-title') as HTMLElement;
   const loginErroDetalhe = document.getElementById('login-error-detalhe') as HTMLElement;
   const loginNaoConfirmado = document.getElementById('login-unconfirmed') as HTMLElement;
+  const magicNota = document.getElementById('magic-note') as HTMLElement;
+  const resendNota = document.getElementById('login-resend-note') as HTMLElement;
+  const TITULO_CREDENCIAIS = 'E-mail ou senha incorretos.';
+  const TITULO_NEUTRO = 'Não foi possível continuar.';
+
+  function mostrarErroLogin(titulo: string, detalhe: string) {
+    loginErroTitulo.textContent = titulo;
+    loginErroDetalhe.textContent = detalhe;
+    loginErro.hidden = false;
+  }
+
+  /** Zera avisos de qualquer requisição anterior antes de começar outra. */
+  function limparAvisos() {
+    loginErro.hidden = true;
+    magicNota.hidden = true;
+    resendNota.hidden = true;
+  }
 
   emailInput?.addEventListener('input', () => limparErroCampo('login-email'));
   senhaInput?.addEventListener('input', () => limparErroCampo('login-password'));
@@ -231,10 +259,13 @@ import AuthLayout from '../layouts/AuthLayout.astro';
   });
 
   const google = document.getElementById('google-login') as HTMLButtonElement;
+  const divisor = document.getElementById('login-divider') as HTMLElement;
   fetch(`${API}/api/auth/google/disponivel`)
     .then((resposta) => (resposta.ok ? resposta.json() : null))
     .then((dados: { disponivel?: boolean } | null) => {
-      if (dados?.disponivel === true) google.hidden = false;
+      if (dados?.disponivel !== true) return;
+      google.hidden = false;
+      divisor.hidden = false;
     })
     .catch(() => {
       // Sem rede, o botão permanece oculto.
@@ -248,7 +279,7 @@ import AuthLayout from '../layouts/AuthLayout.astro';
   const formulario = document.getElementById('login-form') as HTMLFormElement;
   formulario.addEventListener('submit', async (evento) => {
     evento.preventDefault();
-    loginErro.hidden = true;
+    limparAvisos();
     loginNaoConfirmado.hidden = true;
     limparErroCampo('login-email');
     limparErroCampo('login-password');
@@ -274,11 +305,10 @@ import AuthLayout from '../layouts/AuthLayout.astro';
     setLoading(botao, false);
 
     if (!resposta.ok) {
-      loginErroDetalhe.textContent = mensagemErro(
-        resposta.mensagem,
-        'Não foi possível entrar agora. Tente novamente.'
+      mostrarErroLogin(
+        TITULO_NEUTRO,
+        mensagemErro(resposta.mensagem, 'Não foi possível entrar agora. Tente novamente.')
       );
-      loginErro.hidden = false;
       return;
     }
 
@@ -286,9 +316,16 @@ import AuthLayout from '../layouts/AuthLayout.astro';
       const mensagem = resposta.mensagem ?? '';
       if (/confirme seu e-mail/i.test(mensagem)) {
         loginNaoConfirmado.hidden = false;
+      } else if (/e-?mail ou senha incorretos/i.test(mensagem)) {
+        mostrarErroLogin(
+          TITULO_CREDENCIAIS,
+          'Confira os dados e tente de novo. Se continuar, redefina sua senha.'
+        );
       } else {
-        loginErroDetalhe.textContent = mensagemErro(mensagem, 'E-mail ou senha incorretos.');
-        loginErro.hidden = false;
+        mostrarErroLogin(
+          TITULO_NEUTRO,
+          mensagemErro(mensagem, 'Não foi possível entrar agora. Tente novamente.')
+        );
       }
       return;
     }
@@ -304,6 +341,7 @@ import AuthLayout from '../layouts/AuthLayout.astro';
 
   const reenviar = document.getElementById('login-resend') as HTMLButtonElement;
   reenviar.addEventListener('click', async () => {
+    limparAvisos();
     const email = emailInput.value.trim();
     if (!EMAIL.test(email)) {
       erroCampo('login-email', 'Informe seu e-mail para receber um novo link.');
@@ -312,13 +350,19 @@ import AuthLayout from '../layouts/AuthLayout.astro';
     setLoading(reenviar, true, 'Reenviando…');
     const resposta = await postJson('/api/auth/solicitar', { email }, API);
     setLoading(reenviar, false);
-    const nota = document.getElementById('login-resend-note') as HTMLElement;
-    nota.hidden = false;
-    if (!resposta.ok) nota.textContent = 'Não foi possível enviar agora. Tente de novo em instantes.';
+    resendNota.hidden = false;
+    if (!resposta.ok) {
+      resendNota.classList.add('note--error');
+      resendNota.textContent = 'Não foi possível enviar agora. Tente de novo em instantes.';
+      return;
+    }
+    resendNota.classList.remove('note--error');
+    resendNota.textContent = 'Novo link enviado. Confira a caixa de entrada e o spam.';
   });
 
   const magico = document.getElementById('magic-btn') as HTMLButtonElement;
   magico.addEventListener('click', async () => {
+    limparAvisos();
     const email = emailInput.value.trim();
     if (!EMAIL.test(email)) {
       erroCampo('login-email', email ? 'Esse e-mail parece incompleto. Confira o endereço.' : 'Informe seu e-mail para receber o link.');
@@ -332,12 +376,14 @@ import AuthLayout from '../layouts/AuthLayout.astro';
     );
     setLoading(magico, false);
     if (!resposta.ok) {
-      loginErroDetalhe.textContent = mensagemErro(resposta.mensagem, 'Não foi possível enviar o link agora.');
-      loginErro.hidden = false;
+      mostrarErroLogin(
+        TITULO_NEUTRO,
+        mensagemErro(resposta.mensagem, 'Não foi possível enviar o link agora.')
+      );
       return;
     }
     const echoed = document.getElementById('magic-email') as HTMLElement;
     echoed.textContent = email;
-    document.getElementById('magic-note')!.hidden = false;
+    magicNota.hidden = false;
   });
 </script>

@@ -43,6 +43,11 @@ import AuthLayout from '../layouts/AuthLayout.astro';
             </p>
           </div>
 
+          <p class="note note--error" id="reset-error" role="alert" hidden>
+            <svg class="od-icon od-icon--md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5"></path><path d="M12 16h.01"></path></svg>
+            <span id="reset-error-texto">Não foi possível salvar sua nova senha. Tente novamente.</span>
+          </p>
+
           <button type="submit" class="btn btn-primary btn-block" id="reset-submit">
             <span class="spinner" hidden></span>
             <span data-btn-label>Salvar nova senha</span>
@@ -85,6 +90,8 @@ import AuthLayout from '../layouts/AuthLayout.astro';
   const token = parametros.get('token') ?? '';
   const nova = document.getElementById('reset-new') as HTMLInputElement;
   const confirmacao = document.getElementById('reset-confirm') as HTMLInputElement;
+  const resetErro = document.getElementById('reset-error') as HTMLElement;
+  const resetErroTexto = document.getElementById('reset-error-texto') as HTMLElement;
 
   function mostrar(id: string) {
     ['reset-form-view', 'reset-expired-view', 'reset-success-view'].forEach((view) => {
@@ -146,6 +153,7 @@ import AuthLayout from '../layouts/AuthLayout.astro';
 
   document.getElementById('reset-form')!.addEventListener('submit', async (evento) => {
     evento.preventDefault();
+    resetErro.hidden = true;
     limparErroCampo('reset-new');
     limparErroCampo('reset-confirm');
 
@@ -168,8 +176,18 @@ import AuthLayout from '../layouts/AuthLayout.astro';
     const resposta = await postJson('/api/auth/redefinir-senha', { uid, token, senha }, API);
     setLoading(botao, false);
 
-    if (!resposta.ok || /link|expirad|invalido|inval/i.test(resposta.codigo ?? '')) {
-      mostrar('reset-expired-view');
+    if (!resposta.ok) {
+      const codigo = resposta.codigo ?? '';
+      const linkVencido =
+        (resposta.status === 400 || resposta.status === 422) &&
+        (codigo === 'link_invalido' || codigo === 'link_expirado');
+      if (linkVencido) {
+        mostrar('reset-expired-view');
+        return;
+      }
+      resetErroTexto.textContent =
+        resposta.mensagem?.trim() || 'Não foi possível salvar sua nova senha. Tente novamente.';
+      resetErro.hidden = false;
       return;
     }
     mostrar('reset-success-view');

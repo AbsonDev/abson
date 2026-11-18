@@ -46,15 +46,20 @@ import AuthLayout from '../layouts/AuthLayout.astro';
         </button>
       </form>
 
+      <p class="note note--error" id="logout-error" role="alert" hidden>
+        <svg class="od-icon od-icon--md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5"></path><path d="M12 16h.01"></path></svg>
+        <span>Não foi possível sair agora. Tente novamente.</span>
+      </p>
+
       <div class="link-row link-row--start" style="margin-top: 20px;">
-        <a class="linkish" href="/entrar">Sair</a>
+        <button type="button" class="linkish" id="accept-logout">Sair</button>
       </div>
     </div>
   </section>
 </AuthLayout>
 
 <script>
-  import { apiBase, postJson } from '../lib/auth';
+  import { apiBase, destinoSeguro, postJson } from '../lib/auth';
 
   const API = apiBase();
   const TERMOS_VERSAO = '2026-11-17';
@@ -67,10 +72,7 @@ import AuthLayout from '../layouts/AuthLayout.astro';
   const erroTexto = document.getElementById('accept-error-texto') as HTMLElement;
   const parametros = new URLSearchParams(window.location.search);
 
-  const destinoRaw = parametros.get('destino');
-  const destino = destinoRaw && destinoRaw.startsWith('/') && !destinoRaw.startsWith('//')
-    ? destinoRaw
-    : '/hoje';
+  const destino = destinoSeguro(parametros.get('destino'), '/hoje');
 
   function sincronizar() {
     const ambos = termos.checked && privacidade.checked;
@@ -120,5 +122,29 @@ import AuthLayout from '../layouts/AuthLayout.astro';
     }
 
     window.location.replace(destino);
+  });
+
+  const sair = document.getElementById('accept-logout') as HTMLButtonElement;
+  const logoutErro = document.getElementById('logout-error') as HTMLElement;
+  sair.addEventListener('click', async () => {
+    logoutErro.hidden = true;
+    sair.disabled = true;
+    sair.setAttribute('aria-busy', 'true');
+    try {
+      const resposta = await fetch(`${API}/api/auth/sair`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+      if (resposta.ok || resposta.status === 401) {
+        window.location.replace('/entrar?saiu=1');
+        return;
+      }
+      logoutErro.hidden = false;
+    } catch {
+      logoutErro.hidden = false;
+    } finally {
+      sair.disabled = false;
+      sair.setAttribute('aria-busy', 'false');
+    }
   });
 </script>

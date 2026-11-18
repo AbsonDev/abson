@@ -37,6 +37,23 @@ export function apiBase(): string {
   return base.replace(/\/$/, '');
 }
 
+/**
+ * Aceita apenas destinos internos. O `URL` normaliza `\\`, `//` e esquemas
+ * (`/\evil.com` vira `http://evil.com/`), então a origem é comparada depois do
+ * parse. Caracteres de controle são recusados antes, porque o parser os remove.
+ */
+export function destinoSeguro(raw: string | null | undefined, fallback = '/hoje'): string {
+  if (!raw || typeof window === 'undefined') return fallback;
+  if (/[\u0000-\u001F\u007F-\u009F]/.test(raw)) return fallback;
+  try {
+    const url = new URL(raw, window.location.origin);
+    if (url.origin !== window.location.origin) return fallback;
+    return `${url.pathname}${url.search}`;
+  } catch {
+    return fallback;
+  }
+}
+
 function lerCampo(dados: Record<string, unknown>, camel: string, pascal: string): unknown {
   return dados[camel] ?? dados[pascal];
 }

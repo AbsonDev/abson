@@ -128,7 +128,7 @@ const estado = Astro.url.searchParams.get('estado') ?? '';
 </style>
 
 <script>
-  import { apiBase, obterSessao } from '../../lib/auth';
+  import { apiBase, destinoSeguro, obterSessao } from '../../lib/auth';
 
   const API = apiBase();
   const estado = document.querySelector('[data-estado]')?.getAttribute('data-estado') || '';
@@ -204,14 +204,11 @@ const estado = Astro.url.searchParams.get('estado') ?? '';
   function destino() {
     try {
       const salvo = sessionStorage.getItem('fisga:retorno');
-      if (salvo && salvo.startsWith('/') && !salvo.startsWith('//')) {
-        sessionStorage.removeItem('fisga:retorno');
-        return salvo;
-      }
+      if (salvo !== null) sessionStorage.removeItem('fisga:retorno');
+      return destinoSeguro(salvo, '/hoje');
     } catch {
-      // armazenamento indisponível
+      return '/hoje';
     }
-    return '/hoje';
   }
 
   async function concluir(alvo: string) {

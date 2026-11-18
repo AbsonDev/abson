@@ -352,7 +352,8 @@ input[type="checkbox"]:focus-visible {
   text-decoration: none;
   transition: background-color var(--dur) var(--ease), border-color var(--dur) var(--ease), color var(--dur) var(--ease), transform var(--dur) var(--ease);
 }
-.btn:disabled { cursor: progress; }
+.btn:disabled { cursor: not-allowed; opacity: .55; }
+.btn[aria-busy="true"]:disabled { cursor: progress; opacity: 1; }
 .btn-block { width: 100%; }
 
 .btn-primary {
@@ -411,6 +412,7 @@ input[type="checkbox"]:focus-visible {
   cursor: pointer;
 }
 .linkish:hover { color: var(--deep); }
+.linkish:disabled { cursor: progress; opacity: .55; }
 
 .link-row {
   display: flex;

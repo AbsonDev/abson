@@ -15,10 +15,19 @@ export default defineConfig({
     trace: 'retain-on-failure',
     ...devices['Desktop Chrome']
   },
-  webServer: {
-    command: `npm run dev -- --port ${porta}`,
-    url: baseURL,
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000
-  }
+  webServer: [
+    {
+      // `/hoje` chama a API no servidor; o mock precisa existir fora do navegador.
+      command: 'node tests/mock-api.mjs',
+      url: 'http://localhost:5184/__health',
+      reuseExistingServer: !process.env.CI,
+      timeout: 30_000
+    },
+    {
+      command: `npm run dev -- --port ${porta}`,
+      url: baseURL,
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000
+    }
+  ]
 });

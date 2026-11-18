@@ -25,7 +25,7 @@ import AuthLayout from '../layouts/AuthLayout.astro';
         </header>
         <div class="stack-actions">
           <a class="btn btn-primary btn-block" href="/entrar">Entrar</a>
-          <a class="btn btn-ghost btn-block" href="/conta">Ir para a conta</a>
+          <a class="btn btn-ghost btn-block" href="/entrar">Voltar para entrar</a>
         </div>
       </div>
 
@@ -44,7 +44,7 @@ import AuthLayout from '../layouts/AuthLayout.astro';
         </div>
         <p class="note note--success" id="confirm-resend-note" role="status" hidden style="margin-top: 16px;">
           <svg class="od-icon od-icon--md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="m8.5 12 2.5 2.5 4.5-5"></path></svg>
-          <span>Enviamos um novo link de confirmação. Confira a caixa de entrada e o spam.</span>
+          <span id="confirm-resend-texto">Enviamos um novo link de confirmação. Confira a caixa de entrada e o spam.</span>
         </p>
       </div>
     </div>
@@ -86,23 +86,35 @@ import AuthLayout from '../layouts/AuthLayout.astro';
     mostrar(resposta.ok ? 'confirm-success' : 'confirm-fail');
   })();
 
+  const resendNota = document.getElementById('confirm-resend-note') as HTMLElement;
+  const resendTexto = document.getElementById('confirm-resend-texto') as HTMLElement;
+
+  function mostrarNotaReenvio(texto: string, erro = false) {
+    resendTexto.textContent = texto;
+    resendNota.classList.toggle('note--error', erro);
+    resendNota.classList.toggle('note--success', !erro);
+    resendNota.hidden = false;
+  }
+
   document.getElementById('confirm-resend')!.addEventListener('click', async () => {
     const botao = document.getElementById('confirm-resend') as HTMLButtonElement;
+    resendNota.hidden = true;
     const sessao = await obterSessao(API);
     const email = sessao?.usuario?.email;
     if (!email) {
-      window.location.assign('/entrar?erro=confirmacao_pendente');
+      mostrarNotaReenvio(
+        'Para pedir um novo link, entre com seu e-mail e senha. Depois, use o reenvio na tela de entrada.',
+        true
+      );
       return;
     }
     setLoading(botao, true, 'Enviando…');
     const resposta = await postJson('/api/auth/solicitar', { email }, API);
     setLoading(botao, false);
-    const nota = document.getElementById('confirm-resend-note') as HTMLElement;
     if (!resposta.ok) {
-      nota.classList.remove('note--success');
-      nota.classList.add('note--error');
-      nota.textContent = 'Não foi possível enviar agora. Tente de novo em instantes.';
+      mostrarNotaReenvio('Não foi possível enviar agora. Tente de novo em instantes.', true);
+      return;
     }
-    nota.hidden = false;
+    mostrarNotaReenvio('Enviamos um novo link de confirmação. Confira a caixa de entrada e o spam.');
   });
 </script>
