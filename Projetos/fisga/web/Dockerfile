@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM node:24-slim AS build
+FROM node:26-slim AS build
 WORKDIR /app
 
 COPY package*.json ./
@@ -20,7 +20,7 @@ ENV PUBLIC_SENTRY_RELEASE=${PUBLIC_SENTRY_RELEASE:-$SENTRY_RELEASE}
 RUN --mount=type=secret,id=sentry_auth_token,env=SENTRY_AUTH_TOKEN \
     npm run build
 
-FROM node:24-alpine AS final
+FROM node:26-alpine AS final
 ARG GIT_SHA=
 ARG SOURCE_COMMIT=
 ENV GIT_SHA=${GIT_SHA:-$SOURCE_COMMIT}
