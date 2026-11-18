@@ -13,6 +13,7 @@ transforma o dia em troféu, PDF e memória.
 [api.fisga.abson.tech](https://api.fisga.abson.tech/health).
 
 [![CI do Fisga](https://github.com/AbsonDev/abson/actions/workflows/fisga-pipeline.yml/badge.svg?branch=main)](https://github.com/AbsonDev/abson/actions/workflows/fisga-pipeline.yml)
+[![Deploy do Fisga](https://github.com/AbsonDev/abson/actions/workflows/fisga-deploy.yml/badge.svg?branch=main)](https://github.com/AbsonDev/abson/actions/workflows/fisga-deploy.yml)
 
 ---
 
