@@ -144,9 +144,16 @@ gravável) já invalida todos os cookies.
 
 ## 4. Ensaio da migration em PostgreSQL local
 
-> **Status neste ambiente: NÃO EXECUTADO.** O `docker` não está instalado nesta máquina e não há
-> PostgreSQL local disponível. O procedimento abaixo é o checklist obrigatório antes do deploy e
-> deve ser executado por quem tiver Docker/Postgres. Não trate este ensaio como concluído.
+> **Status: EXECUTADO em 18/11/2026** contra um banco descartável (`fisga_migracao_test`) no
+> PostgreSQL de produção, via túnel SSH, a partir de um clone do banco real — não no banco de
+> produção. Resultado: `usuarios` 2→2, `pescarias` 1→1, `AspNetUsers` 0 (provisionamento
+> preguiçoso), `consentimentos` 0, 7 tabelas da Identity e histórico com 7 migrations. O smoke de
+> login legado criou a conta Identity no primeiro link mágico (`AspNetUsers` 0→1) e abriu sessão com
+> consentimento pendente. O banco descartável foi removido ao final.
+>
+> O procedimento com Docker abaixo continua válido para ambientes com Docker/Postgres local. O
+> `docker` não está instalado na máquina do agente; por isso o ensaio foi feito no clone descartável
+> do Postgres de produção.
 
 O ensaio usa um banco **descartável**, começa vazio, aplica a migration anterior, semeia um usuário
 legado sem conta Identity e uma pescaria, e só então aplica a migration de identidade. Nunca use
@@ -549,7 +556,7 @@ link de acesso ou senha”. Não prometa que a sessão atual será preservada.
 | `npm run build` | aprovado (Astro + Pagefind + precache) |
 | Playwright mockado | **61/61 aprovados** |
 | Playwright backend real (`scripts/e2e-real.sh`) | **6/6 aprovados** em 18,4 s; **12/12** com `--repeat-each=2` (37,3 s) |
-| Migration em PostgreSQL local | **NÃO EXECUTADO** (sem Docker/Postgres nesta máquina) |
+| Migration em PostgreSQL | **EXECUTADA em 18/11/2026** em clone descartável do Postgres de produção: usuários/pescarias preservados, `AspNetUsers=0`, 7 tabelas Identity, smoke de login legado OK |
 | OAuth Google real | **NÃO EXECUTADO** (sem credenciais) |
 | Sentry em produção | **NÃO VERIFICADO** (DSN ausente no E2E) |
 
