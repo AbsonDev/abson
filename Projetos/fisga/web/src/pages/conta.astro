@@ -939,6 +939,7 @@ import AuthLayout from '../layouts/AuthLayout.astro';
       const { dados } = await pedir<MeConta>('/api/auth/me');
 
       if (!dados?.autenticado || !dados.usuario) {
+        await limparCachePrivado();
         irParaEntrar();
         return;
       }

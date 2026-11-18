@@ -78,6 +78,30 @@ async function mockSessao(page: Page) {
   });
 }
 
+/**
+ * Semeia o estado privado em uma página da origem. Roda antes da navegação
+ * para a tela testada, já que o cache/localStorage são da origem e sobrevivem
+ * à troca de documento.
+ */
+async function semearEstadoPrivado(page: Page) {
+  await page.goto(`${ORIGEM}/offline`);
+  await page.evaluate(async () => {
+    localStorage.setItem('fisga:diario:v1', 'rascunho privado');
+    const cache = await caches.open('fisga-public-v9');
+    await cache.put('/hoje', new Response('html privado'));
+  });
+}
+
+async function mockEntrarVoltarConta(page: Page) {
+  await page.route('**/entrar?voltar=/conta', (route) =>
+    route.fulfill({
+      status: 200,
+      headers: { 'content-type': 'text/html', 'cache-control': 'no-store' },
+      body: '<!doctype html><h1>Entrar</h1>'
+    })
+  );
+}
+
 test.describe('logout sem service worker', () => {
   // O SW ativo recria `fisga-public-v9` com os assets públicos de `/entrar`
   // logo depois do logout. Aqui ele fica bloqueado para medir exatamente o que
@@ -148,23 +172,84 @@ test.describe('logout sem service worker', () => {
     await page.route(`${API}/api/auth/me`, (route) =>
       route.fulfill({ status: 401, headers: CORS, body: '' })
     );
-    await page.route('**/entrar?voltar=/conta', (route) =>
+    await mockEntrarVoltarConta(page);
+
+    await semearEstadoPrivado(page);
+    await page.goto(`${ORIGEM}/conta`);
+    await expect(page).toHaveURL(/\/entrar\?voltar=\/conta$/);
+
+    const chaves = await page.evaluate(() => caches.keys());
+    expect(chaves.some((c) => c.startsWith('fisga-public-'))).toBe(false);
+    expect(await page.evaluate(() => localStorage.getItem('fisga:diario:v1'))).toBeNull();
+  });
+
+  test('sessão expirada (200 anônimo) também limpa os caches privados', async ({ page }) => {
+    await page.route(`${API}/api/auth/me`, (route) =>
       route.fulfill({
         status: 200,
-        headers: { 'content-type': 'text/html', 'cache-control': 'no-store' },
-        body: '<!doctype html><h1>Entrar</h1>'
+        headers: { ...CORS, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          autenticado: false,
+          usuario: null,
+          consentimentoPendente: false,
+          googleConectado: false,
+          temSenha: false
+        })
+      })
+    );
+    await mockEntrarVoltarConta(page);
+
+    await semearEstadoPrivado(page);
+    await page.goto(`${ORIGEM}/conta`);
+    await expect(page).toHaveURL(/\/entrar\?voltar=\/conta$/);
+
+    const chaves = await page.evaluate(() => caches.keys());
+    expect(chaves.some((c) => c.startsWith('fisga-public-'))).toBe(false);
+    expect(await page.evaluate(() => localStorage.getItem('fisga:diario:v1'))).toBeNull();
+  });
+
+  test('aceite com consentimento 401 limpa caches e mostra sessão expirada', async ({ page }) => {
+    await page.route(`${API}/api/legal/versoes`, (route) =>
+      route.fulfill({
+        status: 200,
+        headers: { ...CORS, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          termosVersao: '2026-11-17',
+          privacidadeVersao: '2026-11-17'
+        })
       })
     );
 
-    await page.goto(`${ORIGEM}/offline`);
-    await page.evaluate(async () => {
-      localStorage.setItem('fisga:diario:v1', 'rascunho privado');
-      const cache = await caches.open('fisga-public-v9');
-      await cache.put('/hoje', new Response('html privado'));
+    await page.route(`${API}/api/conta/consentimento`, (route) => {
+      if (route.request().method() === 'OPTIONS') {
+        return route.fulfill({
+          status: 204,
+          headers: {
+            ...CORS,
+            'access-control-allow-methods': 'POST,OPTIONS',
+            'access-control-allow-headers': 'content-type'
+          }
+        });
+      }
+      return route.fulfill({
+        status: 401,
+        headers: { ...CORS, 'content-type': 'application/problem+json' },
+        body: JSON.stringify({
+          codigo: 'sessao_expirada',
+          detalhe: 'Sua sessão expirou. Entre novamente para aceitar.'
+        })
+      });
     });
 
-    await page.goto(`${ORIGEM}/conta`);
-    await expect(page).toHaveURL(/\/entrar\?voltar=\/conta$/);
+    await semearEstadoPrivado(page);
+    await page.goto(`${ORIGEM}/aceite`);
+
+    await page.locator('#accept-terms').check();
+    await page.locator('#accept-privacy').check();
+    await page.locator('#accept-submit').click();
+
+    await expect(page.locator('#accept-error')).toBeVisible();
+    await expect(page.locator('#accept-error')).toContainText('Sua sessão expirou');
 
     const chaves = await page.evaluate(() => caches.keys());
     expect(chaves.some((c) => c.startsWith('fisga-public-'))).toBe(false);

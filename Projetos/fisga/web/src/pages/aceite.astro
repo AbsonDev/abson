@@ -152,6 +152,9 @@ import AuthLayout from '../layouts/AuthLayout.astro';
 
     if (!resposta.ok) {
       setLoading(false);
+      if (resposta.status === 401) {
+        await limparCachePrivado();
+      }
       erroTexto.textContent =
         resposta.status === 401
           ? 'Sua sessão expirou. Entre novamente para aceitar.'
