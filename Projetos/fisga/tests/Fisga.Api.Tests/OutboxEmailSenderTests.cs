@@ -11,7 +11,7 @@ public sealed class OutboxEmailSenderTests : IDisposable
         $"fisga-outbox-tests-{Guid.NewGuid():N}");
 
     [Fact]
-    public async Task EnviarAsync_grava_json_com_destino_e_link_sem_logar()
+    public async Task EnviarAsync_grava_json_com_destino_e_link()
     {
         var sender = new OutboxEmailSender(new EmailOptions
         {

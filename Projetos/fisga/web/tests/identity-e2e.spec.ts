@@ -21,6 +21,7 @@ import path from 'node:path';
 
 const API = (process.env.E2E_API_URL ?? 'http://localhost:5184').replace(/\/$/, '');
 const OUTBOX = process.env.E2E_OUTBOX ?? '';
+const WEB = (process.env.E2E_WEB_URL ?? 'http://localhost:4324').replace(/\/$/, '');
 const REAL = process.env.E2E_REAL === '1';
 
 const SENHA = 'senha-e2e-123';
@@ -138,7 +139,7 @@ async function confirmarEmail(page: Page, email: string) {
 }
 
 async function criarContexto(browser: Browser): Promise<BrowserContext> {
-  return browser.newContext({ baseURL: process.env.E2E_WEB_URL ?? 'http://localhost:4323', ...devices['Desktop Chrome'] });
+  return browser.newContext({ baseURL: WEB, ...devices['Desktop Chrome'] });
 }
 
 async function sessaoAutenticada(context: BrowserContext): Promise<boolean> {
@@ -150,6 +151,11 @@ async function sessaoAutenticada(context: BrowserContext): Promise<boolean> {
 test.describe('Identity E2E — backend real', () => {
   test('novo usuário por senha: confirmação, consentimento e app', async ({ page }) => {
     const email = emailUnico('senha');
+
+    await page.goto('/criar-conta');
+    await expect
+      .poll(() => page.evaluate(() => document.body.dataset.api))
+      .toBe(API);
 
     await registrarPelaTela(page, 'Pescador E2E', email, SENHA);
     await confirmarEmail(page, email);
@@ -173,7 +179,9 @@ test.describe('Identity E2E — backend real', () => {
     expect(corpo.consentimentoPendente).toBe(false);
   });
 
-  test('usuário existente por link mágico: consentimento, diário e dados preservados', async ({ page }) => {
+  test('retorno por link mágico: consentimento, diário e dados preservados', async ({ page }) => {
+    // O banco é limpo: este teste não semeia um usuário pré-migração. Ele cria a
+    // conta no primeiro link e comprova que a segunda entrada preserva a pescaria.
     const email = emailUnico('magico');
 
     await page.goto('/entrar');
@@ -268,7 +276,7 @@ test.describe('Identity E2E — backend real', () => {
 
   test('sessões: sair desta sessão e sair de todos', async ({ browser }) => {
     const email = emailUnico('sessoes');
-    const setup = await browser.newContext({ baseURL: process.env.E2E_WEB_URL ?? 'http://localhost:4323' });
+    const setup = await browser.newContext({ baseURL: WEB });
 
     try {
       const resposta = await setup.request.post(`${API}/api/auth/registrar`, {

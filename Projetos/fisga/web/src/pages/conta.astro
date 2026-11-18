@@ -1075,9 +1075,9 @@ import AuthLayout from '../layouts/AuthLayout.astro';
     if (senhaFeedback) senhaFeedback.hidden = true;
 
     dialogSenha.showModal();
-    window.requestAnimationFrame(() => {
-      (modoSenha === 'alterar' ? senhaAtual : novaSenha)?.focus();
-    });
+    // Foco síncrono após showModal: agendar em requestAnimationFrame permitia
+    // que o foco mudasse no meio da digitação/preenchimento (perda de caracteres).
+    (modoSenha === 'alterar' ? senhaAtual : novaSenha)?.focus();
   }
 
   function fecharDialogoSenha() {

@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -434,6 +435,32 @@ public sealed class GoogleLoginTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Concluir_com_sessao_externa_entra_e_apaga_cookie_legado()
+    {
+        var email = $"{Guid.NewGuid():N}@exemplo.com";
+        var cookieExterna = CookieExterna(NovoSubject(), email);
+
+        using var cliente = _fixture.Factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false
+        });
+        cliente.DefaultRequestHeaders.Add("Cookie", cookieExterna);
+
+        var resposta = await cliente.GetAsync("/api/auth/google/concluir");
+
+        Assert.Equal(HttpStatusCode.Found, resposta.StatusCode);
+        Assert.Contains("/boas-vindas?novo=1", resposta.Headers.Location!.ToString());
+
+        Assert.True(resposta.Headers.TryGetValues("Set-Cookie", out var cookies));
+        Assert.Contains(cookies!, c => c.StartsWith("fisga_auth=", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(cookies!, c => c.StartsWith("fisga_sessao=;", StringComparison.OrdinalIgnoreCase));
+
+        var me = await cliente.GetFromJsonAsync<MeResponse>("/api/auth/me");
+        Assert.True(me!.Autenticado);
+        Assert.Equal(email, me.Usuario!.Email);
+    }
+
+    [Fact]
     public void Deteccao_de_credenciais_respeita_client_id_e_secret()
     {
         static IConfiguration Config(string? id, string? segredo) =>
@@ -454,6 +481,38 @@ public sealed class GoogleLoginTests : IAsyncLifetime
     // ---------------------------------------------------------------------
 
     private static string NovoSubject() => $"google-subject-{Guid.NewGuid():N}";
+
+    /// <summary>
+    /// Semeia o cookie do esquema externo da Identity, como se o handshake do
+    /// Google tivesse terminado. Usa o mesmo anel de chaves do host de teste.
+    /// </summary>
+    private string CookieExterna(string subject, string email)
+    {
+        using var scope = _fixture.Factory.Services.CreateScope();
+        var autenticacao = scope.ServiceProvider.GetRequiredService<IAuthenticationService>();
+        var contexto = new DefaultHttpContext { RequestServices = scope.ServiceProvider };
+
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, subject),
+            new(ClaimTypes.Email, email),
+            new(GoogleIdentityValidator.EmailVerifiedClaim, "true")
+        };
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+            claims, "Google", ClaimTypes.NameIdentifier, ClaimTypes.Role));
+        var propriedades = new AuthenticationProperties();
+        propriedades.Items["LoginProvider"] = GoogleIdentityValidator.Provider;
+
+        autenticacao.SignInAsync(
+            contexto,
+            IdentityConstants.ExternalScheme,
+            principal,
+            propriedades).GetAwaiter().GetResult();
+
+        var setCookie = contexto.Response.Headers["Set-Cookie"].ToString();
+        Assert.False(string.IsNullOrWhiteSpace(setCookie));
+        return setCookie.Split(';')[0];
+    }
 
     private static UserLoginInfo Login(string subject) =>
         new("Google", subject, "Google");

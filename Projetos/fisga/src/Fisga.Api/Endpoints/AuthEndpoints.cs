@@ -78,6 +78,7 @@ public static class AuthEndpoints
                 ICadastroDeUsuario cadastro,
                 IdentitySessionService identidade,
                 EmailDeIdentidade emails,
+                AutenticacaoOptions opcoes,
                 CancellationToken ct) =>
             {
                 var email = (entrada.Email ?? string.Empty).Trim();
@@ -103,6 +104,9 @@ public static class AuthEndpoints
                     // CheckPasswordSignInAsync só verifica a senha: o cookie é emitido
                     // uma única vez aqui, já com o claim que liga ao dispositivo.
                     await identidade.AssinarAsync(conta, usuario, http, ct);
+                    // O cookie legado fisga_sessao não autentica mais; apagá-lo no
+                    // login evita que ele continue sendo enviado depois da migração.
+                    LimparCookie(http, opcoes);
                     Metricas.LoginConfirmado(false);
                     return Results.Ok(new EntrarResponse(true, null));
                 }
@@ -295,6 +299,7 @@ public static class AuthEndpoints
                     // O cookie da Identity é a única autenticação; a sessão de
                     // dispositivo é criada aqui, ligada ao cookie pelo claim sessao_id.
                     await identidade.AssinarAsync(conta, resultado.Usuario, http, ct);
+                    LimparCookie(http, opcoes);
 
                     Metricas.LoginConfirmado(resultado.PrimeiroAcesso);
                     var destino = resultado.PrimeiroAcesso
@@ -393,6 +398,7 @@ public static class AuthEndpoints
 
                     await identidade.AssinarAsync(conta, usuario, http, ct);
                     await http.SignOutAsync(IdentityConstants.ExternalScheme);
+                    LimparCookie(http, opcoes);
 
                     Metricas.LoginConfirmado(primeiroAcesso);
                     var destino = primeiroAcesso

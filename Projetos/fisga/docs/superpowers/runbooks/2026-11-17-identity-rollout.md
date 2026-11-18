@@ -88,7 +88,7 @@ Nunca commite valores. Configure no cofre/Coolify:
 | `Email__ResendApiKey` | chave do Resend (segredo) |
 | `Legal__TermsVersion` | `2026-11-17` |
 | `Legal__PrivacyVersion` | `2026-11-17` |
-| `Sentry__Dsn` | DSN do projeto `fisga-api` |
+| `SENTRY_DSN` | DSN do projeto `fisga-api` |
 
 > `Auth__CookieName` não é mais lida. Remova-a do ambiente para evitar configuração morta.
 
@@ -110,7 +110,8 @@ Em produção (Coolify/host), o mount precisa existir com o **mesmo caminho**:
 - **não** montar `tmpfs`, **não** usar diretório efêmero do container;
 - incluir o volume no backup seguro.
 
-Sem esse mount, o primeiro restart já invalida todos os cookies.
+Sem esse mount, o primeiro redeploy/recreate do container (ou qualquer restart que recrie a camada
+gravável) já invalida todos os cookies.
 
 ### 3.4 DNS, TLS e proxy
 
@@ -127,41 +128,96 @@ Sem esse mount, o primeiro restart já invalida todos os cookies.
 > PostgreSQL local disponível. O procedimento abaixo é o checklist obrigatório antes do deploy e
 > deve ser executado por quem tiver Docker/Postgres. Não trate este ensaio como concluído.
 
+O ensaio usa um banco **descartável**, começa vazio, aplica a migration anterior, semeia um usuário
+legado sem conta Identity e uma pescaria, e só então aplica a migration de identidade. Nunca use
+produção neste passo.
+
 ```bash
 cd Projetos/fisga
+
+# Banco descartável: apaga apenas o volume local de ensaio.
+docker compose down -v
 docker compose up -d postgres
 
-export Database__Provider=Postgres
-export Database__ConnectionString='Host=localhost;Port=5435;Database=fisga;Username=fisga;Password=fisga'
-
-# Contagens ANTES (banco de ensaio com dados representativos, nunca produção)
-psql "$Database__ConnectionString" -c 'select count(*) from fisga.usuarios;'
-psql "$Database__ConnectionString" -c 'select count(*) from fisga.pescarias;'
-psql "$Database__ConnectionString" -c 'select count(*) from fisga."AspNetUsers";'
+export PGPASSWORD=fisga
 
 ~/.dotnet/dotnet tool restore
+
+# 0) Garante que o modelo bate com a última migration (sem drift).
+Database__Provider=Postgres \
+Database__ConnectionString='Host=localhost;Port=5435;Database=fisga;Username=fisga;Password=fisga' \
+~/.dotnet/dotnet ef migrations has-pending-model-changes \
+  --project src/Fisga.Infrastructure \
+  --startup-project src/Fisga.Api
+# esperado: "No changes have been made to the model since the last migration."
+
+# 1) Aplica até a migration ANTERIOR (Sprint4), deixando o banco sem AspNetUsers.
+Database__Provider=Postgres \
+Database__ConnectionString='Host=localhost;Port=5435;Database=fisga;Username=fisga;Password=fisga' \
+~/.dotnet/dotnet ef database update 20261117164902_Sprint4 \
+  --project src/Fisga.Infrastructure \
+  --startup-project src/Fisga.Api
+
+# 2) Confere que a tabela nova ainda não existe.
+psql -h localhost -p 5435 -U fisga -d fisga -tAc \
+  "select coalesce(to_regclass('fisga.\"AspNetUsers\"')::text, 'ausente');"
+# esperado: ausente
+
+# 3) Semeia um usuário legado (sem AspNetUsers) e uma pescaria dele.
+psql -h localhost -p 5435 -U fisga -d fisga -v ON_ERROR_STOP=1 <<'SQL'
+insert into fisga.usuarios (
+  "Id", "AceitaNovidades", "AtualizadoEm", "BemVindoEm", "CriadoEm",
+  email, "EmailVerificadoEm", "Nome", "UltimoAcessoEm"
+) values (
+  '00000000-0000-0000-0000-000000000001', false, now(), null, now(),
+  'legado@exemplo.com', now(), 'Usuário Legado', null
+);
+
+insert into fisga.pescarias (
+  "Id", "Ambiente", "AtualizadoEm", "Cidade", "ClarezaDaAgua", "Clima",
+  "CriadoEm", "Data", "Estado", "Local", "Lua", "Mare", "Observacoes",
+  "Periodo", "Pescador", "PrivacidadeDoLocal", "ShareToken", "UsuarioId"
+) values (
+  '00000000-0000-0000-0000-000000000002', 'Mar', now(), 'Aracaju', 'Clara', 'Sol',
+  now(), '2026-11-10', 'SE', 'Praia Legada', 'Crescente', 'Vazante',
+  'Seed do ensaio de migration', 'Manha', 'Pescador Legado', 'Cidade',
+  'share-legado-0001', '00000000-0000-0000-0000-000000000001'
+);
+SQL
+
+# 4) Contagens ANTES: usuarios = 1, pescarias = 1, AspNetUsers ausente.
+psql -h localhost -p 5435 -U fisga -d fisga -tAc 'select count(*) from fisga.usuarios;'
+psql -h localhost -p 5435 -U fisga -d fisga -tAc 'select count(*) from fisga.pescarias;'
+psql -h localhost -p 5435 -U fisga -d fisga -tAc \
+  "select coalesce(to_regclass('fisga.\"AspNetUsers\"')::text, 'ausente');"
+
+# 5) Aplica a migration de identidade.
+Database__Provider=Postgres \
+Database__ConnectionString='Host=localhost;Port=5435;Database=fisga;Username=fisga;Password=fisga' \
 ~/.dotnet/dotnet ef database update \
   --project src/Fisga.Infrastructure \
   --startup-project src/Fisga.Api
 
-# Contagens DEPOIS
-psql "$Database__ConnectionString" -c 'select count(*) from fisga.usuarios;'
-psql "$Database__ConnectionString" -c 'select count(*) from fisga.pescarias;'
-psql "$Database__ConnectionString" -c 'select count(*) from fisga."AspNetUsers";'
-psql "$Database__ConnectionString" -c 'select "MigrationId" from fisga."__EFMigrationsHistory" order by 1;'
+# 6) Contagens DEPOIS: usuarios = 1, pescarias = 1, AspNetUsers = 0 (sem backfill).
+psql -h localhost -p 5435 -U fisga -d fisga -tAc 'select count(*) from fisga.usuarios;'
+psql -h localhost -p 5435 -U fisga -d fisga -tAc 'select count(*) from fisga.pescarias;'
+psql -h localhost -p 5435 -U fisga -d fisga -tAc 'select count(*) from fisga."AspNetUsers";'
+psql -h localhost -p 5435 -U fisga -d fisga -tAc \
+  'select "MigrationId" from fisga."__EFMigrationsHistory" order by 1;'
 ```
 
 **Resultado esperado**
 
 | Tabela | Antes | Depois |
 | --- | --- | --- |
-| `fisga.usuarios` | N | **N** (inalterado) |
-| `fisga.pescarias` | M | **M** (inalterado) |
-| `fisga."AspNetUsers"` | 0 (tabela nova) | **0** (sem backfill; cresce no primeiro login) |
-| `__EFMigrationsHistory` | — | contém `20261117213339_IdentityConsentimento` |
+| `fisga.usuarios` | 1 | **1** (inalterado) |
+| `fisga.pescarias` | 1 | **1** (inalterado) |
+| `fisga."AspNetUsers"` | ausente | **0** (tabela criada, sem backfill; cresce no primeiro login) |
+| `__EFMigrationsHistory` | até `Sprint4` | contém `20261117213339_IdentityConsentimento` |
 
-Faça também um smoke no ensaio: criar usuário antigo, entrar por link mágico, aceitar termos e
-conferir que a pescaria existente aparece. Só então agende produção.
+Faça também um smoke no ensaio: suba a API apontando para esse banco, entre com
+`legado@exemplo.com` por link mágico, aceite os termos e confira que “Praia Legada” aparece no
+diário. Só então agende produção.
 
 Para limpar o ensaio local (destrutivo, somente local):
 
@@ -177,6 +233,11 @@ docker compose down -v
 2. **Backup** do banco e das chaves (seção 3.1).
 3. **Configurar envs e volume** (seções 3.2 e 3.3), sem trocar a imagem ainda.
 4. **Deploy da API** (nova imagem). O start aplica a migration aditiva.
+
+   > **Janela API → web:** a API nova ignora o cookie antigo `fisga_sessao`; até a web nova
+   > terminar o deploy, quem ainda tem só esse cookie fica efetivamente deslogado. Faça os dois
+   > deploys em sequência, sem pausa longa, e avise que um novo login pode ser pedido.
+
 5. **Verificar API:**
    ```bash
    curl -fsS https://api.fisga.abson.tech/health
@@ -257,7 +318,7 @@ Google__CallbackPath=/signin-google
 
 Checklist após as credenciais:
 
-- [ ] API reiniciada e `GET /api/auth/google/disponivel` → `{"disponivel":true}`.
+- [ ] API reimplantada/reiniciada e `GET /api/auth/google/disponivel` → `{"disponivel":true}`.
 - [ ] `/entrar` mostra “Continuar com Google” e o divisor “ou”.
 - [ ] Login com e-mail Google já confirmado no Fisga entra sem pedir senha.
 - [ ] Google com e-mail não confirmado localmente é recusado com mensagem clara.
@@ -267,8 +328,8 @@ Checklist após as credenciais:
 - [ ] Após reconectar, não há linha duplicada em `AspNetUserLogins`.
 - [ ] Cookies de estado externo somem após sucesso/falha.
 
-Se o ClientSecret for rotacionado, atualize a env, reinicie a API e refaça o login de teste. Não
-remova o volume de chaves ao trocar credenciais.
+Se o ClientSecret for rotacionado, atualize a env, reimplante/reinicie a API e refaça o login de
+teste. Não remova o volume de chaves ao trocar credenciais.
 
 ---
 
@@ -277,36 +338,91 @@ remova o volume de chaves ao trocar credenciais.
 **Forma oficial:** reimplantar a imagem anterior (digest anotado) e, se houve problema de dados,
 restaurar o backup.
 
+### 8.0 Pré-rollback obrigatório: revogar sessões
+
+Antes de reimplantar a imagem antiga, encerre as sessões no banco. A imagem antiga autentica pelo
+hash em `fisga.sessoes`; sem revogar, um cookie `fisga_sessao` antigo ainda válido poderia autenticar
+depois do rollback.
+
+```bash
+# Defina com os valores reais do cofre; não commite.
+export PGHOST='...'
+export PGPORT='5432'
+export PGUSER='...'
+export PGPASSWORD='...'
+export PROD_DB='fisga'
+
+psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PROD_DB" -v ON_ERROR_STOP=1 \
+  -c 'UPDATE fisga.sessoes SET "RevogadaEm" = NOW() WHERE "RevogadaEm" IS NULL;'
+```
+
+- [ ] Confirmar que `select count(*) from fisga.sessoes where "RevogadaEm" is null;` retorna 0.
+- [ ] Comunicar que o rollback exige um novo login (seção 9).
+
 ### 8.1 Rollback só de código (preferido)
 
-1. Reimplante o digest anterior da API e da web.
-2. **Mantenha** o banco migrado e o volume `fisga_keys`. A migration é aditiva; a imagem antiga
+1. Execute 8.0 (revogar sessões).
+2. Reimplante o digest anterior da API e da web.
+3. **Mantenha** o banco migrado e o volume `fisga_keys`. A migration é aditiva; a imagem antiga
    ignora as tabelas novas.
-3. Verifique `/health` e `/ready`.
-4. Teste login por link mágico na versão antiga.
+4. Verifique `/health` e `/ready`.
+5. Teste login por link mágico na versão antiga.
 
 ### 8.2 Rollback com restauração de dados
 
-Use somente se houver corrupção/perda de dados:
+Use somente se houver corrupção/perda de dados. A restauração é uma **operação manual separada**;
+a regra “nenhuma operação destrutiva” vale para o caminho de migration/deploy, não para este
+procedimento de incidente. **Nunca** use `pg_restore --clean` apontando para produção.
 
 1. Pare a API e a web.
-2. Restaure o dump em um banco novo e valide contagens.
-3. Aponte a connection string para o banco restaurado.
-4. Suba a imagem anterior.
-5. Verifique `/health`, `/ready` e o login de teste.
+2. Execute 8.0 (revogar sessões) no banco atual.
+3. Restaure o dump em um banco **novo e vazio**; valide contagens e só então troque a connection
+   string.
 
 ```bash
-# Exemplo; execute em banco novo e valide antes de trocar a env.
-pg_restore --clean --if-exists --no-owner --dbname="$DATABASE_URL_DE_RESTAURACAO" fisga-pre-identity-AAAAMMDD-HHMM.dump
+# Defina explicitamente; nunca aponte RESTORE_DB para o banco de produção.
+export PROD_DB="${PROD_DB:?Defina PROD_DB com o nome real do banco de produção}"
+RESTORE_DB="fisga_restore_$(date +%Y%m%d_%H%M%S)"
+DUMP='fisga-pre-identity-AAAAMMDD-HHMM.dump'
+
+if [ "$RESTORE_DB" = "$PROD_DB" ]; then
+  echo 'Destino de restauração não pode ser o banco de produção.' >&2
+  exit 1
+fi
+
+if psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d postgres -tAc \
+  "select 1 from pg_database where datname = '$RESTORE_DB';" | grep -q 1; then
+  echo "Banco $RESTORE_DB já existe; escolha outro." >&2
+  exit 1
+fi
+
+createdb -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" "$RESTORE_DB"
+
+# Deve ser 0: banco recém-criado, sem tabelas de usuário.
+test "$(psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$RESTORE_DB" -tAc \
+  "select count(*) from pg_tables where schemaname not in ('pg_catalog','information_schema');")" = '0'
+
+pg_restore --no-owner --no-privileges \
+  --dbname="host=$PGHOST port=$PGPORT user=$PGUSER dbname=$RESTORE_DB" \
+  "$DUMP"
+
+psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$RESTORE_DB" -c \
+  'select (select count(*) from fisga.usuarios) as usuarios, (select count(*) from fisga.pescarias) as pescarias;'
 ```
 
+4. Compare as contagens com o backup/incidente e valide o login em uma instância de ensaio.
+5. Aponte a connection string de produção para o banco restaurado.
+6. Suba a imagem anterior.
+7. Verifique `/health`, `/ready` e o login de teste.
+
 **Nunca** rode `dotnet ef database update` para “voltar” a migration em produção. Não há operação
-destrutiva prevista.
+destrutiva prevista no caminho normal de deploy.
 
 ### 8.3 Efeitos do rollback
 
 - Cookies `fisga_auth` não são lidos pela imagem antiga: usuários precisam entrar de novo por link
   mágico.
+- As sessões foram revogadas no passo 8.0; cookies `fisga_sessao` antigos também não autenticam.
 - Usuários criados **somente com senha** após o deploy não têm senha utilizável na imagem antiga;
   devem usar link mágico.
 - Consentimentos e sessões novas permanecem no banco; a imagem antiga os ignora.
@@ -330,6 +446,10 @@ Enviar 24 h antes e reforçar no dia:
 Canais: e-mail para contas ativas, aviso no site e, se houver, redes sociais. Não incluir links com
 token na comunicação. Registrar a data do envio no histórico da janela.
 
+**Em rollback**, todas as sessões são revogadas antes da troca de imagem (seção 8.0). Nesse caso a
+comunicação deve ser afirmativa: “encerramos as sessões ativas por segurança; entre novamente com
+link de acesso ou senha”. Não prometa que a sessão atual será preservada.
+
 ---
 
 ## 10. Limpeza pós-rollout
@@ -350,16 +470,16 @@ token na comunicação. Registrar a data do envio no histórico da janela.
 
 | Verificação | Resultado |
 | --- | --- |
-| `~/.dotnet/dotnet test` | **204 aprovados**, 0 falhas (36 domínio + 48 aplicação + 120 API) |
-| `npm run check` | 0 erros, 0 avisos (87 arquivos) |
+| `~/.dotnet/dotnet test` | **213 aprovados**, 0 falhas (36 domínio + 48 aplicação + 129 API) |
+| `npm run check` | 0 erros, 0 avisos, 0 hints (89 arquivos) |
 | `npm run build` | aprovado (Astro + Pagefind + precache) |
 | Playwright mockado | **58/58 aprovados** |
-| Playwright backend real (`scripts/e2e-real.sh`) | **6/6 aprovados** em 18,2 s; **12/12** com `--repeat-each=2` |
+| Playwright backend real (`scripts/e2e-real.sh`) | **6/6 aprovados** em 18,8 s; **12/12** com `--repeat-each=2` (37,4 s) |
 | Migration em PostgreSQL local | **NÃO EXECUTADO** (sem Docker/Postgres nesta máquina) |
 | OAuth Google real | **NÃO EXECUTADO** (sem credenciais) |
 | Sentry em produção | **NÃO VERIFICADO** (DSN ausente no E2E) |
 
-O E2E real cobre: senha → confirmação → consentimento → app; link mágico de usuário existente →
+O E2E real cobre: senha → confirmação → consentimento → app; retorno por link mágico →
 consentimento → diário com pescaria preservada; reset de senha; “sair desta” e “sair de todos” com
 dois navegadores; `/conta` com criação/alteração de senha, perfil/newsletter, exportação JSON; Google
 indisponível com botão oculto e endpoint `false`.
@@ -371,9 +491,10 @@ cd Projetos/fisga/web
 ./scripts/e2e-real.sh
 ```
 
-O script cria SQLite, chaves e outbox em diretório temporário, sobe a API em `5184`, espera
-`/health`, roda apenas `identity-e2e.spec.ts` e limpa tudo ao final. Chromium do Playwright já estava
-instalado nesta máquina.
+O script cria SQLite, chaves e outbox em diretório temporário, sobe a API em `5184` e uma web
+dedicada em `4324` (sem reutilizar dev server), espera `/health`, roda apenas
+`identity-e2e.spec.ts` e limpa tudo ao final. Chromium do Playwright já estava instalado nesta
+máquina.
 
 ---
 

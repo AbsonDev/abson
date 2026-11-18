@@ -59,6 +59,7 @@ public sealed class LinkMagicoIdentityTests : IAsyncLifetime
         Assert.Contains("/boas-vindas?novo=1", resposta.Headers.Location!.ToString());
         Assert.True(TemCookieDeAutenticacao(resposta), "A confirmação deve emitir o cookie fisga_auth.");
         Assert.False(TemCookieLegado(resposta), "A confirmação não deve gravar o cookie fisga_sessao.");
+        Assert.True(CookieLegadoFoiApagado(resposta), "A confirmação deve apagar o cookie fisga_sessao antigo.");
 
         var me = await cliente.GetFromJsonAsync<MeResponse>("/api/auth/me");
         Assert.NotNull(me);
@@ -93,6 +94,7 @@ public sealed class LinkMagicoIdentityTests : IAsyncLifetime
 
         Assert.Equal(HttpStatusCode.Found, resposta.StatusCode);
         Assert.True(TemCookieDeAutenticacao(resposta));
+        Assert.True(CookieLegadoFoiApagado(resposta));
 
         var me = await cliente.GetFromJsonAsync<MeResponse>("/api/auth/me");
         Assert.True(me!.Autenticado);
@@ -252,5 +254,10 @@ public sealed class LinkMagicoIdentityTests : IAsyncLifetime
 
     private static bool TemCookieLegado(HttpResponseMessage resposta) =>
         resposta.Headers.TryGetValues("Set-Cookie", out var cookies)
-        && cookies.Any(c => c.StartsWith("fisga_sessao=", StringComparison.OrdinalIgnoreCase));
+        && cookies.Any(c => c.StartsWith("fisga_sessao=", StringComparison.OrdinalIgnoreCase)
+                            && !c.StartsWith("fisga_sessao=;", StringComparison.OrdinalIgnoreCase));
+
+    private static bool CookieLegadoFoiApagado(HttpResponseMessage resposta) =>
+        resposta.Headers.TryGetValues("Set-Cookie", out var cookies)
+        && cookies.Any(c => c.StartsWith("fisga_sessao=;", StringComparison.OrdinalIgnoreCase));
 }

@@ -421,7 +421,7 @@ npm run check && npm run build
 npx playwright test
 ```
 
-Atualmente: **204 testes de backend** (36 de domínio + 48 de aplicação + 120 de API) e checagem de
+Atualmente: **213 testes de backend** (36 de domínio + 48 de aplicação + 129 de API) e checagem de
 tipos do Astro. Cobrem:
 
 - criação/edição de pescaria, IDs de captura, validações e isolamento entre usuários;
@@ -474,7 +474,7 @@ npm run build   # astro build + pagefind + precache
 | `GET` | `/api/auth/google/conectar` | Sessão | Inicia vínculo do Google em `/conta` |
 | `GET` | `/api/auth/google/conectar/concluir` | Sessão | Callback do vínculo do Google |
 | `GET` | `/api/auth/me` | Público | Usuário, consentimento, Google e senha |
-| `POST` | `/api/auth/sair` | Sessão | Encerra a sessão atual e apaga `fisga_sessao` legado |
+| `POST` | `/api/auth/sair` | Público (idempotente) | Encerra a sessão atual e apaga `fisga_sessao` legado |
 | `POST` | `/api/auth/sair-de-todos` | Sessão | Encerra todas as sessões/dispositivos |
 | `PATCH` | `/api/auth/perfil` | Sessão | Nome e preferência de e-mail |
 | `POST` | `/api/conta/consentimento` | Sessão | Registra aceite das versões vigentes |

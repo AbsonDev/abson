@@ -71,10 +71,13 @@ export const prerender = true;
 
       <h2>5. Cookies e sessão</h2>
       <p>
-        Usamos um cookie essencial chamado <code>fisga_sessao</code>, com as flags HttpOnly, Secure
-        e SameSite=Lax, para manter você autenticado. O Session Replay usa armazenamento da sessão
-        do navegador, não cookies de publicidade. Se adicionarmos analytics, esta política será
-        atualizada e o consentimento será solicitado quando necessário.
+        Usamos o cookie essencial <code>fisga_auth</code>, com as flags HttpOnly, Secure e
+        SameSite=Lax, para manter você autenticado. O cookie antigo <code>fisga_sessao</code> foi
+        descontinuado e é apagado quando você entra ou sai; ele não autentica mais. Quando você
+        escolhe entrar com Google, um cookie temporário do fluxo externo é usado apenas durante a
+        confirmação e removido ao final. O Session Replay usa armazenamento da sessão do navegador,
+        não cookies de publicidade. Se adicionarmos analytics, esta política será atualizada e o
+        consentimento será solicitado quando necessário.
       </p>
 
       <h2>6. Retenção e exclusão</h2>

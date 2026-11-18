@@ -86,6 +86,9 @@ public sealed class LoginSenhaTests : IAsyncLifetime
         Assert.Contains(
             cookies!,
             cookie => cookie.StartsWith("fisga_auth=", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(
+            cookies!,
+            cookie => cookie.StartsWith("fisga_sessao=;", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]

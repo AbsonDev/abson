@@ -93,6 +93,8 @@ builder.Services.AddRateLimiter(opcoes =>
 
 var app = builder.Build();
 
+ConfiguracaoDeEmail.Validar(app.Configuration["Email:Provider"], app.Environment.IsDevelopment());
+
 var pastaMidia = ArmazenamentoDeMidiaLocal.ObterPasta(app.Configuration);
 Directory.CreateDirectory(pastaMidia);
 

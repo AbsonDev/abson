@@ -26,6 +26,11 @@ if curl -fsS http://localhost:5184/health >/dev/null 2>&1; then
   exit 1
 fi
 
+if curl -fsS http://localhost:4324 >/dev/null 2>&1; then
+  echo "Já existe um servidor web em http://localhost:4324. O E2E real exige a porta livre." >&2
+  exit 1
+fi
+
 dotnet_bin="${DOTNET_BIN:-$HOME/.dotnet/dotnet}"
 command -v "$dotnet_bin" >/dev/null 2>&1 || dotnet_bin="dotnet"
 
@@ -39,11 +44,15 @@ DataProtection__KeysPath="$tmp/keys" \
 Email__Provider=Outbox \
 Email__OutboxPath="$tmp/outbox" \
 Auth__LinkBaseUrl=http://localhost:5184 \
-Auth__WebUrl=http://localhost:4323 \
-Cors__AllowedOrigins=http://localhost:4323 \
+Auth__WebUrl=http://localhost:4324 \
+Auth__CookieSecure=false \
+Cors__AllowedOrigins=http://localhost:4324 \
+Web__Url=http://localhost:4324 \
+Google__ClientId="" \
+Google__ClientSecret="" \
 RateLimiting__Auth=1000 \
 Auth__IntervaloDeReenvioEmSegundos=0 \
-Sentry__Dsn="" \
+SENTRY_DSN="" \
 "$dotnet_bin" "$raiz/src/Fisga.Api/bin/Debug/net10.0/Fisga.Api.dll" \
   >"$tmp/api.log" 2>&1 &
 api_pid=$!
@@ -70,5 +79,5 @@ cd "$web"
 E2E_REAL=1 \
 E2E_OUTBOX="$tmp/outbox" \
 E2E_API_URL=http://localhost:5184 \
-E2E_WEB_URL=http://localhost:4323 \
+E2E_WEB_URL=http://localhost:4324 \
   npx playwright test --config=playwright.real.config.ts "$@"

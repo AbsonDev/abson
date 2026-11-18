@@ -20,6 +20,7 @@ public static partial class SentryScrubber
         "pescador",
         "email",
         "token",
+        "uid",
         "shareToken",
         "handoff_code",
         "code"
@@ -100,6 +101,6 @@ public static partial class SentryScrubber
         return ParametroSensivel().Replace(texto, "$1[Filtered]");
     }
 
-    [GeneratedRegex(@"(?i)([?&](?:lat|lon|latitude|longitude|nome|cidade|pescador|email|token|handoff_code|code)=)[^&\s]+")]
+    [GeneratedRegex(@"(?i)([?&](?:lat|lon|latitude|longitude|nome|cidade|pescador|email|token|uid|handoff_code|code)=)[^&\s]+")]
     private static partial Regex ParametroSensivel();
 }
