@@ -484,6 +484,11 @@ git commit -m "feat(fisga): geolocalização e pular na boas-vindas"
 
 ### Task 4: Verificação e acabamento visual
 
+> **Nota de execução:** o input ficou com 48 px e o H1 com `clamp(2.4rem, 5.4vw, 3.5rem)`,
+> seguindo o artefato do OpenDesign; a suíte final da tela tem 25 testes. A revisão de código
+> acrescentou os estados de falha (save 500/rede/401), a ordem de respostas da busca, o anúncio
+> de resultados e os alvos de 44 px.
+
 **Files:**
 - Modify: `Projetos/fisga/web/src/pages/boas-vindas.astro` (só CSS, se necessário)
 

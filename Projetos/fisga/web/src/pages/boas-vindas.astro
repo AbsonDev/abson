@@ -23,16 +23,16 @@ const sugestoes = [
       preserveAspectRatio="xMidYMid slice"
       aria-hidden="true"
     >
-      <g stroke="#E3D8C8" stroke-width="1" opacity=".9">
+      <g class="boas-fundo-linha" stroke-width="1" opacity=".9">
         <path d="M946 940c34-124 128-188 274-208s214-66 240-154"></path>
         <path d="M982 952c40-116 130-172 272-190s198-68 224-148"></path>
         <path d="M1020 962c46-108 132-156 268-172s184-70 210-142"></path>
         <path d="M1060 972c52-100 134-140 264-154s170-72 196-136"></path>
       </g>
-      <g stroke="#E6A15C" stroke-width="1" opacity=".5">
+      <g class="boas-fundo-dourado" stroke-width="1" opacity=".5">
         <path d="M-40 946c104-86 104-186 52-256s-42-182 40-262"></path>
       </g>
-      <g stroke="#E3D8C8" stroke-width="1" opacity=".95">
+      <g class="boas-fundo-linha" stroke-width="1" opacity=".95">
         <circle cx="196" cy="712" r="56"></circle>
         <circle cx="196" cy="712" r="94"></circle>
         <circle cx="196" cy="712" r="138"></circle>
@@ -63,7 +63,11 @@ const sugestoes = [
             type="search"
             placeholder="Cidade, praia ou represa"
             autocomplete="off"
+            autocapitalize="words"
+            enterkeyhint="search"
             spellcheck="false"
+            aria-controls="boas-resultados"
+            aria-describedby="boas-local-status"
           />
         </div>
 
@@ -123,8 +127,9 @@ const sugestoes = [
       Seu diário nasce privado. Nada aparece para outras pessoas até você compartilhar uma captura.
     </p>
     <form method="dialog">
-      <button class="btn btn--contorno" type="submit">Entendi</button>
+      <button class="btn btn--contorno" type="submit" autofocus>Entendi</button>
     </form>
+    <p class="boas-politica"><a href="/privacidade">Ver política completa</a></p>
   </dialog>
 </Layout>
 
@@ -146,6 +151,14 @@ const sugestoes = [
     width: 100%;
     height: 100%;
     pointer-events: none;
+  }
+
+  .boas-fundo-linha {
+    stroke: var(--linha);
+  }
+
+  .boas-fundo-dourado {
+    stroke: var(--dourado);
   }
 
   .boas-topo,
@@ -210,6 +223,7 @@ const sugestoes = [
   .boas-conteudo h1 :global(em) {
     color: inherit;
     font-style: italic;
+    font-weight: 500;
   }
 
   .boas-lead {
@@ -355,7 +369,7 @@ const sugestoes = [
   .boas-status :global(.boas-tentar) {
     display: inline-flex;
     align-items: center;
-    min-height: 40px;
+    min-height: 44px;
     margin-left: 6px;
     padding: 0 12px;
     border: 1px solid var(--terracota);
@@ -439,7 +453,7 @@ const sugestoes = [
   }
 
   .boas-como {
-    min-height: 40px;
+    min-height: 44px;
     padding: 8px 2px;
     border: 0;
     border-radius: 4px;
@@ -487,6 +501,18 @@ const sugestoes = [
 
   .boas-dialog .btn {
     margin-top: 4px;
+  }
+
+  .boas-politica {
+    margin: 14px 0 0;
+    font-size: 0.82rem;
+  }
+
+  .boas-politica a {
+    color: var(--terracota);
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 3px;
   }
 
   .boas :global(:is(button, a, input)):focus-visible,
@@ -543,9 +569,9 @@ const sugestoes = [
 
 <script>
   // @ts-nocheck
-  import { destinoSeguro } from '../lib/auth';
+  import { apiBase, destinoSeguro, postJson } from '../lib/auth';
 
-  const API = (document.body.dataset.api || 'http://localhost:5184').replace(/\/$/, '');
+  const API = apiBase();
   const titulo = document.getElementById('boas-titulo');
   const status = document.getElementById('boas-local-status');
   const busca = document.getElementById('boas-busca-local');
@@ -557,6 +583,7 @@ const sugestoes = [
   const comoDialog = document.getElementById('boas-como');
   let timerBusca = 0;
   let ultimoTermo = '';
+  let pedidoBusca = 0;
   let salvando = false;
 
   function primeiroNome(nome) {
@@ -600,9 +627,37 @@ const sugestoes = [
     resultados.classList.add('oculto');
   }
 
+  function restaurarGeo() {
+    if (!localizacao) return;
+    localizacao.disabled = false;
+    if (geoLabel) geoLabel.textContent = 'Usar minha localização';
+  }
+
+  function bloquearEscolhas(bloquear) {
+    for (const botao of document.querySelectorAll('.boas-sugestao, .boas-resultado')) {
+      botao.disabled = bloquear;
+    }
+    if (busca) busca.disabled = bloquear;
+    if (localizacao) localizacao.disabled = bloquear;
+    if (pular) pular.disabled = bloquear;
+    const secao = document.querySelector('.boas');
+    if (secao) secao.setAttribute('aria-busy', String(bloquear));
+  }
+
   async function iniciar() {
     try {
       const resposta = await fetch(`${API}/api/auth/me`, { credentials: 'include' });
+
+      if (resposta.status === 401) {
+        window.location.replace('/entrar?voltar=/hoje');
+        return;
+      }
+
+      if (!resposta.ok) {
+        escreverStatus('Não foi possível carregar sua conta. Recarregue a página.');
+        return;
+      }
+
       const dados = await resposta.json().catch(() => ({}));
 
       if (!dados.autenticado || !dados.usuario) {
@@ -624,8 +679,9 @@ const sugestoes = [
   }
 
   async function salvarLocal(local) {
-    if (salvando) return;
+    if (salvando) return false;
     salvando = true;
+    bloquearEscolhas(true);
     escreverStatus('Abrindo seu dia…');
 
     const corpo = {
@@ -638,26 +694,24 @@ const sugestoes = [
     if (local.cidade != null) corpo.cidade = local.cidade;
     if (local.estado != null) corpo.estado = local.estado;
 
-    try {
-      const resposta = await fetch(`${API}/api/locais`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(corpo)
-      });
+    const resultado = await postJson('/api/locais', corpo);
 
-      if (resposta.status === 401) {
-        window.location.assign(`/entrar?voltar=${encodeURIComponent('/hoje')}`);
-        return;
-      }
-
-      const dados = await resposta.json().catch(() => ({}));
-      if (!resposta.ok) throw new Error(dados.detalhe || 'Não foi possível salvar o local.');
-      window.location.assign(destino());
-    } catch (falha) {
-      salvando = false;
-      escreverStatus(falha instanceof Error ? falha.message : 'Não foi possível salvar o local.');
+    if (resultado.status === 401) {
+      const retorno = destino();
+      window.location.assign(`/entrar?voltar=${encodeURIComponent(retorno)}`);
+      return false;
     }
+
+    if (!resultado.ok) {
+      salvando = false;
+      bloquearEscolhas(false);
+      restaurarGeo();
+      escreverStatus(resultado.mensagem || 'Não foi possível salvar o local.');
+      return false;
+    }
+
+    window.location.replace(destino());
+    return true;
   }
 
   function escreverErroBusca() {
@@ -674,26 +728,40 @@ const sugestoes = [
   async function buscarLocal(termo) {
     const limpo = termo.trim();
     if (limpo.length < 2) {
+      pedidoBusca += 1;
       esconderResultados();
       escreverStatus('');
       return;
     }
 
     ultimoTermo = limpo;
+    const meuPedido = ++pedidoBusca;
     escreverStatus('Buscando…');
     try {
       const resposta = await fetch(`${API}/api/locais/buscar?q=${encodeURIComponent(limpo)}`);
+      if (meuPedido !== pedidoBusca) return;
       if (!resposta.ok) throw new Error('busca');
       const lista = await resposta.json();
+      if (meuPedido !== pedidoBusca) return;
 
-      if (!Array.isArray(lista) || lista.length === 0) {
+      const validos = Array.isArray(lista)
+        ? lista
+            .map((item) => ({
+              ...item,
+              latitude: Number(item.latitude),
+              longitude: Number(item.longitude)
+            }))
+            .filter((item) => Number.isFinite(item.latitude) && Number.isFinite(item.longitude))
+        : [];
+
+      if (validos.length === 0) {
         esconderResultados();
         escreverStatus('Nenhum lugar encontrado. Tente o nome da cidade.');
         return;
       }
 
       resultados.innerHTML = '';
-      for (const item of lista) {
+      for (const item of validos) {
         const linha = document.createElement('li');
         const opcao = document.createElement('button');
         opcao.type = 'button';
@@ -720,8 +788,8 @@ const sugestoes = [
             nome: item.nome ?? item.cidade ?? 'Meu local',
             cidade: item.cidade ?? item.nome,
             estado: item.estado ?? null,
-            latitude: Number(item.latitude),
-            longitude: Number(item.longitude),
+            latitude: item.latitude,
+            longitude: item.longitude,
             ambiente: 'Outro'
           })
         );
@@ -729,9 +797,12 @@ const sugestoes = [
         resultados.appendChild(linha);
       }
 
-      escreverStatus('');
+      escreverStatus(
+        `${validos.length} ${validos.length === 1 ? 'lugar encontrado' : 'lugares encontrados'}.`
+      );
       resultados.classList.remove('oculto');
     } catch {
+      if (meuPedido !== pedidoBusca) return;
       esconderResultados();
       escreverErroBusca();
     }
@@ -761,20 +832,22 @@ const sugestoes = [
       return;
     }
 
+    escreverStatus('Buscando sua localização…');
     localizacao.disabled = true;
     if (geoLabel) geoLabel.textContent = 'Localizando...';
 
     navigator.geolocation.getCurrentPosition(
-      (posicao) =>
-        salvarLocal({
+      async (posicao) => {
+        const salvou = await salvarLocal({
           nome: 'Minha localização',
           latitude: Number(posicao.coords.latitude.toFixed(5)),
           longitude: Number(posicao.coords.longitude.toFixed(5)),
           ambiente: 'Outro'
-        }),
+        });
+        if (!salvou) restaurarGeo();
+      },
       () => {
-        localizacao.disabled = false;
-        if (geoLabel) geoLabel.textContent = 'Usar minha localização';
+        restaurarGeo();
         escreverStatus('Não conseguimos usar sua localização. Busque pelo nome.');
       },
       { enableHighAccuracy: false, timeout: 12000, maximumAge: 300000 }
@@ -782,7 +855,7 @@ const sugestoes = [
   });
 
   pular?.addEventListener('click', () => {
-    window.location.assign(destino());
+    window.location.replace(destino());
   });
 
   comoAbrir?.addEventListener('click', () => {
@@ -790,7 +863,14 @@ const sugestoes = [
   });
 
   comoDialog?.addEventListener('click', (evento) => {
-    if (evento.target === comoDialog) comoDialog.close();
+    if (evento.target !== comoDialog) return;
+    const caixa = comoDialog.getBoundingClientRect();
+    const dentro =
+      evento.clientX >= caixa.left &&
+      evento.clientX <= caixa.right &&
+      evento.clientY >= caixa.top &&
+      evento.clientY <= caixa.bottom;
+    if (!dentro) comoDialog.close();
   });
 
   void iniciar();

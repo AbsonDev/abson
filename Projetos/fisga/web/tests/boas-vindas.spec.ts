@@ -184,6 +184,10 @@ test('erro de busca tem mensagem', async ({ page }) => {
   await expect(page.locator('#boas-local-status')).toContainText(
     'Não foi possível buscar agora. Tente de novo.'
   );
+  await expect(page.getByRole('button', { name: 'Tentar de novo' })).toHaveCSS(
+    'min-height',
+    '44px'
+  );
 });
 
 test('tentar de novo refaz a busca', async ({ page }) => {
@@ -220,14 +224,31 @@ test('Como funciona abre a explicação de privacidade', async ({ page }) => {
   await mockMe(page, USUARIO);
   await page.goto('/boas-vindas');
 
-  await page.getByRole('button', { name: 'Como funciona' }).click();
+  const gatilho = page.getByRole('button', { name: 'Como funciona' });
+  await expect(gatilho).toHaveCSS('min-height', '44px');
+  await gatilho.click();
 
   const dialogo = page.getByRole('dialog', { name: 'Como o Fisga usa seu local' });
   await expect(dialogo).toBeVisible();
   await expect(dialogo).toContainText('Seu diário nasce privado.');
+  await expect(dialogo.getByRole('button', { name: 'Entendi' })).toBeFocused();
 
-  await dialogo.getByRole('button', { name: 'Entendi' }).click();
+  await page.keyboard.press('Escape');
   await expect(dialogo).toBeHidden();
+});
+
+test('clique no padding do diálogo não fecha', async ({ page }) => {
+  await mockMe(page, USUARIO);
+  await page.goto('/boas-vindas');
+  await page.getByRole('button', { name: 'Como funciona' }).click();
+
+  const dialogo = page.getByRole('dialog', { name: 'Como o Fisga usa seu local' });
+  const caixa = await dialogo.boundingBox();
+  if (!caixa) throw new Error('diálogo sem caixa');
+
+  await page.mouse.click(caixa.x + 4, caixa.y + caixa.height / 2);
+
+  await expect(dialogo).toBeVisible();
 });
 
 test('geolocalização aceita salva e navega', async ({ page }) => {
@@ -309,13 +330,13 @@ test('destino externo é ignorado', async ({ page }) => {
   await expect(page).toHaveURL(/\/hoje$/);
 });
 
-test('duas escolhas rápidas geram um único POST', async ({ page }) => {
+test('a primeira escolha desabilita as demais e evita segundo POST', async ({ page }) => {
   await mockMe(page, USUARIO);
   let posts = 0;
   await page.route(`${API}/api/locais`, async (route) => {
     if (route.request().method() === 'POST') {
       posts += 1;
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      await new Promise((resolve) => setTimeout(resolve, 500));
       return route.fulfill({ status: 201, contentType: 'application/json', body: '{}' });
     }
     return route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
@@ -324,8 +345,144 @@ test('duas escolhas rápidas geram um único POST', async ({ page }) => {
   await page.goto('/boas-vindas');
 
   await page.getByRole('button', { name: 'Aracaju' }).click();
-  await page.getByRole('button', { name: 'Ilhabela' }).click({ force: true });
 
-  await expect(page).toHaveURL(/\/hoje$/);
+  await expect(page.getByRole('button', { name: 'Ilhabela' })).toBeDisabled();
+  await expect(page.locator('#boas-pular')).toBeDisabled();
+  await expect(page.locator('#boas-usar-localizacao')).toBeDisabled();
+  await expect(page).toHaveURL(/\/hoje$/, { timeout: 5000 });
   expect(posts).toBe(1);
+});
+
+test('erro 500 ao carregar a conta mantém a tela e mostra status', async ({ page }) => {
+  await page.route(`${API}/api/auth/me`, (route) =>
+    route.fulfill({ status: 500, contentType: 'application/json', body: '{}' })
+  );
+  await page.goto('/boas-vindas');
+
+  await expect(page).toHaveURL(/\/boas-vindas/);
+  await expect(page.locator('#boas-local-status')).toHaveText(
+    'Não foi possível carregar sua conta. Recarregue a página.'
+  );
+});
+
+test('falha ao salvar depois da geolocalização restaura o botão', async ({ page }) => {
+  await mockMe(page, USUARIO);
+  await page.route(`${API}/api/locais`, (route) =>
+    route.fulfill({ status: 500, contentType: 'application/json', body: '{}' })
+  );
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'geolocation', {
+      configurable: true,
+      value: {
+        getCurrentPosition: (ok: PositionCallback) =>
+          ok({
+            coords: { latitude: -10.911234, longitude: -37.071234 }
+          } as GeolocationPosition)
+      }
+    });
+  });
+  await page.goto('/boas-vindas');
+
+  await page.locator('#boas-usar-localizacao').click();
+
+  await expect(page.locator('#boas-local-status')).toHaveText(
+    'Não foi possível salvar o local.'
+  );
+  await expect(page.locator('#boas-usar-localizacao')).toBeEnabled();
+  await expect(page.locator('#boas-usar-localizacao')).toHaveText('Usar minha localização');
+  await expect(page).toHaveURL(/\/boas-vindas/);
+});
+
+test('falha de rede ao salvar mostra mensagem em português', async ({ page }) => {
+  await mockMe(page, USUARIO);
+  await page.route(`${API}/api/locais`, (route) => route.abort());
+  await page.goto('/boas-vindas');
+
+  await page.getByRole('button', { name: 'Aracaju' }).click();
+
+  await expect(page.locator('#boas-local-status')).toHaveText(
+    'Não foi possível falar com o Fisga agora. Verifique sua conexão e tente de novo.'
+  );
+  await expect(page.getByRole('button', { name: 'Aracaju' })).toBeEnabled();
+});
+
+test('401 ao salvar respeita o destino interno', async ({ page }) => {
+  await mockMe(page, USUARIO);
+  await page.route(`${API}/api/locais`, (route) =>
+    route.fulfill({ status: 401, contentType: 'application/json', body: '{}' })
+  );
+  await page.route('**/entrar**', (route) =>
+    route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><h1>Entrar</h1>' })
+  );
+  await page.goto('/boas-vindas');
+  await page.evaluate(() => sessionStorage.setItem('fisga:retorno', '/diario'));
+
+  await page.getByRole('button', { name: 'Aracaju' }).click();
+
+  await expect(page).toHaveURL(/\/entrar\?voltar=%2Fdiario$/);
+});
+
+test('resposta antiga de busca não sobrescreve a nova', async ({ page }) => {
+  await mockMe(page, USUARIO);
+  await page.route(`${API}/api/locais/buscar**`, async (route) => {
+    const termo = new URL(route.request().url()).searchParams.get('q');
+    if (termo === 'ilh') {
+      await new Promise((resolve) => setTimeout(resolve, 700));
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          { nome: 'Resultado antigo', estado: 'SP', latitude: '-1', longitude: '-1' }
+        ])
+      });
+    }
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        { nome: 'Ilhabela', estado: 'SP', latitude: '-23.778', longitude: '-45.358' }
+      ])
+    });
+  });
+  await page.goto('/boas-vindas');
+  const entrada = page.getByLabel('Onde você pesca?');
+
+  await entrada.fill('ilh');
+  await page.waitForTimeout(400);
+  await entrada.fill('ilhabela');
+
+  await expect(page.getByRole('button', { name: 'Ilhabela · SP' })).toBeVisible();
+  await page.waitForTimeout(500);
+  await expect(page.getByRole('button', { name: 'Ilhabela · SP' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Resultado antigo · SP' })).toHaveCount(0);
+});
+
+test('busca anuncia a contagem de resultados', async ({ page }) => {
+  await mockMe(page, USUARIO);
+  await page.route(`${API}/api/locais/buscar**`, (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        { nome: 'Aracaju', estado: 'SE', latitude: '-10.911', longitude: '-37.071' }
+      ])
+    })
+  );
+  await page.goto('/boas-vindas');
+
+  await page.getByLabel('Onde você pesca?').fill('aracaju');
+
+  await expect(page.locator('#boas-local-status')).toHaveText('1 lugar encontrado.');
+});
+
+test('nome com HTML é tratado como texto', async ({ page }) => {
+  await mockMe(page, { ...USUARIO, nome: '<img src=x onerror="window.__xss=1">' });
+  await page.goto('/boas-vindas');
+
+  await expect(page.locator('#boas-titulo')).toContainText('<img');
+  await expect(page.locator('#boas-titulo img')).toHaveCount(0);
+  const xss = await page.evaluate(
+    () => (window as unknown as { __xss?: number }).__xss
+  );
+  expect(xss).toBeUndefined();
 });
