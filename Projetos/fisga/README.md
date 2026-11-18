@@ -473,13 +473,13 @@ O CI roda em todo PR e em push para `main`, detecta mudanças em `Projetos/fisga
   xUnit.
 - `web`: `npm ci`, `astro check`, `npm run build` e `npm run test:e2e` (61 testes Playwright
   mockados).
-- `docker`: build das imagens da API e do web sem push (em PR).
+- `docker`: build das imagens da API e do web sem push (em PR e `workflow_dispatch`).
 - `gate`: job obrigatório; falha se qualquer job necessário falhar.
 
 No push para `main`, quando o `fisga-pipeline` conclui verde, o `fisga-deploy` roda por
 `workflow_run`: dispara o `fisga-api`, depois o `fisga-web`, acompanha o deployment, aguarda o
 `/health` retornar o SHA do commit e roda smoke tests. O `workflow_dispatch` na `main` roda o CI e,
-ao concluir, o deploy.
+ao concluir, o deploy. Validação ponta a ponta: 18/11/2026, commit `725afd5`, deploy `44338998771`.
 
 O check obrigatório da `main` é o job **`gate`** (a UI pode exibir `fisga-pipeline / gate`). Confirme
 o contexto exato com `gh api repos/AbsonDev/abson/commits/<sha>/check-runs`.
