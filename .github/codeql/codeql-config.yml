@@ -1,0 +1,11 @@
+paths-ignore:
+  - Projetos/cardapio-no-lucro
+  - Projetos/precifica
+  - apps
+  - '**/node_modules'
+  - '**/bin'
+  - '**/obj'
+  - '**/dist'
+
+queries:
+  - uses: security-extended
