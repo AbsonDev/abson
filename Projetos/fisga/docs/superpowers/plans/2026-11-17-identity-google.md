@@ -660,38 +660,54 @@ git commit -m "feat(web): add identity auth screens"
 ### Task 12: Conta com senha, Google e dispositivos
 
 **Files:**
-- Modify: `web/src/pages/conta.astro`
 - Modify: `src/Fisga.Api/Endpoints/AuthEndpoints.cs`
-- Modify: `src/Fisga.Api/Endpoints/ContaEndpoints.cs`
 - Modify: `src/Fisga.Api/Contracts/AuthContracts.cs`
+- Modify: `web/src/pages/conta.astro`
 - Create: `web/tests/conta-auth.spec.ts`
+- Create: `tests/Fisga.Api.Tests/ContaSenhaTests.cs`
 
 **Interfaces:**
-- Produces: `POST /api/conta/senha`, `GET /api/conta/sessoes` com `sessao_id`, status do Google.
-- Consumes: sessão da Task 5 e Google da Task 9.
+- Produces: `POST /api/conta/senha` com `{ senhaAtual?, novaSenha }`.
+- Produces: `GET /api/conta/sessoes` continua com `atual: true`; `MeResponse.GoogleConectado` já existe.
+- Consumes: `UserManager<ApplicationUser>`, `ISessaoRepository`, `IdentitySessionService`, Google da Task 9.
 
-- [ ] **Step 1: Escrever o teste Playwright**
+**Decisões de implementação (vinculantes):**
+- Se a conta **não tem senha** (`HasPasswordAsync == false`): `AddPasswordAsync(conta, novaSenha)`, sem exigir `senhaAtual`.
+- Se já tem senha: exigir `senhaAtual` e usar `ChangePasswordAsync`; erro genérico `senha_atual_incorreta` sem revelar detalhes.
+- Validar `novaSenha` entre 10 e 128 caracteres **antes** de chamar a Identity (a Identity não tem máximo nativo). Sem exigir composição.
+- Após adicionar/alterar senha, revogar todas as **outras** sessões do usuário (`RevogarTodasAsync(..., exceto: sessaoIdAtual)`) e manter a sessão atual. A troca de senha é evento de segurança.
+- Não criar endpoint de desconectar Google nesta entrega; a UI mostra status e o botão “Conectar Google”.
+- `/conta` separa em linhas: E-mail/senha; Google; Sessões ativas; Zona sensível. Uma ação primária por bloco.
+- “Sair desta sessão” e “Sair de todos” usam os endpoints atuais; “Excluir conta” mantém confirmação explícita.
+- A UI segue o protótipo aprovado e usa `credentials: 'include'`; feedback com `aria-live`, sem depender só de cor.
 
-Usuário existente sem senha cria senha; altera senha; vê status do Google; conecta Google com e-mail igual; vê erro com e-mail diferente; lista dispositivos; sai desta sessão e de todos.
+- [ ] **Step 1: Escrever os testes de API e Playwright**
+
+API: adicionar senha a conta sem senha; alterar senha com senha atual correta; recusar senha atual errada; recusar nova senha <10 ou >128; sessões diferentes da atual são revogadas após troca.
+Playwright: usuário sem senha cria senha; altera senha; vê status do Google; conecta Google com e-mail igual; erro com e-mail diferente; lista dispositivos; “sair desta sessão” e “sair de todos”.
 
 - [ ] **Step 2: Rodar e ver falhar**
 
-Run: `cd web && npx playwright test tests/conta-auth.spec.ts`
+Run: `dotnet test --filter ContaSenha` e `cd web && npx playwright test tests/conta-auth.spec.ts`
 Expected: FAIL.
 
-- [ ] **Step 3: Implementar API e UI**
+- [ ] **Step 3: Implementar API**
 
-Adicionar endpoints de senha (`AddPasswordAsync`/`ChangePasswordAsync`) e status de Google. Na UI, separar “Senha”, “Google” e “Sessões”, com feedback e confirmação antes de ações destrutivas.
+Adicionar o endpoint e contratos. Usar `UserManager`, validar tamanho, revogar outras sessões. Não alterar os fluxos de login.
 
-- [ ] **Step 4: Rodar e ver passar**
+- [ ] **Step 4: Implementar UI**
 
-Run: `cd web && npx playwright test tests/conta-auth.spec.ts`
+Atualizar `/conta` conforme o protótipo, com estados de carregando/erro/sucesso e feedback acessível.
+
+- [ ] **Step 5: Rodar e ver passar**
+
+Run: `dotnet test` e `cd web && npm run check && npx playwright test tests/conta-auth.spec.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add web/src/pages/conta.astro web/tests/conta-auth.spec.ts src/Fisga.Api
+git add src/Fisga.Api web/src/pages/conta.astro web/tests/conta-auth.spec.ts tests/Fisga.Api.Tests
 git commit -m "feat(account): manage password, Google and devices"
 ```
 
