@@ -176,6 +176,8 @@
 
 <script>
   // @ts-nocheck
+  import { limparCachePrivado } from '../lib/auth';
+
   const API = (document.body.dataset.api || 'http://localhost:5184').replace(/\/$/, '');
   const menu = document.querySelector('[data-conta-menu]');
 
@@ -271,7 +273,8 @@
           headers: { 'Content-Type': 'application/json' }
         });
       } finally {
-        window.location.href = '/';
+        await limparCachePrivado();
+        window.location.assign('/entrar?saiu=1');
       }
     });
 

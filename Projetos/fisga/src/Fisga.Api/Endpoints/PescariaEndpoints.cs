@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using Fisga.Api.Caching;
 using Fisga.Api.Contracts;
 using Fisga.Api.Observabilidade;
 using Fisga.Application.Abstractions;
@@ -15,7 +16,8 @@ public static class PescariaEndpoints
     {
         app.MapGet("/api/catalogo", (ICatalogoDePesca catalogo) => Results.Ok(catalogo.ObterCatalogo()))
             .AllowAnonymous()
-            .RequireRateLimiting("leitura");
+            .RequireRateLimiting("leitura")
+            .WithMetadata(CachePolicy.Public(86400));
 
         var grupo = app.MapGroup("/api/pescarias");
 
@@ -49,7 +51,8 @@ public static class PescariaEndpoints
                     : Results.Ok(pescaria);
             })
             .AllowAnonymous()
-            .RequireRateLimiting("leitura");
+            .RequireRateLimiting("leitura")
+            .WithMetadata(CachePolicy.Private(30));
 
         grupo.MapGet("/{shareToken}/permissao", async (
                 string shareToken,
@@ -102,7 +105,8 @@ public static class PescariaEndpoints
                 return Results.File(arquivo.Conteudo, "application/pdf", arquivo.NomeDoArquivo);
             })
             .AllowAnonymous()
-            .RequireRateLimiting("pdf");
+            .RequireRateLimiting("pdf")
+            .WithMetadata(CachePolicy.Private(300));
 
         app.MapGet("/api/diario", async (
                 HttpContext http,

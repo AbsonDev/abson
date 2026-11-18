@@ -96,6 +96,98 @@ export async function exigirConsentimento(
   return true;
 }
 
+/** Chave do rascunho de pescaria; única exceção à limpeza de sessão anônima. */
+export const CHAVE_RASCUNHO = 'fisga:rascunho:v1';
+
+export interface OpcoesDeLimpeza {
+  /**
+   * Preserva o rascunho não salvo. Usado nas telas em que a sessão pode ter
+   * expirado sem o pescador ter saído (ex.: `/registrar` e `/mapa` anônimos).
+   * Logout explícito nunca usa esta opção.
+   */
+  preservarRascunho?: boolean;
+}
+
+/**
+ * Apaga do aparelho o que é privado antes de encerrar a sessão: os caches
+ * `fisga-private-*` (e versões antigas, anteriores à separação público/privado)
+ * e as chaves `fisga:*` do localStorage (rascunho, locais, trilhas e pontos).
+ * Com `preservarRascunho`, a única chave poupada é `fisga:rascunho:v1`.
+ *
+ * `fisga-public-*` e `fisga-tiles-v1` são preservados: só contêm o que passou em
+ * `podeCachear` (wiki, ferramentas, offline e o shell anônimo de `/` e
+ * `/condicoes`), então logout não pode quebrar o modo offline. Nunca rejeita:
+ * Cache Storage ou localStorage indisponíveis não podem impedir o logout.
+ * Outras chaves do mesmo domínio são preservadas.
+ */
+export async function limparCachePrivado(opcoes: OpcoesDeLimpeza = {}): Promise<void> {
+  if (typeof window === 'undefined') return;
+
+  try {
+    if ('caches' in window) {
+      const chaves = await caches.keys();
+      await Promise.all(
+        chaves
+          .filter(
+            (chave) =>
+              chave.startsWith('fisga-')
+              && !chave.startsWith('fisga-public-')
+              && chave !== 'fisga-tiles-v1'
+          )
+          .map((chave) => caches.delete(chave))
+      );
+    }
+  } catch {
+    // Sem Cache Storage: segue para o localStorage.
+  }
+
+  try {
+    const chaves: string[] = [];
+    for (let indice = 0; indice < localStorage.length; indice += 1) {
+      const chave = localStorage.key(indice);
+      if (chave?.startsWith('fisga:')) chaves.push(chave);
+    }
+    for (const chave of chaves) {
+      if (opcoes.preservarRascunho && chave === CHAVE_RASCUNHO) continue;
+      localStorage.removeItem(chave);
+    }
+  } catch {
+    // Sem localStorage (modo privado): não há o que limpar.
+  }
+}
+
+let encerrandoSessaoExpirada = false;
+
+/**
+ * Encerra uma sessão expirada de forma consistente: apaga o estado privado do
+ * aparelho e manda para `/entrar`, preservando o destino. É diferente do logout
+ * explícito (que vai para `/entrar?saiu=1`), mas usa a mesma limpeza.
+ *
+ * O guard evita dois redirecionamentos quando a página faz mais de uma chamada
+ * que descobre o 401 (ex.: carregamento inicial e uma ação do usuário).
+ */
+export async function encerrarSessaoExpirada(
+  destino?: string,
+  opcoes: OpcoesDeLimpeza = {}
+): Promise<void> {
+  if (typeof window === 'undefined' || encerrandoSessaoExpirada) return;
+  encerrandoSessaoExpirada = true;
+
+  const alvo = destino ?? `${window.location.pathname}${window.location.search}`;
+  await limparCachePrivado(opcoes);
+  // Mantém as barras do caminho legíveis (`/hoje`), mas codifica `?`/`&` de
+  // um destino com query para não quebrar o parâmetro `voltar`.
+  const voltar = encodeURIComponent(destinoSeguro(alvo)).replace(/%2F/g, '/');
+  window.location.replace(`/entrar?voltar=${voltar}`);
+
+  // `location.replace` não avisa quando a navegação é bloqueada ou falha (ex.:
+  // outra navegação em andamento, teste ou ambiente embutido). Sem o reset, o
+  // guard ficaria travado e nenhuma chamada posterior encerraria a sessão.
+  setTimeout(() => {
+    encerrandoSessaoExpirada = false;
+  }, 1000);
+}
+
 /** POST JSON com cookie de autenticação e leitura tolerante de problem+json. */
 export async function postJson<T = Record<string, unknown>>(
   caminho: string,

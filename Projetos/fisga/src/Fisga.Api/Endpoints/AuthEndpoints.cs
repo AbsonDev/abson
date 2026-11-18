@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
+using Fisga.Api.Caching;
 using Fisga.Api.Contracts;
 using Fisga.Api.Observabilidade;
 using Fisga.Application.Abstractions;
@@ -26,7 +27,8 @@ public static class AuthEndpoints
         app.MapGet("/api/legal/versoes", (LegalOptions opcoes) =>
                 Results.Ok(new VersoesLegaisResponse(opcoes.TermsVersion, opcoes.PrivacyVersion)))
             .AllowAnonymous()
-            .RequireRateLimiting("leitura");
+            .RequireRateLimiting("leitura")
+            .WithMetadata(CachePolicy.Public(86400));
 
         app.MapPost("/api/auth/solicitar", async (
                 SolicitarLinkRequest entrada,

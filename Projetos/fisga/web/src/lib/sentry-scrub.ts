@@ -12,11 +12,34 @@ const CHAVES_SENSIVEIS = new Set([
   'token',
   'uid',
   'handoff_code',
-  'code'
+  'code',
+  'q',
+  'busca',
+  'termo'
+]);
+
+// Allowlist explícita: qualquer chave fora dela é filtrada por padrão, para um
+// parâmetro novo (ex.: termo de busca) não vazar antes de ser classificado.
+const CHAVES_PUBLICAS = new Set([
+  'page',
+  'pagina',
+  'per_page',
+  'limite',
+  'offset',
+  'ordenar',
+  'ordem',
+  'ts',
+  'v',
+  'lang',
+  'idioma',
+  'utm_source',
+  'utm_medium',
+  'utm_campaign',
+  'utm_content'
 ]);
 
 const PARAMETRO_SENSIVEL =
-  /([?&](?:lat|lon|latitude|longitude|nome|cidade|pescador|email|token|uid|handoff_code|code)=)[^&\s]+/gi;
+  /([?&](?:lat|lon|latitude|longitude|nome|cidade|pescador|email|token|uid|handoff_code|code|q|busca|termo)=)[^&\s]+/gi;
 
 function limparQuery(query: string): string {
   return query
@@ -28,7 +51,8 @@ function limparQuery(query: string): string {
       if (igual <= 0) return parte;
 
       const chave = decodeURIComponent(parte.slice(0, igual));
-      return CHAVES_SENSIVEIS.has(chave) ? `${parte.slice(0, igual)}=[Filtered]` : parte;
+      const filtrar = CHAVES_SENSIVEIS.has(chave) || !CHAVES_PUBLICAS.has(chave);
+      return filtrar ? `${parte.slice(0, igual)}=[Filtered]` : parte;
     })
     .join('&');
 }

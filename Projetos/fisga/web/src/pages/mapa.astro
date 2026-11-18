@@ -211,6 +211,7 @@ const abaMapa = ['locais', 'pontos', 'trilhas'].includes(Astro.url.searchParams.
 
   <script>
     import L from 'leaflet';
+    import { encerrarSessaoExpirada, limparCachePrivado } from '../lib/auth';
 
     const API = (document.body.dataset.api ?? 'http://localhost:5184').replace(/\/$/, '');
     const TIPOS: Record<string, string> = {
@@ -628,9 +629,7 @@ const abaMapa = ['locais', 'pontos', 'trilhas'].includes(Astro.url.searchParams.
       try {
         const resposta = await fetch(`${API}/api/trilhas`, { credentials: 'include' });
         if (resposta.status === 401) {
-          autenticado = false;
-          localStorage.removeItem('fisga:trilhas:v1');
-          atualizarSessao();
+          await encerrarSessaoExpirada('/mapa', { preservarRascunho: true });
           return;
         }
 
@@ -691,8 +690,7 @@ const abaMapa = ['locais', 'pontos', 'trilhas'].includes(Astro.url.searchParams.
       });
 
       if (resposta.status === 401) {
-        autenticado = false;
-        atualizarSessao();
+        await encerrarSessaoExpirada('/mapa', { preservarRascunho: true });
         throw new Error('Entre novamente para gerenciar seus locais.');
       }
 
@@ -880,9 +878,7 @@ const abaMapa = ['locais', 'pontos', 'trilhas'].includes(Astro.url.searchParams.
       try {
         const resposta = await fetch(`${API}/api/locais`, { credentials: 'include' });
         if (resposta.status === 401) {
-          autenticado = false;
-          localStorage.removeItem('fisga:locais:v1');
-          atualizarSessao();
+          await encerrarSessaoExpirada('/mapa', { preservarRascunho: true });
           return;
         }
 
@@ -978,11 +974,7 @@ const abaMapa = ['locais', 'pontos', 'trilhas'].includes(Astro.url.searchParams.
       try {
         const resposta = await fetch(`${API}/api/pontos`, { credentials: 'include' });
         if (resposta.status === 401) {
-          autenticado = false;
-          localStorage.removeItem('fisga:pontos:v1');
-          localStorage.removeItem('fisga:trilhas:v1');
-          localStorage.removeItem('fisga:locais:v1');
-          atualizarSessao();
+          await encerrarSessaoExpirada('/mapa', { preservarRascunho: true });
           return;
         }
 
@@ -1163,7 +1155,7 @@ const abaMapa = ['locais', 'pontos', 'trilhas'].includes(Astro.url.searchParams.
         });
 
         if (resposta.status === 401) {
-          window.location.href = `/entrar?voltar=${encodeURIComponent('/mapa')}`;
+          await encerrarSessaoExpirada('/mapa', { preservarRascunho: true });
           return;
         }
 
@@ -1221,7 +1213,7 @@ const abaMapa = ['locais', 'pontos', 'trilhas'].includes(Astro.url.searchParams.
         );
 
         if (resposta.status === 401) {
-          window.location.href = `/entrar?voltar=${encodeURIComponent('/mapa')}`;
+          await encerrarSessaoExpirada('/mapa', { preservarRascunho: true });
           return;
         }
 
@@ -1248,6 +1240,14 @@ const abaMapa = ['locais', 'pontos', 'trilhas'].includes(Astro.url.searchParams.
       let checagemOk = false;
       try {
         const resposta = await fetch(`${API}/api/auth/me`, { credentials: 'include' });
+        if (resposta.status === 401) {
+          // Sessão expirada: limpa o estado privado (o rascunho do registro é
+          // preservado) e volta para a entrada.
+          // O 200 anônimo segue permitindo explorar o mapa público.
+          await encerrarSessaoExpirada('/mapa', { preservarRascunho: true });
+          return;
+        }
+
         const dados = await resposta.json().catch(() => ({}));
         autenticado = Boolean(dados.autenticado);
         checagemOk = true;
@@ -1265,9 +1265,11 @@ const abaMapa = ['locais', 'pontos', 'trilhas'].includes(Astro.url.searchParams.
         if (autenticado) {
           localStorage.setItem('fisga:sessao:v1', '1');
         } else {
-          localStorage.removeItem('fisga:sessao:v1');
-          localStorage.removeItem('fisga:pontos:v1');
-          localStorage.removeItem('fisga:trilhas:v1');
+          // Sem sessão (inclusive cookie expirado, que /api/auth/me reporta
+          // como 200 anônimo), nada privado deve sobreviver no aparelho. O
+          // mapa continua público; só o cache privado e as chaves fisga:*
+          // saem. O rascunho não salvo do registro é a única exceção.
+          await limparCachePrivado({ preservarRascunho: true });
         }
       } else if (localStorage.getItem('fisga:sessao:v1') === '1') {
         autenticado = true;
