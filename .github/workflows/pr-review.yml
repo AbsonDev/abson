@@ -1,0 +1,41 @@
+name: pr-review
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: pr-review-${{ github.event.pull_request.number || github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    name: review
+    if: |
+      github.event.sender.type != 'Bot' &&
+      (github.event_name == 'pull_request' || github.event.issue.pull_request) &&
+      (github.event_name != 'pull_request' ||
+       github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: PR Agent
+        uses: the-pr-agent/pr-agent@v0.47.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI.KEY: ${{ secrets.OPENCODE_API_KEY }}
+          OPENAI.API_BASE: https://opencode.ai/inference/go/v1
+          config.model: openai/deepseek-v4.1-flash
+          config.custom_model_max_tokens: "128000"
+          config.fallback_models: '[]'
+          LITELLM.ADD_SESSION_ID_TO_REQUESTS: "true"
+          github_action_config.auto_review: "true"
+          github_action_config.auto_describe: "false"
+          github_action_config.auto_improve: "false"
