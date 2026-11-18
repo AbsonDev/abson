@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
@@ -57,6 +58,12 @@ builder.Services.AdicionarAplicacao();
 builder.Services.AdicionarInfraestrutura(builder.Configuration, builder.Environment.IsDevelopment());
 builder.Services.AddScoped<IdentitySessionService>();
 builder.Services.AddScoped<ConexaoGoogleService>();
+
+// Callback do Google sem state válido (acesso direto, refresh, cookie de
+// correlação expirado) volta ao site com estado conhecido em vez de virar 500.
+// Inofensivo quando o Google não está registrado (sem credenciais).
+builder.Services.Configure<GoogleOptions>(GoogleDefaults.AuthenticationScheme, opcoes =>
+    opcoes.Events.OnRemoteFailure = FalhaDoLoginGoogle.TratarAsync);
 
 // Versões vigentes vêm da configuração (Legal); o aceite do usuário é lido do
 // banco a cada requisição, sem claims de versão no cookie e sem reemissão de cookie.
