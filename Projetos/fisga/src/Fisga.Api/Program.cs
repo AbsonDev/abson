@@ -50,7 +50,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(opcoes =>
 });
 
 builder.Services.AdicionarAplicacao();
-builder.Services.AdicionarInfraestrutura(builder.Configuration);
+builder.Services.AdicionarInfraestrutura(builder.Configuration, builder.Environment.IsDevelopment());
 builder.Services.AddScoped<IdentitySessionService>();
 builder.Services.AddScoped<ConexaoGoogleService>();
 
@@ -94,6 +94,8 @@ builder.Services.AddRateLimiter(opcoes =>
 var app = builder.Build();
 
 ConfiguracaoDeEmail.Validar(app.Configuration["Email:Provider"], app.Environment.IsDevelopment());
+ConfiguracaoDeAutenticacao.Validar(
+    app.Services.GetRequiredService<IOptions<AutenticacaoOptions>>().Value.LegacyCookieName);
 
 var pastaMidia = ArmazenamentoDeMidiaLocal.ObterPasta(app.Configuration);
 Directory.CreateDirectory(pastaMidia);

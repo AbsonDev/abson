@@ -832,7 +832,8 @@ public static class AuthEndpoints
         !string.IsNullOrWhiteSpace(configuration["Google:ClientId"])
         && !string.IsNullOrWhiteSpace(configuration["Google:ClientSecret"]);
 
-    // Apenas limpa o cookie obsoleto fisga_sessao no logout; nenhum cookie novo é gravado.
+    // Apaga o cookie legado fisga_sessao no login, confirmação, Google e logout.
+    // Nenhum cookie novo é gravado; fisga_auth é da Identity e não é tocado.
     private static void LimparCookie(HttpContext http, AutenticacaoOptions opcoes)
     {
         http.Response.Cookies.Delete(opcoes.LegacyCookieName, new CookieOptions

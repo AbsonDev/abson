@@ -421,7 +421,7 @@ npm run check && npm run build
 npx playwright test
 ```
 
-Atualmente: **213 testes de backend** (36 de domínio + 48 de aplicação + 129 de API) e checagem de
+Atualmente: **224 testes de backend** (36 de domínio + 48 de aplicação + 140 de API) e checagem de
 tipos do Astro. Cobrem:
 
 - criação/edição de pescaria, IDs de captura, validações e isolamento entre usuários;

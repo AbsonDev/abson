@@ -377,11 +377,11 @@ no runbook [`docs/superpowers/runbooks/2026-11-17-identity-rollout.md`](superpow
 
 **Verificação executada**
 
-- **213 testes .NET** aprovados (36 domínio, 48 aplicação, 129 API), incluindo confirmação, reset,
+- **224 testes .NET** aprovados (36 domínio, 48 aplicação, 140 API), incluindo confirmação, reset,
   consentimento, senha, sessões, Google e outbox de e-mail.
 - **`npm run check`**: 0 erros/avisos/hints em 89 arquivos; **`npm run build`** aprovado.
 - **Playwright mockado: 58/58** — UI, estados e contratos continuam iguais.
-- **Playwright com backend real: 6/6** em 18,8 s (12/12 com `--repeat-each=2`, 37,4 s) — cadastro por senha →
+- **Playwright com backend real: 6/6** em 20,9 s (12/12 com `--repeat-each=2`, 37,8 s) — cadastro por senha →
   confirmação → consentimento → app; retorno por link mágico → consentimento → diário com pescaria
   preservada; reset de senha; “sair desta”/“sair de todos” com dois navegadores; `/conta`
   (senha, perfil, newsletter, exportação JSON) e Google indisponível.

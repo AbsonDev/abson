@@ -28,7 +28,8 @@ public static class DependencyInjection
 {
     public static IServiceCollection AdicionarInfraestrutura(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        bool desenvolvimento)
     {
         services.Configure<WebOptions>(configuration.GetSection("Web"));
 
@@ -116,13 +117,24 @@ public static class DependencyInjection
             servicos.GetRequiredService<OpenMeteoGeocodificador>());
 
         services.AddSingleton<ConsoleEmailSender>();
-        services.AddSingleton<OutboxEmailSender>();
+        if (desenvolvimento)
+        {
+            // Defesa em profundidade: o outbox grava tokens em arquivo e sequer
+            // é registrado fora de Development. O guard de startup continua ativo.
+            services.AddSingleton<OutboxEmailSender>();
+        }
         services.AddHttpClient<ResendEmailSender>();
         services.AddScoped<IEmailSender>(sp =>
         {
             var opcoes = sp.GetRequiredService<EmailOptions>();
             if (string.Equals(opcoes.Provider, "Outbox", StringComparison.OrdinalIgnoreCase))
             {
+                if (!desenvolvimento)
+                {
+                    throw new InvalidOperationException(
+                        "Email:Provider=Outbox é exclusivo de Development.");
+                }
+
                 return sp.GetRequiredService<OutboxEmailSender>();
             }
 

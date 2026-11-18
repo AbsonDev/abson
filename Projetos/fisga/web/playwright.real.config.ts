@@ -35,6 +35,7 @@ export default defineConfig({
     timeout: 120_000,
     env: {
       PUBLIC_API_URL: api,
+      API_URL: api,
       PUBLIC_SITE_URL: baseURL,
       PUBLIC_SENTRY_DSN: '',
       SENTRY_DSN: ''

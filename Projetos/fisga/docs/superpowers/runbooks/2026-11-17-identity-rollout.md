@@ -91,6 +91,8 @@ Nunca commite valores. Configure no cofre/Coolify:
 | `SENTRY_DSN` | DSN do projeto `fisga-api` |
 
 > `Auth__CookieName` não é mais lida. Remova-a do ambiente para evitar configuração morta.
+> `Auth__LegacyCookieName` é validada no start: vazio ou igual a `fisga_auth` derruba a API, pois
+> o login apagaria a sessão recém-emitida.
 
 ### 3.3 Volume de chaves
 
@@ -135,9 +137,10 @@ produção neste passo.
 ```bash
 cd Projetos/fisga
 
-# Banco descartável: apaga apenas o volume local de ensaio.
-docker compose down -v
-docker compose up -d postgres
+# Ensaio isolado: projeto/volume/porta próprios. Nunca use `docker compose down -v`
+# no compose principal, que apagaria fisga_pgdata, fisga_media e fisga_keys.
+docker compose -p fisga-migracao -f docker-compose.migracao.yml down -v
+docker compose -p fisga-migracao -f docker-compose.migracao.yml up -d --wait postgres
 
 export PGPASSWORD=fisga
 
@@ -145,7 +148,7 @@ export PGPASSWORD=fisga
 
 # 0) Garante que o modelo bate com a última migration (sem drift).
 Database__Provider=Postgres \
-Database__ConnectionString='Host=localhost;Port=5435;Database=fisga;Username=fisga;Password=fisga' \
+Database__ConnectionString='Host=localhost;Port=5436;Database=fisga;Username=fisga;Password=fisga' \
 ~/.dotnet/dotnet ef migrations has-pending-model-changes \
   --project src/Fisga.Infrastructure \
   --startup-project src/Fisga.Api
@@ -153,18 +156,18 @@ Database__ConnectionString='Host=localhost;Port=5435;Database=fisga;Username=fis
 
 # 1) Aplica até a migration ANTERIOR (Sprint4), deixando o banco sem AspNetUsers.
 Database__Provider=Postgres \
-Database__ConnectionString='Host=localhost;Port=5435;Database=fisga;Username=fisga;Password=fisga' \
+Database__ConnectionString='Host=localhost;Port=5436;Database=fisga;Username=fisga;Password=fisga' \
 ~/.dotnet/dotnet ef database update 20261117164902_Sprint4 \
   --project src/Fisga.Infrastructure \
   --startup-project src/Fisga.Api
 
 # 2) Confere que a tabela nova ainda não existe.
-psql -h localhost -p 5435 -U fisga -d fisga -tAc \
+psql -h localhost -p 5436 -U fisga -d fisga -tAc \
   "select coalesce(to_regclass('fisga.\"AspNetUsers\"')::text, 'ausente');"
 # esperado: ausente
 
 # 3) Semeia um usuário legado (sem AspNetUsers) e uma pescaria dele.
-psql -h localhost -p 5435 -U fisga -d fisga -v ON_ERROR_STOP=1 <<'SQL'
+psql -h localhost -p 5436 -U fisga -d fisga -v ON_ERROR_STOP=1 <<'SQL'
 insert into fisga.usuarios (
   "Id", "AceitaNovidades", "AtualizadoEm", "BemVindoEm", "CriadoEm",
   email, "EmailVerificadoEm", "Nome", "UltimoAcessoEm"
@@ -186,23 +189,23 @@ insert into fisga.pescarias (
 SQL
 
 # 4) Contagens ANTES: usuarios = 1, pescarias = 1, AspNetUsers ausente.
-psql -h localhost -p 5435 -U fisga -d fisga -tAc 'select count(*) from fisga.usuarios;'
-psql -h localhost -p 5435 -U fisga -d fisga -tAc 'select count(*) from fisga.pescarias;'
-psql -h localhost -p 5435 -U fisga -d fisga -tAc \
+psql -h localhost -p 5436 -U fisga -d fisga -tAc 'select count(*) from fisga.usuarios;'
+psql -h localhost -p 5436 -U fisga -d fisga -tAc 'select count(*) from fisga.pescarias;'
+psql -h localhost -p 5436 -U fisga -d fisga -tAc \
   "select coalesce(to_regclass('fisga.\"AspNetUsers\"')::text, 'ausente');"
 
 # 5) Aplica a migration de identidade.
 Database__Provider=Postgres \
-Database__ConnectionString='Host=localhost;Port=5435;Database=fisga;Username=fisga;Password=fisga' \
+Database__ConnectionString='Host=localhost;Port=5436;Database=fisga;Username=fisga;Password=fisga' \
 ~/.dotnet/dotnet ef database update \
   --project src/Fisga.Infrastructure \
   --startup-project src/Fisga.Api
 
 # 6) Contagens DEPOIS: usuarios = 1, pescarias = 1, AspNetUsers = 0 (sem backfill).
-psql -h localhost -p 5435 -U fisga -d fisga -tAc 'select count(*) from fisga.usuarios;'
-psql -h localhost -p 5435 -U fisga -d fisga -tAc 'select count(*) from fisga.pescarias;'
-psql -h localhost -p 5435 -U fisga -d fisga -tAc 'select count(*) from fisga."AspNetUsers";'
-psql -h localhost -p 5435 -U fisga -d fisga -tAc \
+psql -h localhost -p 5436 -U fisga -d fisga -tAc 'select count(*) from fisga.usuarios;'
+psql -h localhost -p 5436 -U fisga -d fisga -tAc 'select count(*) from fisga.pescarias;'
+psql -h localhost -p 5436 -U fisga -d fisga -tAc 'select count(*) from fisga."AspNetUsers";'
+psql -h localhost -p 5436 -U fisga -d fisga -tAc \
   'select "MigrationId" from fisga."__EFMigrationsHistory" order by 1;'
 ```
 
@@ -219,10 +222,11 @@ Faça também um smoke no ensaio: suba a API apontando para esse banco, entre co
 `legado@exemplo.com` por link mágico, aceite os termos e confira que “Praia Legada” aparece no
 diário. Só então agende produção.
 
-Para limpar o ensaio local (destrutivo, somente local):
+Para limpar **somente** o ensaio isolado (não toca `fisga_pgdata`, `fisga_media` nem
+`fisga_keys` do stack principal):
 
 ```bash
-docker compose down -v
+docker compose -p fisga-migracao -f docker-compose.migracao.yml down -v
 ```
 
 ---
@@ -252,8 +256,9 @@ docker compose down -v
 8. **Smoke de login** (seção 6).
 9. **Monitorar** Sentry, logs do proxy e taxa de 401/403/500 por 30–60 minutos.
 
-A API aceita a web antiga por alguns segundos (contratos antigos continuam válidos), mas não deixe
-as duas versões conviverem por muito tempo.
+Entre a API nova e a web nova, quem só tem o cookie antigo `fisga_sessao` fica efetivamente
+deslogado: a API nova ignora esse cookie. Os contratos de API são compatíveis entre as duas versões,
+mas a sessão antiga não é. Conclua os dois deploys em sequência.
 
 ---
 
@@ -380,33 +385,60 @@ procedimento de incidente. **Nunca** use `pg_restore --clean` apontando para pro
    string.
 
 ```bash
-# Defina explicitamente; nunca aponte RESTORE_DB para o banco de produção.
-export PROD_DB="${PROD_DB:?Defina PROD_DB com o nome real do banco de produção}"
-RESTORE_DB="fisga_restore_$(date +%Y%m%d_%H%M%S)"
-DUMP='fisga-pre-identity-AAAAMMDD-HHMM.dump'
+set -euo pipefail
 
-if [ "$RESTORE_DB" = "$PROD_DB" ]; then
-  echo 'Destino de restauração não pode ser o banco de produção.' >&2
+: "${PGUSER:?Defina PGUSER com o usuário do PostgreSQL}"
+: "${PGPASSWORD:?Defina PGPASSWORD com o segredo do PostgreSQL}"
+: "${PROD_TARGET:?Defina PROD_TARGET como host:port/db de produção}"
+: "${RESTORE_HOST:?Defina RESTORE_HOST com o host do banco de restauração}"
+: "${RESTORE_PORT:?Defina RESTORE_PORT com a porta do banco de restauração}"
+: "${DUMP:?Defina DUMP com o caminho do dump}"
+
+export PGPASSWORD
+
+PROD_SERVER="${PROD_TARGET%/*}"
+case "$PROD_TARGET" in
+  *:*/*) ;;
+  *) echo 'PROD_TARGET inválido; use host:port/db.' >&2; exit 1 ;;
+esac
+RESTORE_DB="fisga_restore_$(date +%Y%m%d_%H%M%S)"
+RESTORE_TARGET="$RESTORE_HOST:$RESTORE_PORT/$RESTORE_DB"
+
+# Denylist explícita: o servidor de produção não é destino de restauração.
+if [ "$RESTORE_TARGET" = "$PROD_TARGET" ] \
+  || [ "$RESTORE_HOST:$RESTORE_PORT" = "$PROD_SERVER" ]; then
+  echo 'Destino de restauração não pode ser o servidor/banco de produção.' >&2
   exit 1
 fi
 
-if psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d postgres -tAc \
-  "select 1 from pg_database where datname = '$RESTORE_DB';" | grep -q 1; then
+EXISTE="$(psql -h "$RESTORE_HOST" -p "$RESTORE_PORT" -U "$PGUSER" -d postgres \
+  -v ON_ERROR_STOP=1 -tAc "select 1 from pg_database where datname = '$RESTORE_DB';")" \
+  || { echo 'Falha ao consultar o banco de restauração.' >&2; exit 1; }
+if [ "$EXISTE" = '1' ]; then
   echo "Banco $RESTORE_DB já existe; escolha outro." >&2
   exit 1
 fi
 
-createdb -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" "$RESTORE_DB"
+createdb -h "$RESTORE_HOST" -p "$RESTORE_PORT" -U "$PGUSER" "$RESTORE_DB" \
+  || { echo 'Falha ao criar o banco de restauração.' >&2; exit 1; }
 
-# Deve ser 0: banco recém-criado, sem tabelas de usuário.
-test "$(psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$RESTORE_DB" -tAc \
-  "select count(*) from pg_tables where schemaname not in ('pg_catalog','information_schema');")" = '0'
+# Fail-closed: o banco recém-criado precisa estar vazio antes do restore.
+TABELAS="$(psql -h "$RESTORE_HOST" -p "$RESTORE_PORT" -U "$PGUSER" -d "$RESTORE_DB" \
+  -v ON_ERROR_STOP=1 -tAc \
+  "select count(*) from pg_tables where schemaname not in ('pg_catalog','information_schema');")" \
+  || { echo 'Falha ao verificar se o banco de restauração está vazio.' >&2; exit 1; }
+if [ "$TABELAS" != '0' ]; then
+  echo "Banco de restauração não está vazio ($TABELAS tabelas)." >&2
+  exit 1
+fi
 
-pg_restore --no-owner --no-privileges \
-  --dbname="host=$PGHOST port=$PGPORT user=$PGUSER dbname=$RESTORE_DB" \
-  "$DUMP"
+pg_restore --exit-on-error --single-transaction --no-owner --no-privileges \
+  --dbname="host=$RESTORE_HOST port=$RESTORE_PORT user=$PGUSER dbname=$RESTORE_DB" \
+  "$DUMP" \
+  || { echo 'pg_restore falhou; banco de restauração não deve ser usado.' >&2; exit 1; }
 
-psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$RESTORE_DB" -c \
+psql -h "$RESTORE_HOST" -p "$RESTORE_PORT" -U "$PGUSER" -d "$RESTORE_DB" \
+  -v ON_ERROR_STOP=1 -c \
   'select (select count(*) from fisga.usuarios) as usuarios, (select count(*) from fisga.pescarias) as pescarias;'
 ```
 
@@ -470,11 +502,11 @@ link de acesso ou senha”. Não prometa que a sessão atual será preservada.
 
 | Verificação | Resultado |
 | --- | --- |
-| `~/.dotnet/dotnet test` | **213 aprovados**, 0 falhas (36 domínio + 48 aplicação + 129 API) |
+| `~/.dotnet/dotnet test` | **224 aprovados**, 0 falhas (36 domínio + 48 aplicação + 140 API) |
 | `npm run check` | 0 erros, 0 avisos, 0 hints (89 arquivos) |
 | `npm run build` | aprovado (Astro + Pagefind + precache) |
 | Playwright mockado | **58/58 aprovados** |
-| Playwright backend real (`scripts/e2e-real.sh`) | **6/6 aprovados** em 18,8 s; **12/12** com `--repeat-each=2` (37,4 s) |
+| Playwright backend real (`scripts/e2e-real.sh`) | **6/6 aprovados** em 20,9 s; **12/12** com `--repeat-each=2` (37,8 s) |
 | Migration em PostgreSQL local | **NÃO EXECUTADO** (sem Docker/Postgres nesta máquina) |
 | OAuth Google real | **NÃO EXECUTADO** (sem credenciais) |
 | Sentry em produção | **NÃO VERIFICADO** (DSN ausente no E2E) |
