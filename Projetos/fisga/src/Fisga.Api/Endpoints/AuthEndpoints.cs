@@ -111,7 +111,7 @@ public static class AuthEndpoints
 
                 if (resultado.IsNotAllowed)
                 {
-                    // PasswordSignInAsync devolve IsNotAllowed ANTES de verificar a senha
+                    // CheckPasswordSignInAsync devolve IsNotAllowed ANTES de verificar a senha
                     // (o PreSignInCheck roda antes do CheckPasswordAsync). Verificamos a
                     // senha aqui para só enviar um novo link quando as credenciais forem
                     // realmente válidas — evita um "email-trigger" não autenticado (spam/

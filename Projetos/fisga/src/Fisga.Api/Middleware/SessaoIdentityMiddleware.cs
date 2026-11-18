@@ -48,6 +48,7 @@ public sealed class SessaoIdentityMiddleware(RequestDelegate next)
             || sessao.UsuarioId != usuarioId.Value)
         {
             await context.SignOutAsync(IdentityConstants.ApplicationScheme);
+            context.User = new ClaimsPrincipal(new ClaimsIdentity());
             await next(context);
             return;
         }
