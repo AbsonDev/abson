@@ -382,6 +382,26 @@ public sealed class CondicoesCacheTests
         });
     }
 
+    [Fact]
+    public async Task Clima_com_200_nao_json_fica_indisponivel_e_loga_o_corpo()
+    {
+        var handler = new ContadorHandler { ClimaNaoJson = true };
+        using var http = new HttpClient(handler);
+        var logger = new LoggerEspiao();
+        var provedor = new OpenMeteoProvedorDeCondicoes(
+            http, CriarHybridCache(), new CondicoesOptions(), logger, new CacheObservabilidadeNula());
+
+        var resultado = await provedor.ObterAsync(-23.55, -45.13, Dia);
+
+        Assert.Null(resultado);
+        Assert.Equal(1, handler.ChamadasClima);
+        Assert.Contains(logger.Mensagens, mensagem =>
+            mensagem.Contains("Open-Meteo clima devolveu resposta não JSON", StringComparison.Ordinal)
+            && mensagem.Contains("200", StringComparison.Ordinal)
+            && mensagem.Contains("text/plain", StringComparison.Ordinal)
+            && mensagem.Contains("Upstream request timeout", StringComparison.Ordinal));
+    }
+
     private static void AssertGravacoes(
         IReadOnlyCollection<ChamadaDeCache> gravacoes,
         string chave,
@@ -589,6 +609,8 @@ public sealed class CondicoesCacheTests
 
         public bool FalharClima { get; init; }
 
+        public bool ClimaNaoJson { get; init; }
+
         public bool FalharMar { get; init; }
 
         public bool FalharLua { get; init; }
@@ -616,6 +638,14 @@ public sealed class CondicoesCacheTests
             if (url.StartsWith("https://api.open-meteo.com/v1/forecast", StringComparison.Ordinal))
             {
                 Interlocked.Increment(ref _clima);
+                if (ClimaNaoJson)
+                {
+                    return new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = new StringContent("Upstream request timeout", Encoding.UTF8, "text/plain")
+                    };
+                }
+
                 return FalharClima
                     ? Resposta(HttpStatusCode.InternalServerError, "{}")
                     : Resposta(HttpStatusCode.OK, ClimaJson);
