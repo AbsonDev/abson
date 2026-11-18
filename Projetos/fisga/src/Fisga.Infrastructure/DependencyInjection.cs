@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Hybrid;
 using Fisga.Application.Abstractions;
 using Fisga.Application.Condicoes;
 using Fisga.Application.Identidade;
@@ -32,6 +33,15 @@ public static class DependencyInjection
         bool desenvolvimento)
     {
         services.Configure<WebOptions>(configuration.GetSection("Web"));
+
+        services.AddHybridCache(options =>
+        {
+            options.DefaultEntryOptions = new HybridCacheEntryOptions
+            {
+                Expiration = TimeSpan.FromMinutes(20),
+                LocalCacheExpiration = TimeSpan.FromMinutes(5),
+            };
+        });
 
         services.Configure<AutenticacaoOptions>(configuration.GetSection("Auth"));
         services.AddSingleton(sp => sp.GetRequiredService<IOptions<AutenticacaoOptions>>().Value);
