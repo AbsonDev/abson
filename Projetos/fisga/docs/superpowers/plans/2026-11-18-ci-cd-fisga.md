@@ -116,8 +116,13 @@
 
 ### Task 4: Deploy automatizado no Coolify
 
+> **Implementação final:** o CD foi separado em `.github/workflows/fisga-deploy.yml`, disparado por
+> `workflow_run` quando `fisga-pipeline` conclui verde na `main`. O `fisga-pipeline` ficou só com
+> CI/gate, sem jobs de deploy.
+
 **Files:**
 - Modify: `.github/workflows/fisga-pipeline.yml`
+- Create: `.github/workflows/fisga-deploy.yml`
 
 - [ ] Adicionar `deploy-api` e `deploy-web`, só em `main` (push ou `workflow_dispatch` na `main`).
 - [ ] Usar `environment: production`, `concurrency: fisga-production`, `cancel-in-progress: false` e timeout de 30 min.
