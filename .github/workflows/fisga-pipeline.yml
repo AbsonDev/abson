@@ -206,3 +206,120 @@ jobs:
             echo "Um job necessário falhou ou foi cancelado."
             exit 1
           fi
+
+  deploy-api:
+    name: deploy-api
+    needs:
+      - changes
+      - gate
+    if: |
+      needs.changes.outputs.fisga == 'true' &&
+      (
+        (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+        (github.event_name == 'workflow_dispatch' && inputs.deploy)
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: production
+      url: https://api.fisga.abson.tech
+    concurrency:
+      group: fisga-production
+      cancel-in-progress: false
+    steps:
+      - name: Validar secrets
+        env:
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+          COOLIFY_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK_FISGA_API }}
+        run: |
+          set -euo pipefail
+          : "${COOLIFY_TOKEN:?Configure o secret COOLIFY_TOKEN}"
+          : "${COOLIFY_WEBHOOK:?Configure o secret COOLIFY_WEBHOOK_FISGA_API}"
+
+      - name: Disparar deploy da API
+        env:
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+          COOLIFY_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK_FISGA_API }}
+        run: |
+          set -euo pipefail
+          curl --fail-with-body -sS -X POST "$COOLIFY_WEBHOOK" \
+            -H "Authorization: Bearer $COOLIFY_TOKEN"
+
+      - name: Aguardar a versão da API
+        env:
+          EXPECTED: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 60); do
+            VERSION="$(curl -fsS --max-time 10 https://api.fisga.abson.tech/health | jq -r '.version // empty' || true)"
+            if [ "$VERSION" = "$EXPECTED" ]; then
+              echo "API no ar na versão $EXPECTED"
+              exit 0
+            fi
+            echo "Aguardando API: versão atual=${VERSION:-indisponível} (tentativa $i/60)"
+            sleep 5
+          done
+          echo "Timeout aguardando a API na versão $EXPECTED"
+          exit 1
+
+      - name: Smoke da API
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 10 https://api.fisga.abson.tech/ready
+
+  deploy-web:
+    name: deploy-web
+    needs:
+      - deploy-api
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && inputs.deploy)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: production
+      url: https://fisga.abson.tech
+    concurrency:
+      group: fisga-production
+      cancel-in-progress: false
+    steps:
+      - name: Validar secrets
+        env:
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+          COOLIFY_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK_FISGA_WEB }}
+        run: |
+          set -euo pipefail
+          : "${COOLIFY_TOKEN:?Configure o secret COOLIFY_TOKEN}"
+          : "${COOLIFY_WEBHOOK:?Configure o secret COOLIFY_WEBHOOK_FISGA_WEB}"
+
+      - name: Disparar deploy do web
+        env:
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+          COOLIFY_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK_FISGA_WEB }}
+        run: |
+          set -euo pipefail
+          curl --fail-with-body -sS -X POST "$COOLIFY_WEBHOOK" \
+            -H "Authorization: Bearer $COOLIFY_TOKEN"
+
+      - name: Aguardar a versão do web
+        env:
+          EXPECTED: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 60); do
+            VERSION="$(curl -fsS --max-time 10 https://fisga.abson.tech/health | jq -r '.version // empty' || true)"
+            if [ "$VERSION" = "$EXPECTED" ]; then
+              echo "Web no ar na versão $EXPECTED"
+              exit 0
+            fi
+            echo "Aguardando web: versão atual=${VERSION:-indisponível} (tentativa $i/60)"
+            sleep 5
+          done
+          echo "Timeout aguardando o web na versão $EXPECTED"
+          exit 1
+
+      - name: Smoke do web
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 10 https://fisga.abson.tech/ >/dev/null
+          curl -fsS --max-time 10 https://fisga.abson.tech/condicoes >/dev/null
