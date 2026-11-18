@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.DataProtection;
@@ -85,8 +86,14 @@ public static class IdentityExtensions
                     google.ClientId = clientId;
                     google.ClientSecret = clientSecret;
                     google.SignInScheme = IdentityConstants.ExternalScheme;
-                    google.CallbackPath = "/signin-google";
+                    google.CallbackPath = configuration["Google:CallbackPath"] ?? "/signin-google";
                     google.SaveTokens = true;
+
+                    // Por padrão o handler NÃO expõe "email_verified" do userinfo.
+                    // Sem este claim o validador recusaria todo login real.
+                    google.ClaimActions.MapJsonKey(
+                        GoogleIdentityValidator.EmailVerifiedClaim,
+                        "email_verified");
                 });
         }
 

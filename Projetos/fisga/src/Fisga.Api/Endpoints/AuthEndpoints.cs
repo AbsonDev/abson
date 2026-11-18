@@ -1,5 +1,8 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Configuration;
 using Fisga.Api.Contracts;
 using Fisga.Api.Observabilidade;
 using Fisga.Application.Abstractions;
@@ -15,6 +18,9 @@ public static class AuthEndpoints
 {
     private const string MensagemCredenciaisInvalidas = "E-mail ou senha incorretos.";
     private const string ClaimSessaoId = "sessao_id";
+    // Mesma chave usada por SignInManager.ConfigureExternalAuthenticationProperties
+    // para guardar o provedor nas propriedades do cookie externo.
+    private const string ChaveProvedorExterno = "LoginProvider";
     public static IEndpointRouteBuilder MapAuthEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapPost("/api/auth/solicitar", async (
@@ -305,6 +311,106 @@ public static class AuthEndpoints
             .AllowAnonymous()
             .RequireRateLimiting("auth");
 
+        app.MapGet("/api/auth/google/disponivel", (IConfiguration configuration) =>
+                Results.Ok(new GoogleDisponivelResponse(GoogleConfigurado(configuration))))
+            .AllowAnonymous()
+            .RequireRateLimiting("auth");
+
+        app.MapGet("/api/auth/google/iniciar", (IConfiguration configuration) =>
+            {
+                if (!GoogleConfigurado(configuration))
+                {
+                    Metricas.LoginFalhou("google_indisponivel");
+                    return Results.Json(
+                        new ErroResponse(
+                            "google_indisponivel",
+                            "O login com Google não está configurado."),
+                        statusCode: StatusCodes.Status503ServiceUnavailable,
+                        contentType: "application/problem+json");
+                }
+
+                var propriedades = new AuthenticationProperties
+                {
+                    // O handler intercepta /signin-google e devolve aqui, já com o
+                    // cookie do esquema externo assinado.
+                    RedirectUri = "/api/auth/google/concluir"
+                };
+                propriedades.Items[ChaveProvedorExterno] = GoogleIdentityValidator.Provider;
+
+                return Results.Challenge(propriedades, [GoogleDefaults.AuthenticationScheme]);
+            })
+            .AllowAnonymous()
+            .RequireRateLimiting("auth");
+
+        app.MapGet("/api/auth/google/concluir", async (
+                HttpContext http,
+                GoogleIdentityValidator validator,
+                GoogleIdentityService servico,
+                UserManager<ApplicationUser> usuarios,
+                IdentitySessionService identidade,
+                IUnitOfWork unidade,
+                IRelogio relogio,
+                AutenticacaoOptions opcoes,
+                CancellationToken ct) =>
+            {
+                var web = opcoes.WebUrl.TrimEnd('/');
+                var autenticacao = await http.AuthenticateAsync(IdentityConstants.ExternalScheme);
+                if (autenticacao is null || !autenticacao.Succeeded || autenticacao.Principal is null)
+                {
+                    Metricas.LoginFalhou("google_sessao_externa_invalida");
+                    return Results.Redirect($"{web}/entrar/confirmar?estado=google_sessao_externa_invalida");
+                }
+
+                var provedor = GoogleIdentityValidator.Provider;
+                if (autenticacao.Properties?.Items.TryGetValue(ChaveProvedorExterno, out var salvo) == true
+                    && !string.IsNullOrWhiteSpace(salvo))
+                {
+                    provedor = salvo;
+                }
+
+                var subject = autenticacao.Principal.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                              ?? autenticacao.Principal.FindFirst("sub")?.Value
+                              ?? string.Empty;
+                var info = new ExternalLoginInfo(
+                    autenticacao.Principal, provedor, subject, GoogleIdentityValidator.Provider);
+
+                try
+                {
+                    var google = await validator.ValidarAsync(info, ct);
+                    var usuario = await servico.EntrarOuCriarAsync(google, ct);
+                    var conta = await usuarios.FindByIdAsync(usuario.Id.ToString())
+                                ?? throw new DomainException(
+                                    "google_conta_inconsistente",
+                                    "Não foi possível localizar a conta autenticada.");
+
+                    // Espelha o link mágico: primeiro acesso leva às boas-vindas.
+                    var primeiroAcesso = usuario.BemVindoEm is null;
+                    var agora = relogio.Agora;
+                    usuario.VerificarEmail(agora);
+                    usuario.RegistrarAcesso(agora);
+                    usuario.MarcarBoasVindas(agora);
+                    await unidade.SalvarAsync(ct);
+
+                    await identidade.AssinarAsync(conta, usuario, http, ct);
+                    await http.SignOutAsync(IdentityConstants.ExternalScheme);
+
+                    Metricas.LoginConfirmado(primeiroAcesso);
+                    var destino = primeiroAcesso
+                        ? "/boas-vindas?novo=1"
+                        : "/entrar/confirmar?estado=ok";
+                    return Results.Redirect($"{web}{destino}");
+                }
+                catch (DomainException excecao)
+                {
+                    await http.SignOutAsync(IdentityConstants.ExternalScheme);
+                    Metricas.LoginFalhou(excecao.Codigo);
+                    return Results.Redirect(
+                        $"{web}/entrar/confirmar?estado={Uri.EscapeDataString(excecao.Codigo)}");
+                }
+            })
+            .AllowAnonymous()
+            .RequireRateLimiting("auth");
+
         app.MapGet("/api/auth/me", (HttpContext http) =>
             {
                 var usuario = http.UsuarioAtual();
@@ -464,6 +570,12 @@ public static class AuthEndpoints
 
         return app;
     }
+
+    // Espelha a condição de registro do handler em IdentityExtensions: sem as duas
+    // credenciais o Google permanece indisponível, mas o app sobe normalmente.
+    public static bool GoogleConfigurado(IConfiguration configuration) =>
+        !string.IsNullOrWhiteSpace(configuration["Google:ClientId"])
+        && !string.IsNullOrWhiteSpace(configuration["Google:ClientSecret"]);
 
     // Apenas limpa o cookie obsoleto fisga_sessao no logout; nenhum cookie novo é gravado.
     private static void LimparCookie(HttpContext http, AutenticacaoOptions opcoes)
