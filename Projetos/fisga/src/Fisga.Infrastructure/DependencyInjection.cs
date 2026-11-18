@@ -97,7 +97,6 @@ public static class DependencyInjection
         services.AddSingleton<IRelogio, RelogioDoSistema>();
         services.AddSingleton<IGeradorDePdf, QuestPdfGerador>();
 
-        services.AddSingleton<ICacheDeCondicoes, CacheEmMemoriaDeCondicoes>();
         services.AddHttpClient<OpenMeteoProvedorDeCondicoes>(cliente =>
         {
             cliente.Timeout = TimeSpan.FromSeconds(12);
