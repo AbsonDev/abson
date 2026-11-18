@@ -74,6 +74,10 @@ Os webhooks e o `COOLIFY_URL` precisam ser HTTPS; o workflow recusa HTTP para n�
 claro. O CI dispara o webhook, captura o `deployment_uuid`, acompanha o status no Coolify e só então
 valida `/health` e smoke tests.
 
+> Nota de manutenção: no caminho de `workflow_dispatch`, o `if` do deploy usa
+> `github.event.inputs.deploy == 'true'`. Não trocar por `inputs.deploy`: esse contexto não existe no
+> evento `push` e o job de deploy é pulado.
+
 ### Ordem
 
 1. `deploy-api`: dispara o Coolify, acompanha o deployment até `finished`/`success` (até 20 min),
