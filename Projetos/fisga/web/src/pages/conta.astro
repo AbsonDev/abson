@@ -615,6 +615,7 @@ import AuthLayout from '../layouts/AuthLayout.astro';
     }
 
     if (resposta.status === 401) {
+      await limparCachePrivado();
       irParaEntrar();
       throw new FalhaApi('Sua sessão expirou. Redirecionando para a entrada...', 401);
     }
@@ -1228,6 +1229,7 @@ import AuthLayout from '../layouts/AuthLayout.astro';
       });
 
       if (resposta.status === 401) {
+        await limparCachePrivado();
         irParaEntrar();
         return;
       }
