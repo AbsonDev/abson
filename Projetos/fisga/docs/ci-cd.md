@@ -31,6 +31,9 @@ Os workflows ficam em `.github/workflows/fisga-pipeline.yml` (CI) e
 pode exibir `fisga-pipeline / gate`; confirme o contexto exato em
 `gh api repos/AbsonDev/abson/commits/<sha>/check-runs`).
 
+O fluxo de revisão de PRs (camadas determinísticas, LLM e agente) está em
+[review.md](./review.md).
+
 ## Gatilhos e decisões de desenho
 
 ### Por que não há `paths:` no CI
