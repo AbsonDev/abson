@@ -17,8 +17,9 @@ public static class LogSeguro
             return "-";
         }
 
+        var limiteEfetivo = Math.Max(1, limite);
         var normalizado = valor.ReplaceLineEndings(" ");
-        var construtor = new StringBuilder(Math.Min(normalizado.Length, limite));
+        var construtor = new StringBuilder(Math.Min(normalizado.Length, limiteEfetivo));
         foreach (var caractere in normalizado)
         {
             if (!char.IsControl(caractere))
@@ -26,7 +27,7 @@ public static class LogSeguro
                 construtor.Append(caractere);
             }
 
-            if (construtor.Length >= limite)
+            if (construtor.Length >= limiteEfetivo)
             {
                 break;
             }
