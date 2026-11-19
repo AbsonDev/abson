@@ -31,6 +31,23 @@ async function mockAnonimo(page: Page) {
   );
 }
 
+async function mockAnonimoLento(page: Page, atrasoMs: number) {
+  await page.route(`${API}/api/auth/me`, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, atrasoMs));
+    await route.fulfill({
+      status: 200,
+      headers: { ...CORS, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        autenticado: false,
+        usuario: null,
+        consentimentoPendente: false,
+        googleConectado: false,
+        temSenha: false
+      })
+    });
+  });
+}
+
 async function mockCondicoes(page: Page) {
   await page.route(`${API}/api/condicoes**`, (route) =>
     route.fulfill({
@@ -192,4 +209,23 @@ test('espécie da wiki não conta como toque e mantém a precedência do rascunh
   await expect(page.locator('#local')).toHaveValue('Ilhabela');
   await expect(page.locator('#observacoes')).toHaveValue('Anotação antiga');
   await expect(page.locator('#clareza')).toHaveValue('Clara');
+});
+
+test('data digitada antes do auth não é sobrescrita na inicialização vazia', async ({ page }) => {
+  // O cenário é o do formulário vazio: o autosave não pode criar rascunho.
+  await page.addInitScript(() => {
+    const gravar = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (this: Storage, chave: string, valor: string) {
+      if (chave === 'fisga:rascunho:v1') return;
+      gravar.call(this, chave, valor);
+    };
+  });
+  await mockAnonimoLento(page, 1000);
+  await page.goto(`${ORIGEM}/registrar`);
+  await expect(page.locator('#acesso-registrar')).toBeHidden();
+  await page.locator('#data').fill('2001-02-03');
+  await expect(page.locator('#acesso-registrar')).toBeHidden();
+  await expect(page.locator('#data')).toHaveValue('2001-02-03');
+  await expect(page.locator('#contador-capturas')).toHaveText('1 captura');
+  await expect(page.locator('#data')).toHaveValue('2001-02-03');
 });

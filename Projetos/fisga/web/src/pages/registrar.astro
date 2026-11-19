@@ -944,7 +944,9 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
     }
 
     function iniciarFormularioVazio() {
-      document.getElementById('data').value = dataHojeLocal();
+      if (!camposTocados.has('data')) {
+        document.getElementById('data').value = dataHojeLocal();
+      }
       criarLinhaCaptura();
     }
 
