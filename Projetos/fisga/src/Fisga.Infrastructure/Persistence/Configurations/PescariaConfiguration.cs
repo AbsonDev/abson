@@ -28,6 +28,7 @@ public sealed class PescariaConfiguration : IEntityTypeConfiguration<Pescaria>
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.Property(pescaria => pescaria.Local).HasMaxLength(120).IsRequired();
+        builder.Property(pescaria => pescaria.CorpoOuTrecho).HasMaxLength(80);
         builder.Property(pescaria => pescaria.Pescador).HasMaxLength(80);
         builder.Property(pescaria => pescaria.Cidade).HasMaxLength(80);
         builder.Property(pescaria => pescaria.Estado).HasMaxLength(2);
