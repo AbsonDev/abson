@@ -10,6 +10,10 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.ApiDescription.Server" Version="10.0.15">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
     <PackageReference Include="Sentry.AspNetCore" Version="7.0.1" />
   </ItemGroup>
 
@@ -17,6 +21,21 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <!-- Geração opt-in. O pacote Microsoft.Extensions.ApiDescription.Server liga
+       a geração por padrão; desligá-la aqui é o que mantém `dotnet build` inerte.
+       Ligar só com -p:GenerateOpenApiDocs=true sobe a aplicação com as settings
+       padrão de Development: use `scripts/gerar-openapi.sh`, que isola banco e
+       Sentry. -->
+  <PropertyGroup>
+    <OpenApiGenerateDocuments>false</OpenApiGenerateDocuments>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(GenerateOpenApiDocs)' == 'true'">
+    <OpenApiGenerateDocuments>true</OpenApiGenerateDocuments>
+    <OpenApiGenerateDocumentsOnBuild>true</OpenApiGenerateDocumentsOnBuild>
+    <OpenApiDocumentsDirectory>$(MSBuildProjectDirectory)/artifacts/openapi</OpenApiDocumentsDirectory>
   </PropertyGroup>
 
 </Project>

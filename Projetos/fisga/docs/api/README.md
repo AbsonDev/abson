@@ -38,3 +38,8 @@ Commite o arquivo gerado no mesmo PR da mudança de contrato.
   sessão é `401`.
 - **Cache e rate limiting são metadados de runtime**, não fazem parte do
   contrato gerado.
+- **O contrato não traz schemas de resposta.** Os endpoints devolvem
+  `Results.Ok(...)` sem metadados `Produces<T>`, então nenhuma operação declara
+  o corpo tipado da resposta. Quem gera cliente a partir de `openapi.json` vê os
+  corpos de entrada, mas não os de saída. Adicionar
+  `Produces<T>` aos endpoints é um follow-up.

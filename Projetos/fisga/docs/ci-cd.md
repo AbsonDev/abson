@@ -94,9 +94,14 @@ O filtro separa código de documentação:
 - `dotnet format Fisga.slnx --verify-no-changes --no-restore`
 - `dotnet build Fisga.slnx -c Release --no-restore -warnaserror`
 - `dotnet test Fisga.slnx -c Release --no-build` (250 testes)
+- `./scripts/gerar-openapi.sh` (regenera `docs/api/openapi.json` com SQLite temporário, ambiente
+  Development e Sentry desligado)
+- `git diff --exit-code -- docs/api/openapi.json` (contrato desatualizado falha o job com a instrução
+  de rodar o script e commitar)
 
-Os resultados TRX são enviados como artifact `fisga-test-results` (retenção de 7 dias). O job usa
-`actions/setup-dotnet` com `global-json-file` e cache baseado nos `packages.lock.json`.
+Os resultados TRX são enviados como artifact `fisga-test-results` (retenção de 7 dias).
+`docs/api/openapi.json` também é publicado como artifact `fisga-openapi` (retenção de 30 dias). O job
+usa `actions/setup-dotnet` com `global-json-file` e cache baseado nos `packages.lock.json`.
 
 ### `web`
 

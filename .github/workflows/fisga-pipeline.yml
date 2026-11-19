@@ -127,6 +127,24 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+      - name: Gerar OpenAPI
+        run: ./scripts/gerar-openapi.sh
+
+      - name: Contrato documentado está atualizado
+        run: |
+          set -euo pipefail
+          if ! git diff --exit-code -- docs/api/openapi.json; then
+            echo "::error::docs/api/openapi.json está desatualizado. Rode ./scripts/gerar-openapi.sh e commite."
+            exit 1
+          fi
+
+      - name: Publicar OpenAPI
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: fisga-openapi
+          path: Projetos/fisga/docs/api/openapi.json
+          retention-days: 30
+
   web:
     name: web
     needs: changes
