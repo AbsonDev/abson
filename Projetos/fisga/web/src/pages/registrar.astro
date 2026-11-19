@@ -57,12 +57,24 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         <button id="ocultar-condicoes" class="btn btn--pequeno btn--contorno" type="button">Ocultar</button>
       </div>
 
-      <div id="exif-aviso" class="condicoes-aplicadas oculto" role="status">
-        <div>
-          <span class="selo selo--terracota">Dados da foto</span>
-          <p id="exif-texto"></p>
+      <div id="exif-aviso" class="photo-meta oculto" role="status">
+        <div class="photo-meta-head">
+          <span class="photo-meta-label">
+            <svg class="photo-meta-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8.8h3.1L8.6 6.4h6.8l1.5 2.4H20V19H4z"></path><circle cx="12" cy="13.4" r="3.1"></circle></svg>
+            Dados da foto
+          </span>
         </div>
-        <button id="ocultar-exif" class="btn btn--pequeno btn--contorno" type="button">Ocultar</button>
+        <p id="exif-texto" class="photo-meta-copy"></p>
+        <p id="exif-valores" class="photo-meta-values"></p>
+        <div class="photo-meta-actions">
+          <button id="exif-aplicar" class="btn btn--primario" type="button">Aplicar nos campos vazios</button>
+          <button id="exif-ignorar" class="btn btn--contorno" type="button">Ignorar</button>
+        </div>
+      </div>
+
+      <div id="exif-estado" class="photo-meta-done oculto" role="status">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"></circle><path d="m8.4 12.2 2.5 2.5 4.7-5.2"></path></svg>
+        <span id="exif-estado-texto"></span>
       </div>
 
       <datalist id="lista-especies">
@@ -76,7 +88,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         <div class="painel-cabecalho">
           <span class="passo-etiqueta">01</span>
           <div>
-            <h2 id="titulo-pescaria">A pescaria</h2>
+            <h2 id="titulo-pescaria" tabindex="-1"><span class="visually-hidden">Etapa 1 — </span>A pescaria</h2>
             <p>Onde, quando e em que ambiente você pescou.</p>
           </div>
         </div>
@@ -238,7 +250,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         <div class="painel-cabecalho">
           <span class="passo-etiqueta">02</span>
           <div>
-            <h2 id="titulo-condicoes">As condições</h2>
+            <h2 id="titulo-condicoes" tabindex="-1"><span class="visually-hidden">Etapa 2 — </span>As condições</h2>
             <p>O contexto que transforma uma captura em padrão.</p>
           </div>
         </div>
@@ -302,7 +314,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         <div class="painel-cabecalho">
           <span class="passo-etiqueta">03</span>
           <div>
-            <h2 id="titulo-capturas">As capturas</h2>
+            <h2 id="titulo-capturas" tabindex="-1"><span class="visually-hidden">Etapa 3 — </span>As capturas</h2>
             <p>Adicione cada peixe. Uma pescaria pode ter várias capturas.</p>
           </div>
         </div>
@@ -336,7 +348,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         <div class="painel-cabecalho">
           <span class="passo-etiqueta">04</span>
           <div>
-            <h2 id="titulo-revisar">Revisar</h2>
+            <h2 id="titulo-revisar" tabindex="-1"><span class="visually-hidden">Etapa 4 — </span>Revisar</h2>
             <p>Confira o que vai para o seu diário.</p>
           </div>
         </div>
@@ -441,7 +453,9 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
     let estadoEdicao = null;
     let uploadsPendentes = 0;
     let autenticado = false;
-    let exifAplicado = false;
+    // Sugestões da foto ficam em memória até a decisão; a decisão vale pela sessão.
+    let decisaoExifTomada = false;
+    let exifSugestoes = null;
     let capturasTocadas = false;
     const camposTocados = new Set();
     let formularioHidratado = false;
@@ -656,7 +670,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         inputArquivo.disabled = true;
 
         try {
-          if (!exifAplicado && paraEnviar[0]) {
+          if (!decisaoExifTomada && paraEnviar[0]) {
             await aplicarExif(paraEnviar[0]);
           }
 
@@ -717,8 +731,59 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       return 'Noite';
     }
 
+    function mostrarAvisoExif(sugestoes) {
+      const aviso = document.getElementById('exif-aviso');
+      const texto = document.getElementById('exif-texto');
+      const valores = document.getElementById('exif-valores');
+      if (!aviso || !texto || !valores) return;
+
+      texto.textContent = 'Encontramos data, horário e cidade na foto. Só preenchemos campos que estão vazios — o local exato nunca vem da foto.';
+      valores.textContent = sugestoes.partes.join(' · ');
+      aviso.classList.remove('oculto');
+    }
+
+    function confirmarExif() {
+      if (!exifSugestoes) return;
+
+      const sugestoes = exifSugestoes;
+      const campos = [
+        ['data', sugestoes.data],
+        ['periodo', sugestoes.periodo],
+        ['cidade', sugestoes.cidade],
+        ['estado', sugestoes.estado]
+      ];
+      for (const [id, sugerido] of campos) {
+        const campo = document.getElementById(id);
+        if (campo && sugerido && !campo.value.trim()) campo.value = sugerido;
+      }
+
+      decisaoExifTomada = true;
+      exifSugestoes = null;
+      document.getElementById('exif-aviso')?.classList.add('oculto');
+      const estado = document.getElementById('exif-estado');
+      const textoEstado = document.getElementById('exif-estado-texto');
+      if (textoEstado) textoEstado.textContent = 'Campos vazios preenchidos pela foto.';
+      estado?.classList.remove('oculto');
+      document.getElementById('local')?.focus();
+    }
+
+    // Ignorar é definitivo na sessão: nenhum campo é tocado e nenhuma foto
+    // posterior volta a sugerir dados.
+    function ignorarExif() {
+      exifSugestoes = null;
+      decisaoExifTomada = true;
+      document.getElementById('exif-aviso')?.classList.add('oculto');
+      document.getElementById('exif-estado')?.classList.add('oculto');
+      document.getElementById('local')?.focus();
+    }
+
+    document.getElementById('exif-aplicar')?.addEventListener('click', confirmarExif);
+    document.getElementById('exif-ignorar')?.addEventListener('click', ignorarExif);
+
     async function aplicarExif(arquivo) {
-      if (exifAplicado) return;
+      // A primeira foto com dados úteis decide: uma sugestão pendente não pode
+      // ser substituída por outra foto antes da decisão da pessoa.
+      if (decisaoExifTomada || exifSugestoes) return;
 
       try {
         const dados = await exifr.parse(arquivo, { pick: ['DateTimeOriginal', 'CreateDate'] }).catch(() => null);
@@ -728,44 +793,50 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         const bruto = dados?.DateTimeOriginal ?? dados?.CreateDate;
         if (bruto instanceof Date && !Number.isNaN(bruto.getTime())) {
           data = bruto;
-          const local = new Date(data.getTime() - data.getTimezoneOffset() * 60000);
-          document.getElementById('data').value = local.toISOString().slice(0, 10);
-          document.getElementById('periodo').value = periodoDaHora(local.getHours());
         }
 
         let cidade = '';
         let estado = '';
         if (gps?.latitude && gps?.longitude) {
+          // Uma falha no reverso não pode derrubar a sugestão de data da foto.
           const resposta = await fetch(
             `${API}/api/locais/reverso?lat=${gps.latitude}&lon=${gps.longitude}`
-          );
-          if (resposta.ok) {
-            const local = await resposta.json();
+          ).catch(() => null);
+          if (resposta?.ok) {
+            const local = await resposta.json().catch(() => ({}));
             cidade = local.cidade || local.nome || '';
             estado = local.estado || '';
-            if (cidade) {
-              const campoCidade = document.getElementById('cidade');
-              const campoEstado = document.getElementById('estado');
-              const campoLocal = document.getElementById('local');
-              if (!campoCidade.value) campoCidade.value = cidade;
-              if (!campoEstado.value) campoEstado.value = estado;
-              if (!campoLocal.value.trim()) campoLocal.value = cidade;
-            }
           }
         }
 
-        if (data || cidade) {
-          exifAplicado = true;
-          const partes = [];
-          if (data) partes.push(data.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }));
-          if (cidade) partes.push([cidade, estado].filter(Boolean).join(' · '));
-          const banner = document.getElementById('exif-aviso');
-          const texto = document.getElementById('exif-texto');
-          if (banner && texto) {
-            texto.textContent = `Dados lidos da foto: ${partes.join(' · ')}. Confirme antes de salvar. O GPS é usado apenas para sugerir a cidade.`;
-            banner.classList.remove('oculto');
-          }
+        // Sem nada útil, preserva a sugestão pendente da primeira foto: não fazer nada é
+        // intencional, para não substituir uma sugestão já à espera de decisão.
+        if (!data && !cidade) return;
+
+        const local = data ? new Date(data.getTime() - data.getTimezoneOffset() * 60000) : null;
+        const partes = [];
+        if (local) {
+          // O epoch foi ajustado para o horário civil da foto: ler em UTC evita
+          // deslocar outra vez pelo fuso de quem estiver rodando.
+          partes.push(
+            local.toLocaleString('pt-BR', {
+              dateStyle: 'short',
+              timeStyle: 'short',
+              timeZone: 'UTC'
+            })
+          );
         }
+        if (cidade) partes.push([cidade, estado].filter(Boolean).join(', '));
+
+        // Nenhum input é tocado aqui: a escrita depende da decisão em confirmarExif().
+        exifSugestoes = {
+          data: local ? local.toISOString().slice(0, 10) : '',
+          periodo: local ? periodoDaHora(local.getUTCHours()) : '',
+          cidade,
+          estado,
+          partes
+        };
+        mostrarAvisoExif(exifSugestoes);
       } catch {
         // A foto pode não ter EXIF; o formulário continua manual.
       }
@@ -1196,7 +1267,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         }
 
         estadoEdicao = { id: dados.id, shareToken: dados.shareToken };
-        exifAplicado = true;
+        decisaoExifTomada = true;
         preencher(dados.entrada);
         botaoSalvar.textContent = 'Salvar alterações';
         return true;
@@ -1208,10 +1279,6 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
 
     document.getElementById('ocultar-condicoes')?.addEventListener('click', () => {
       document.getElementById('condicoes-aplicadas')?.classList.add('oculto');
-    });
-
-    document.getElementById('ocultar-exif')?.addEventListener('click', () => {
-      document.getElementById('exif-aviso')?.classList.add('oculto');
     });
 
     const opcoesPrivacidade = [...formulario.querySelectorAll('input[name="privacidadeDoLocal"]')];
@@ -1347,6 +1414,11 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         else botao.removeAttribute('aria-current');
       }
 
+      etapas
+        .find((etapa) => Number(etapa.dataset.etapa) === etapaAtual)
+        ?.querySelector<HTMLElement>('.painel-cabecalho h2')
+        ?.focus({ preventScroll: true });
+
       if (etapaAtual === 4) atualizarRevisao();
 
       const topo = formulario.getBoundingClientRect().top + window.scrollY - 84;
@@ -1458,7 +1530,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
     if (rascunhoInicial && !new URLSearchParams(window.location.search).get('editar')) {
       preencher(rascunhoInicial, { preservarTocados: true });
       hidratadoSincronamente = true;
-      exifAplicado = true;
+      decisaoExifTomada = true;
       atualizarIndicadorRascunho();
     }
 
@@ -1507,7 +1579,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
 
       const rascunho = rascunhoInicial;
       if (rascunho) {
-        exifAplicado = true;
+        decisaoExifTomada = true;
         atualizarIndicadorRascunho();
       }
 
@@ -1759,6 +1831,112 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
     margin-top: 4px;
     color: var(--terracota-escura);
     font-size: 0.76rem;
+  }
+
+  /* Aviso de dados da foto: sugestões não viram campo sem decisão explícita. */
+  .photo-meta {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 18px;
+    padding: 14px 16px;
+    border: 1px solid color-mix(in srgb, var(--terracota) 22%, var(--linha));
+    border-radius: var(--raio-pequeno);
+    background: color-mix(in srgb, var(--superficie) 88%, var(--papel));
+  }
+
+  .photo-meta-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px 12px;
+  }
+
+  .photo-meta-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--terracota);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+  }
+
+  .photo-meta-icone {
+    width: 15px;
+    height: 15px;
+    flex: none;
+  }
+
+  .photo-meta-copy {
+    max-width: 64ch;
+    margin: 0;
+    color: var(--tinta);
+    font-size: 0.88rem;
+    line-height: 1.55;
+  }
+
+  .photo-meta-values {
+    margin: 0;
+    color: var(--tinta-suave);
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.5;
+  }
+
+  .photo-meta-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 10px;
+    margin-top: 2px;
+  }
+
+  .photo-meta-actions .btn {
+    min-height: 44px;
+  }
+
+  .photo-meta-actions .btn:focus-visible {
+    outline: 3px solid var(--terracota);
+    outline-offset: 2px;
+  }
+
+  .photo-meta-done {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    margin-bottom: 18px;
+    padding: 12px 14px;
+    border: 1px solid color-mix(in srgb, var(--verde) 32%, var(--linha));
+    border-radius: var(--raio-pequeno);
+    background: color-mix(in srgb, var(--verde) 7%, var(--superficie));
+    color: var(--tinta);
+    font-size: 0.84rem;
+    line-height: 1.5;
+  }
+
+  .photo-meta-done svg {
+    width: 17px;
+    height: 17px;
+    flex: none;
+    margin-top: 1px;
+    color: var(--verde);
+  }
+
+  @media (max-width: 640px) {
+    .photo-meta {
+      padding: 12px 13px;
+    }
+
+    .photo-meta-actions {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .photo-meta-actions .btn {
+      width: 100%;
+    }
   }
 
   @media (max-width: 640px) {

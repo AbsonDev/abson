@@ -1,6 +1,6 @@
 # ADR 0012 — Ferramentas, EXIF e sugestão de espécie
 
-**Status:** aceito · **Data:** 2026-11-17
+**Status:** parcialmente substituído pelo [ADR 0016](0016-confirmacao-exif.md) · **Data:** 2026-11-17
 
 ## Contexto
 
@@ -15,9 +15,10 @@ promessa de reconhecer espécie por foto, que depende de um provedor externo e d
 - **Defeso é editorial e aponta para a fonte oficial.** O Fisga não mantém uma tabela de tamanhos
   mínimos por espécie/UF nesta fase, porque a regra muda por bacia, ano e portaria. O produto
   mostra o órgão, o que confirmar e um lembrete no registro.
-- **EXIF**: data/hora e GPS da foto são lidos no navegador. A data e o período são preenchidos; o
-  GPS é usado apenas para sugerir cidade/UF via Nominatim. O GPS não é armazenado sem ação do
-  usuário e a sugestão pode ser corrigida.
+- **EXIF**: data/hora e GPS da foto são lidos no navegador apenas como sugestão. Data, período,
+  cidade e UF só preenchem campos vazios depois da confirmação explícita da pessoa
+  ([ADR 0016](0016-confirmacao-exif.md)); `local` nunca recebe valor do GPS. O GPS não é armazenado
+  sem ação do usuário e a sugestão pode ser corrigida.
 - **Sugestão de espécie é uma porta plugável** (`IReconhecedorDeEspecie`):
   - `Manual` é o padrão e devolve “confirme manualmente”, sem inventar;
   - `Gemini` é opcional via `Vision__Provider`, `Vision__ApiKey` e `Vision__Model`;
