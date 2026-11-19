@@ -174,6 +174,10 @@
     if (input) input.removeAttribute("aria-invalid");
   }
 
+  function captureAdminEvent(event, properties) {
+    window.posthog?.capture(event, properties);
+  }
+
   function toast(message, variant) {
     const node = document.createElement("div");
     node.className = "toast" + (variant === "success" ? " is-success" : "");
@@ -303,6 +307,7 @@
       token = data.token;
       sessionStorage.setItem(TOKEN_KEY, token);
       currentUser = data.user;
+      captureAdminEvent("admin_login_succeeded");
       $("#login-form").reset();
       await enterApp();
     } catch (error) {
@@ -609,6 +614,7 @@
       renderSectionNav();
       selectSection(state.activeSection, false);
       loadStats();
+      captureAdminEvent("admin_content_saved");
       toast("Conteúdo salvo com sucesso.", "success");
     } catch (error) {
       toast("Falha ao salvar. Tente novamente.");
@@ -827,6 +833,7 @@
     if (response.ok) {
       await loadMessages();
       await loadStats();
+      captureAdminEvent("admin_message_status_updated", { status: status });
       toast(successMessage, "success");
     }
   }
@@ -837,6 +844,7 @@
       state.selectedMessageId = null;
       await loadMessages();
       await loadStats();
+      captureAdminEvent("admin_message_deleted");
       toast("Mensagem excluída.", "success");
     }
   }
@@ -963,6 +971,7 @@
       const status = $("#pw-status");
       if (status) status.hidden = false;
       $("#pw-status-text").textContent = "Senha alterada agora. Use a nova senha no próximo acesso.";
+      captureAdminEvent("admin_password_changed");
       toast("Senha alterada com sucesso.", "success");
       $("#pw-current").focus();
     } catch (error) {
@@ -1188,6 +1197,7 @@
         toast(error.error || "Não foi possível enfileirar a ação.");
         return false;
       }
+      captureAdminEvent("admin_career_action_queued", { action_type: type });
       toast("Ação enfileirada. O Mac aplica no próximo sync.", "success");
       await loadCareerOps();
       return true;

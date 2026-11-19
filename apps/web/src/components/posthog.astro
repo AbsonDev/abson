@@ -1,0 +1,60 @@
+---
+const apiKey = import.meta.env.PUBLIC_POSTHOG_PROJECT_TOKEN;
+const apiHost = import.meta.env.PUBLIC_POSTHOG_HOST;
+const isDev = import.meta.env.DEV;
+---
+
+<script is:inline define:vars={{ apiKey, apiHost, isDev }}>
+  if (!apiKey) {
+    if (isDev) {
+      throw new Error(
+        "PUBLIC_POSTHOG_PROJECT_TOKEN variable required by PostHog is missing or un-configured, this causes events to be silently missed. This error stops appearing once PUBLIC_POSTHOG_PROJECT_TOKEN is configured",
+      );
+    }
+  } else if (!apiHost) {
+    if (isDev) {
+      throw new Error(
+        "PUBLIC_POSTHOG_HOST variable required by PostHog is missing or un-configured, this causes events to be silently missed. This error stops appearing once PUBLIC_POSTHOG_HOST is configured",
+      );
+    }
+  } else {
+    const posthog = (window.posthog = window.posthog || []);
+    const methods = [
+      "capture",
+      "identify",
+      "alias",
+      "reset",
+      "set_config",
+      "register",
+      "unregister",
+      "isFeatureEnabled",
+      "getFeatureFlag",
+      "onFeatureFlags",
+    ];
+
+    methods.forEach((method) => {
+      posthog[method] = (...args) => posthog.push([method, ...args]);
+    });
+    posthog.init = (key, options) => posthog._i.push([key, options]);
+    posthog._i = posthog._i || [];
+
+    const script = document.createElement("script");
+    script.async = true;
+    script.src = `${apiHost}/static/array.js`;
+    document.head.appendChild(script);
+
+    posthog.init(apiKey, {
+      api_host: apiHost,
+      defaults: "2025-05-24",
+      capture_exceptions: {
+        capture_unhandled_errors: true,
+        capture_unhandled_rejections: true,
+        capture_console_errors: false,
+      },
+      logs: {
+        serviceName: "abson-web",
+        environment: isDev ? "development" : "production",
+      },
+    });
+  }
+</script>

@@ -641,6 +641,11 @@
     detail.addEventListener("toggle", function () {
       syncCaseLabels();
       requestScrollSync();
+      if (detail.open) {
+        window.posthog?.capture("case_study_opened", {
+          case_study: detail.id
+        });
+      }
     });
   });
 
@@ -893,6 +898,13 @@
     });
   });
 
+  function logContactSubmission(level, message, attributes) {
+    var logger = window.posthog?.logger;
+    if (logger && typeof logger[level] === "function") {
+      logger[level](message, attributes);
+    }
+  }
+
   form.addEventListener("submit", function (event) {
     event.preventDefault();
     var invalid = controls.filter(function (field) {
@@ -942,6 +954,13 @@
         return response.json();
       })
       .then(function () {
+        window.posthog?.capture("contact_form_submitted", {
+          subject_category: subjectValue
+        });
+        logContactSubmission("info", "contact form delivered", {
+          event: "contact_form_submitted",
+          subject_category: subjectValue,
+        });
         summary.hidden = true;
         form.reset();
         controls.forEach(function (field) {
@@ -952,6 +971,9 @@
         statusTitle.focus();
       })
       .catch(function () {
+        logContactSubmission("warn", "contact form delivery failed", {
+          event: "contact_form_submission_failed",
+        });
         summaryList.textContent = "";
         var item = document.createElement("li");
         item.textContent = t("form.sendError");
@@ -1078,7 +1100,19 @@
   if (copyButton) {
     copyButton.addEventListener("click", function () {
       var value = copyButton.getAttribute("data-copy-value") || "";
-      copyText(value, reportCopy);
+      copyText(value, function (copied) {
+        reportCopy(copied);
+        if (copied) {
+          window.posthog?.capture("contact_email_copied");
+        }
+      });
+    });
+  }
+
+  var cvDownload = document.querySelector(".btn-download");
+  if (cvDownload) {
+    cvDownload.addEventListener("click", function () {
+      window.posthog?.capture("cv_downloaded");
     });
   }
 
