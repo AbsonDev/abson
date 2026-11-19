@@ -141,7 +141,7 @@ Hoje     Diário     [Registrar]     Mapa     Aprender
 
 - “Hoje” leva a `/condicoes`.
 - “Mapa” e “Aprender” são públicos.
-- “Registrar” leva ao login com retorno.
+- “Registrar” abre /registrar com o formulário ativo; a conta só é pedida ao salvar.
 - Home anônima continua sendo a página de venda, mas com busca de condições no hero.
 
 ### Rotas e redirecionamentos

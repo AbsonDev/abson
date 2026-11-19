@@ -25,7 +25,9 @@ usar apenas fontes gratuitas e nunca apresentar aproximação como dado oficial.
 - A **janela de pesca** é uma heurística explicável (solunar + maré + vento + chuva + luz do dia +
   pressão), com nota 1–5 e motivos. Não é um modelo treinado nem uma promessa.
 - **Cache em memória** de 20 minutos por coordenada arredondada. Sem chave de API.
-- **`/condicoes` é pública**. Salvar local, comparação e preenchimento automático exigem conta.
+- **`/condicoes` é pública**. Salvar local e comparação exigem conta. O preenchimento automático e o
+  rascunho local funcionam sem conta; a conta só é pedida ao salvar (revisado pela
+  [ADR 0014](0014-registro-anonimo.md)).
 - O **registro é pré-preenchido** com local, data, período, maré, lua e clima a partir do link de
   condições.
 - A **comparação com o histórico** usa lua, maré, clima e período. Exige pelo menos 3 pescarias com

@@ -443,7 +443,7 @@ tipos do Astro. Cobrem:
 - fallback manual da sugestão de espécie;
 - resolução da versão exposta em `/health`.
 
-O fluxo completo também é validado com Playwright: **61 testes mockados** (UI e estados) e
+O fluxo completo também é validado com Playwright: **129 testes mockados** (UI e estados) e
 **6 testes com backend real** para a migração de identidade. Os reais rodam com SQLite, chaves e
 outbox temporários:
 
@@ -475,7 +475,7 @@ código de mudança de documentação e executa:
 
 - `api`: restore locked, `dotnet format --verify-no-changes`, build `-warnaserror`, os 326 testes
   xUnit e a regeneração/comparação de `docs/api/openapi.json`.
-- `web`: `npm ci`, `astro check`, `npm run build` e `npm run test:e2e` (61 testes Playwright
+- `web`: `npm ci`, `astro check`, `npm run build` e `npm run test:e2e` (129 testes Playwright
   mockados).
 - `docs`: `markdownlint-cli2` e checagem de links (`lychee`), em PR de código ou documentação.
 - `docker`: build das imagens da API e do web sem push (em PR e `workflow_dispatch`).

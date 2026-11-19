@@ -1,6 +1,6 @@
 # Decisões arquiteturais (ADRs)
 
-Uma ADR por decisão relevante. Nova decisão entra como `0014-<slug>.md` e
+Uma ADR por decisão relevante. Nova decisão entra como `0015-<slug>.md` e
 ganha linha nesta tabela.
 
 | ADR | Decisão | Status |
@@ -18,3 +18,4 @@ ganha linha nesta tabela.
 | [0011](0011-mapa-privado.md) | Mapa privado e pontos do pescador | aceito |
 | [0012](0012-ferramentas-exif-e-visao.md) | Ferramentas, EXIF e sugestão de espécie | aceito |
 | [0013](0013-identity-completa.md) | Identidade completa com ASP.NET Core Identity | aceito |
+| [0014](0014-registro-anonimo.md) | Registro anônimo: capturar primeiro, conta depois | aceito |
