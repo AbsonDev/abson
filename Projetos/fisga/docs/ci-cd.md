@@ -17,7 +17,7 @@ convenções de branch, labels, campos do quadro e checklist de merge, está em
 PR
 └── fisga-pipeline
     ├── changes   (separa mudança de código de mudança de documentação)
-    ├── api       (restore locked + format + build + 250 testes)
+    ├── api       (restore locked + format + build + 326 testes)
     ├── web       (npm ci + astro check + build + 61 Playwright mockados)
     ├── docs      (markdownlint + links, em PR de código ou de documentação)
     ├── docker    (build das imagens sem push, em PR e workflow_dispatch)
@@ -93,7 +93,7 @@ O filtro separa código de documentação:
 - `dotnet restore Fisga.slnx --locked-mode`
 - `dotnet format Fisga.slnx --verify-no-changes --no-restore`
 - `dotnet build Fisga.slnx -c Release --no-restore -warnaserror`
-- `dotnet test Fisga.slnx -c Release --no-build` (250 testes)
+- `dotnet test Fisga.slnx -c Release --no-build` (326 testes)
 - `./scripts/gerar-openapi.sh` (regenera `docs/api/openapi.json` com SQLite temporário, ambiente
   Development e Sentry desligado)
 - `git diff --exit-code -- docs/api/openapi.json` (contrato desatualizado falha o job com a instrução

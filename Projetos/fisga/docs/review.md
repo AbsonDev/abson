@@ -33,7 +33,7 @@ dos bugs conhecidos; a camada serve para o humano gastar atenção no que só hu
 
 | Camada | Ferramenta | Status | Bloqueia? | Custo |
 | --- | --- | --- | --- | --- |
-| CI | `gate` (build, format, 250 testes, `astro check`, Playwright) | implementado | sim, único required check | R$ 0 |
+| CI | `gate` (build, format, 326 testes, `astro check`, Playwright) | implementado | sim, único required check | R$ 0 |
 | Dependências | Dependabot | implementado | não (propõe PRs) | R$ 0 |
 | Supply chain | `dependency-review-action@v5` | implementado, advisory | sim, quando promovido | R$ 0 |
 | Segurança estática | CodeQL (`csharp`, `javascript-typescript`, `actions`) | implementado, advisory | sim, via regra `code_scanning` | R$ 0 (repo público) |
@@ -96,7 +96,7 @@ estão em [github-workflow.md](./github-workflow.md); esta seção cobre só o j
 
 - **Quando roda:** todo PR e todo push em `main`.
 - **Onde:** `.github/workflows/fisga-pipeline.yml`.
-- **O que valida:** restore locked, `dotnet format --verify-no-changes`, build `-warnaserror`, 250
+- **O que valida:** restore locked, `dotnet format --verify-no-changes`, build `-warnaserror`, 326
   testes, `npm ci`, `astro check`, build, 61 Playwright mockados, build das imagens.
 - **Como ler:** o job `gate` agrega; um job `failure`/`cancelled` derruba o gate.
 - **Reexecutar:** push novo no PR, ou `gh run rerun <run-id> --repo AbsonDev/abson`.
@@ -198,7 +198,7 @@ env:
   reasoning por mais de 10 minutos e estourar o timeout do LiteLLM. O próprio PR-Agent documenta
   esse comportamento e recomenda desligar o reasoning ou trocar de modelo.
 - **Guardrails:** `restricted_mode = true` (não empurra código), `response_language = pt-BR`,
-  `num_max_findings = 6`, `require_tests_review = false` (o gate já roda 250 testes).
+  `num_max_findings = 6`, `require_tests_review = false` (o gate já roda 326 testes).
 - **Comandos:** `/review`, `/describe`, `/ask`, `/improve`, com gate de `author_association` em
   `issue_comment`.
 - **Como ler:** comentário do bot com achados numerados. `/ask <pergunta>` responde no thread.

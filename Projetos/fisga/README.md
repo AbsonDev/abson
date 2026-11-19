@@ -431,7 +431,7 @@ npm run check && npm run build
 npx playwright test
 ```
 
-Atualmente: **250 testes de backend** (36 de domínio + 48 de aplicação + 166 de API) e checagem de
+Atualmente: **326 testes de backend** (36 de domínio + 54 de aplicação + 236 de API) e checagem de
 tipos do Astro. Cobrem:
 
 - criação/edição de pescaria, IDs de captura, validações e isolamento entre usuários;
@@ -470,7 +470,7 @@ npm run build   # astro build + pagefind + precache
 O Fisga tem dois workflows no GitHub Actions: `fisga-pipeline.yml` (CI) e `fisga-deploy.yml` (CD).
 O CI roda em todo PR e em push para `main`, detecta mudanças em `Projetos/fisga/**` e executa:
 
-- `api`: restore locked, `dotnet format --verify-no-changes`, build `-warnaserror` e os 250 testes
+- `api`: restore locked, `dotnet format --verify-no-changes`, build `-warnaserror` e os 326 testes
   xUnit.
 - `web`: `npm ci`, `astro check`, `npm run build` e `npm run test:e2e` (61 testes Playwright
   mockados).
