@@ -56,7 +56,7 @@ PR aberto ou atualizado
 ├── codeql (3 linguagens) ........ bloqueia alerta high+ via ruleset
 ├── reviewdog .................... advisory: linter inline
 ├── pr-review (PR-Agent) ......... advisory: julgamento do diff
-└── fisga-docs-ai ................ advisory: drift de documentação (comentário único)
+├── fisga-docs-ai ................ advisory: drift de documentação (comentário único)
         │
         ├── humano revisa e decide
         └── /oc sob demanda ...... explica, corrige, implementa (implementado)
