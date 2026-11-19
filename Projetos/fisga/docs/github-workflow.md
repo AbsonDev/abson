@@ -589,8 +589,8 @@ como falha de processo. Em qualquer caso, abra o thread, responda e corrija o pr
 
 ## Pendências conhecidas (Fase B)
 
-- ~~Criar o secret `FISGA_PROJECT_TOKEN`~~ — resolvido em 19/11/2026: criado via `gh auth token` e
-  validado no merge do PR #39. Migrar para token fine-grained só de Projects (o atual é OAuth amplo).
+- ~~Criar o secret `FISGA_PROJECT_TOKEN`~~ — resolvido em 19/11/2026: criado e validado no merge do
+  PR #39. Migrar para token fine-grained só de Projects (o atual é OAuth amplo).
 - Ligar o deploy ao quadro: hoje `Done` = mergeado; mover para `Done` só depois de `/health` no SHA
   mergeado é automação da Fase B.
 - Fechar as lacunas do sync: PR fechado sem merge, PR de fork e Status do item da issue após o merge.
