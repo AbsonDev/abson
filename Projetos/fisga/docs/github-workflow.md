@@ -4,11 +4,11 @@ Runbook do caminho que vai do achado ao código em produção no Fisga: draft, i
 revisão, merge, deploy e `Done`. As camadas de CI e CD estão em [ci-cd.md](./ci-cd.md); o
 julgamento do diff está em [review.md](./review.md). Aqui está o processo que liga os dois.
 
-**Status em 18/11/2026:** templates de issue/PR e label `ux` criados; script e workflow
-`project-sync` implementados; o ruleset `main-protection` passou a **exigir resolução de threads**
-em 18/11/2026. O deploy continua exclusivamente no `fisga-deploy`. **Pré-requisito manual:** o
-secret `FISGA_PROJECT_TOKEN` precisa existir no repositório com escopo `project`; em 18/11/2026 ele
-ainda não estava configurado e, sem ele, o job `project-sync` falha.
+**Status em 19/11/2026:** templates de issue/PR e label `ux` criados; script e workflow
+`project-sync` implementados e mesclados no PR #39 (`a6ca541`); o ruleset `main-protection` passou a
+**exigir resolução de threads** em 18/11/2026. O secret `FISGA_PROJECT_TOKEN` foi criado com escopo
+`project` e validado pelo `project-sync` disparado no merge (`44442041826`). O deploy continua
+exclusivamente no `fisga-deploy`.
 
 ## Princípio
 
@@ -589,8 +589,8 @@ como falha de processo. Em qualquer caso, abra o thread, responda e corrija o pr
 
 ## Pendências conhecidas (Fase B)
 
-- Criar o secret `FISGA_PROJECT_TOKEN` no repositório (pré-requisito manual, ainda pendente em
-  18/11/2026).
+- ~~Criar o secret `FISGA_PROJECT_TOKEN`~~ — resolvido em 19/11/2026: criado e validado no merge do
+  PR #39. Migrar para token fine-grained só de Projects (o atual é OAuth amplo).
 - Ligar o deploy ao quadro: hoje `Done` = mergeado; mover para `Done` só depois de `/health` no SHA
   mergeado é automação da Fase B.
 - Fechar as lacunas do sync: PR fechado sem merge, PR de fork e Status do item da issue após o merge.
