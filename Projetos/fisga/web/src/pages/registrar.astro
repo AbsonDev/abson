@@ -40,6 +40,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
 
     <form id="pescaria-form" class="calc-form" novalidate>
       <div id="erro-form" class="erro-caixa" role="alert"></div>
+      <div id="rascunho-indicador" class="rascunho-indicador" role="status"></div>
 
       <nav class="registro-passos" aria-label="Etapas do registro">
         <button type="button" data-etapa-botao="1" aria-current="step">1 A pescaria</button>
@@ -333,6 +334,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
     const contador = document.getElementById('contador-capturas');
     const botaoSalvar = document.getElementById('btn-salvar');
     const erroFormulario = document.getElementById('erro-form');
+    const indicadorRascunho = document.getElementById('rascunho-indicador');
     const acessoRegistrar = document.getElementById('acesso-registrar');
     const chaveRascunho = CHAVE_RASCUNHO;
     const especieParam = new URLSearchParams(window.location.search).get('especie');
@@ -340,6 +342,8 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
     let uploadsPendentes = 0;
     let autenticado = false;
     let exifAplicado = false;
+    let capturasTocadas = false;
+    let descartarRascunho = false;
 
     const reais = (valor) =>
       new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(Number(valor || 0));
@@ -427,6 +431,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
 
         thumb.addEventListener('click', (evento) => {
           if (evento.target.closest('.remover-foto')) return;
+          capturasTocadas = true;
           linha.dataset.fotoCapa = url;
           renderizarFotos(linha);
           agendarRascunho();
@@ -434,6 +439,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
 
         thumb.querySelector('.remover-foto').addEventListener('click', (evento) => {
           evento.stopPropagation();
+          capturasTocadas = true;
           const restantes = fotosDaLinha(linha).filter((foto) => foto !== url);
           definirFotos(linha, restantes, capa === url ? (restantes[0] || '') : capa);
           agendarRascunho();
@@ -478,6 +484,10 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       linha.querySelector('.captura-comprimento').value = dados.comprimentoCm ? reais(dados.comprimentoCm) : '';
       linha.querySelector('.captura-isca').value = dados.isca || '';
       linha.querySelector('.captura-solto-check').checked = Boolean(dados.solto);
+      linha.querySelectorAll('input').forEach((campo) => {
+        campo.addEventListener('input', () => { capturasTocadas = true; });
+        campo.addEventListener('change', () => { capturasTocadas = true; });
+      });
 
       const inputArquivo = linha.querySelector('input[type="file"]');
       inputArquivo.addEventListener('change', async () => {
@@ -522,6 +532,8 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
             });
 
             if (resposta.status === 401) {
+              // A navegação dispensa o rascunho: o flush de saída não pode recriá-lo.
+              descartarRascunho = true;
               await encerrarSessaoExpirada(urlDeRetorno());
               return;
             }
@@ -547,6 +559,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       });
 
       linha.querySelector('.remover').addEventListener('click', () => {
+        capturasTocadas = true;
         linha.remove();
         atualizarContador();
         agendarRascunho();
@@ -732,7 +745,11 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
           fotos: fotosDaLinha(linha),
           observacao: null
         }))
-        .filter((captura) => captura.especie || captura.pesoKg || captura.comprimentoCm);
+        .filter((captura) =>
+          captura.especie || captura.pesoKg || captura.comprimentoCm
+          || captura.isca || captura.solto || captura.fotoUrl
+          || captura.fotos.length || captura.observacao
+        );
 
       return {
         local: valor('local').trim(),
@@ -882,9 +899,28 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       erroFormulario.classList.toggle('visivel', Boolean(mensagem));
     }
 
+    function atualizarIndicadorRascunho() {
+      if (!indicadorRascunho) return;
+      let atualizadoEm = null;
+      try {
+        atualizadoEm = JSON.parse(localStorage.getItem(chaveRascunho) || 'null')?.atualizadoEm;
+      } catch {
+        // Sem rascunho legível: o indicador fica vazio.
+      }
+      const data = atualizadoEm ? new Date(atualizadoEm) : null;
+      if (!data || Number.isNaN(data.getTime())) {
+        indicadorRascunho.textContent = '';
+        return;
+      }
+      const hora = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' }).format(data);
+      indicadorRascunho.textContent = `✓ Rascunho salvo neste aparelho · ${hora}`;
+    }
+
     function salvarRascunho() {
+      if (descartarRascunho) return;
       try {
         localStorage.setItem(chaveRascunho, JSON.stringify({ entrada: coletar(), atualizadoEm: new Date().toISOString() }));
+        atualizarIndicadorRascunho();
       } catch {
         // Sem localStorage: o formulário continua funcionando.
       }
@@ -895,6 +931,14 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       window.clearTimeout(timerRascunho);
       timerRascunho = window.setTimeout(salvarRascunho, 500);
     }
+
+    function flushRascunho() {
+      window.clearTimeout(timerRascunho);
+      salvarRascunho();
+    }
+
+    window.addEventListener('pagehide', flushRascunho);
+    window.addEventListener('beforeunload', flushRascunho);
 
     function restaurarRascunho() {
       try {
@@ -949,16 +993,17 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
     formulario.addEventListener('change', atualizarDefeso);
 
     document.getElementById('adicionar-captura').addEventListener('click', () => {
+      capturasTocadas = true;
       criarLinhaCaptura();
       listaCapturas.lastElementChild?.querySelector('.captura-especie')?.focus();
     });
 
     formulario.addEventListener('input', () => {
-      if (autenticado) agendarRascunho();
+      agendarRascunho();
     });
 
     formulario.addEventListener('change', () => {
-      if (autenticado) agendarRascunho();
+      agendarRascunho();
     });
 
     let etapaAtual = 1;
@@ -1108,7 +1153,9 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         if (resposta.status === 401) {
           // Sessão expirada: aqui sim o rascunho privado é apagado. A navegação
           // explícita para /registrar sem sessão (200 anônimo) mantém o rascunho
-          // para o pescador continuar depois de entrar.
+          // para o pescador continuar depois de entrar. O flush de saída não
+          // pode recriar o rascunho apagado pela sessão expirada.
+          descartarRascunho = true;
           await encerrarSessaoExpirada(urlDeRetorno());
           return;
         }
@@ -1118,8 +1165,11 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
 
         const shareToken = editando ? estadoEdicao.shareToken : dados.shareToken;
 
+        descartarRascunho = true;
+        window.clearTimeout(timerRascunho);
         try {
           localStorage.removeItem(chaveRascunho);
+          atualizarIndicadorRascunho();
         } catch {
           // A pescaria já está salva no servidor.
         }
@@ -1136,6 +1186,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       try {
         const resposta = await fetch(`${API}/api/auth/me`, { credentials: 'include' });
         if (resposta.status === 401) {
+          descartarRascunho = true;
           await encerrarSessaoExpirada(urlDeRetorno());
           return;
         }
@@ -1159,6 +1210,14 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         // limpo, mas o rascunho não salvo é preservado para continuar depois.
         // Só o logout explícito apaga o rascunho.
         await limparCachePrivado({ preservarRascunho: true });
+        const rascunho = restaurarRascunho();
+        if (rascunho) {
+          exifAplicado = true;
+          preencher(rascunho);
+          atualizarIndicadorRascunho();
+          aplicarEspecieDaWiki();
+          return;
+        }
         const aplicouCondicoes = await aplicarCondicoesDaUrl();
         if (!aplicouCondicoes) iniciarFormularioVazio();
         aplicarEspecieDaWiki();
@@ -1171,6 +1230,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       if (rascunho) {
         exifAplicado = true;
         preencher(rascunho);
+        atualizarIndicadorRascunho();
         aplicarEspecieDaWiki();
         return;
       }
@@ -1183,6 +1243,17 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
 </Layout>
 
 <style>
+  .rascunho-indicador {
+    margin: -6px 0 12px;
+    color: var(--tinta-suave);
+    font-size: 0.72rem;
+    line-height: 1.4;
+  }
+
+  .rascunho-indicador:empty {
+    display: none;
+  }
+
   .sugestoes-especie {
     display: flex;
     flex-wrap: wrap;
