@@ -197,7 +197,8 @@ Regras de uso:
 - PR-Agent, `fisga-docs-ai` e `/oc` são advisory. Não existe required check de LLM; o único check
   obrigatório é `gate`. O `fisga-docs-ai` comenta o drift em um comentário único e roda
   automaticamente em PR não draft de mesmo repo, sem autor bot.
-- PR de fork não recebe secrets no evento `pull_request`: o review automático do PR-Agent é pulado.
+- PR de fork não recebe secrets no evento `pull_request`: os reviews automáticos (PR-Agent e
+  `fisga-docs-ai`) são pulados.
 - O `/oc` não roda no evento `pull_request`: ele escuta `issue_comment` (comentário de conversa) e
   `pull_request_review_comment` (resposta em linha do diff). Em `issue_comment`, o workflow e o
   checkout vêm da default branch, e o job tem `contents: write` e `OPENCODE_API_KEY`. Em

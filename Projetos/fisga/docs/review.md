@@ -73,8 +73,10 @@ Caminhos especiais:
   [CodeQL](#codeql). O `openapi.json` é a única exceção: conta como código e dispara o job `api`.
 - **PR de fork:** `pull_request` não recebe secrets e o `GITHUB_TOKEN` é read-only. As camadas que
   dependem de chave (PR-Agent, `fisga-docs-ai`, `/oc`) são puladas; CodeQL e `gate` rodam.
-- **PR de bot (Dependabot, Sentry):** os exemplos usam `github.event.sender.type != 'Bot'` para não
-  gastar franquia e não duplicar comentário.
+- **PR de bot (Dependabot, Sentry):** as camadas automáticas ignoram bot pelo tipo do autor
+  (`github.event.pull_request.user.type != 'Bot'` no `fisga-docs-ai`) ou do sender
+  (`github.event.sender.type != 'Bot'` no PR-Agent), para não gastar franquia e não duplicar
+  comentário.
 
 ## O que bloqueia e o que é advisory
 
@@ -357,7 +359,8 @@ Decisão:
 | 20–50% | ajustar `extra_instructions`, reduzir escopo |
 | < 20% | remover a camada (deletar o workflow) |
 
-**Nunca promova PR-Agent ou `/oc` a required check.** A decisão de merge continua humana.
+**Nunca promova PR-Agent, `fisga-docs-ai` ou `/oc` a required check.** A decisão de merge continua
+humana.
 
 ## Rollback e pendências
 
@@ -368,7 +371,7 @@ Rollback é deletar o workflow. Nenhuma camada exige mudança no `fisga-pipeline
 | dependency-review | deletar o workflow; remover required check do ruleset |
 | CodeQL | deletar o workflow; remover a regra `code_scanning`; alertas ficam no histórico |
 | reviewdog | deletar o workflow |
-| PR-Agent | deletar `.github/workflows/pr-review.yml`; revogar a chave se não for usar no `/oc` |
+| PR-Agent | deletar `.github/workflows/pr-review.yml`; revogar a chave só se não for usar no `fisga-docs-ai` nem no `/oc` |
 | `fisga-docs-ai` | deletar `.github/workflows/fisga-docs-ai.yml`; não mexe em `gate.needs` |
 | `/oc` | deletar o workflow |
 
