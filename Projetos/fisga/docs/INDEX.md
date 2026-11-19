@@ -33,6 +33,7 @@ Conteúdo de produto (espécies, técnicas, locais) não fica aqui.
 - [Spec — Níveis de detalhe do local](superpowers/specs/2026-11-19-niveis-de-detalhe-do-local-design.md)
 - [Plano — Níveis de detalhe do local](superpowers/plans/2026-11-19-niveis-de-detalhe-do-local.md)
 - [Spec — Confirmação explícita dos dados da foto](superpowers/specs/2026-11-19-exif-confirmacao-design.md)
+- [Plano — Confirmação explícita dos dados da foto](superpowers/plans/2026-11-19-exif-confirmacao.md)
 
 ## Referências
 

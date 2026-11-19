@@ -104,7 +104,7 @@ estão em [github-workflow.md](./github-workflow.md); esta seção cobre só o j
 - **Quando roda:** todo PR e todo push em `main`.
 - **Onde:** `.github/workflows/fisga-pipeline.yml`.
 - **O que valida:** restore locked, `dotnet format --verify-no-changes`, build `-warnaserror`, 348
-  testes, `npm ci`, `astro check`, build, 138 Playwright mockados, build das imagens, job `docs`
+  testes, `npm ci`, `astro check`, build, 150 Playwright mockados, build das imagens, job `docs`
   (markdownlint + links, só em PR e `workflow_dispatch`, não no push) e regeneração/comparação de
   `docs/api/openapi.json` no job `api`.
 - **Como ler:** o job `gate` agrega; um job `failure`/`cancelled` derruba o gate.

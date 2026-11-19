@@ -398,5 +398,5 @@ isolamento entre usuários, exclusão, exportação, locais salvos, agregação 
 janela, comparação com o histórico e pontos privados. `Fisga.Api.Tests` cobre a API (identidade,
 consentimento, senha, sessões, Google e outbox) e a resolução da versão exposta em `/health`. A
 experiência completa (login, onboarding, registro, foto, troféu, PDF, conta, condições, locais, mapa
-e logout) é validada com Playwright: 138 testes mockados no CI e 6 com backend real via
+e logout) é validada com Playwright: 150 testes mockados no CI e 6 com backend real via
 `scripts/e2e-real.sh`.
