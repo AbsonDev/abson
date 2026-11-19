@@ -56,9 +56,13 @@ jobs:
             exit 1
           fi
           echo "numero=$NUMERO" >> "$GITHUB_OUTPUT"
-          head=$(gh pr view "$NUMERO" --repo "$GITHUB_REPOSITORY" \
-            --json headRepositoryOwner,headRepository \
-            --jq '"\(.headRepositoryOwner.login)/\(.headRepository.name)"')
+          # SHA imutável: a checagem de fork e o checkout precisam ver o mesmo código.
+          info=$(gh pr view "$NUMERO" --repo "$GITHUB_REPOSITORY" \
+            --json headRepositoryOwner,headRepository,headRefOid \
+            --jq '"\(.headRepositoryOwner.login)/\(.headRepository.name) \(.headRefOid)"')
+          head=${info%% *}
+          sha=${info##* }
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
           if [ "$head" = "$GITHUB_REPOSITORY" ]; then
             echo "permitido=true" >> "$GITHUB_OUTPUT"
           else
@@ -67,13 +71,15 @@ jobs:
           fi
 
       - name: Checkout do PR
+        if: steps.pr.outputs.permitido != 'false'
         uses: actions/checkout@v7.0.1
         with:
-          ref: refs/pull/${{ steps.pr.outputs.numero }}/head
+          ref: ${{ steps.pr.outputs.sha }}
           fetch-depth: 0
           persist-credentials: false
 
       - name: Preparar diff
+        if: steps.pr.outputs.permitido != 'false'
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -98,6 +104,7 @@ jobs:
           fi
 
       - name: Preparar prompt
+        if: steps.pr.outputs.permitido != 'false'
         run: |
           cat > /tmp/prompt.txt <<'PROMPT'
           Você é o revisor de documentação de desenvolvimento do Fisga.
@@ -127,6 +134,7 @@ jobs:
           PROMPT
 
       - name: Instalar OpenCode
+        if: steps.pr.outputs.permitido != 'false'
         run: curl -fsSL https://opencode.ai/v2/install | bash -s -- --version 2.3.2
 
       - name: Analisar documentação
