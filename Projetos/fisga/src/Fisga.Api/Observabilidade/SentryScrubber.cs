@@ -71,12 +71,35 @@ public static partial class SentryScrubber
     public static SentryEvent? ScrubEvent(SentryEvent evento, SentryHint _)
     {
         evento.ServerName = null;
-        evento.User = null!;
+        evento.User = LimparUsuario(evento.User)!;
         LimparRequest(evento.Request);
         LimparMensagens(evento);
         LimparTags(evento);
         LimparExtras(evento);
         return evento;
+    }
+
+    /// <summary>
+    /// Mantém apenas o identificador opaco. O getter de User cria um objeto vazio
+    /// quando não há usuário; por isso devolvemos null sem Id para que o payload
+    /// omita a chave "user" (o setter aceita null).
+    /// </summary>
+    private static SentryUser? LimparUsuario(SentryUser? usuario)
+    {
+        if (usuario is null)
+        {
+            return null;
+        }
+
+        usuario.Email = null;
+        usuario.Username = null;
+        usuario.IpAddress = null;
+        if (usuario.Other is { } outros)
+        {
+            outros.Clear();
+        }
+
+        return string.IsNullOrWhiteSpace(usuario.Id) ? null : usuario;
     }
 
     /// <summary>
@@ -146,7 +169,7 @@ public static partial class SentryScrubber
 
     public static SentryTransaction? ScrubTransaction(SentryTransaction transacao, SentryHint _)
     {
-        transacao.User = null!;
+        transacao.User = LimparUsuario(transacao.User)!;
         LimparRequest(transacao.Request);
         return transacao;
     }

@@ -1,3 +1,5 @@
+using System.Text;
+using System.Text.Json;
 using Fisga.Api.Observabilidade;
 using Sentry;
 using Sentry.Protocol;
@@ -64,5 +66,84 @@ public sealed class SentryScrubberTests
 
         Assert.DoesNotContain("S%C3%A3o", texto);
         Assert.Contains("q=[Filtered]", texto);
+    }
+
+    [Fact]
+    public void ScrubEvent_preserva_id_e_remove_pii_do_usuario()
+    {
+        var evento = new SentryEvent
+        {
+            User = new SentryUser
+            {
+                Id = "usuario-123",
+                Email = "alguem@exemplo.com",
+                Username = "alguem",
+                IpAddress = "192.0.2.1",
+                Other = new Dictionary<string, string> { ["plano"] = "pro" }
+            }
+        };
+
+        var limpo = SentryScrubber.ScrubEvent(evento, new SentryHint());
+
+        Assert.Equal("usuario-123", limpo!.User!.Id);
+        Assert.Null(limpo.User.Email);
+        Assert.Null(limpo.User.Username);
+        Assert.Null(limpo.User.IpAddress);
+        Assert.Empty(limpo.User.Other);
+    }
+
+    [Fact]
+    public void ScrubEvent_mantem_sem_usuario_quando_anonimo()
+    {
+        var limpo = SentryScrubber.ScrubEvent(new SentryEvent(), new SentryHint());
+
+        // O getter rematerializa um SentryUser vazio; o que importa é o payload.
+        Assert.DoesNotContain("\"user\"", Serializar(limpo!));
+    }
+
+    [Fact]
+    public void ScrubTransaction_omite_usuario_quando_anonima()
+    {
+        var transacao = new SentryTransaction("GET /api/x", "http.server");
+
+        var limpa = SentryScrubber.ScrubTransaction(transacao, new SentryHint());
+
+        Assert.DoesNotContain("\"user\"", Serializar(limpa!));
+    }
+
+    [Fact]
+    public void ScrubTransaction_preserva_id_e_remove_pii_do_usuario()
+    {
+        var transacao = new SentryTransaction("GET /api/x", "http.server")
+        {
+            User = new SentryUser { Id = "usuario-456", Email = "alguem@exemplo.com" }
+        };
+
+        var limpa = SentryScrubber.ScrubTransaction(transacao, new SentryHint());
+
+        Assert.Equal("usuario-456", limpa!.User!.Id);
+        Assert.Null(limpa.User.Email);
+    }
+
+    private static string Serializar(SentryEvent evento)
+    {
+        using var stream = new MemoryStream();
+        using (var writer = new Utf8JsonWriter(stream))
+        {
+            evento.WriteTo(writer, null);
+        }
+
+        return Encoding.UTF8.GetString(stream.ToArray());
+    }
+
+    private static string Serializar(SentryTransaction transacao)
+    {
+        using var stream = new MemoryStream();
+        using (var writer = new Utf8JsonWriter(stream))
+        {
+            transacao.WriteTo(writer, null);
+        }
+
+        return Encoding.UTF8.GetString(stream.ToArray());
     }
 }
