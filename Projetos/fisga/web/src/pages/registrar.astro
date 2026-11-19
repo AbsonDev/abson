@@ -357,6 +357,8 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
     let exifAplicado = false;
     let capturasTocadas = false;
     const camposTocados = new Set();
+    let formularioHidratado = false;
+    let especiePrimeiraTocada = false;
     let suprimirMarcasTocadas = false;
     let descartarRascunho = false;
 
@@ -520,7 +522,13 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       linha.querySelector('.captura-solto-check').checked = Boolean(dados.solto);
       linha.querySelectorAll('input').forEach((campo) => {
         campo.addEventListener('input', () => {
-          if (!suprimirMarcasTocadas) capturasTocadas = true;
+          if (!suprimirMarcasTocadas) {
+            capturasTocadas = true;
+            if (campo.classList.contains('captura-especie')
+              && listaCapturas.querySelector('.linha-captura') === linha) {
+              especiePrimeiraTocada = true;
+            }
+          }
         });
         campo.addEventListener('change', () => {
           if (!suprimirMarcasTocadas) capturasTocadas = true;
@@ -842,6 +850,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
 
     function preencher(entrada, opcoes = {}) {
       if (!entrada) return;
+      formularioHidratado = true;
       const preservarTocados = opcoes.preservarTocados !== false;
       const definir = (id, valor) => {
         if (!preservarTocados || !camposTocados.has(id)) {
@@ -983,6 +992,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
     }
 
     function iniciarFormularioVazio() {
+      formularioHidratado = true;
       if (!camposTocados.has('data')) {
         document.getElementById('data').value = dataHojeLocal();
       }
@@ -990,7 +1000,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
     }
 
     function aplicarEspecieDaWiki() {
-      if (!especieParam) return;
+      if (!especieParam || especiePrimeiraTocada) return;
       const primeira = listaCapturas.querySelector('.captura-especie');
       if (primeira) {
         primeira.value = especieParam;
@@ -1028,6 +1038,8 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
 
     function salvarRascunho() {
       if (descartarRascunho) return;
+      // Antes da hidratação, um flush de saída gravaria um formulário vazio.
+      if (!formularioHidratado && camposTocados.size === 0 && !capturasTocadas) return;
       try {
         localStorage.setItem(chaveRascunho, JSON.stringify({ entrada: coletar(), atualizadoEm: new Date().toISOString() }));
         atualizarIndicadorRascunho();
@@ -1301,6 +1313,21 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       }
     });
 
+    // A leitura e a hidratação do rascunho acontecem antes de qualquer await:
+    // assim um flush de saída durante a inicialização nunca grava um form vazio.
+    let rascunhoInicial = null;
+    let falhaLeituraRascunho = false;
+    try {
+      rascunhoInicial = restaurarRascunho();
+    } catch {
+      falhaLeituraRascunho = true;
+    }
+    if (rascunhoInicial && !new URLSearchParams(window.location.search).get('editar')) {
+      preencher(rascunhoInicial, { preservarTocados: true });
+      exifAplicado = true;
+      atualizarIndicadorRascunho();
+    }
+
     (async function iniciar() {
       try {
         const resposta = await fetch(`${API}/api/auth/me`, { credentials: 'include' });
@@ -1337,16 +1364,14 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         await limparCachePrivado({ preservarRascunho: true });
       }
 
-      let rascunho = null;
-      try {
-        rascunho = restaurarRascunho();
-      } catch {
+      if (falhaLeituraRascunho) {
         mostrarErro('Não conseguimos recuperar o rascunho. Você pode continuar preenchendo.');
         iniciarFormularioVazio();
         aplicarEspecieDaWiki();
         return;
       }
 
+      const rascunho = rascunhoInicial;
       if (rascunho) {
         exifAplicado = true;
         atualizarIndicadorRascunho();

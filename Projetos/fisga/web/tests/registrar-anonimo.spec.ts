@@ -230,6 +230,66 @@ test('data digitada antes do auth não é sobrescrita na inicialização vazia',
   await expect(page.locator('#data')).toHaveValue('2001-02-03');
 });
 
+test('recarregar durante a inicialização não apaga o rascunho salvo', async ({ page }) => {
+  const localDistintivo = 'Praia do Rio Novo — rascunho protegido';
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem('fisga:rascunho-semeado')) return;
+    localStorage.setItem('fisga:rascunho:v1', JSON.stringify({
+      entrada: {
+        local: 'Praia do Rio Novo — rascunho protegido', cidade: 'Ilhabela', estado: 'SP',
+        ambiente: 'Mar', data: '2026-11-19', periodo: 'Manha', mare: 'Vazante',
+        lua: 'Minguante', clima: 'Nublado', clarezaDaAgua: 'Clara',
+        privacidadeDoLocal: 'Exato', observacoes: null, pescador: null,
+        capturas: [{ especie: 'Robalo', pesoKg: 2 }]
+      },
+      atualizadoEm: '2026-11-19T08:00:00Z'
+    }));
+    sessionStorage.setItem('fisga:rascunho-semeado', '1');
+  });
+  await mockAnonimoLento(page, 1500);
+  await page.goto(`${ORIGEM}/registrar`);
+  // Ainda dentro da janela assíncrona: não esperar valores que dependem da hidratação.
+  await page.waitForTimeout(150);
+  await page.reload();
+
+  const rascunho = await page.evaluate(() => JSON.parse(localStorage.getItem('fisga:rascunho:v1') || 'null'));
+  expect(rascunho?.entrada?.local).toBe(localDistintivo);
+  expect(rascunho?.entrada?.capturas).toHaveLength(1);
+  expect(rascunho?.entrada?.capturas?.[0]?.especie).toBe('Robalo');
+});
+
+test('espécie digitada antes do auth não é substituída pela wiki', async ({ page }) => {
+  const especieDigitada = 'Robalo digitado antes do auth';
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem('fisga:rascunho-semeado')) return;
+    localStorage.setItem('fisga:rascunho:v1', JSON.stringify({
+      entrada: {
+        local: 'Ilhabela', cidade: 'Ilhabela', estado: 'SP', ambiente: 'Mar',
+        data: '2026-11-19', periodo: 'Manha', mare: 'Vazante', lua: 'Minguante',
+        clima: 'Nublado', clarezaDaAgua: 'Clara', privacidadeDoLocal: 'Exato',
+        observacoes: null, pescador: null,
+        capturas: [{ especie: 'Robalo digitado antes do auth', pesoKg: 2 }]
+      },
+      atualizadoEm: '2026-11-19T08:00:00Z'
+    }));
+    sessionStorage.setItem('fisga:rascunho-semeado', '1');
+  });
+  await mockAnonimoLento(page, 1500);
+  await page.goto(`${ORIGEM}/registrar?especie=DaWiki`);
+  await page.locator('[data-etapa="3"]').evaluate((etapa) => etapa.removeAttribute('hidden'));
+
+  const primeira = page.locator('.captura-especie').first();
+  // Sem hidratação síncrona o teste cria a linha para poder digitar antes do auth.
+  if (await primeira.count() === 0) await page.locator('#adicionar-captura').click();
+  await primeira.fill(especieDigitada);
+  await expect(primeira).toHaveValue(especieDigitada);
+
+  await expect(page.locator('#acesso-registrar')).toBeVisible();
+  await page.waitForTimeout(200);
+  await expect(page.locator('.captura-especie').first()).toHaveValue(especieDigitada);
+  await expect(page.locator('.captura-especie')).toHaveCount(1);
+});
+
 test('foto anônima mostra nota inline e não redireciona', async ({ page }) => {
   await mockAnonimo(page);
   await page.goto(`${ORIGEM}/registrar`);
