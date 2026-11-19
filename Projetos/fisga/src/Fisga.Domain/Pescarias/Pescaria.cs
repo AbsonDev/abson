@@ -66,13 +66,15 @@ public sealed class Pescaria : AggregateRoot
     {
         PrivacidadeDoLocal.Exato => Local,
         PrivacidadeDoLocal.Trecho when !string.IsNullOrWhiteSpace(CorpoOuTrecho) => CorpoOuTrecho!,
-        PrivacidadeDoLocal.CorpoAgua when !string.IsNullOrWhiteSpace(CorpoOuTrecho) =>
-            CorpoOuTrecho!.Split(',')[0].Trim(),
+        PrivacidadeDoLocal.CorpoAgua when !string.IsNullOrWhiteSpace(CorpoAguaPublico) => CorpoAguaPublico!,
         PrivacidadeDoLocal.Cidade or PrivacidadeDoLocal.Trecho or PrivacidadeDoLocal.CorpoAgua
             when !string.IsNullOrWhiteSpace(Cidade) =>
             string.IsNullOrWhiteSpace(Estado) ? Cidade! : $"{Cidade} · {Estado}",
         _ => "Local não divulgado"
     };
+
+    private string? CorpoAguaPublico =>
+        string.IsNullOrWhiteSpace(CorpoOuTrecho) ? null : CorpoOuTrecho!.Split(',')[0].Trim();
 
     public string? CidadePublica =>
         PrivacidadeDoLocal == PrivacidadeDoLocal.Oculto ? null : Cidade;

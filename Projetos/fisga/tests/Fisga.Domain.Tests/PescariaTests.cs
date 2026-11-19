@@ -92,6 +92,34 @@ public sealed class PescariaTests
         }
     }
 
+    [Theory]
+    [InlineData(",", "Campinas", "SP", "Campinas · SP")]
+    [InlineData(", trecho centro", "Campinas", "SP", "Campinas · SP")]
+    [InlineData(", trecho centro", "Campinas", null, "Campinas")]
+    [InlineData(",", null, null, "Local não divulgado")]
+    public void Corpo_agua_com_primeiro_segmento_vazio_cai_para_cidade_ou_fica_sem_local(
+        string corpoOuTrecho, string? cidade, string? estado, string esperado)
+    {
+        var dados = Fabrica.Dados() with
+        {
+            PrivacidadeDoLocal = PrivacidadeDoLocal.CorpoAgua,
+            CorpoOuTrecho = corpoOuTrecho,
+            Cidade = cidade,
+            Estado = estado
+        };
+
+        Assert.Equal(esperado, Fabrica.Pescaria(dados).LocalPublico);
+    }
+
+    [Fact]
+    public void Pescaria_sem_privacidade_usa_cidade()
+    {
+        var pescaria = Fabrica.Pescaria(Fabrica.Dados());
+
+        Assert.Equal(PrivacidadeDoLocal.Cidade, pescaria.PrivacidadeDoLocal);
+        Assert.Equal("Campinas · SP", pescaria.LocalPublico);
+    }
+
     [Fact]
     public void Rejeita_corpo_ou_trecho_longo()
     {

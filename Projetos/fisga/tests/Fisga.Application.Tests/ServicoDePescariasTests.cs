@@ -198,6 +198,30 @@ public sealed class ServicoDePescariasTests
     }
 
     [Fact]
+    public async Task Edicao_preserva_corpo_ou_trecho_e_nao_rebaixa_para_cidade()
+    {
+        var repositorio = new PescariaRepositorioFake();
+        var servico = new ServicoDePescarias(repositorio, new RelogioFixo(Agora), new DispatcherFake());
+        var salva = await servico.CriarAsync(Entrada() with
+        {
+            PrivacidadeDoLocal = PrivacidadeDoLocal.CorpoAgua,
+            CorpoOuTrecho = "Rio Sergipe, trecho centro"
+        }, UsuarioId);
+
+        var doUsuario = await servico.ObterDoUsuarioAsync(salva.Id, UsuarioId);
+        Assert.Equal("Rio Sergipe, trecho centro", doUsuario.Entrada.CorpoOuTrecho);
+        Assert.Equal(PrivacidadeDoLocal.CorpoAgua, doUsuario.Entrada.PrivacidadeDoLocal);
+
+        await servico.AtualizarAsync(salva.Id, UsuarioId, doUsuario.Entrada);
+        var publica = await servico.ObterPublicoAsync(salva.ShareToken);
+
+        Assert.NotNull(publica);
+        Assert.Equal("Rio Sergipe", publica.Entrada.Local);
+        Assert.Equal("CorpoAgua", publica.PrivacidadeDoLocal);
+        Assert.Null(publica.Entrada.CorpoOuTrecho);
+    }
+
+    [Fact]
     public async Task Diario_de_outro_usuario_nao_vaza_pescarias()
     {
         var repositorio = new PescariaRepositorioFake();
