@@ -75,7 +75,10 @@ nunca são publicados.
 - **Várias capturas por pescaria**, cada uma com ID estável.
 - Espécie, peso, comprimento, isca, destino (solto/capturado), observação e **até 4 fotos por
   captura**, com escolha da capa.
-- Compressão de imagem no navegador (até 5 MB; JPG/PNG/WebP).
+- Compressão de imagem no navegador (até 5 MB; JPG/PNG/WebP e HEIC/HEIF quando o navegador
+  decodifica — sem decode, a tela orienta exportar em JPEG).
+- **Envio de fotos com progresso individual e retry**: cada foto tem o próprio estado; se uma
+  falhar, "Tentar de novo" reenvia só ela e as já enviadas não duplicam.
 - **Privacidade do local por pescaria**: exato, trecho, rio/lagoa, cidade/UF ou oculto — padrão
   cidade/UF. Vale para link público, troféu e PDF.
 - Edição preservando IDs das capturas; links de troféu não quebram.
@@ -446,7 +449,7 @@ tipos do Astro. Cobrem:
 - fallback manual da sugestão de espécie;
 - resolução da versão exposta em `/health`.
 
-O fluxo completo também é validado com Playwright: **150 testes mockados** (UI e estados) e
+O fluxo completo também é validado com Playwright: **173 testes mockados** (UI e estados) e
 **6 testes com backend real** para a migração de identidade. Os reais rodam com SQLite, chaves e
 outbox temporários:
 
@@ -478,7 +481,7 @@ código de mudança de documentação e executa:
 
 - `api`: restore locked, `dotnet format --verify-no-changes`, build `-warnaserror`, os 348 testes
   xUnit e a regeneração/comparação de `docs/api/openapi.json`.
-- `web`: `npm ci`, `astro check`, `npm run build` e `npm run test:e2e` (150 testes Playwright
+- `web`: `npm ci`, `astro check`, `npm run build` e `npm run test:e2e` (173 testes Playwright
   mockados).
 - `docs`: `markdownlint-cli2` e checagem de links (`lychee`), em PR de código ou documentação.
 - `docker`: build das imagens da API e do web sem push (em PR e `workflow_dispatch`).

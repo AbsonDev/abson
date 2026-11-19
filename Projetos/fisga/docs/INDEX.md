@@ -34,6 +34,10 @@ Conteúdo de produto (espécies, técnicas, locais) não fica aqui.
 - [Plano — Níveis de detalhe do local](superpowers/plans/2026-11-19-niveis-de-detalhe-do-local.md)
 - [Spec — Confirmação explícita dos dados da foto](superpowers/specs/2026-11-19-exif-confirmacao-design.md)
 - [Plano — Confirmação explícita dos dados da foto](superpowers/plans/2026-11-19-exif-confirmacao.md)
+- [Spec — Foco entre etapas do registrar](superpowers/specs/2026-11-19-foco-etapas-design.md)
+- [Plano — Foco entre etapas do registrar](superpowers/plans/2026-11-19-foco-etapas.md)
+- [Spec — Upload de fotos com progresso e retry](superpowers/specs/2026-11-19-upload-fotos-progresso-retry-design.md)
+- [Plano — Upload de fotos com progresso e retry](superpowers/plans/2026-11-19-upload-fotos-progresso-retry.md)
 
 ## Referências
 

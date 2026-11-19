@@ -88,7 +88,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         <div class="painel-cabecalho">
           <span class="passo-etiqueta">01</span>
           <div>
-            <h2 id="titulo-pescaria">A pescaria</h2>
+            <h2 id="titulo-pescaria" tabindex="-1"><span class="visually-hidden">Etapa 1 — </span>A pescaria</h2>
             <p>Onde, quando e em que ambiente você pescou.</p>
           </div>
         </div>
@@ -250,7 +250,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         <div class="painel-cabecalho">
           <span class="passo-etiqueta">02</span>
           <div>
-            <h2 id="titulo-condicoes">As condições</h2>
+            <h2 id="titulo-condicoes" tabindex="-1"><span class="visually-hidden">Etapa 2 — </span>As condições</h2>
             <p>O contexto que transforma uma captura em padrão.</p>
           </div>
         </div>
@@ -314,7 +314,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         <div class="painel-cabecalho">
           <span class="passo-etiqueta">03</span>
           <div>
-            <h2 id="titulo-capturas">As capturas</h2>
+            <h2 id="titulo-capturas" tabindex="-1"><span class="visually-hidden">Etapa 3 — </span>As capturas</h2>
             <p>Adicione cada peixe. Uma pescaria pode ter várias capturas.</p>
           </div>
         </div>
@@ -348,7 +348,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         <div class="painel-cabecalho">
           <span class="passo-etiqueta">04</span>
           <div>
-            <h2 id="titulo-revisar">Revisar</h2>
+            <h2 id="titulo-revisar" tabindex="-1"><span class="visually-hidden">Etapa 4 — </span>Revisar</h2>
             <p>Confira o que vai para o seu diário.</p>
           </div>
         </div>
@@ -523,6 +523,30 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
     }
 
     const MAX_FOTOS = 4;
+    const uploadsPorLinha = new WeakMap();
+    let sequenciaUploads = 0;
+    let exifDaSelecaoTentado = false;
+
+    class SessaoExpirada extends Error {}
+
+    function entradasDe(linha) {
+      if (!uploadsPorLinha.has(linha)) uploadsPorLinha.set(linha, []);
+      return uploadsPorLinha.get(linha);
+    }
+
+    function ehHeic(arquivo) {
+      return /heic|heif/i.test(arquivo.type) || /\.(heic|heif)$/i.test(arquivo.name);
+    }
+
+    function atualizarBotoes() {
+      botaoSalvar.disabled = uploadsPendentes > 0;
+    }
+
+    function vagasNaLinha(linha) {
+      const ocupadas = fotosDaLinha(linha).length
+        + entradasDe(linha).filter((entrada) => entrada.estado === 'enviando').length;
+      return Math.max(0, MAX_FOTOS - ocupadas);
+    }
 
     function fotosDaLinha(linha) {
       try {
@@ -589,6 +613,78 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       if (rotulo) rotulo.textContent = fotos.length === 0 ? 'Foto' : '+ Foto';
     }
 
+    function renderizarUploads(linha) {
+      const container = linha.querySelector('.captura-fotos');
+      const lista = container.querySelector('.upload-lista');
+      const status = container.querySelector('.upload-status');
+      const adicionar = container.querySelector('.captura-foto-adicionar');
+      const input = container.querySelector('input[type="file"]');
+      if (!lista || !status || !adicionar || !input) return;
+
+      const entradas = entradasDe(linha);
+      const enviando = entradas.filter((entrada) => entrada.estado === 'enviando').length;
+      lista.replaceChildren();
+
+      for (const entrada of entradas) {
+        const item = document.createElement('div');
+        item.className = `upload-item upload-item--${entrada.estado}`;
+        // O estado é `heic-recusado`; o teste e os estilos usam `.upload-item--heic`.
+        if (entrada.estado === 'heic-recusado') item.classList.add('upload-item--heic');
+        item.dataset.uploadId = entrada.id;
+
+        const nome = document.createElement('span');
+        nome.className = 'upload-nome';
+        nome.textContent = entrada.nome;
+        item.appendChild(nome);
+
+        if (entrada.estado === 'enviando') {
+          const estado = document.createElement('span');
+          estado.className = 'upload-estado';
+          estado.textContent = 'Enviando…';
+          const barra = document.createElement('div');
+          barra.className = 'upload-barra';
+          barra.setAttribute('aria-hidden', 'true');
+          const preenchimento = document.createElement('span');
+          preenchimento.style.transform = `scaleX(${Math.min(1, Math.max(0, entrada.progresso))})`;
+          barra.appendChild(preenchimento);
+          item.append(estado, barra);
+        } else if (entrada.estado === 'falhou') {
+          const estado = document.createElement('span');
+          estado.className = 'upload-estado';
+          estado.textContent = 'Não enviada';
+          if (entrada.mensagem) estado.title = entrada.mensagem;
+          const nota = document.createElement('p');
+          nota.className = 'upload-nota';
+          nota.textContent = 'Não conseguimos enviar esta foto. Só ela precisa repetir — as outras já estão salvas.';
+          const retry = document.createElement('button');
+          retry.type = 'button';
+          retry.className = 'upload-retry';
+          retry.textContent = 'Tentar de novo';
+          retry.addEventListener('click', () => {
+            if (entrada.estado === 'falhou') enviarEntrada(linha, entrada);
+          });
+          item.append(estado, nota, retry);
+        } else if (entrada.estado === 'heic-recusado') {
+          const nota = document.createElement('p');
+          nota.className = 'upload-heic';
+          nota.textContent = 'Este iPhone salvou a foto em HEIC. Abra a foto e exporte como JPEG, ou ative JPEG em Ajustes → Câmera → Formatos.';
+          item.appendChild(nota);
+        }
+        lista.appendChild(item);
+      }
+
+      const falhas = entradas.filter((entrada) => entrada.estado === 'falhou').length;
+      status.textContent = enviando > 0
+        ? `Enviando ${enviando} de ${entradas.length} fotos…`
+        : falhas > 0
+          ? (falhas === 1 ? '1 foto não foi enviada. Use Tentar de novo.' : `${falhas} fotos não foram enviadas. Use Tentar de novo.`)
+          : 'Fotos enviadas.';
+
+      adicionar.classList.toggle('oculto', vagasNaLinha(linha) <= 0);
+      input.disabled = enviando > 0;
+      atualizarBotoes();
+    }
+
     function criarLinhaCaptura(dados = {}) {
       const linha = document.createElement('div');
       linha.className = 'linha-captura';
@@ -608,9 +704,11 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         <button class="botao-icone remover" type="button" aria-label="Remover captura">×</button>
         <div class="captura-fotos">
           <label class="captura-foto-adicionar">
-            <input type="file" accept="image/jpeg,image/png,image/webp" multiple />
+            <input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" multiple />
             <span>Foto</span>
           </label>
+          <div class="upload-lista" aria-live="polite"></div>
+          <p class="upload-status" role="status" aria-live="polite"></p>
           <p class="foto-nota" role="status" hidden>A foto entra depois que você entra. O resto do registro continua aqui.</p>
         </div>
         <div class="sugestoes-especie" aria-live="polite"></div>
@@ -653,63 +751,37 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         const arquivos = [...(inputArquivo.files || [])];
         if (arquivos.length === 0) return;
 
-        const disponiveis = MAX_FOTOS - fotosDaLinha(linha).length;
-        if (disponiveis <= 0) {
-          mostrarErro('Máximo de 4 fotos por captura.');
-          inputArquivo.value = '';
+        const entradas = entradasDe(linha);
+        // Avisos HEIC já lidos não ocupam slot nem precisam de retry.
+        for (let i = entradas.length - 1; i >= 0; i -= 1) {
+          if (entradas[i].estado === 'heic-recusado') entradas.splice(i, 1);
+        }
+        const vagas = vagasNaLinha(linha);
+        const paraEnviar = arquivos.slice(0, vagas);
+        if (arquivos.length > vagas) {
+          mostrarErro(vagas === 0
+            ? 'Máximo de 4 fotos por captura.'
+            : 'Máximo de 4 fotos por captura. As extras foram ignoradas.');
+        }
+        inputArquivo.value = '';
+        if (paraEnviar.length === 0) {
+          renderizarUploads(linha);
           return;
         }
 
-        const paraEnviar = arquivos.slice(0, disponiveis);
-        if (arquivos.length > disponiveis) {
-          mostrarErro('Máximo de 4 fotos por captura. As extras foram ignoradas.');
-        }
+        exifDaSelecaoTentado = false;
+        const novas = paraEnviar.map((arquivo) => ({
+          id: `up-${++sequenciaUploads}`,
+          nome: arquivo.name,
+          arquivo,
+          estado: 'enviando',
+          progresso: 0,
+          mensagem: ''
+        }));
+        entradas.push(...novas);
+        renderizarUploads(linha);
 
-        uploadsPendentes += 1;
-        botaoSalvar.disabled = true;
-        inputArquivo.disabled = true;
-
-        try {
-          if (!decisaoExifTomada && paraEnviar[0]) {
-            await aplicarExif(paraEnviar[0]);
-          }
-
-          for (const arquivo of paraEnviar) {
-            const blob = await comprimirImagem(arquivo);
-            const formularioMidia = new FormData();
-            formularioMidia.append('arquivo', blob, 'foto.jpg');
-
-            const resposta = await fetch(`${API}/api/midia`, {
-              method: 'POST',
-              credentials: 'include',
-              body: formularioMidia
-            });
-
-            if (resposta.status === 401) {
-              // A navegação dispensa o rascunho: o flush de saída não pode recriá-lo.
-              descartarRascunho = true;
-              await encerrarSessaoExpirada(urlDeRetorno());
-              return;
-            }
-
-            const dadosMidia = await resposta.json().catch(() => ({}));
-            if (!resposta.ok) throw new Error(dadosMidia.detalhe || 'Não foi possível enviar a foto.');
-
-            const fotos = fotosDaLinha(linha);
-            if (fotos.length >= MAX_FOTOS) break;
-            fotos.push(dadosMidia.url);
-            definirFotos(linha, fotos, capaDaLinha(linha) || dadosMidia.url);
-            agendarRascunho();
-            await sugerirEspecie(linha, blob);
-          }
-        } catch (erro) {
-          mostrarErro(erro instanceof Error ? erro.message : 'Não foi possível enviar a foto.');
-        } finally {
-          uploadsPendentes -= 1;
-          inputArquivo.disabled = false;
-          inputArquivo.value = '';
-          botaoSalvar.disabled = uploadsPendentes > 0;
-        }
+        for (const entrada of novas) await enviarEntrada(linha, entrada);
       });
 
       linha.querySelector('.remover').addEventListener('click', () => {
@@ -720,6 +792,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       });
 
       renderizarFotos(linha);
+      renderizarUploads(linha);
       listaCapturas.appendChild(linha);
       atualizarContador();
     }
@@ -920,6 +993,90 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       link.textContent = 'Abrir órgão oficial';
       alerta.append(texto, link);
       alerta.classList.remove('oculto');
+    }
+
+    function enviarMidia(blob, aoProgressar) {
+      return new Promise((resolve, reject) => {
+        const requisicao = new XMLHttpRequest();
+        requisicao.open('POST', `${API}/api/midia`);
+        requisicao.withCredentials = true;
+
+        requisicao.upload.addEventListener('progress', (evento) => {
+          if (evento.lengthComputable && evento.total > 0) {
+            aoProgressar(evento.loaded / evento.total);
+          }
+        });
+        requisicao.addEventListener('load', () => {
+          if (requisicao.status === 401) {
+            reject(new SessaoExpirada());
+            return;
+          }
+          let dados = {};
+          try { dados = JSON.parse(requisicao.responseText || '{}'); } catch { /* resposta sem corpo */ }
+          if (requisicao.status < 200 || requisicao.status >= 300) {
+            reject(new Error(dados.detalhe || 'Não foi possível enviar a foto.'));
+            return;
+          }
+          if (!dados.url) {
+            reject(new Error('Não foi possível enviar a foto.'));
+            return;
+          }
+          resolve(dados);
+        });
+        requisicao.addEventListener('error', () =>
+          reject(new Error('Não foi possível enviar a foto. Verifique sua conexão.'))
+        );
+        requisicao.addEventListener('abort', () => reject(new Error('Envio cancelado.')));
+
+        const formulario = new FormData();
+        formulario.append('arquivo', blob, 'foto.jpg');
+        requisicao.send(formulario);
+      });
+    }
+
+    async function enviarEntrada(linha, entrada) {
+      entrada.estado = 'enviando';
+      entrada.progresso = 0;
+      uploadsPendentes += 1;
+      renderizarUploads(linha);
+      // Só erro de decode/compressão de HEIC vira "exporte como JPEG"; erro de
+      // transporte/servidor continua sendo falha com "Tentar de novo".
+      let fase = 'processar';
+
+      try {
+        if (!exifDaSelecaoTentado) {
+          exifDaSelecaoTentado = true;
+          await aplicarExif(entrada.arquivo);
+        }
+        const blob = await comprimirImagem(entrada.arquivo);
+        fase = 'enviar';
+        const dados = await enviarMidia(blob, (progresso) => {
+          entrada.progresso = progresso;
+          renderizarUploads(linha);
+        });
+
+        const fotos = fotosDaLinha(linha);
+        if (fotos.length < MAX_FOTOS) {
+          fotos.push(dados.url);
+          definirFotos(linha, fotos, capaDaLinha(linha) || dados.url);
+          agendarRascunho();
+        }
+        await sugerirEspecie(linha, blob);
+        const entradas = entradasDe(linha);
+        const indice = entradas.indexOf(entrada);
+        if (indice >= 0) entradas.splice(indice, 1);
+      } catch (erro) {
+        if (erro instanceof SessaoExpirada) {
+          descartarRascunho = true;
+          await encerrarSessaoExpirada(urlDeRetorno());
+          return;
+        }
+        entrada.estado = fase === 'processar' && ehHeic(entrada.arquivo) ? 'heic-recusado' : 'falhou';
+        entrada.mensagem = erro instanceof Error ? erro.message : 'Não foi possível enviar a foto.';
+      } finally {
+        uploadsPendentes -= 1;
+        renderizarUploads(linha);
+      }
     }
 
     async function comprimirImagem(arquivo) {
@@ -1413,6 +1570,11 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         if (Number(botao.dataset.etapaBotao) === etapaAtual) botao.setAttribute('aria-current', 'step');
         else botao.removeAttribute('aria-current');
       }
+
+      etapas
+        .find((etapa) => Number(etapa.dataset.etapa) === etapaAtual)
+        ?.querySelector<HTMLElement>('.painel-cabecalho h2')
+        ?.focus({ preventScroll: true });
 
       if (etapaAtual === 4) atualizarRevisao();
 
