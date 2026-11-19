@@ -371,7 +371,7 @@ test.describe('logout sem service worker', () => {
     await expectPublicoPreservadoEPrivadoRemovido(page, { preservarRascunho: true });
   });
 
-  test('registrar anônimo preserva o rascunho e bloqueia o formulário', async ({ page }) => {
+  test('registrar anônimo preserva o rascunho e mantém o formulário ativo', async ({ page }) => {
     await page.route(`${API}/api/auth/me`, (route) =>
       route.fulfill({
         status: 200,
@@ -389,6 +389,7 @@ test.describe('logout sem service worker', () => {
     await page.goto(`${ORIGEM}/registrar`);
 
     await expect(page.locator('#acesso-registrar')).toBeVisible();
+    await expect(page.locator('#pescaria-form')).not.toHaveAttribute('inert', /.*/);
     await expectPublicoPreservadoEPrivadoRemovido(page, { preservarRascunho: true });
   });
 

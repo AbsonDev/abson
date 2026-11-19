@@ -25,18 +25,9 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
 
   <section class="container">
     <div id="acesso-registrar" class="aviso-acesso oculto">
-      <div>
-        <span class="selo selo--terracota">Conta necessária</span>
-        <h2>Entre para salvar esta pescaria.</h2>
-        <p>
-          Seu diário fica na sua conta e abre em qualquer aparelho. O acesso é por e-mail, sem senha.
-          Você pode preencher o formulário agora e entrar quando terminar.
-        </p>
-      </div>
-      <div class="aviso-acesso-acoes">
-        <a class="btn btn--primario" href={`/entrar?voltar=${encodeURIComponent(retornoRegistro)}`}>Entrar com e-mail</a>
-        <a class="btn btn--contorno" href="/precos">É grátis</a>
-      </div>
+      <svg class="aviso-acesso-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="10.5" width="14" height="9.5" rx="2"></rect><path d="M8.5 10.5V8a3.5 3.5 0 0 1 6.8-1.1"></path></svg>
+      <p>Você pode preencher agora. Entrar só quando quiser salvar.</p>
+      <a class="aviso-acesso-link" href={`/entrar?voltar=${encodeURIComponent(retornoRegistro)}`}>Entrar</a>
     </div>
   </section>
 
@@ -382,16 +373,8 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       window.location.href = `/entrar?voltar=${encodeURIComponent(urlDeRetorno())}`;
     }
 
-    function bloquearFormulario() {
-      acessoRegistrar.classList.remove('oculto');
-      formulario.classList.add('form-bloqueado');
-      formulario.inert = true;
-    }
-
-    function liberarFormulario() {
-      acessoRegistrar.classList.add('oculto');
-      formulario.classList.remove('form-bloqueado');
-      formulario.inert = false;
+    function mostrarOuOcultarBannerAutenticacao() {
+      acessoRegistrar.classList.toggle('oculto', autenticado);
     }
 
     function atualizarContador() {
@@ -1169,19 +1152,18 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         autenticado = false;
       }
 
+      mostrarOuOcultarBannerAutenticacao();
+
       if (!autenticado) {
-        // Navegação explícita sem sessão: o formulário fica bloqueado e o
-        // estado da conta é limpo, mas o rascunho não salvo é preservado para
-        // o pescador entrar e continuar. Só o logout explícito apaga o rascunho.
+        // Navegação sem sessão: o formulário fica ativo e o estado da conta é
+        // limpo, mas o rascunho não salvo é preservado para continuar depois.
+        // Só o logout explícito apaga o rascunho.
         await limparCachePrivado({ preservarRascunho: true });
-        bloquearFormulario();
         const aplicouCondicoes = await aplicarCondicoesDaUrl();
         if (!aplicouCondicoes) iniciarFormularioVazio();
         aplicarEspecieDaWiki();
         return;
       }
-
-      liberarFormulario();
 
       if (await iniciarEdicao()) return;
 
@@ -1322,39 +1304,45 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
   .aviso-acesso {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 28px;
+    flex-wrap: wrap;
+    gap: 8px 12px;
     margin-bottom: 20px;
-    padding: 22px 24px;
-    border: 1px solid var(--linha-forte);
-    border-radius: 16px;
-    background: var(--creme);
-    box-shadow: var(--sombra-suave);
+    padding: 10px 14px;
+    border: 1px solid var(--linha);
+    border-radius: var(--raio-pequeno);
+    background: color-mix(in srgb, var(--superficie) 74%, var(--papel));
   }
 
-  .aviso-acesso h2 {
-    margin-top: 10px;
-    font-size: clamp(1.35rem, 2.4vw, 1.8rem);
+  .aviso-acesso-icone {
+    flex: 0 0 auto;
+    width: 19px;
+    height: 19px;
+    color: var(--terracota);
   }
 
   .aviso-acesso p {
-    max-width: 62ch;
-    margin-top: 6px;
-    color: var(--tinta-suave);
-    font-size: 0.8rem;
-    line-height: 1.6;
+    flex: 1 1 220px;
+    color: var(--tinta);
+    font-size: 0.875rem;
+    line-height: 1.5;
   }
 
-  .aviso-acesso-acoes {
-    display: flex;
-    flex: 0 0 auto;
-    flex-direction: column;
-    gap: 8px;
+  .aviso-acesso-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 4px;
+    color: var(--terracota);
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
   }
 
-  .form-bloqueado {
-    opacity: 0.52;
-    filter: saturate(0.7);
+  .aviso-acesso-link:hover {
+    color: var(--terracota-escura);
+    text-decoration-thickness: 2px;
   }
 
   .defeso-alerta {
@@ -1463,13 +1451,14 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
 
   @media (max-width: 760px) {
     .aviso-acesso {
-      align-items: stretch;
-      flex-direction: column;
-      gap: 16px;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 9px 12px;
     }
 
-    .aviso-acesso-acoes .btn {
-      width: 100%;
+    .aviso-acesso p {
+      flex-basis: 180px;
+      font-size: 0.84rem;
     }
 
     .registro-passos {
