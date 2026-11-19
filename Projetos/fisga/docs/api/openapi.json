@@ -1397,6 +1397,12 @@
               "string"
             ]
           },
+          "corpoOuTrecho": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "ambiente": {
             "$ref": "#/components/schemas/AmbienteDePesca"
           },
@@ -1596,7 +1602,9 @@
         "enum": [
           "Exato",
           "Cidade",
-          "Oculto"
+          "Oculto",
+          "Trecho",
+          "CorpoAgua"
         ]
       },
       "RedefinirSenhaRequest": {

@@ -48,6 +48,16 @@ public sealed class ServicoDePescariasTests
     }
 
     [Fact]
+    public async Task Entrada_sem_privacidade_usa_cidade()
+    {
+        var servico = new ServicoDePescarias(new PescariaRepositorioFake(),
+            new RelogioFixo(Agora), new DispatcherFake());
+        var salva = await servico.CriarAsync(Entrada(), UsuarioId);
+        var detalhe = await servico.ObterDoUsuarioAsync(salva.Id, UsuarioId);
+        Assert.Equal(PrivacidadeDoLocal.Cidade, detalhe.Entrada.PrivacidadeDoLocal);
+    }
+
+    [Fact]
     public async Task Atualiza_preservando_captura_e_rejeita_outro_usuario()
     {
         var repositorio = new PescariaRepositorioFake();
@@ -155,6 +165,60 @@ public sealed class ServicoDePescariasTests
         Assert.Equal("Campinas · SP", publica.Entrada.Local);
         Assert.Equal("Cidade", publica.PrivacidadeDoLocal);
         Assert.False(publica.PodeEditar);
+    }
+
+    [Fact]
+    public async Task Publico_de_exato_nao_devolve_o_campo_cru()
+    {
+        var servico = new ServicoDePescarias(new PescariaRepositorioFake(),
+            new RelogioFixo(Agora), new DispatcherFake());
+        var salva = await servico.CriarAsync(Entrada() with
+        {
+            PrivacidadeDoLocal = PrivacidadeDoLocal.Exato,
+            CorpoOuTrecho = "Poita do Zé"
+        }, UsuarioId);
+        var publica = await servico.ObterPublicoAsync(salva.ShareToken);
+        Assert.Null(publica!.Entrada.CorpoOuTrecho);
+        Assert.Equal("Represa do Lago Azul", publica.Entrada.Local);
+    }
+
+    [Fact]
+    public async Task Publico_de_corpo_agua_devolve_texto_resumido()
+    {
+        var servico = new ServicoDePescarias(new PescariaRepositorioFake(),
+            new RelogioFixo(Agora), new DispatcherFake());
+        var salva = await servico.CriarAsync(Entrada() with
+        {
+            PrivacidadeDoLocal = PrivacidadeDoLocal.CorpoAgua,
+            CorpoOuTrecho = "Rio Sergipe, trecho centro"
+        }, UsuarioId);
+        var publica = await servico.ObterPublicoAsync(salva.ShareToken);
+        Assert.Equal("Rio Sergipe", publica!.Entrada.Local);
+        Assert.Equal("CorpoAgua", publica.PrivacidadeDoLocal);
+    }
+
+    [Fact]
+    public async Task Edicao_preserva_corpo_ou_trecho_e_nao_rebaixa_para_cidade()
+    {
+        var repositorio = new PescariaRepositorioFake();
+        var servico = new ServicoDePescarias(repositorio, new RelogioFixo(Agora), new DispatcherFake());
+        var salva = await servico.CriarAsync(Entrada() with
+        {
+            PrivacidadeDoLocal = PrivacidadeDoLocal.CorpoAgua,
+            CorpoOuTrecho = "Rio Sergipe, trecho centro"
+        }, UsuarioId);
+
+        var doUsuario = await servico.ObterDoUsuarioAsync(salva.Id, UsuarioId);
+        Assert.Equal("Rio Sergipe, trecho centro", doUsuario.Entrada.CorpoOuTrecho);
+        Assert.Equal(PrivacidadeDoLocal.CorpoAgua, doUsuario.Entrada.PrivacidadeDoLocal);
+
+        await servico.AtualizarAsync(salva.Id, UsuarioId, doUsuario.Entrada);
+        var publica = await servico.ObterPublicoAsync(salva.ShareToken);
+
+        Assert.NotNull(publica);
+        Assert.Equal("Rio Sergipe", publica.Entrada.Local);
+        Assert.Equal("CorpoAgua", publica.PrivacidadeDoLocal);
+        Assert.Null(publica.Entrada.CorpoOuTrecho);
     }
 
     [Fact]

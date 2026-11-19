@@ -76,8 +76,8 @@ nunca são publicados.
 - Espécie, peso, comprimento, isca, destino (solto/capturado), observação e **até 4 fotos por
   captura**, com escolha da capa.
 - Compressão de imagem no navegador (até 5 MB; JPG/PNG/WebP).
-- **Privacidade do local por pescaria**: exato, apenas cidade/UF ou oculto. Vale para link público,
-  troféu e PDF.
+- **Privacidade do local por pescaria**: exato, trecho, rio/lagoa, cidade/UF ou oculto — padrão
+  cidade/UF. Vale para link público, troféu e PDF.
 - Edição preservando IDs das capturas; links de troféu não quebram.
 - Rascunho local do formulário para não perder o registro.
 
@@ -237,7 +237,8 @@ Contextos e agregados:
 - **Conhecimento** — Wiki do Pescador.
 - **Newsletter** — digest mensal, opt-in e descadastro HMAC.
 
-Migrações aplicadas: `Inicial`, `Contas`, `Sprint1`, `Sprint2`, `Sprint3`, `Sprint4`.
+Migrações aplicadas: `Inicial`, `Contas`, `Sprint1`, `Sprint2`, `Sprint3`, `Sprint4`,
+`IdentityConsentimento` e `NiveisDeDetalheDoLocal`.
 
 Detalhes em [`docs/ddd.md`](docs/ddd.md), [`docs/adr`](docs/adr) e
 [`docs/referencias`](docs/referencias).
@@ -432,7 +433,7 @@ npm run check && npm run build
 npx playwright test
 ```
 
-Atualmente: **326 testes de backend** (36 de domínio + 54 de aplicação + 236 de API) e checagem de
+Atualmente: **348 testes de backend** (46 de domínio + 58 de aplicação + 244 de API) e checagem de
 tipos do Astro. Cobrem:
 
 - criação/edição de pescaria, IDs de captura, validações e isolamento entre usuários;
@@ -443,7 +444,7 @@ tipos do Astro. Cobrem:
 - fallback manual da sugestão de espécie;
 - resolução da versão exposta em `/health`.
 
-O fluxo completo também é validado com Playwright: **129 testes mockados** (UI e estados) e
+O fluxo completo também é validado com Playwright: **138 testes mockados** (UI e estados) e
 **6 testes com backend real** para a migração de identidade. Os reais rodam com SQLite, chaves e
 outbox temporários:
 
@@ -473,9 +474,9 @@ O Fisga tem três workflows no GitHub Actions: `fisga-pipeline.yml` (CI), `fisga
 [docs/review.md](docs/review.md)). O CI roda em todo PR e em push para `main`, separa mudança de
 código de mudança de documentação e executa:
 
-- `api`: restore locked, `dotnet format --verify-no-changes`, build `-warnaserror`, os 326 testes
+- `api`: restore locked, `dotnet format --verify-no-changes`, build `-warnaserror`, os 348 testes
   xUnit e a regeneração/comparação de `docs/api/openapi.json`.
-- `web`: `npm ci`, `astro check`, `npm run build` e `npm run test:e2e` (129 testes Playwright
+- `web`: `npm ci`, `astro check`, `npm run build` e `npm run test:e2e` (138 testes Playwright
   mockados).
 - `docs`: `markdownlint-cli2` e checagem de links (`lychee`), em PR de código ou documentação.
 - `docker`: build das imagens da API e do web sem push (em PR e `workflow_dispatch`).
@@ -566,7 +567,8 @@ navegador. Sessões e links mágicos são armazenados apenas como hash SHA-256.
 ## Privacidade e segurança
 
 - O diário completo é privado; cada pescaria tem um link público próprio e opcional.
-- O local pode ser exato, aproximado (cidade/UF) ou oculto; a escolha vale para link, troféu e PDF.
+- O local pode ser exato, trecho, rio/lagoa, cidade/UF ou oculto — padrão cidade/UF; a escolha
+  vale para link público, troféu e PDF.
 - Locais salvos, pontos e trilhas são privados e não têm endpoint público.
 - Links mágicos são de uso único, valem 15 minutos e só o mais recente funciona.
 - Login por senha exige e-mail confirmado; a senha tem 10–128 caracteres e o reset invalida sessões.
@@ -651,7 +653,7 @@ A porta de entrada é [`docs/INDEX.md`](docs/INDEX.md). Atalhos:
 - [`docs/review.md`](docs/review.md) — camadas de review, agentes e critérios.
 - [`docs/guias/como-adicionar-endpoint.md`](docs/guias/como-adicionar-endpoint.md) — passo a passo de uma rota nova.
 - [`docs/roadmap.md`](docs/roadmap.md) — módulos, fases, dados e métricas.
-- [`docs/adr/README.md`](docs/adr/README.md) — decisões arquiteturais (0001–0013).
+- [`docs/adr/README.md`](docs/adr/README.md) — decisões arquiteturais (0001–0015).
 - [`docs/referencias`](docs/referencias) — estudos de referência.
 - [`AGENTS.md`](AGENTS.md) — contexto para agentes de código.
 

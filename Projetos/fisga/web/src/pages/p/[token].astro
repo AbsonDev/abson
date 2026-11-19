@@ -74,6 +74,16 @@ const rotuloAgua: Record<string, string> = {
   Turva: 'Água turva',
   Barrenta: 'Água barrenta'
 };
+const rotuloPrivacidade: Record<string, string | null> = {
+  Exato: null,
+  Trecho: 'Trecho aproximado',
+  CorpoAgua: 'Rio/lagoa aproximado',
+  Cidade: 'Cidade aproximada',
+  Oculto: 'Local não divulgado'
+};
+const seloPrivacidade = pescaria
+  ? rotuloPrivacidade[pescaria.entrada.privacidadeDoLocal ?? ''] ?? null
+  : null;
 ---
 
 <Layout
@@ -102,12 +112,7 @@ const rotuloAgua: Record<string, string> = {
               <span>{rotuloAmbiente[pescaria.entrada.ambiente] ?? pescaria.entrada.ambiente}</span>
               <span>{dataCurta(`${pescaria.entrada.data}T12:00:00`)}</span>
               <span>{rotuloPeriodo[pescaria.entrada.periodo] ?? pescaria.entrada.periodo}</span>
-              {pescaria.entrada.cidade && <span>{pescaria.entrada.cidade}{pescaria.entrada.estado ? ` · ${pescaria.entrada.estado}` : ''}</span>}
-              {pescaria.entrada.privacidadeDoLocal !== 'Exato' && (
-                <span class="selo selo--neutro">
-                  {pescaria.entrada.privacidadeDoLocal === 'Cidade' ? 'Local aproximado' : 'Local não divulgado'}
-                </span>
-              )}
+              {seloPrivacidade && <span class="selo selo--neutro">{seloPrivacidade}</span>}
               <span>{pescaria.capturas.length} {pescaria.capturas.length === 1 ? 'captura' : 'capturas'}</span>
             </div>
           </div>

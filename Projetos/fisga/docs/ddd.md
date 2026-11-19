@@ -79,10 +79,13 @@ Contém as capturas. Toda mutação passa por `Criar` e `Atualizar`.
 Invariantes:
 
 - `UsuarioId` obrigatório; toda pescaria pertence a uma conta.
-- Local obrigatório (até 120 caracteres), UF com 2 letras quando informada.
-- `PrivacidadeDoLocal` define o que aparece publicamente: local exato, cidade/UF ou oculto.
-  `LocalPublico`, `CidadePublica` e `EstadoPublico` são as únicas projeções usadas no link
-  público, no troféu e no PDF.
+- Local obrigatório (até 120 caracteres), UF com 2 letras quando informada e `CorpoOuTrecho`
+  opcional com até 80 caracteres (erro `corpo_ou_trecho_longo`).
+- `PrivacidadeDoLocal` define o que aparece publicamente em cinco níveis: `Exato` (o local),
+  `Trecho` (o campo inteiro), `CorpoAgua` (até a primeira vírgula), `Cidade` (`Cidade · UF`)
+  e `Oculto` ("Local não divulgado"). O padrão é `Cidade`; sem trecho/rio, `Trecho` e
+  `CorpoAgua` caem para `Cidade`, nunca para `Local`. `LocalPublico`, `CidadePublica` e
+  `EstadoPublico` são as únicas projeções usadas no link público, no troféu e no PDF.
 - Data válida; enums de ambiente/período/condições definidos.
 - Até 100 capturas; IDs únicos.
 - Captura exige espécie, pelo menos peso **ou** comprimento, e fotos apenas em `/media/`.
@@ -395,5 +398,5 @@ isolamento entre usuários, exclusão, exportação, locais salvos, agregação 
 janela, comparação com o histórico e pontos privados. `Fisga.Api.Tests` cobre a API (identidade,
 consentimento, senha, sessões, Google e outbox) e a resolução da versão exposta em `/health`. A
 experiência completa (login, onboarding, registro, foto, troféu, PDF, conta, condições, locais, mapa
-e logout) é validada com Playwright: 129 testes mockados no CI e 6 com backend real via
+e logout) é validada com Playwright: 138 testes mockados no CI e 6 com backend real via
 `scripts/e2e-real.sh`.

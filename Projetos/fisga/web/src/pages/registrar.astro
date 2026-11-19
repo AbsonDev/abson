@@ -119,16 +119,103 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
           </div>
         </div>
 
-        <div class="campo" style="margin-top: 15px;">
-          <label for="privacidade-local">Privacidade do local</label>
-          <select id="privacidade-local">
-            <option value="Exato">Mostrar local exato no link público</option>
-            <option value="Cidade">Mostrar apenas cidade/UF</option>
-            <option value="Oculto">Ocultar local</option>
-          </select>
-          <small style="display: block; margin-top: 5px; color: var(--tinta-suave); font-size: 0.66rem;">
-            Vale para o link público, o troféu e o PDF. O diário completo continua privado.
-          </small>
+        <div class="campo privacidade-campo">
+          <span id="privacidade-titulo" class="privacidade-titulo">Privacidade do local</span>
+          <p id="privacidade-intro" class="privacidade-intro">
+            Escolha o que aparece no link público, no troféu e no PDF. Seu diário continua privado.
+          </p>
+          <div
+            id="privacidade-local"
+            class="priv-opcoes"
+            role="radiogroup"
+            aria-labelledby="privacidade-titulo"
+            aria-describedby="privacidade-ajuda"
+          >
+            <label class="priv-opt">
+              <input
+                class="priv-input"
+                type="radio"
+                name="privacidadeDoLocal"
+                id="priv-exato"
+                value="Exato"
+                data-ajuda="O ponto exato do registro aparece no link, no troféu e no PDF."
+              />
+              <span class="priv-marcador" aria-hidden="true"></span>
+              <span class="priv-texto"><span class="priv-rotulo">Mostrar local exato</span></span>
+            </label>
+            <label class="priv-opt">
+              <input
+                class="priv-input"
+                type="radio"
+                name="privacidadeDoLocal"
+                id="priv-trecho"
+                value="Trecho"
+                data-ajuda="Aparece só o trecho que você escrever, sem o ponto exato."
+                aria-controls="campo-corpo-ou-trecho"
+              />
+              <span class="priv-marcador" aria-hidden="true"></span>
+              <span class="priv-texto"><span class="priv-rotulo">Mostrar trecho</span></span>
+            </label>
+            <label class="priv-opt">
+              <input
+                class="priv-input"
+                type="radio"
+                name="privacidadeDoLocal"
+                id="priv-agua"
+                value="CorpoAgua"
+                data-ajuda="Aparece só o nome do rio ou da lagoa, sem o ponto exato."
+                aria-controls="campo-corpo-ou-trecho"
+              />
+              <span class="priv-marcador" aria-hidden="true"></span>
+              <span class="priv-texto"><span class="priv-rotulo">Mostrar rio ou lagoa</span></span>
+            </label>
+            <label class="priv-opt">
+              <input
+                class="priv-input"
+                type="radio"
+                name="privacidadeDoLocal"
+                id="priv-cidade"
+                value="Cidade"
+                data-ajuda="Aparecem cidade e UF, sem praia, rio ou coordenadas."
+                checked
+              />
+              <span class="priv-marcador" aria-hidden="true"></span>
+              <span class="priv-texto">
+                <span class="priv-rotulo">Mostrar cidade/UF</span>
+                <span class="priv-selo">padrão</span>
+              </span>
+            </label>
+            <label class="priv-opt">
+              <input
+                class="priv-input"
+                type="radio"
+                name="privacidadeDoLocal"
+                id="priv-oculto"
+                value="Oculto"
+                data-ajuda="O link não mostra nenhum lugar. Seu diário guarda o local completo."
+              />
+              <span class="priv-marcador" aria-hidden="true"></span>
+              <span class="priv-texto"><span class="priv-rotulo">Ocultar local</span></span>
+            </label>
+          </div>
+          <p id="privacidade-ajuda" class="privacidade-ajuda" aria-live="polite">
+            Aparecem cidade e UF, sem praia, rio ou coordenadas.
+          </p>
+          <div id="campo-corpo-ou-trecho" class="campo campo-corpo-ou-trecho" hidden>
+            <label for="corpo-ou-trecho">Rio, lagoa ou trecho <span class="priv-selo">opcional</span></label>
+            <input
+              id="corpo-ou-trecho"
+              type="text"
+              maxlength="80"
+              placeholder="Ex.: Rio Sergipe, trecho centro"
+              aria-describedby="corpo-ou-trecho-ajuda"
+              autocomplete="off"
+            />
+            <small id="corpo-ou-trecho-ajuda" class="priv-ajuda-campo">
+              Não informe o ponto exato. Vale para o link público, o troféu e o PDF; seu diário continua
+              privado.
+            </small>
+          </div>
         </div>
 
         <div class="campo" style="margin-top: 15px;">
@@ -816,7 +903,8 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         lua: valor('lua'),
         clima: valor('clima'),
         clarezaDaAgua: valor('clareza'),
-        privacidadeDoLocal: valor('privacidade-local') || 'Exato',
+        privacidadeDoLocal: opcaoPrivacidadeSelecionada()?.value || 'Cidade',
+        corpoOuTrecho: valor('corpo-ou-trecho').trim() || null,
         observacoes: valor('observacoes').trim() || null,
         capturas
       };
@@ -870,7 +958,12 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       definir('lua', entrada.lua || 'NaoInformada');
       definir('clima', entrada.clima || 'NaoInformado');
       definir('clareza', entrada.clarezaDaAgua || 'NaoInformada');
-      definir('privacidade-local', entrada.privacidadeDoLocal || 'Exato');
+      const opcaoPrivacidade =
+        opcoesPrivacidade.find((opcao) => opcao.value === (entrada.privacidadeDoLocal || 'Cidade'))
+        || opcoesPrivacidade.find((opcao) => opcao.value === 'Cidade');
+      if (opcaoPrivacidade) opcaoPrivacidade.checked = true;
+      definir('corpo-ou-trecho', entrada.corpoOuTrecho || '');
+      atualizarNivelDeDetalhe();
       definir('observacoes', entrada.observacoes || '');
 
       if (!preservarCapturas) {
@@ -891,7 +984,6 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
           if (!entrada.capturas || entrada.capturas.length === 0) criarLinhaCaptura();
         }
       }
-
       atualizarContador();
       atualizarDefeso();
     }
@@ -961,7 +1053,8 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
             periodo: periodoDeAgora(),
             mare,
             lua: condicoes.solunar.fase || 'NaoInformada',
-            clima: climaDe(condicoes.tempo)
+            clima: climaDe(condicoes.tempo),
+            privacidadeDoLocal: 'Cidade'
           },
           texto: `${condicoes.local.nome} · ${atualizado} · ${mareTexto} · ${condicoes.solunar.faseNome.toLowerCase()} · vento ${Math.round(condicoes.tempo.ventoKmh)} km/h`
         };
@@ -1120,6 +1213,36 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
     document.getElementById('ocultar-exif')?.addEventListener('click', () => {
       document.getElementById('exif-aviso')?.classList.add('oculto');
     });
+
+    const opcoesPrivacidade = [...formulario.querySelectorAll('input[name="privacidadeDoLocal"]')];
+    const ajudaPrivacidade = document.getElementById('privacidade-ajuda');
+    const campoCorpoOuTrecho = document.getElementById('campo-corpo-ou-trecho');
+
+    function opcaoPrivacidadeSelecionada() {
+      return opcoesPrivacidade.find((opcao) => opcao.checked)
+        || opcoesPrivacidade.find((opcao) => opcao.value === 'Cidade');
+    }
+
+    function atualizarNivelDeDetalhe() {
+      const selecionada = opcaoPrivacidadeSelecionada();
+      if (ajudaPrivacidade && selecionada?.dataset.ajuda) {
+        ajudaPrivacidade.textContent = selecionada.dataset.ajuda;
+      }
+      const aceitaCorpoOuTrecho = ['Trecho', 'CorpoAgua'].includes(selecionada?.value);
+      if (campoCorpoOuTrecho) {
+        campoCorpoOuTrecho.hidden = !aceitaCorpoOuTrecho;
+      }
+      // Quem troca para Cidade/Oculto/Exato não pode deixar o rio/trecho cru
+      // no payload nem no rascunho. preencher() escolhe o nível antes de
+      // preencher o campo, então um rascunho válido não é apagado aqui.
+      if (!aceitaCorpoOuTrecho) {
+        const campo = document.getElementById('corpo-ou-trecho');
+        if (campo) campo.value = '';
+      }
+    }
+
+    opcoesPrivacidade.forEach((opcao) => opcao.addEventListener('change', atualizarNivelDeDetalhe));
+    atualizarNivelDeDetalhe();
 
     formulario.addEventListener('input', atualizarDefeso);
     formulario.addEventListener('change', atualizarDefeso);
@@ -1432,6 +1555,158 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
     display: none;
   }
 
+  /* Seletor de nível de detalhe do local */
+  .privacidade-campo {
+    margin-top: 15px;
+  }
+
+  .privacidade-titulo {
+    color: var(--tinta);
+    font-size: 0.76rem;
+    font-weight: 600;
+  }
+
+  .privacidade-intro {
+    color: var(--tinta-suave);
+    font-size: 0.72rem;
+    line-height: 1.5;
+  }
+
+  .priv-opcoes {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  .priv-opt {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 56px;
+    padding: 10px 14px;
+    border: 1px solid var(--linha);
+    border-radius: var(--raio-pequeno);
+    background: var(--superficie);
+    cursor: pointer;
+  }
+
+  .priv-opt:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .priv-opt:hover {
+    border-color: var(--linha-forte);
+  }
+
+  .priv-opt:focus-within {
+    outline: 3px solid var(--terracota);
+    outline-offset: 2px;
+  }
+
+  .priv-opt:has(.priv-input:checked) {
+    border-color: var(--terracota);
+    background: color-mix(in srgb, var(--terracota) 6%, var(--superficie));
+    box-shadow: inset 0 0 0 1px var(--terracota);
+  }
+
+  .privacidade-campo .priv-input {
+    position: absolute;
+    width: 1px;
+    min-height: 0;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    clip-path: inset(50%);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .priv-marcador {
+    display: grid;
+    flex: 0 0 18px;
+    place-items: center;
+    width: 18px;
+    height: 18px;
+    border: 1.5px solid var(--linha-forte);
+    border-radius: 50%;
+    background: var(--superficie);
+  }
+
+  .priv-marcador::after {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: transparent;
+    content: '';
+  }
+
+  .priv-input:checked + .priv-marcador {
+    border-color: var(--terracota);
+  }
+
+  .priv-input:checked + .priv-marcador::after {
+    background: var(--terracota);
+  }
+
+  .priv-texto {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.84rem;
+    line-height: 1.4;
+  }
+
+  .priv-rotulo {
+    font-weight: 600;
+  }
+
+  .priv-selo {
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--terracota) 10%, transparent);
+    color: var(--terracota);
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .privacidade-ajuda {
+    min-height: 2.4em;
+    margin-top: 4px;
+    color: var(--tinta-suave);
+    font-size: 0.72rem;
+    line-height: 1.5;
+  }
+
+  .campo-corpo-ou-trecho {
+    margin-top: 8px;
+  }
+
+  .campo-corpo-ou-trecho[hidden] {
+    display: none;
+  }
+
+  .campo-corpo-ou-trecho input {
+    min-height: 48px;
+    border-radius: var(--raio-pequeno);
+  }
+
+  .campo-corpo-ou-trecho input:focus-visible {
+    outline: 3px solid var(--terracota);
+    outline-offset: 2px;
+  }
+
+  .priv-ajuda-campo {
+    color: var(--tinta-suave);
+    font-size: 0.66rem;
+    line-height: 1.5;
+  }
+
   .sugestoes-especie {
     display: flex;
     flex-wrap: wrap;
@@ -1487,6 +1762,14 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
   }
 
   @media (max-width: 640px) {
+    .priv-opcoes {
+      grid-template-columns: 1fr;
+    }
+
+    .priv-opt:last-child {
+      grid-column: auto;
+    }
+
     .sugestoes-especie {
     display: flex;
     flex-wrap: wrap;

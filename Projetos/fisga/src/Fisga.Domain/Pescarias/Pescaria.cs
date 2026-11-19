@@ -42,6 +42,8 @@ public sealed class Pescaria : AggregateRoot
 
     public string? Estado { get; private set; }
 
+    public string? CorpoOuTrecho { get; private set; }
+
     public AmbienteDePesca Ambiente { get; private set; }
 
     public DateOnly Data { get; private set; }
@@ -63,10 +65,16 @@ public sealed class Pescaria : AggregateRoot
     public string LocalPublico => PrivacidadeDoLocal switch
     {
         PrivacidadeDoLocal.Exato => Local,
-        PrivacidadeDoLocal.Cidade when !string.IsNullOrWhiteSpace(Cidade) =>
+        PrivacidadeDoLocal.Trecho when !string.IsNullOrWhiteSpace(CorpoOuTrecho) => CorpoOuTrecho!,
+        PrivacidadeDoLocal.CorpoAgua when !string.IsNullOrWhiteSpace(CorpoAguaPublico) => CorpoAguaPublico!,
+        PrivacidadeDoLocal.Cidade or PrivacidadeDoLocal.Trecho or PrivacidadeDoLocal.CorpoAgua
+            when !string.IsNullOrWhiteSpace(Cidade) =>
             string.IsNullOrWhiteSpace(Estado) ? Cidade! : $"{Cidade} · {Estado}",
         _ => "Local não divulgado"
     };
+
+    private string? CorpoAguaPublico =>
+        string.IsNullOrWhiteSpace(CorpoOuTrecho) ? null : CorpoOuTrecho!.Split(',')[0].Trim();
 
     public string? CidadePublica =>
         PrivacidadeDoLocal == PrivacidadeDoLocal.Oculto ? null : Cidade;
@@ -110,6 +118,7 @@ public sealed class Pescaria : AggregateRoot
         Pescador = string.IsNullOrWhiteSpace(dados.Pescador) ? null : dados.Pescador.Trim();
         Cidade = string.IsNullOrWhiteSpace(dados.Cidade) ? null : dados.Cidade.Trim();
         Estado = string.IsNullOrWhiteSpace(dados.Estado) ? null : dados.Estado.Trim().ToUpperInvariant();
+        CorpoOuTrecho = string.IsNullOrWhiteSpace(dados.CorpoOuTrecho) ? null : dados.CorpoOuTrecho.Trim();
         Ambiente = dados.Ambiente;
         Data = dados.Data;
         Periodo = dados.Periodo;
@@ -205,6 +214,11 @@ public sealed class Pescaria : AggregateRoot
         if (Cidade?.Length > 80)
         {
             throw new DomainException("cidade_longa", "A cidade deve ter até 80 caracteres.");
+        }
+
+        if (CorpoOuTrecho?.Length > 80)
+        {
+            throw new DomainException("corpo_ou_trecho_longo", "O campo rio, lagoa ou trecho deve ter até 80 caracteres.");
         }
 
         if (Estado is not null && Estado.Length != 2)

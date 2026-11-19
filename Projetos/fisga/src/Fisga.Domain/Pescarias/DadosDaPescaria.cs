@@ -21,6 +21,8 @@ public sealed record DadosDaPescaria
 
     public string? Estado { get; init; }
 
+    public string? CorpoOuTrecho { get; init; }
+
     public AmbienteDePesca Ambiente { get; init; }
 
     public DateOnly Data { get; init; }
@@ -37,7 +39,7 @@ public sealed record DadosDaPescaria
 
     public string? Observacoes { get; init; }
 
-    public PrivacidadeDoLocal PrivacidadeDoLocal { get; init; } = PrivacidadeDoLocal.Exato;
+    public PrivacidadeDoLocal PrivacidadeDoLocal { get; init; } = PrivacidadeDoLocal.Cidade;
 
     public IReadOnlyList<DadosDaCaptura> Capturas { get; init; } = [];
 }

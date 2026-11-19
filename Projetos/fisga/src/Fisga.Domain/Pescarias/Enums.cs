@@ -58,5 +58,7 @@ public enum PrivacidadeDoLocal
 {
     Exato = 0,
     Cidade = 1,
-    Oculto = 2
+    Oculto = 2,
+    Trecho = 3,
+    CorpoAgua = 4
 }

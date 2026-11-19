@@ -12,6 +12,8 @@ public sealed record EntradaDePescaria
 
     public string? Estado { get; init; }
 
+    public string? CorpoOuTrecho { get; init; }
+
     public AmbienteDePesca Ambiente { get; init; }
 
     public DateOnly Data { get; init; }
@@ -28,7 +30,7 @@ public sealed record EntradaDePescaria
 
     public string? Observacoes { get; init; }
 
-    public PrivacidadeDoLocal PrivacidadeDoLocal { get; init; } = PrivacidadeDoLocal.Exato;
+    public PrivacidadeDoLocal PrivacidadeDoLocal { get; init; } = PrivacidadeDoLocal.Cidade;
 
     public IReadOnlyList<EntradaDeCaptura>? Capturas { get; init; }
 }
@@ -123,6 +125,7 @@ public static class PescariaMapper
             Pescador = entrada.Pescador,
             Cidade = entrada.Cidade,
             Estado = entrada.Estado,
+            CorpoOuTrecho = entrada.CorpoOuTrecho,
             Ambiente = entrada.Ambiente,
             Data = entrada.Data,
             Periodo = entrada.Periodo,
@@ -153,6 +156,7 @@ public static class PescariaMapper
             Pescador = pescaria.Pescador,
             Cidade = pescaria.Cidade,
             Estado = pescaria.Estado,
+            CorpoOuTrecho = pescaria.CorpoOuTrecho,
             Ambiente = pescaria.Ambiente,
             Data = pescaria.Data,
             Periodo = pescaria.Periodo,
@@ -184,7 +188,8 @@ public static class PescariaMapper
         {
             Local = pescaria.LocalPublico,
             Cidade = pescaria.CidadePublica,
-            Estado = pescaria.EstadoPublico
+            Estado = pescaria.EstadoPublico,
+            CorpoOuTrecho = null
         };
     }
 

@@ -71,7 +71,8 @@ export interface EntradaDePescaria {
   lua: string;
   clima: string;
   clarezaDaAgua: string;
-  privacidadeDoLocal?: 'Exato' | 'Cidade' | 'Oculto';
+  privacidadeDoLocal?: 'Exato' | 'Trecho' | 'CorpoAgua' | 'Cidade' | 'Oculto';
+  corpoOuTrecho?: string | null;
   observacoes?: string | null;
   capturas: EntradaDeCaptura[];
 }
@@ -83,7 +84,7 @@ export interface PescariaDetalhada {
   capturas: Captura[];
   criadoEm: string;
   atualizadoEm: string;
-  privacidadeDoLocal: 'Exato' | 'Cidade' | 'Oculto';
+  privacidadeDoLocal: 'Exato' | 'Trecho' | 'CorpoAgua' | 'Cidade' | 'Oculto';
   podeEditar: boolean;
 }
 

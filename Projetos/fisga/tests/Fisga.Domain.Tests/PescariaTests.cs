@@ -61,6 +61,88 @@ public sealed class PescariaTests
     }
 
     [Fact]
+    public void Privacidade_trecho_mostra_o_campo_inteiro()
+    {
+        var dados = Fabrica.Dados() with
+        {
+            PrivacidadeDoLocal = PrivacidadeDoLocal.Trecho,
+            CorpoOuTrecho = "Rio Sergipe, trecho centro"
+        };
+        Assert.Equal("Rio Sergipe, trecho centro", Fabrica.Pescaria(dados).LocalPublico);
+    }
+
+    [Fact]
+    public void Privacidade_corpo_agua_mostra_ate_a_primeira_virgula()
+    {
+        var dados = Fabrica.Dados() with
+        {
+            PrivacidadeDoLocal = PrivacidadeDoLocal.CorpoAgua,
+            CorpoOuTrecho = "Rio Sergipe, trecho centro"
+        };
+        Assert.Equal("Rio Sergipe", Fabrica.Pescaria(dados).LocalPublico);
+    }
+
+    [Fact]
+    public void Trecho_e_corpo_agua_sem_campo_caem_para_cidade()
+    {
+        foreach (var nivel in new[] { PrivacidadeDoLocal.Trecho, PrivacidadeDoLocal.CorpoAgua })
+        {
+            var dados = Fabrica.Dados() with { PrivacidadeDoLocal = nivel, CorpoOuTrecho = "  " };
+            Assert.Equal("Campinas · SP", Fabrica.Pescaria(dados).LocalPublico);
+        }
+    }
+
+    [Theory]
+    [InlineData(",", "Campinas", "SP", "Campinas · SP")]
+    [InlineData(", trecho centro", "Campinas", "SP", "Campinas · SP")]
+    [InlineData(", trecho centro", "Campinas", null, "Campinas")]
+    [InlineData(",", null, null, "Local não divulgado")]
+    public void Corpo_agua_com_primeiro_segmento_vazio_cai_para_cidade_ou_fica_sem_local(
+        string corpoOuTrecho, string? cidade, string? estado, string esperado)
+    {
+        var dados = Fabrica.Dados() with
+        {
+            PrivacidadeDoLocal = PrivacidadeDoLocal.CorpoAgua,
+            CorpoOuTrecho = corpoOuTrecho,
+            Cidade = cidade,
+            Estado = estado
+        };
+
+        Assert.Equal(esperado, Fabrica.Pescaria(dados).LocalPublico);
+    }
+
+    [Fact]
+    public void Pescaria_sem_privacidade_usa_cidade()
+    {
+        var pescaria = Fabrica.Pescaria(Fabrica.Dados());
+
+        Assert.Equal(PrivacidadeDoLocal.Cidade, pescaria.PrivacidadeDoLocal);
+        Assert.Equal("Campinas · SP", pescaria.LocalPublico);
+    }
+
+    [Fact]
+    public void Rejeita_corpo_ou_trecho_longo()
+    {
+        var dados = Fabrica.Dados() with { CorpoOuTrecho = new string('a', 81) };
+        var excecao = Assert.Throws<DomainException>(() => Fabrica.Pescaria(dados));
+        Assert.Equal("corpo_ou_trecho_longo", excecao.Codigo);
+    }
+
+    [Fact]
+    public void Oculto_esconde_cidade_mesmo_com_campo_preenchido()
+    {
+        var dados = Fabrica.Dados() with
+        {
+            PrivacidadeDoLocal = PrivacidadeDoLocal.Oculto,
+            CorpoOuTrecho = "Rio Sergipe"
+        };
+        var pescaria = Fabrica.Pescaria(dados);
+        Assert.Equal("Local não divulgado", pescaria.LocalPublico);
+        Assert.Null(pescaria.CidadePublica);
+        Assert.Null(pescaria.EstadoPublico);
+    }
+
+    [Fact]
     public void Captura_aceita_quatro_fotos_e_define_capa()
     {
         var fotos = new[]

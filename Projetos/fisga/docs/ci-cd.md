@@ -17,8 +17,8 @@ convenções de branch, labels, campos do quadro e checklist de merge, está em
 PR
 └── fisga-pipeline
     ├── changes   (separa mudança de código de mudança de documentação)
-    ├── api       (restore locked + format + build + 326 testes)
-    ├── web       (npm ci + astro check + build + 129 Playwright mockados)
+    ├── api       (restore locked + format + build + 348 testes)
+    ├── web       (npm ci + astro check + build + 138 Playwright mockados)
     ├── docs      (markdownlint + links, em PR de código ou de documentação)
     ├── docker    (build das imagens sem push, em PR e workflow_dispatch)
     └── gate      (check obrigatório)
@@ -94,7 +94,7 @@ O filtro separa código de documentação:
 - `dotnet restore Fisga.slnx --locked-mode`
 - `dotnet format Fisga.slnx --verify-no-changes --no-restore`
 - `dotnet build Fisga.slnx -c Release --no-restore -warnaserror`
-- `dotnet test Fisga.slnx -c Release --no-build` (326 testes)
+- `dotnet test Fisga.slnx -c Release --no-build` (348 testes)
 - `./scripts/gerar-openapi.sh` (regenera `docs/api/openapi.json` com SQLite temporário, ambiente
   Development e Sentry desligado)
 - `git diff --exit-code -- docs/api/openapi.json` (contrato desatualizado falha o job com a instrução
@@ -109,7 +109,7 @@ usa `actions/setup-dotnet` com `global-json-file` e cache baseado nos `packages.
 - `npm ci`
 - `npm run check` (`astro check`)
 - `npm run build` (Astro + Pagefind + precache offline)
-- `npm run test:e2e` (129 testes Playwright mockados, Chromium)
+- `npm run test:e2e` (138 testes Playwright mockados, Chromium)
 
 O E2E real (6 testes) fica no script `./scripts/e2e-real.sh`, fora do CI por exigir backend,
 SQLite, chaves e outbox temporários; pode virar um job nightly na Fase B.
@@ -572,7 +572,7 @@ cd Projetos/fisga/web
 npm ci
 npm run check
 npm run build
-npm run test:e2e   # 129 testes mockados; o build precisa existir
+npm run test:e2e   # 138 testes mockados; o build precisa existir
 
 # Workflows
 gh actions-lock --verify .github/workflows/fisga-pipeline.yml \
