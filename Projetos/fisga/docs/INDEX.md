@@ -35,6 +35,7 @@ Conteúdo de produto (espécies, técnicas, locais) não fica aqui.
 - [Spec — Confirmação explícita dos dados da foto](superpowers/specs/2026-11-19-exif-confirmacao-design.md)
 - [Plano — Confirmação explícita dos dados da foto](superpowers/plans/2026-11-19-exif-confirmacao.md)
 - [Spec — Foco entre etapas do registrar](superpowers/specs/2026-11-19-foco-etapas-design.md)
+- [Plano — Foco entre etapas do registrar](superpowers/plans/2026-11-19-foco-etapas.md)
 
 ## Referências
 
