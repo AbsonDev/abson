@@ -278,7 +278,9 @@ As ferramentas são conteúdo estático e offline, não um agregado de domínio.
 
 A resposta é limitada ao catálogo, com confiança e no máximo três sugestões. O pescador confirma ou
 corrige; a IA não tem autoridade para gravar a espécie sozinha. O EXIF da foto é lido no navegador
-para sugerir data/período e cidade (GPS via Nominatim), sem armazenar a coordenada.
+apenas como sugestão de data/período e cidade/UF (GPS via Nominatim); nenhum campo é escrito antes
+da confirmação explícita, o Aplicar só preenche campos vazios e `local` nunca recebe valor do GPS.
+A coordenada não é armazenada.
 
 ## Conhecimento (Wiki do Pescador)
 
