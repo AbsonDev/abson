@@ -614,7 +614,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       for (const entrada of entradas) {
         const item = document.createElement('div');
         item.className = `upload-item upload-item--${entrada.estado}`;
-        // Alias de classe: o contrato visual e os testes usam --heic.
+        // O estado é `heic-recusado`; o teste e os estilos usam `.upload-item--heic`.
         if (entrada.estado === 'heic-recusado') item.classList.add('upload-item--heic');
         item.dataset.uploadId = entrada.id;
 
@@ -968,6 +968,9 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       entrada.progresso = 0;
       uploadsPendentes += 1;
       renderizarUploads(linha);
+      // Só erro de decode/compressão de HEIC vira "exporte como JPEG"; erro de
+      // transporte/servidor continua sendo falha com "Tentar de novo".
+      let fase = 'processar';
 
       try {
         if (!exifDaSelecaoTentado) {
@@ -975,6 +978,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
           await aplicarExif(entrada.arquivo);
         }
         const blob = await comprimirImagem(entrada.arquivo);
+        fase = 'enviar';
         const dados = await enviarMidia(blob, (progresso) => {
           entrada.progresso = progresso;
           renderizarUploads(linha);
@@ -996,7 +1000,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
           await encerrarSessaoExpirada(urlDeRetorno());
           return;
         }
-        entrada.estado = ehHeic(entrada.arquivo) ? 'heic-recusado' : 'falhou';
+        entrada.estado = fase === 'processar' && ehHeic(entrada.arquivo) ? 'heic-recusado' : 'falhou';
         entrada.mensagem = erro instanceof Error ? erro.message : 'Não foi possível enviar a foto.';
       } finally {
         uploadsPendentes -= 1;

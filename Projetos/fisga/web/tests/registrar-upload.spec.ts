@@ -177,3 +177,33 @@ test('foto falha não ocupa slot: dá para adicionar outra sem apagar o retry', 
   await expect(page.locator('.upload-item--falhou')).toHaveCount(1);
   expect(chamadas).toBe(2);
 });
+
+test('HEIC decodificado com erro de servidor oferece retry', async ({ page }) => {
+  await abrirRegistrar(page);
+  let chamadas = 0;
+  await page.route(`${API}/api/midia`, (route) => {
+    chamadas += 1;
+    const falhou = chamadas === 1;
+    return route.fulfill({
+      status: falhou ? 503 : 200,
+      headers: { ...CORS, 'content-type': 'application/json' },
+      body: JSON.stringify(falhou
+        ? { detalhe: 'Indisponível.' }
+        : { url: '/midia/heic-retry.jpg' })
+    });
+  });
+
+  await page.locator('input[type="file"]').first().setInputFiles({
+    name: 'foto.heic',
+    mimeType: 'image/heic',
+    buffer: PNG
+  });
+  await expect(page.locator('.upload-item--falhou')).toContainText('Não enviada');
+  await expect(page.getByRole('button', { name: 'Tentar de novo' })).toBeVisible();
+  await expect(page.locator('.upload-item--heic')).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Tentar de novo' }).click();
+  await expect(page.locator('.captura-foto-thumb')).toHaveCount(1);
+  await expect(page.locator('.upload-item')).toHaveCount(0);
+  expect(chamadas).toBe(2);
+});
