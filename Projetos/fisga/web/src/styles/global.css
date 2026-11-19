@@ -3523,6 +3523,104 @@ body.foco .tabbar {
   text-transform: uppercase;
 }
 
+.upload-lista {
+  display: grid;
+  flex: 0 0 100%;
+  gap: 8px;
+}
+
+.upload-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 10px;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid var(--linha);
+  border-radius: var(--raio-pequeno);
+  background: var(--superficie);
+  color: var(--tinta);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.upload-item--falhou {
+  border-color: var(--acafrao);
+}
+
+.upload-nome {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.upload-estado {
+  grid-column: 1;
+  color: var(--tinta-suave);
+  font-weight: 600;
+}
+
+.upload-item--falhou .upload-estado {
+  color: var(--acafrao);
+}
+
+.upload-barra {
+  grid-column: 1 / -1;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--linha);
+}
+
+.upload-barra > span {
+  display: block;
+  height: 100%;
+  background: var(--terracota);
+  transform-origin: left center;
+  transition: transform 180ms ease;
+}
+
+.upload-nota,
+.upload-heic {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--tinta);
+}
+
+.upload-retry {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--terracota);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.upload-retry:focus-visible {
+  outline: 3px solid var(--terracota);
+  outline-offset: 2px;
+}
+
+.upload-status {
+  flex: 0 0 100%;
+  margin: 0;
+  color: var(--tinta-suave);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .upload-barra > span {
+    transition: none;
+  }
+}
+
 .captura-solto {
   display: flex;
   align-items: center;
@@ -3662,6 +3760,12 @@ body.foco .tabbar {
 
   .trofeu-rodape small {
     margin-top: 6px;
+  }
+
+  .upload-retry {
+    grid-column: 1 / -1;
+    grid-row: auto;
+    width: 100%;
   }
 }
 
