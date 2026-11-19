@@ -105,7 +105,8 @@ estão em [github-workflow.md](./github-workflow.md); esta seção cobre só o j
 - **Onde:** `.github/workflows/fisga-pipeline.yml`.
 - **O que valida:** restore locked, `dotnet format --verify-no-changes`, build `-warnaserror`, 326
   testes, `npm ci`, `astro check`, build, 61 Playwright mockados, build das imagens, job `docs`
-  (markdownlint + links) e regeneração/comparação de `docs/api/openapi.json` no job `api`.
+  (markdownlint + links, só em PR e `workflow_dispatch`, não no push) e regeneração/comparação de
+  `docs/api/openapi.json` no job `api`.
 - **Como ler:** o job `gate` agrega; um job `failure`/`cancelled` derruba o gate.
 - **Reexecutar:** push novo no PR, ou `gh run rerun <run-id> --repo AbsonDev/abson`.
 
@@ -230,8 +231,9 @@ env:
 - **Por que é advisory:** `continue-on-error: true` e o job não entra em `gate.needs`. Falha do
   modelo ou achado ruim nunca bloqueia merge. PR de fork é pulado e o checkout usa `headRefOid`
   (SHA imutável), não `refs/pull/N/head`, para a checagem de fork e o código analisado serem o mesmo.
-- **Validação (19/11/2026):** PR #42, run `44446919922` (8m39s), comentário com 8 drifts reais que
-  levaram a correções documentais no próprio PR.
+- **Validação (19/11/2026):** PR #42, run `44446919922` (8m39s), comentário com 8 drifts reais. As
+  correções foram para o PR #46, porque o #42 foi mergeado antes delas (`ef5738f`); o #46 validou
+  o loop completo: novos drifts apontados e corrigidos no mesmo PR.
 
 ### `/oc`
 
