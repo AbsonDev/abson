@@ -131,8 +131,9 @@ nunca são publicados.
 - **Abas Visão geral/Pescarias/Insights** para separar resumo, histórico e padrões.
 - **Sinais comparativos**: “+X% de capturas com lua crescente”, com pelo menos 3 pescarias de cada
   lado, diferença mínima de 15% e aviso “sinal, não garantia”.
-- **EXIF**: lê data/hora e GPS da foto para sugerir data, período e cidade/UF (GPS usado só para a
-  sugestão; a cidade pode ser corrigida).
+- **EXIF**: lê data/hora e GPS da foto apenas como sugestão. `Aplicar nos campos vazios` preenche
+  data, período e cidade/UF sem escrever no local exato; `Ignorar` vale pelo resto da sessão. A
+  cidade pode ser corrigida.
 - **Lembrete de defeso**: ao preencher espécie e UF, mostra “confira tamanho mínimo e defeso de X em
   UF” com link para o órgão oficial.
 - **Sugestão de espécie por foto**: porta plugável (`IReconhecedorDeEspecie`) com confirmação humana.
@@ -315,7 +316,8 @@ Abra **`http://localhost:4323`**.
 4. Confira `/hoje`: condições do local, janela com gráfico, 7 dias e atalhos.
 5. Em `/mapa`, alterne Locais/Pontos/Trilhas, crie um ponto, desenhe uma trilha e exporte GPX.
 6. Em `/registrar`, percorra as 4 etapas (pescaria, condições, capturas, revisar); envie uma foto com
-   EXIF e confira data/cidade sugeridas e o lembrete de defeso.
+   EXIF, confira as sugestões no aviso e clique em **Aplicar nos campos vazios** para preencher
+   cidade/UF e ver o lembrete de defeso.
 7. Revise o resumo, salve a pescaria, abra o troféu e baixe a imagem/PDF.
 8. Em `/meu-diario`, alterne Visão geral/Pescarias/Insights.
 9. Em `/aprender`, busque “robalo” ou “nó” e confira os selos offline.
@@ -447,7 +449,7 @@ tipos do Astro. Cobrem:
 - fallback manual da sugestão de espécie;
 - resolução da versão exposta em `/health`.
 
-O fluxo completo também é validado com Playwright: **161 testes mockados** (UI e estados) e
+O fluxo completo também é validado com Playwright: **173 testes mockados** (UI e estados) e
 **6 testes com backend real** para a migração de identidade. Os reais rodam com SQLite, chaves e
 outbox temporários:
 
@@ -479,7 +481,7 @@ código de mudança de documentação e executa:
 
 - `api`: restore locked, `dotnet format --verify-no-changes`, build `-warnaserror`, os 348 testes
   xUnit e a regeneração/comparação de `docs/api/openapi.json`.
-- `web`: `npm ci`, `astro check`, `npm run build` e `npm run test:e2e` (161 testes Playwright
+- `web`: `npm ci`, `astro check`, `npm run build` e `npm run test:e2e` (173 testes Playwright
   mockados).
 - `docs`: `markdownlint-cli2` e checagem de links (`lychee`), em PR de código ou documentação.
 - `docker`: build das imagens da API e do web sem push (em PR e `workflow_dispatch`).
@@ -584,7 +586,8 @@ navegador. Sessões e links mágicos são armazenados apenas como hash SHA-256.
 - Google é opcional e só é habilitado quando as duas credenciais existem; sem elas, o botão não
   aparece e o endpoint responde `disponivel: false`.
 - Fotos são reencodadas no navegador e têm EXIF removido do arquivo enviado. O EXIF é lido antes,
-  localmente, apenas para sugerir data/período/cidade; o GPS não é armazenado sem ação do usuário.
+  localmente, apenas como sugestão: nada é escrito sem `Aplicar nos campos vazios`, que só preenche
+  campos vazios e nunca escreve no local exato; o GPS não é armazenado.
 - A sugestão de espécie nunca tem autoridade: o pescador confirma ou corrige. Sem provedor, o fluxo
   é manual.
 - Defeso e tamanho mínimo são um lembrete editorial com link para o órgão oficial, não um laudo.
