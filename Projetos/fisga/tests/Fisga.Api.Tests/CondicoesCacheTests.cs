@@ -394,7 +394,8 @@ public sealed class CondicoesCacheTests
         var resultado = await provedor.ObterAsync(-23.55, -45.13, Dia);
 
         Assert.Null(resultado);
-        Assert.Equal(1, handler.ChamadasClima);
+        // A resposta 200 sem JSON é retentada uma vez antes de desistir.
+        Assert.Equal(2, handler.ChamadasClima);
         Assert.Contains(logger.Mensagens, mensagem =>
             mensagem.Contains("Open-Meteo clima devolveu resposta não JSON", StringComparison.Ordinal)
             && mensagem.Contains("200", StringComparison.Ordinal)
