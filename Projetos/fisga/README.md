@@ -566,7 +566,8 @@ navegador. Sessões e links mágicos são armazenados apenas como hash SHA-256.
 ## Privacidade e segurança
 
 - O diário completo é privado; cada pescaria tem um link público próprio e opcional.
-- O local pode ser exato, aproximado (cidade/UF) ou oculto; a escolha vale para link, troféu e PDF.
+- O local pode ser exato, trecho, rio/lagoa, cidade/UF ou oculto — padrão cidade/UF; a escolha
+  vale para link público, troféu e PDF.
 - Locais salvos, pontos e trilhas são privados e não têm endpoint público.
 - Links mágicos são de uso único, valem 15 minutos e só o mais recente funciona.
 - Login por senha exige e-mail confirmado; a senha tem 10–128 caracteres e o reset invalida sessões.
@@ -651,7 +652,7 @@ A porta de entrada é [`docs/INDEX.md`](docs/INDEX.md). Atalhos:
 - [`docs/review.md`](docs/review.md) — camadas de review, agentes e critérios.
 - [`docs/guias/como-adicionar-endpoint.md`](docs/guias/como-adicionar-endpoint.md) — passo a passo de uma rota nova.
 - [`docs/roadmap.md`](docs/roadmap.md) — módulos, fases, dados e métricas.
-- [`docs/adr/README.md`](docs/adr/README.md) — decisões arquiteturais (0001–0013).
+- [`docs/adr/README.md`](docs/adr/README.md) — decisões arquiteturais (0001–0014).
 - [`docs/referencias`](docs/referencias) — estudos de referência.
 - [`AGENTS.md`](AGENTS.md) — contexto para agentes de código.
 
