@@ -41,7 +41,12 @@ jobs:
             BASE="$(git rev-list --max-parents=0 HEAD | tail -n1)"
           fi
           FILES="$(git diff --name-only "$BASE" "$HEAD")"
-          if echo "$FILES" | grep -qE '^Projetos/fisga/|^\.github/workflows/fisga-(pipeline|deploy)\.yml$'; then
+          CODIGO="$(printf '%s\n' "$FILES" \
+            | grep -E '^Projetos/fisga/' \
+            | grep -vE '^Projetos/fisga/(docs/|README\.md$|AGENTS\.md$)' || true)"
+          WORKFLOWS="$(printf '%s\n' "$FILES" \
+            | grep -E '^\.github/workflows/fisga-(pipeline|deploy)\.yml$' || true)"
+          if [ -n "$CODIGO" ] || [ -n "$WORKFLOWS" ]; then
             echo "fisga=true" >> "$GITHUB_OUTPUT"
           else
             echo "fisga=false" >> "$GITHUB_OUTPUT"

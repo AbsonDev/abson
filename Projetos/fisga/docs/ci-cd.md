@@ -16,15 +16,16 @@ convenções de branch, labels, campos do quadro e checklist de merge, está em
 ```text
 PR
 └── fisga-pipeline
-    ├── changes   (detecta mudanças em Projetos/fisga/**)
+    ├── changes   (separa mudança de código de mudança de documentação)
     ├── api       (restore locked + format + build + 250 testes)
     ├── web       (npm ci + astro check + build + 61 Playwright mockados)
+    ├── docs      (markdownlint + links, em PR de código ou de documentação)
     ├── docker    (build das imagens sem push, em PR e workflow_dispatch)
     └── gate      (check obrigatório)
 
 push em main
-└── fisga-pipeline (CI: changes + api + web + gate)
-    └── fisga-deploy (workflow_run, só com CI verde na main)
+└── fisga-pipeline (CI: changes + o que o filtro exigir + gate)
+    └── fisga-deploy (workflow_run, só com CI verde e mudança de código na main)
         ├── changes   (diff do commit que o CI validou)
         ├── deploy-api  (Coolify -> /health = head_sha -> /ready -> smoke do web atual)
         └── deploy-web  (Coolify -> /health = head_sha -> / e /condicoes)
@@ -67,14 +68,25 @@ Consequências do desenho atual:
 ### `changes`
 
 Roda em todo PR e push para `main`, sem `paths:` no gatilho. O job usa `git diff` para decidir se o
-Fisga mudou e expõe `needs.changes.outputs.fisga`.
+Fisga mudou e expõe dois outputs: `needs.changes.outputs.fisga` (código) e
+`needs.changes.outputs.documentacao` (só documentação).
 
 - PR: diff entre `base.sha` e `head.sha`.
 - Push: diff entre `github.event.before` e `github.sha`, com fallback para o commit raiz quando o
   `before` não existe (branch nova ou force push).
-- `workflow_dispatch`: assume `fisga=true`.
+- `workflow_dispatch`: assume `fisga=true` e `documentacao=true`.
 
-O filtro atual é `^Projetos/fisga/` ou o próprio workflow.
+O filtro separa código de documentação:
+
+- **Código** (`fisga=true`): qualquer caminho em `Projetos/fisga/` **exceto** `docs/**`,
+  `README.md` e `AGENTS.md`, mais o próprio `fisga-pipeline.yml`.
+- **Documentação** (`documentacao=true`): `Projetos/fisga/docs/**`, `Projetos/fisga/README.md`,
+  `Projetos/fisga/AGENTS.md`, `AGENTS.md` da raiz, `.github/copilot-instructions.md`,
+  `.github/PULL_REQUEST_TEMPLATE.md`, `.markdownlint-cli2.jsonc` e `.lychee.toml`.
+- **Exceção deliberada:** `Projetos/fisga/docs/api/openapi.json` (o contrato gerado) conta como
+  **código**, não como documentação. O contrato é gerado; editar `openapi.json` à mão precisa passar
+  pelo job `api`, que regenera e compara. Os demais arquivos de `docs/api/` — como
+  `docs/api/README.md` — são documentação comum.
 
 ### `api`
 
@@ -103,6 +115,17 @@ Dockerfiles, `.dockerignore` e o secret mount do Sentry. Não recebe `SENTRY_AUT
 fork; nesse build os source maps ficam desabilitados. O job também falha se `SENTRY_AUTH_TOKEN`
 aparecer como `ARG`/`ENV` no Dockerfile.
 
+### `docs`
+
+Roda em PR de código **e** em PR só de documentação (`documentacao=true`), mas não no `push`:
+link externo que morre depois do merge não pode bloquear o deploy de código já mergeado.
+
+- `npx --yes markdownlint-cli2@0.24.1` (config em `.markdownlint-cli2.jsonc`).
+- `lycheeverse/lychee-action` com `.lychee.toml` em `AGENTS.md`, `Projetos/fisga/README.md`,
+  `Projetos/fisga/AGENTS.md` e `Projetos/fisga/docs/**/*.md`.
+
+O `gate` depende dele: link quebrado ou Markdown inválido bloqueia o merge.
+
 ### `gate`
 
 Sempre roda (`if: always()`) e falha se qualquer job necessário falhar ou for cancelado. É o único
@@ -127,12 +150,17 @@ Os jobs de deploy só executam quando **todas** as condições são verdadeiras:
 - `github.event.workflow_run.head_branch == 'main'`.
 
 O job `changes` do deploy faz checkout de `head_sha` com `fetch-depth: 0` e diffa `HEAD^..HEAD`
-(ou o commit raiz, no primeiro commit). Ele usa o mesmo filtro do CI. Na prática, um merge de PR
-com Mudanças no Fisga gera diff contra a `main` anterior e marca `fisga=true`.
+(ou o commit raiz, no primeiro commit). Ele aplica o mesmo critério de código do CI, com uma
+diferença: qualquer caminho em `Projetos/fisga/` exceto `docs/**`, `README.md` e `AGENTS.md`, mais
+os próprios `fisga-pipeline.yml`/`fisga-deploy.yml`. Como `docs/api/` fica sob `docs/`, mudança só do
+contrato gerado não deploya — nada muda em produção, e o job `api` do CI já regenera e compara.
 
-> **Known behavior:** qualquer arquivo em `Projetos/fisga/**` conta, inclusive `docs/**` e
-> `README.md`. Um PR só de documentação dispara um deploy idempotente (mesmo código, SHA novo). Se
-> isso incomodar, a Fase B pode excluir `docs/**` e markdown raiz do filtro do deploy.
+### Documentação não deploya
+
+O filtro de código exclui `Projetos/fisga/docs/**`, `README.md` e `AGENTS.md`.
+Um merge só de documentação roda o job `docs` no PR e **não** dispara deploy.
+Mudou código, configuração ou container? Deploy normal. O job de deploy continua
+sendo o mesmo `workflow_run`, sem `paths:`.
 
 O deploy não usa `inputs`, `github.ref` nem `github.event_name` no `if`:
 
@@ -428,6 +456,8 @@ Conferir, nesta ordem:
 
 O diff do commit não tocou em `Projetos/fisga/**` nem nos workflows do Fisga. Se o merge era de um
 PR do Fisga, confira se o checkout usou `head_sha` correto e se o commit tem pai (merge commit).
+Mudança só de documentação (`docs/**`, `README.md`, `AGENTS.md`) também resulta em `fisga=false` — é
+o comportamento esperado (ver [Documentação não deploya](#documentação-não-deploya)).
 
 ### `/health` retorna `dev`
 
@@ -516,7 +546,6 @@ Feito em 18/11/2026:
 - E2E real (6 testes) como job nightly/CI dedicado.
 - Preview deployments para PRs de UI.
 - Merge queue.
-- Excluir `docs/**` e markdown do filtro de deploy para evitar deploy em mudança só de doc.
 - Pin de commit no deploy: PATCH `git_commit_sha` no Coolify antes do webhook, para o build não
   pegar um HEAD mais novo que o SHA validado.
 - Dashboard simples de DORA metrics.

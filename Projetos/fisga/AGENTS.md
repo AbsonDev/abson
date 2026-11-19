@@ -47,6 +47,11 @@ Resumo do que está em [`docs/ci-cd.md`](docs/ci-cd.md) (o runbook é a fonte):
 - **`gate` é o único check obrigatório.** O contexto exigido pela proteção da
   `main` é exatamente `gate`; o CI não usa `paths:` para nunca deixar o check
   "Expected".
+- **Documentação não builda nem deploya.** O filtro de código ignora
+  `Projetos/fisga/docs/**`, `README.md` e `AGENTS.md`; PR só de docs não roda
+  nenhum job de build; só `docs` (além de `changes` e `gate`) e o merge não
+  dispara deploy. Exceção: `Projetos/fisga/docs/api/openapi.json` conta como
+  código, porque o contrato é gerado e o job `api` regenera e compara.
 - **Runtime da API é `aspnet:10.0`.** O TFM é `net10.0`; imagem base de major
   diferente não sobe.
 - **`SENTRY_AUTH_TOKEN` só entra por BuildKit secret** (`sentry_auth_token`).
