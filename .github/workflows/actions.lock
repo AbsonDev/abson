@@ -24,6 +24,12 @@ workflows:
         - 'anomalyco/opencode@latest'
     '.github/workflows/pr-review.yml':
         - 'actions/setup-python@v6.3.0'
+    '.github/workflows/project-sync-tests.yml':
+        - 'actions/checkout@v7.0.1'
+        - 'actions/setup-node@v7.1.0'
+    '.github/workflows/project-sync.yml':
+        - 'actions/checkout@v7.0.1'
+        - 'actions/setup-node@v7.1.0'
     '.github/workflows/reviewdog.yml':
         - 'actions/checkout@v7.0.1'
         - 'reviewdog/action-actionlint@v1.84.1'
