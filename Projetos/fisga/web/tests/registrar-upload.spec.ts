@@ -32,7 +32,10 @@ async function abrirRegistrar(page: Page) {
 
 test('aceita HEIC no seletor e envia quando o navegador decodifica', async ({ page }) => {
   await abrirRegistrar(page);
-  await expect(page.locator('input[type="file"]').first()).toHaveAttribute('accept', /image\/heic/);
+  const seletor = page.locator('input[type="file"]').first();
+  for (const tipo of ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']) {
+    await expect(seletor).toHaveAttribute('accept', new RegExp(tipo));
+  }
   await page.route(`${API}/api/midia`, (route) =>
     route.fulfill({
       status: 200,
@@ -166,9 +169,11 @@ test('foto falha não ocupa slot: dá para adicionar outra sem apagar o retry', 
     });
   });
   const input = page.locator('input[type="file"]').first();
-  await input.setInputFiles({ name: 'falha.jpg', mimeType: 'image/jpeg', buffer: Buffer.from('quebrada') });
+  // PNG decodificável: a falha vem do 503 da API, não do createImageBitmap.
+  await input.setInputFiles({ name: 'falha.jpg', mimeType: 'image/jpeg', buffer: PNG });
   await expect(page.locator('.upload-item--falhou')).toBeVisible();
   await input.setInputFiles({ name: 'outra.jpg', mimeType: 'image/jpeg', buffer: PNG });
   await expect(page.locator('.captura-foto-thumb')).toHaveCount(1);
   await expect(page.locator('.upload-item--falhou')).toHaveCount(1);
+  expect(chamadas).toBe(2);
 });
