@@ -60,6 +60,15 @@ async function prepararUpload(page: Page) {
   );
 }
 
+async function enviarFotoComExif(page: Page, nome = 'foto.jpg') {
+  await page.locator('input[type="file"]').first().setInputFiles({
+    name: nome,
+    mimeType: 'image/jpeg',
+    buffer: Buffer.from(FOTO_COM_EXIF_BASE64, 'base64')
+  });
+  await expect(page.locator('#exif-aviso')).toBeVisible();
+}
+
 test('foto com EXIF mostra aviso com Aplicar e Ignorar sem mudar nenhum campo', async ({ page }) => {
   await prepararUpload(page);
   await page.goto(`${ORIGEM}/registrar`);
@@ -125,4 +134,61 @@ test('foto sem dados não abre aviso e mantém o fluxo', async ({ page }) => {
 
   await expect(page.locator('#exif-aviso')).toBeHidden();
   await expect(page.locator('input[type="file"]').first()).toBeEnabled();
+});
+
+test('Aplicar preenche data, período, cidade e estado vazios, nunca o local', async ({ page }) => {
+  await prepararUpload(page);
+  await page.goto(`${ORIGEM}/registrar`);
+  // O formulário chega com data de hoje e período padrão: limpar para exercitar "vazio".
+  await page.locator('#data').fill('');
+  await page.locator('#periodo').evaluate((elemento) => {
+    (elemento as HTMLSelectElement).value = '';
+  });
+
+  await enviarFotoComExif(page);
+  await expect(page.locator('#exif-valores')).toHaveText('18/11/2026, 06:42 · Ilhabela, SP');
+  await expect(page.locator('#data')).toHaveValue('');
+  await expect(page.locator('#periodo')).toHaveValue('');
+
+  await page.getByRole('button', { name: /Aplicar nos campos vazios/ }).click();
+
+  await expect(page.locator('#data')).toHaveValue('2026-11-18');
+  await expect(page.locator('#periodo')).toHaveValue('Manha');
+  await expect(page.locator('#cidade')).toHaveValue('Ilhabela');
+  await expect(page.locator('#estado')).toHaveValue('SP');
+  await expect(page.locator('#local')).toHaveValue('');
+  await expect(page.locator('#exif-aviso')).toBeHidden();
+  await expect(page.locator('#exif-estado')).toHaveText('Campos vazios preenchidos pela foto.');
+  await expect(page.locator('#local')).toBeFocused();
+});
+
+test('Aplicar não sobrescreve campo digitado durante o upload', async ({ page }) => {
+  await prepararUpload(page);
+  await page.goto(`${ORIGEM}/registrar`);
+  await page.locator('#data').fill('2026-11-19');
+  await page.locator('#periodo').selectOption('Noite');
+
+  await enviarFotoComExif(page);
+  await page.getByRole('button', { name: /Aplicar nos campos vazios/ }).click();
+
+  await expect(page.locator('#data')).toHaveValue('2026-11-19');
+  await expect(page.locator('#periodo')).toHaveValue('Noite');
+  await expect(page.locator('#cidade')).toHaveValue('Ilhabela');
+  await expect(page.locator('#exif-estado')).toHaveText('Campos vazios preenchidos pela foto.');
+});
+
+test('reverso indisponível ainda mostra data e aplica só o que veio da foto', async ({ page }) => {
+  await prepararUpload(page);
+  // Registrada depois do mock de sucesso: a última route vale neste teste.
+  await page.route(`${API}/api/locais/reverso**`, (route) => route.abort());
+  await page.goto(`${ORIGEM}/registrar`);
+  await page.locator('#data').fill('');
+
+  await enviarFotoComExif(page);
+  await expect(page.locator('#exif-valores')).toHaveText('18/11/2026, 06:42');
+  await page.getByRole('button', { name: /Aplicar nos campos vazios/ }).click();
+
+  await expect(page.locator('#data')).toHaveValue('2026-11-18');
+  await expect(page.locator('#cidade')).toHaveValue('');
+  await expect(page.locator('#estado')).toHaveValue('');
 });

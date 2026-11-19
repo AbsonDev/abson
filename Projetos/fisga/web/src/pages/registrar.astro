@@ -742,6 +742,33 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       aviso.classList.remove('oculto');
     }
 
+    function confirmarExif() {
+      if (!exifSugestoes) return;
+
+      const sugestoes = exifSugestoes;
+      const campos = [
+        ['data', sugestoes.data],
+        ['periodo', sugestoes.periodo],
+        ['cidade', sugestoes.cidade],
+        ['estado', sugestoes.estado]
+      ];
+      for (const [id, sugerido] of campos) {
+        const campo = document.getElementById(id);
+        if (campo && sugerido && !campo.value.trim()) campo.value = sugerido;
+      }
+
+      decisaoExifTomada = true;
+      exifSugestoes = null;
+      document.getElementById('exif-aviso')?.classList.add('oculto');
+      const estado = document.getElementById('exif-estado');
+      const textoEstado = document.getElementById('exif-estado-texto');
+      if (textoEstado) textoEstado.textContent = 'Campos vazios preenchidos pela foto.';
+      estado?.classList.remove('oculto');
+      document.getElementById('local')?.focus();
+    }
+
+    document.getElementById('exif-aplicar')?.addEventListener('click', confirmarExif);
+
     async function aplicarExif(arquivo) {
       if (decisaoExifTomada) return;
 
@@ -758,27 +785,40 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         let cidade = '';
         let estado = '';
         if (gps?.latitude && gps?.longitude) {
+          // Uma falha no reverso não pode derrubar a sugestão de data da foto.
           const resposta = await fetch(
             `${API}/api/locais/reverso?lat=${gps.latitude}&lon=${gps.longitude}`
-          );
-          if (resposta.ok) {
+          ).catch(() => null);
+          if (resposta?.ok) {
             const local = await resposta.json();
             cidade = local.cidade || local.nome || '';
             estado = local.estado || '';
           }
         }
 
+        // Sem nada útil, preserva a sugestão pendente da primeira foto: não fazer nada é
+        // intencional, para não substituir uma sugestão já à espera de decisão.
         if (!data && !cidade) return;
 
         const local = data ? new Date(data.getTime() - data.getTimezoneOffset() * 60000) : null;
         const partes = [];
-        if (local) partes.push(local.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }));
+        if (local) {
+          // O epoch foi ajustado para o horário civil da foto: ler em UTC evita
+          // deslocar outra vez pelo fuso de quem estiver rodando.
+          partes.push(
+            local.toLocaleString('pt-BR', {
+              dateStyle: 'short',
+              timeStyle: 'short',
+              timeZone: 'UTC'
+            })
+          );
+        }
         if (cidade) partes.push([cidade, estado].filter(Boolean).join(', '));
 
         // Nenhum input é tocado aqui: a escrita depende da decisão em confirmarExif().
         exifSugestoes = {
           data: local ? local.toISOString().slice(0, 10) : '',
-          periodo: local ? periodoDaHora(local.getHours()) : '',
+          periodo: local ? periodoDaHora(local.getUTCHours()) : '',
           cidade,
           estado,
           partes
