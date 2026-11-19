@@ -432,7 +432,7 @@ npm run check && npm run build
 npx playwright test
 ```
 
-Atualmente: **326 testes de backend** (36 de domínio + 54 de aplicação + 236 de API) e checagem de
+Atualmente: **348 testes de backend** (46 de domínio + 58 de aplicação + 244 de API) e checagem de
 tipos do Astro. Cobrem:
 
 - criação/edição de pescaria, IDs de captura, validações e isolamento entre usuários;
@@ -443,7 +443,7 @@ tipos do Astro. Cobrem:
 - fallback manual da sugestão de espécie;
 - resolução da versão exposta em `/health`.
 
-O fluxo completo também é validado com Playwright: **129 testes mockados** (UI e estados) e
+O fluxo completo também é validado com Playwright: **138 testes mockados** (UI e estados) e
 **6 testes com backend real** para a migração de identidade. Os reais rodam com SQLite, chaves e
 outbox temporários:
 
@@ -473,9 +473,9 @@ O Fisga tem três workflows no GitHub Actions: `fisga-pipeline.yml` (CI), `fisga
 [docs/review.md](docs/review.md)). O CI roda em todo PR e em push para `main`, separa mudança de
 código de mudança de documentação e executa:
 
-- `api`: restore locked, `dotnet format --verify-no-changes`, build `-warnaserror`, os 326 testes
+- `api`: restore locked, `dotnet format --verify-no-changes`, build `-warnaserror`, os 348 testes
   xUnit e a regeneração/comparação de `docs/api/openapi.json`.
-- `web`: `npm ci`, `astro check`, `npm run build` e `npm run test:e2e` (129 testes Playwright
+- `web`: `npm ci`, `astro check`, `npm run build` e `npm run test:e2e` (138 testes Playwright
   mockados).
 - `docs`: `markdownlint-cli2` e checagem de links (`lychee`), em PR de código ou documentação.
 - `docker`: build das imagens da API e do web sem push (em PR e `workflow_dispatch`).

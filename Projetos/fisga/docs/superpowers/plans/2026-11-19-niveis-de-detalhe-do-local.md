@@ -292,7 +292,7 @@ git commit -m "feat(fisga): badge por nível e troféu sem duplicar local"
 ### Task 6: Documentação e contrato — ADR, README e OpenAPI
 
 **Files:**
-- Create: `Projetos/fisga/docs/adr/0014-niveis-de-detalhe-do-local.md`
+- Create: `Projetos/fisga/docs/adr/0015-niveis-de-detalhe-do-local.md`
 - Modify: `Projetos/fisga/docs/adr/0008-privacidade-local-e-fotos.md` (status + nota de supersedência **só** do item "três valores"; as decisões de fotos permanecem)
 - Modify: `Projetos/fisga/docs/adr/README.md`
 - Modify: `Projetos/fisga/README.md` (linha ~79)
@@ -302,13 +302,13 @@ git commit -m "feat(fisga): badge por nível e troféu sem duplicar local"
 - Consumes: Tasks 1–3 (enum `CorpoAgua`/`Trecho`, `corpoOuTrecho` no DTO de entrada, default `Cidade`) e Task 5 (rótulos de badge).
 - Produces: documentação coerente com o código e `openapi.json` idêntico ao gerado pelo CI.
 
-- [ ] **Step 1: Escrever a ADR 0014**
+- [ ] **Step 1: Escrever a ADR 0015**
 
 Status `aceito`, data 2026-11-19. Contexto: o link público mostrava o ponto exato por padrão. Decisão: cinco níveis nomeados (`Exato`, `Trecho`, `CorpoAgua`, `Cidade`, `Oculto`), padrão `Cidade`, campo opcional `CorpoOuTrecho` (≤80) nunca devolvido cru no DTO público, sem raio em metros e sem coordenada nova. Consequências: fallback para `Cidade` quando o campo está vazio; PDF/troféu/link usam a mesma projeção; upvote/raio ficam para fase posterior. Referenciar a spec e o draft privado do quadro.
 
 - [ ] **Step 2: Atualizar a documentação existente**
 
-Em `0008`, marcar o status como `substituído pelo [ADR 0014](0014-niveis-de-detalhe-do-local.md)` e deixar claro que apenas a decisão dos três valores foi substituída. Adicionar a linha de `0014` na tabela de `docs/adr/README.md`. Em `README.md:79`, trocar por "exato, trecho, rio/lagoa, cidade/UF ou oculto — padrão cidade/UF".
+Em `0008`, marcar o status como `substituído pelo [ADR 0015](0015-niveis-de-detalhe-do-local.md)` e deixar claro que apenas a decisão dos três valores foi substituída. Adicionar a linha de `0015` na tabela de `docs/adr/README.md`. Em `README.md:79`, trocar por "exato, trecho, rio/lagoa, cidade/UF ou oculto — padrão cidade/UF".
 
 - [ ] **Step 3: Regenerar o contrato**
 
