@@ -956,7 +956,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
             local: params.get('nome') || condicoes.local.nome,
             cidade: params.get('cidade') || condicoes.local.cidade || '',
             estado: params.get('estado') || condicoes.local.estado || '',
-            ambiente: params.get('ambiente') || condicoes.local.ambiente || 'Outro',
+            ambiente: params.get('ambiente') || condicoes.local.ambiente || '',
             data: dataHojeLocal(),
             periodo: periodoDeAgora(),
             mare,
@@ -973,7 +973,8 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
     function mesclarCondicoesComRascunho(condicoes, rascunho) {
       const entrada = { ...condicoes.entrada };
       Object.keys(rascunho || {}).forEach((chave) => {
-        if (entrada[chave] === undefined && rascunho[chave] !== undefined) {
+        const semValorDaUrl = entrada[chave] === undefined || entrada[chave] === '';
+        if (semValorDaUrl && rascunho[chave] !== undefined) {
           entrada[chave] = rascunho[chave];
         }
       });
@@ -1067,6 +1068,11 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
     window.addEventListener('fisga:logout', () => {
       descartarRascunho = true;
       window.clearTimeout(timerRascunho);
+      try {
+        localStorage.removeItem(chaveRascunho);
+      } catch {
+        // Sem localStorage: a limpeza assíncrona do logout cuida do resto.
+      }
     });
 
     function restaurarRascunho() {

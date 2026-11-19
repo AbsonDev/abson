@@ -65,6 +65,23 @@ async function mockCondicoes(page: Page) {
   );
 }
 
+async function mockCondicoesSemAmbiente(page: Page) {
+  await page.route(`${API}/api/condicoes**`, (route) =>
+    route.fulfill({
+      status: 200,
+      headers: { ...CORS, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        local: { nome: 'Ilhabela', cidade: 'Ilhabela', estado: 'SP' },
+        temMare: true,
+        mare: { estado: 'subindo', proximoEvento: null },
+        solunar: { fase: 'Crescente', faseNome: 'crescente' },
+        tempo: { ventoKmh: 12, chuvaProbabilidade: 20 },
+        atualizadoEm: '2026-11-19T08:00:00Z'
+      })
+    })
+  );
+}
+
 async function mockCondicoesLentas(page: Page, atrasoMs: number) {
   await page.route(`${API}/api/condicoes**`, async (route) => {
     await new Promise((resolve) => setTimeout(resolve, atrasoMs));
@@ -174,6 +191,24 @@ test('condições do link vencem rascunho antigo e preservam o resto', async ({ 
   await expect(page.locator('#observacoes')).toHaveValue('Anotação antiga');
   await expect(page.locator('.captura-especie').first()).toHaveValue('Robalo');
   await expect(page.locator('#condicoes-texto')).toContainText('Os valores do link vieram na frente do seu rascunho');
+});
+
+test('ambiente do rascunho sobrevive quando link e API não trazem ambiente', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('fisga:rascunho:v1', JSON.stringify({
+    entrada: {
+      local: 'Poço da Aldeia — rascunho antigo', cidade: 'Ilhabela', estado: 'SP', ambiente: 'Represa',
+      data: '2026-01-01', periodo: 'Manha', mare: 'Vazante', lua: 'Minguante', clima: 'Chuva',
+      clarezaDaAgua: 'Turva', privacidadeDoLocal: 'Aproximada', observacoes: 'Anotação antiga',
+      pescador: 'Marina', capturas: []
+    },
+    atualizadoEm: '2026-01-01T00:00:00Z'
+  })));
+  await mockAnonimo(page);
+  await mockCondicoesSemAmbiente(page);
+  await page.goto(`${ORIGEM}/registrar?lat=-23.9&lon=-46.3&nome=Ilhabela`);
+  await expect(page.locator('#condicoes-aplicadas')).toBeVisible();
+  await expect(page.locator('#local')).toHaveValue('Ilhabela');
+  await expect(page.locator('#ambiente')).toHaveValue('Represa');
 });
 
 test('depois do login, voltar com lat/lon reaplica condições e mostra o banner', async ({ page }) => {

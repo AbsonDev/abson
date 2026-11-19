@@ -304,7 +304,8 @@ Abra **`http://localhost:4323`**.
 
 ### Fluxo de teste
 
-1. Abra `/registrar`; o formulário aparece bloqueado.
+1. Abra `/registrar` sem sessão: o formulário está ativo e o rascunho é salvo neste aparelho;
+   a conta só é pedida ao salvar.
 2. Entre com um e-mail e abra o link de desenvolvimento.
 3. Preencha o nome e escolha um local padrão (busca ou GPS) no primeiro acesso.
 4. Confira `/hoje`: condições do local, janela com gráfico, 7 dias e atalhos.
