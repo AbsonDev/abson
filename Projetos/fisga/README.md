@@ -652,7 +652,7 @@ A porta de entrada é [`docs/INDEX.md`](docs/INDEX.md). Atalhos:
 - [`docs/review.md`](docs/review.md) — camadas de review, agentes e critérios.
 - [`docs/guias/como-adicionar-endpoint.md`](docs/guias/como-adicionar-endpoint.md) — passo a passo de uma rota nova.
 - [`docs/roadmap.md`](docs/roadmap.md) — módulos, fases, dados e métricas.
-- [`docs/adr/README.md`](docs/adr/README.md) — decisões arquiteturais (0001–0014).
+- [`docs/adr/README.md`](docs/adr/README.md) — decisões arquiteturais (0001–0015).
 - [`docs/referencias`](docs/referencias) — estudos de referência.
 - [`AGENTS.md`](AGENTS.md) — contexto para agentes de código.
 

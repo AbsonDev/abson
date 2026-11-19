@@ -80,9 +80,11 @@ Invariantes:
 
 - `UsuarioId` obrigatório; toda pescaria pertence a uma conta.
 - Local obrigatório (até 120 caracteres), UF com 2 letras quando informada.
-- `PrivacidadeDoLocal` define o que aparece publicamente: local exato, cidade/UF ou oculto.
-  `LocalPublico`, `CidadePublica` e `EstadoPublico` são as únicas projeções usadas no link
-  público, no troféu e no PDF.
+- `PrivacidadeDoLocal` define o que aparece publicamente em cinco níveis: `Exato` (o local),
+  `Trecho` (o campo inteiro), `CorpoAgua` (até a primeira vírgula), `Cidade` (`Cidade · UF`)
+  e `Oculto` ("Local não divulgado"). O padrão é `Cidade`; sem trecho/rio, `Trecho` e
+  `CorpoAgua` caem para `Cidade`, nunca para `Local`. `LocalPublico`, `CidadePublica` e
+  `EstadoPublico` são as únicas projeções usadas no link público, no troféu e no PDF.
 - Data válida; enums de ambiente/período/condições definidos.
 - Até 100 capturas; IDs únicos.
 - Captura exige espécie, pelo menos peso **ou** comprimento, e fotos apenas em `/media/`.
