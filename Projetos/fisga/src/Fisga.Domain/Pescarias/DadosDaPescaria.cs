@@ -39,7 +39,7 @@ public sealed record DadosDaPescaria
 
     public string? Observacoes { get; init; }
 
-    public PrivacidadeDoLocal PrivacidadeDoLocal { get; init; } = PrivacidadeDoLocal.Exato;
+    public PrivacidadeDoLocal PrivacidadeDoLocal { get; init; } = PrivacidadeDoLocal.Cidade;
 
     public IReadOnlyList<DadosDaCaptura> Capturas { get; init; } = [];
 }
