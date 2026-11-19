@@ -88,7 +88,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         <div class="painel-cabecalho">
           <span class="passo-etiqueta">01</span>
           <div>
-            <h2 id="titulo-pescaria">A pescaria</h2>
+            <h2 id="titulo-pescaria" tabindex="-1"><span class="visually-hidden">Etapa 1 — </span>A pescaria</h2>
             <p>Onde, quando e em que ambiente você pescou.</p>
           </div>
         </div>
@@ -250,7 +250,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         <div class="painel-cabecalho">
           <span class="passo-etiqueta">02</span>
           <div>
-            <h2 id="titulo-condicoes">As condições</h2>
+            <h2 id="titulo-condicoes" tabindex="-1"><span class="visually-hidden">Etapa 2 — </span>As condições</h2>
             <p>O contexto que transforma uma captura em padrão.</p>
           </div>
         </div>
@@ -314,7 +314,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         <div class="painel-cabecalho">
           <span class="passo-etiqueta">03</span>
           <div>
-            <h2 id="titulo-capturas">As capturas</h2>
+            <h2 id="titulo-capturas" tabindex="-1"><span class="visually-hidden">Etapa 3 — </span>As capturas</h2>
             <p>Adicione cada peixe. Uma pescaria pode ter várias capturas.</p>
           </div>
         </div>
@@ -348,7 +348,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         <div class="painel-cabecalho">
           <span class="passo-etiqueta">04</span>
           <div>
-            <h2 id="titulo-revisar">Revisar</h2>
+            <h2 id="titulo-revisar" tabindex="-1"><span class="visually-hidden">Etapa 4 — </span>Revisar</h2>
             <p>Confira o que vai para o seu diário.</p>
           </div>
         </div>
@@ -1413,6 +1413,11 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         if (Number(botao.dataset.etapaBotao) === etapaAtual) botao.setAttribute('aria-current', 'step');
         else botao.removeAttribute('aria-current');
       }
+
+      etapas
+        .find((etapa) => Number(etapa.dataset.etapa) === etapaAtual)
+        ?.querySelector<HTMLElement>('.painel-cabecalho h2')
+        ?.focus({ preventScroll: true });
 
       if (etapaAtual === 4) atualizarRevisao();
 
