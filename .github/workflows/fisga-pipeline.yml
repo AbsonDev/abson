@@ -145,6 +145,32 @@ jobs:
       - name: E2E (mock)
         run: npm run test:e2e
 
+  docs:
+    name: docs
+    needs: changes
+    # Só em PR: link externo que morre depois do merge não pode bloquear o
+    # deploy de código já mergeado.
+    if: |
+      github.event_name != 'push' &&
+      needs.changes.outputs.fisga == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Markdown
+        run: npx --yes markdownlint-cli2@0.24.1
+
+      - name: Links
+        uses: lycheeverse/lychee-action@v2.9.0
+        with:
+          # Sobrescrever `args` descarta os globs padrão da action: inclua-os.
+          args: >-
+            --config .lychee.toml --no-progress --verbose
+            'AGENTS.md' 'Projetos/fisga/README.md' 'Projetos/fisga/AGENTS.md'
+            'Projetos/fisga/docs/**/*.md'
+          fail: true
+
   docker:
     name: docker
     needs: changes
@@ -204,6 +230,7 @@ jobs:
       - api
       - web
       - docker
+      - docs
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

@@ -19,6 +19,7 @@ workflows:
         - 'actions/upload-artifact@v7.0.2'
         - 'docker/build-push-action@v7.4.0'
         - 'docker/setup-buildx-action@v4.4.1'
+        - 'lycheeverse/lychee-action@v2.9.0'
     '.github/workflows/oc.yml':
         - 'actions/checkout@v7.0.1'
         - 'anomalyco/opencode@latest'
@@ -91,6 +92,11 @@ dependencies:
         commit: 'sha1-33d7b85da1a04171e211befe2c739303b9a4c066'
         owner_id: 9919
         repo_id: 259445878
+    'lycheeverse/lychee-action@v2.9.0':
+        ref: 'v2.9.0'
+        commit: 'sha1-e7477775783ea5526144ba13e8db5eec57747ce8'
+        owner_id: 74027027
+        repo_id: 320929718
     'reviewdog/action-actionlint@v1.84.1':
         ref: 'v1.84.1'
         commit: 'sha1-ae857e78c1b42b3d0a49637181b09d3d56d402b4'

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://raw.githubusercontent.com/DavidAnson/markdownlint-cli2/main/schema/markdownlint-cli2-config-schema.json",
+  // Só documentação de desenvolvimento. Conteúdo de produto em
+  // Projetos/fisga/web/src/content, o export design-system/ e os artefatos de
+  // processo em docs/superpowers/ têm outro ciclo de revisão.
+  "globs": [
+    "AGENTS.md",
+    "Projetos/fisga/README.md",
+    "Projetos/fisga/AGENTS.md",
+    "Projetos/fisga/docs/**/*.md"
+  ],
+  "ignores": [
+    "Projetos/fisga/docs/superpowers/**"
+  ],
+  "config": {
+    // Linha longa é estilo, não erro.
+    "MD013": false
+  }
+}

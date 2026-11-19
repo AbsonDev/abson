@@ -32,7 +32,7 @@ dos bugs conhecidos; a camada serve para o humano gastar atenção no que só hu
 ## Estado atual
 
 | Camada | Ferramenta | Status | Bloqueia? | Custo |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | CI | `gate` (build, format, 250 testes, `astro check`, Playwright) | implementado | sim, único required check | R$ 0 |
 | Dependências | Dependabot | implementado | não (propõe PRs) | R$ 0 |
 | Supply chain | `dependency-review-action@v5` | implementado, advisory | sim, quando promovido | R$ 0 |
@@ -75,7 +75,7 @@ Caminhos especiais:
 ## O que bloqueia e o que é advisory
 
 | Camada | Bloqueia? | Por quê |
-|---|---|---|
+| --- | --- | --- |
 | `gate` | **sim** | determinístico, reproduzível, é o contrato de merge |
 | dependency-review | **sim**, quando promovido | binário: CVE conhecida ou licença inválida não entram |
 | CodeQL (`high+`) | **sim**, quando a regra for ativada | binário quando a regra dispara; escopo estreito evita ruído |
@@ -226,7 +226,7 @@ env:
 ## Triagem
 
 | Sintoma | Ação |
-|---|---|
+| --- | --- |
 | `gate` vermelho | rodar local: `dotnet format`, `dotnet build -warnaserror`, `dotnet test`, `npm run check`, `npm run build` |
 | dependency-review vermelho | atualizar o pacote; se não houver versão corrigida, abrir issue e usar `allow-ghsas` com justificativa |
 | CodeQL vermelho | abrir o alerta, seguir o data flow; corrigir ou `dismiss` com motivo (`false positive`, `won't fix`, `used in tests`) |
@@ -252,7 +252,7 @@ Repo público muda as regras do jogo. O que vale:
 - **Permissões mínimas por workflow:**
 
 | Workflow | Permissões |
-|---|---|
+| --- | --- |
 | `fisga-pipeline` | `contents: read` |
 | `dependency-review` | `contents: read`, `pull-requests: write` |
 | `codeql` | `contents: read`, `security-events: write`, `actions: read` |
@@ -275,7 +275,7 @@ Repo público muda as regras do jogo. O que vale:
 ### Secrets e variáveis
 
 | Nome | Onde | Usado por |
-|---|---|---|
+| --- | --- | --- |
 | `OPENCODE_API_KEY` | Actions secret | `pr-review`, `oc` |
 | `GITHUB_TOKEN` | automático | todos |
 | `COOLIFY_*` | Actions secret | `fisga-deploy` (inalterado) |
@@ -310,7 +310,7 @@ Nenhuma camada nova vira required no primeiro dia. O ciclo é: advisory por 2–
 decidir.
 
 | Métrica | Como medir | Meta |
-|---|---|---|
+| --- | --- | --- |
 | Achados emitidos | contagem de comentários do bot por PR | referência |
 | Achados aceitos | commits que aplicam a sugestão / total | ≥ 50% para manter |
 | Falso positivo | `dismiss` no CodeQL / total de alertas | < 20% |
@@ -320,7 +320,7 @@ decidir.
 Decisão:
 
 | Taxa de aceitação | Ação |
-|---|---|
+| --- | --- |
 | ≥ 50% | manter; avaliar aumentar `num_max_findings` |
 | 20–50% | ajustar `extra_instructions`, reduzir escopo |
 | < 20% | remover a camada (deletar o workflow) |
@@ -332,7 +332,7 @@ Decisão:
 Rollback é deletar o workflow. Nenhuma camada exige mudança no `fisga-pipeline` ou no `gate`.
 
 | Camada | Reversão |
-|---|---|
+| --- | --- |
 | dependency-review | deletar o workflow; remover required check do ruleset |
 | CodeQL | deletar o workflow; remover a regra `code_scanning`; alertas ficam no histórico |
 | reviewdog | deletar o workflow |

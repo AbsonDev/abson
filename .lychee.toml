@@ -1,0 +1,13 @@
+# Links da documentação de desenvolvimento do Fisga.
+max_retries = 3
+retry_wait_time = 5
+include_fragments = "full"
+exclude_loopback = true
+exclude_private = true
+
+exclude = [
+  # Domínios reservados para exemplo em documentação.
+  "^https?://[^/]*\\.example",
+  # Painel do Coolify no VPS: não responde de fora.
+  "^https?://manager\\.abson\\.tech",
+]

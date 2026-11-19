@@ -144,7 +144,7 @@ feita pelo **ASP.NET Core Identity**; o domínio guarda o pescador e os fatos qu
 
 ### Fluxos de autenticação
 
-**Cadastro e senha**
+#### Cadastro e senha
 
 1. `POST /api/auth/registrar` cria `Usuario` e `ApplicationUser` com o mesmo Id em uma transação e
    envia o link de confirmação.
@@ -155,7 +155,7 @@ feita pelo **ASP.NET Core Identity**; o domínio guarda o pescador e os fatos qu
 4. `POST /api/auth/esqueci-senha` responde de forma genérica; `POST /api/auth/redefinir-senha`
    consome o token, troca a senha e invalida sessões.
 
-**Link mágico**
+#### Link mágico
 
 1. `POST /api/auth/solicitar` recebe o e-mail e sempre responde de forma genérica.
 2. O serviço aplica um intervalo mínimo de reenvio (60 s em produção), invalida links pendentes e
@@ -167,7 +167,7 @@ feita pelo **ASP.NET Core Identity**; o domínio guarda o pescador e os fatos qu
    - demais → `/entrar/confirmar?estado=ok` → `/meu-diario`.
 5. Em desenvolvimento, o link também aparece na resposta de `/api/auth/solicitar`.
 
-**Google (opcional)**
+#### Google (opcional)
 
 - Sem `Google:ClientId`/`Google:ClientSecret`, o app boota, o botão fica oculto e `/iniciar`
   responde 503 `google_indisponivel`.
