@@ -129,9 +129,11 @@ quando houver fonte oficial estável e abrir o diretório de guias com perfis ve
 
 **Status:** CI/CD do Fisga na Fase A, validado em produção no commit `725afd5`.
 
-- GitHub Actions com dois workflows: `fisga-pipeline` (CI em todo PR e push para `main`) e
-  `fisga-deploy` (CD por `workflow_run`, só com CI verde na `main`).
-- `gate` obrigatório, 326 testes, `astro check`, 61 Playwright mockados e build Docker.
+- GitHub Actions com três workflows: `fisga-pipeline` (CI em todo PR e push para `main`),
+  `fisga-deploy` (CD por `workflow_run`, só com CI verde e mudança de código na `main`) e
+  `fisga-docs-ai` (revisão de documentação, advisory — ver [review.md](review.md)).
+- `gate` obrigatório, 326 testes, `astro check`, 61 Playwright mockados, build Docker,
+  markdownlint/links no job `docs` e validação do contrato OpenAPI gerado no job `api`.
 - Deploy API → web com verificação de `/health` pelo SHA e smoke tests; primeira validação em
   `725afd5`, revalidada no deploy dos docs em `f50560a`.
 - Pendente (Fase B): build once no GHCR, migration bundle, E2E real no CI/nightly, preview

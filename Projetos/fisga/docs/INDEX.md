@@ -12,6 +12,7 @@ Conteúdo de produto (espécies, técnicas, locais) não fica aqui.
 
 ## Operação
 
+- [Fluxo de trabalho no GitHub](github-workflow.md)
 - [CI/CD e deploy](ci-cd.md)
 - [Review e qualidade](review.md)
 - [Runbook de identidade](superpowers/runbooks/2026-11-17-identity-rollout.md)

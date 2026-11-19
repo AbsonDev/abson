@@ -133,6 +133,12 @@ jobs:
           - Cada achado: caminho do documento, motivo e trecho sugerido de 2 a 6 linhas.
           - Se nada precisar mudar, responda exatamente: SEM_DRIFT
           - Não altere arquivos. Sua resposta vira um comentário no PR, em português do Brasil.
+
+          Formato obrigatório, sem nenhum texto antes do primeiro achado:
+          - Com drift: comece com "### `caminho/doc.md:linha`", depois **Motivo:** e o trecho sugerido.
+          - Sem drift: apenas SEM_DRIFT.
+          - Nunca escreva frases de processo ("Vou ler", "I'll start", "Let me inspect"), nem narre
+            etapas. Não há revisão humana antes da publicação.
           PROMPT
 
       - name: Instalar OpenCode
@@ -161,7 +167,11 @@ jobs:
           # --format json emite JSONL; só os eventos "text" trazem a resposta.
           # Verificado em 2026-11-18 com a CLI 2.3.2 instalada pelo instalador v2.
           jq -r 'select(.type == "text") | .part.text' /tmp/resposta.jsonl \
-            > /tmp/resposta.md
+            > /tmp/resposta.bruta.md
+          # O modelo pode narrar etapas antes do conteúdo. O comentário começa no
+          # primeiro achado (###) ou em SEM_DRIFT; o resto é descartado.
+          awk '!inicio && /^### |^SEM_DRIFT$/ { inicio=1 } inicio { print }' \
+            /tmp/resposta.bruta.md > /tmp/resposta.md
 
       - name: Publicar comentário
         if: steps.pr.outputs.permitido != 'false'

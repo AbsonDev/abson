@@ -4,8 +4,8 @@ Este documento é a fonte da verdade do fluxo de revisão de PRs do Fisga. Ele d
 bloqueia o merge e o que é apenas advisory. As camadas de CI e CD estão em [ci-cd.md](./ci-cd.md);
 aqui está só o julgamento do diff.
 
-**Status em 18/11/2026:** todas as camadas estão na `main` e validadas. Nenhuma delas, além do
-`gate`, é required check — a promoção depende do ciclo de métricas descrito abaixo.
+**Status:** as camadas abaixo rodam em PR. Nenhuma delas, além do `gate`, é required check — a
+promoção depende do ciclo de métricas descrito abaixo.
 
 ## Princípio
 
@@ -13,17 +13,18 @@ A revisão é uma pirâmide, não uma pilha de ferramentas. Cada camada responde
 diferente, e a regra é uma só: **se uma máquina consegue decidir com certeza, não gaste token.**
 
 ```text
-1. determinístico   build · format · testes · astro check      (já existe: gate)
+1. determinístico   build · format · testes · astro check · docs · contrato (gate)
 2. segurança        CodeQL · dependency-review                 (implementado)
 3. qualidade inline reviewdog                                  (implementado)
-4. julgamento       PR-Agent                                   (implementado)
+4. julgamento       PR-Agent · revisão de documentação         (implementado)
 5. ação             /oc                                        (implementado)
 ```
 
 - **Determinístico** decide binário: passou ou não passou. Pode bloquear.
 - **Segurança** também é binário quando a regra dispara. Pode bloquear com escopo estreito.
 - **Qualidade inline** só mostra o que o linter já achou. Não bloqueia.
-- **Julgamento** é probabilístico. Nunca bloqueia.
+- **Julgamento** é probabilístico. Nunca bloqueia. A revisão de documentação compara mudança e
+  documentos, e comenta o drift; o `gate` determinístico decide o merge.
 - **Ação** altera código. Só roda sob demanda e com permissão explícita.
 
 O objetivo não é substituir revisão humana. Nenhum benchmark de revisor automático encontra metade
@@ -33,44 +34,49 @@ dos bugs conhecidos; a camada serve para o humano gastar atenção no que só hu
 
 | Camada | Ferramenta | Status | Bloqueia? | Custo |
 | --- | --- | --- | --- | --- |
-| CI | `gate` (build, format, 326 testes, `astro check`, Playwright) | implementado | sim, único required check | R$ 0 |
+| CI | `gate` (build, format, 326 testes, `astro check`, Playwright, `docs`, contrato) | implementado | sim, único required check | R$ 0 |
 | Dependências | Dependabot | implementado | não (propõe PRs) | R$ 0 |
 | Supply chain | `dependency-review-action@v5` | implementado, advisory | sim, quando promovido | R$ 0 |
 | Segurança estática | CodeQL (`csharp`, `javascript-typescript`, `actions`) | implementado, advisory | sim, via regra `code_scanning` | R$ 0 (repo público) |
 | Qualidade inline | reviewdog | implementado, advisory | não | R$ 0 |
 | Revisor LLM | PR-Agent CLI + OpenCode Go | implementado, advisory | não | franquia Go |
+| Revisão de docs | `fisga-docs-ai` (OpenCode CLI + OpenCode Go) | implementado, advisory | não | franquia Go |
 | Agente | OpenCode `/oc` | implementado, validado | não (sob demanda) | franquia Go |
 
-O `gate` valida que o código compila, formata e passa nos testes; ele não lê a intenção da mudança.
-O revisor LLM cobre isso. dependency-review e `/oc` já estão na `main`; CodeQL, reviewdog e
-PR-Agent aguardam merge. Nenhuma camada nova é required check até passar pelo ciclo de métricas.
+O `gate` valida que o código compila, formata, passa nos testes e mantém o contrato gerado e os
+documentos íntegros; ele não lê a intenção da mudança. O revisor LLM cobre isso. Nenhuma camada nova
+é required check até passar pelo ciclo de métricas.
 
 ## Fluxo de um PR
 
 ```text
 PR aberto ou atualizado
-├── fisga-pipeline / gate ........ bloqueia (build, format, testes, astro check, Playwright)
+├── fisga-pipeline / gate ........ bloqueia (build, testes, docs, contrato)
 ├── dependency-review ............ bloqueia CVE high+ (implementado, advisory até promover)
 ├── codeql (3 linguagens) ........ bloqueia alerta high+ via ruleset
 ├── reviewdog .................... advisory: linter inline
-└── pr-review (PR-Agent) ......... advisory: julgamento do diff
+├── pr-review (PR-Agent) ......... advisory: julgamento do diff
+├── fisga-docs-ai ................ advisory: drift de documentação (comentário único)
         │
         ├── humano revisa e decide
         └── /oc sob demanda ...... explica, corrige, implementa (implementado)
 
 merge em main
-└── fisga-deploy ................. só com CI verde; ver ci-cd.md
+└── fisga-deploy ................. só com CI verde e mudança de código; ver ci-cd.md
 ```
 
 Caminhos especiais:
 
-- **PR só de docs:** o `gate` roda (sem `paths:` no gatilho) e o CodeQL roda. Se o CodeQL tivesse
-  filtro de caminho no gatilho, o merge travaria por "análise não executada" quando a regra
-  `code_scanning` estivesse ativa. Ver [CodeQL](#codeql).
+- **PR só de docs:** o `gate` roda (sem `paths:` no gatilho); o job `docs` roda markdownlint e
+  checagem de links, e o CodeQL roda. Se o CodeQL tivesse filtro de caminho no gatilho, o merge
+  travaria por "análise não executada" quando a regra `code_scanning` estivesse ativa. Ver
+  [CodeQL](#codeql). O `openapi.json` é a única exceção: conta como código e dispara o job `api`.
 - **PR de fork:** `pull_request` não recebe secrets e o `GITHUB_TOKEN` é read-only. As camadas que
-  dependem de chave (PR-Agent, `/oc`) são puladas; CodeQL e `gate` rodam.
-- **PR de bot (Dependabot, Sentry):** os exemplos usam `github.event.sender.type != 'Bot'` para não
-  gastar franquia e não duplicar comentário.
+  dependem de chave (PR-Agent, `fisga-docs-ai`, `/oc`) são puladas; CodeQL e `gate` rodam.
+- **PR de bot (Dependabot, Sentry):** as camadas automáticas ignoram bot pelo tipo do autor
+  (`github.event.pull_request.user.type != 'Bot'` no `fisga-docs-ai`) ou do sender
+  (`github.event.sender.type != 'Bot'` no PR-Agent), para não gastar franquia e não duplicar
+  comentário.
 
 ## O que bloqueia e o que é advisory
 
@@ -81,6 +87,7 @@ Caminhos especiais:
 | CodeQL (`high+`) | **sim**, quando a regra for ativada | binário quando a regra dispara; escopo estreito evita ruído |
 | reviewdog | não | só reporta linter no diff; vermelho não significa bug |
 | PR-Agent | não | probabilístico, muda com o modelo, custa token |
+| `fisga-docs-ai` | não | aponta drift; `continue-on-error` e fora de `gate.needs` |
 | `/oc` | não | agente; pode alterar código e errar |
 
 Regra permanente: **só camada determinística pode ser required check.** Promover LLM a obrigatório
@@ -97,7 +104,9 @@ estão em [github-workflow.md](./github-workflow.md); esta seção cobre só o j
 - **Quando roda:** todo PR e todo push em `main`.
 - **Onde:** `.github/workflows/fisga-pipeline.yml`.
 - **O que valida:** restore locked, `dotnet format --verify-no-changes`, build `-warnaserror`, 326
-  testes, `npm ci`, `astro check`, build, 61 Playwright mockados, build das imagens.
+  testes, `npm ci`, `astro check`, build, 61 Playwright mockados, build das imagens, job `docs`
+  (markdownlint + links, só em PR e `workflow_dispatch`, não no push) e regeneração/comparação de
+  `docs/api/openapi.json` no job `api`.
 - **Como ler:** o job `gate` agrega; um job `failure`/`cancelled` derruba o gate.
 - **Reexecutar:** push novo no PR, ou `gh run rerun <run-id> --repo AbsonDev/abson`.
 
@@ -207,6 +216,25 @@ env:
 - **Quando houver release com LiteLLM >= 1.109.1:** voltar para a action Docker pinada por digest,
   que é mais simples e tem attestation. Até lá, o CLI é o caminho.
 
+### `fisga-docs-ai`
+
+- **Quando roda:** automaticamente em PR não draft de mesmo repo, sem autor bot; sob demanda por
+  `/docs` (comentário em PR de `OWNER`, `MEMBER` ou `COLLABORATOR`) e por `workflow_dispatch`.
+- **Onde:** `.github/workflows/fisga-docs-ai.yml`; CLI `opencode` pinada em 2.3.2, modelo
+  `opencode-go/deepseek-v4.1-flash#max`, chave `OPENCODE_API_KEY`.
+- **O que faz:** manda o diff e os documentos para o modelo, que aponta onde a mudança deixou a
+  documentação desatualizada. Publica **um** comentário marcado `<!-- fisga-docs-ai -->`; quando o
+  modelo responde `SEM_DRIFT`, o comentário anterior é apagado. Não faz revisão inline nem altera
+  código (`edit`, `shell` e `subagent` negados via `OPENCODE_CONFIG_CONTENT`).
+- **Permissões:** `contents: read`, `issues: write`, `pull-requests: write`. `issues: write` sozinho
+  devolve 403 ao comentar em PR; as duas permissões de escrita são necessárias.
+- **Por que é advisory:** `continue-on-error: true` e o job não entra em `gate.needs`. Falha do
+  modelo ou achado ruim nunca bloqueia merge. PR de fork é pulado e o checkout usa `headRefOid`
+  (SHA imutável), não `refs/pull/N/head`, para a checagem de fork e o código analisado serem o mesmo.
+- **Validação (19/11/2026):** PR #42, run `44446919922` (8m39s), comentário com 8 drifts reais. As
+  correções foram para o PR #46, porque o #42 foi mergeado antes delas (`ef5738f`); o #46 validou
+  o loop completo: novos drifts apontados e corrigidos no mesmo PR.
+
 ### `/oc`
 
 - **Quando roda:** comentário `/oc` ou `/opencode` em PR, ou comentário em linha do diff.
@@ -227,7 +255,7 @@ env:
 
 | Sintoma | Ação |
 | --- | --- |
-| `gate` vermelho | rodar local: `dotnet format`, `dotnet build -warnaserror`, `dotnet test`, `npm run check`, `npm run build` |
+| `gate` vermelho | rodar local: `dotnet format`, `dotnet build -warnaserror`, `dotnet test`, `npm run check`, `npm run build`, `npx --yes markdownlint-cli2@0.24.1`, `lychee --config .lychee.toml ...` e `./scripts/gerar-openapi.sh` + `git diff --exit-code -- docs/api/openapi.json` |
 | dependency-review vermelho | atualizar o pacote; se não houver versão corrigida, abrir issue e usar `allow-ghsas` com justificativa |
 | CodeQL vermelho | abrir o alerta, seguir o data flow; corrigir ou `dismiss` com motivo (`false positive`, `won't fix`, `used in tests`) |
 | CodeQL "analysis not found" no merge | confirmar que o workflow rodou no PR; não filtrar caminho no gatilho |
@@ -235,6 +263,9 @@ env:
 | PR-Agent com achado ruim | responder no thread ou ignorar; usar `/ask` para pedir contexto; `/review` para reavaliar |
 | PR-Agent não comentou | conferir secret `OPENCODE_API_KEY`, `CONFIG__MODEL=opencode_go/deepseek-v4.1-flash` e o log do job (`MissingSessionID` = header ausente) |
 | PR-Agent falhou no `pip install` | confirmar o extra `[github]` e o commit pinado do PR-Agent |
+| `fisga-docs-ai` não comentou | conferir se o PR é draft, fork ou de bot; checar `OPENCODE_API_KEY` e o log do job |
+| `fisga-docs-ai` falhou com 403 | conferir `issues: write` **e** `pull-requests: write` no workflow |
+| `/docs` não rodou | o workflow precisa existir no branch padrão e o comentário vir de `OWNER`, `MEMBER` ou `COLLABORATOR` |
 | `/oc` não rodou | conferir `author_association` do comentário e se o workflow existe no branch padrão |
 | `/oc` com warning de Node 20 ou `cache write denied` | ignorar; são transitivos/não bloqueantes e não afetam a resposta |
 | `/oc` alterou código errado | reverter o commit no branch e responder no thread com a correção |
@@ -246,8 +277,10 @@ Repo público muda as regras do jogo. O que vale:
 - **Fork não recebe secret.** `pull_request` de fork roda com `GITHUB_TOKEN` read-only. As camadas com
   chave são puladas de propósito. Não use `pull_request_target` com checkout do código do PR.
 - **Conteúdo de PR é entrada não confiável.** Título, descrição, diff e comentário podem conter
-  instrução para o modelo. Por isso: PR-Agent com `restricted_mode`, sem checkout em
-  `pull_request_target`, e `/oc` só para quem tem write.
+  instrução para o modelo. Por isso: PR-Agent com `restricted_mode`, `fisga-docs-ai` sem acesso a
+  `edit`/`shell`/`subagent`, sem checkout em `pull_request_target`, e `/oc` só para quem tem write.
+  O `fisga-docs-ai` resolve o PR e faz checkout pelo `headRefOid`: checagem de fork e código
+  analisado usam o mesmo SHA, fechando a janela TOCTOU de `refs/pull/N/head`.
 - **`/oc` custa dinheiro.** O gate de `author_association` não é opcional em repo público.
 - **Permissões mínimas por workflow:**
 
@@ -258,6 +291,7 @@ Repo público muda as regras do jogo. O que vale:
 | `codeql` | `contents: read`, `security-events: write`, `actions: read` |
 | `reviewdog` | `contents: read`, `pull-requests: write` |
 | `pr-review` | `contents: read`, `issues: write`, `pull-requests: write` |
+| `fisga-docs-ai` | `contents: read`, `issues: write`, `pull-requests: write` |
 | `oc` | `contents: write`, `issues: write`, `pull-requests: write` |
 
 - **`oc` sem `actions: write`:** o `GITHUB_TOKEN` não pode gravar cache, então o post-step da action
@@ -276,7 +310,7 @@ Repo público muda as regras do jogo. O que vale:
 
 | Nome | Onde | Usado por |
 | --- | --- | --- |
-| `OPENCODE_API_KEY` | Actions secret | `pr-review`, `oc` |
+| `OPENCODE_API_KEY` | Actions secret | `pr-review`, `fisga-docs-ai`, `oc` |
 | `GITHUB_TOKEN` | automático | todos |
 | `COOLIFY_*` | Actions secret | `fisga-deploy` (inalterado) |
 
@@ -302,6 +336,8 @@ Push que altera `.github/workflows/**` exige token com escopo `workflow`. O `gh`
 - dependency-review e reviewdog: R$ 0.
 - PR-Agent: `pip install` do commit pinado (~40 s) + uma chamada por comando, centavos dentro da
   franquia Go.
+- `fisga-docs-ai`: uma chamada em todo PR elegível, mais uma por `/docs`; o run de validação levou
+  ~9 min e publicou 8 achados no PR #42, centavos dentro da franquia Go.
 - `/oc`: 10–50 chamadas por execução; o gasto real aparece no Console do Go.
 
 ## Métricas e promoção
@@ -325,7 +361,8 @@ Decisão:
 | 20–50% | ajustar `extra_instructions`, reduzir escopo |
 | < 20% | remover a camada (deletar o workflow) |
 
-**Nunca promova PR-Agent ou `/oc` a required check.** A decisão de merge continua humana.
+**Nunca promova PR-Agent, `fisga-docs-ai` ou `/oc` a required check.** A decisão de merge continua
+humana.
 
 ## Rollback e pendências
 
@@ -336,7 +373,8 @@ Rollback é deletar o workflow. Nenhuma camada exige mudança no `fisga-pipeline
 | dependency-review | deletar o workflow; remover required check do ruleset |
 | CodeQL | deletar o workflow; remover a regra `code_scanning`; alertas ficam no histórico |
 | reviewdog | deletar o workflow |
-| PR-Agent | deletar `.github/workflows/pr-review.yml`; revogar a chave se não for usar no `/oc` |
+| PR-Agent | deletar `.github/workflows/pr-review.yml`; revogar a chave só se não for usar no `fisga-docs-ai` nem no `/oc` |
+| `fisga-docs-ai` | deletar `.github/workflows/fisga-docs-ai.yml`; não mexe em `gate.needs` |
 | `/oc` | deletar o workflow |
 
 Pendências conhecidas:

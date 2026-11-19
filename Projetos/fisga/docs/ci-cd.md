@@ -31,8 +31,9 @@ push em main
         └── deploy-web  (Coolify -> /health = head_sha -> / e /condicoes)
 ```
 
-Os workflows ficam em `.github/workflows/fisga-pipeline.yml` (CI) e
-`.github/workflows/fisga-deploy.yml` (CD). O check obrigatório da `main` é o job **`gate`** (a UI
+Os workflows ficam em `.github/workflows/fisga-pipeline.yml` (CI),
+`.github/workflows/fisga-deploy.yml` (CD) e `.github/workflows/fisga-docs-ai.yml` (revisão de
+documentação, advisory). O check obrigatório da `main` é o job **`gate`** (a UI
 pode exibir `fisga-pipeline / gate`; confirme o contexto exato em
 `gh api repos/AbsonDev/abson/commits/<sha>/check-runs`).
 
@@ -574,8 +575,10 @@ npm run build
 npm run test:e2e   # 61 testes mockados; o build precisa existir
 
 # Workflows
-gh actions-lock --verify .github/workflows/fisga-pipeline.yml .github/workflows/fisga-deploy.yml
-actionlint .github/workflows/fisga-pipeline.yml .github/workflows/fisga-deploy.yml
+gh actions-lock --verify .github/workflows/fisga-pipeline.yml \
+  .github/workflows/fisga-deploy.yml .github/workflows/fisga-docs-ai.yml
+actionlint .github/workflows/fisga-pipeline.yml .github/workflows/fisga-deploy.yml \
+  .github/workflows/fisga-docs-ai.yml
 
 # Deploy e produção
 gh run list --repo AbsonDev/abson --workflow fisga-deploy.yml --branch main --limit 3
