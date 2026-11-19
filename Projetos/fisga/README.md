@@ -431,7 +431,7 @@ npm run check && npm run build
 npx playwright test
 ```
 
-Atualmente: **250 testes de backend** (36 de domínio + 48 de aplicação + 166 de API) e checagem de
+Atualmente: **326 testes de backend** (36 de domínio + 54 de aplicação + 236 de API) e checagem de
 tipos do Astro. Cobrem:
 
 - criação/edição de pescaria, IDs de captura, validações e isolamento entre usuários;
@@ -470,7 +470,7 @@ npm run build   # astro build + pagefind + precache
 O Fisga tem dois workflows no GitHub Actions: `fisga-pipeline.yml` (CI) e `fisga-deploy.yml` (CD).
 O CI roda em todo PR e em push para `main`, detecta mudanças em `Projetos/fisga/**` e executa:
 
-- `api`: restore locked, `dotnet format --verify-no-changes`, build `-warnaserror` e os 250 testes
+- `api`: restore locked, `dotnet format --verify-no-changes`, build `-warnaserror` e os 326 testes
   xUnit.
 - `web`: `npm ci`, `astro check`, `npm run build` e `npm run test:e2e` (61 testes Playwright
   mockados).
@@ -638,14 +638,16 @@ Roadmap completo em [`docs/roadmap.md`](docs/roadmap.md).
 
 ## Documentação
 
+A porta de entrada é [`docs/INDEX.md`](docs/INDEX.md). Atalhos:
+
 - [`docs/ddd.md`](docs/ddd.md) — contextos, agregados, invariantes e limites.
+- [`docs/ci-cd.md`](docs/ci-cd.md) — pipeline, deploy, Coolify, rollback e invariantes.
+- [`docs/review.md`](docs/review.md) — camadas de review, agentes e critérios.
+- [`docs/guias/como-adicionar-endpoint.md`](docs/guias/como-adicionar-endpoint.md) — passo a passo de uma rota nova.
 - [`docs/roadmap.md`](docs/roadmap.md) — módulos, fases, dados e métricas.
-- [`docs/ux-audit.md`](docs/ux-audit.md) — auditoria de UX, arquitetura de informação e prioridades.
-- [`docs/superpowers/runbooks/2026-11-17-identity-rollout.md`](docs/superpowers/runbooks/2026-11-17-identity-rollout.md)
-  — rollout, backup, migration, Google, rollback e evidências da identidade.
-- [`docs/adr`](docs/adr) — decisões arquiteturais (0001–0012).
-- [`docs/referencias`](docs/referencias) — estudos de referência (Fishing World Guide, Tábua de Marés).
-- [`docs/ddd.md#testes`](docs/ddd.md#testes) — estratégia de testes.
+- [`docs/adr/README.md`](docs/adr/README.md) — decisões arquiteturais (0001–0013).
+- [`docs/referencias`](docs/referencias) — estudos de referência.
+- [`AGENTS.md`](AGENTS.md) — contexto para agentes de código.
 
 ---
 

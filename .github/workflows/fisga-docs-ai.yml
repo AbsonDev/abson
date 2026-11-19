@@ -1,0 +1,205 @@
+name: fisga-docs-ai
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "Projetos/fisga/**"
+      - "AGENTS.md"
+      - ".github/copilot-instructions.md"
+      - ".github/workflows/**"
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: "Número do PR"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  # Comentários em PR usam o endpoint /issues/{n}/comments, mas o GITHUB_TOKEN
+  # exige pull-requests: write; apenas issues: write devolve 403.
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: fisga-docs-ai-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  docs:
+    name: docs-ai
+    if: |
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.draft == false &&
+       github.event.pull_request.head.repo.full_name == github.repository &&
+       github.event.pull_request.user.type != 'Bot') ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.pull_request &&
+       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) &&
+       (startsWith(github.event.comment.body, '/docs ') || github.event.comment.body == '/docs')) ||
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true
+    steps:
+      - name: Resolver PR
+        id: pr
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NUMERO: ${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
+        run: |
+          set -euo pipefail
+          if [ -z "${NUMERO:-}" ]; then
+            echo "::error::PR não identificado."
+            exit 1
+          fi
+          echo "numero=$NUMERO" >> "$GITHUB_OUTPUT"
+          # SHA imutável: a checagem de fork e o checkout precisam ver o mesmo código.
+          info=$(gh pr view "$NUMERO" --repo "$GITHUB_REPOSITORY" \
+            --json headRepositoryOwner,headRepository,headRefOid \
+            --jq '"\(.headRepositoryOwner.login)/\(.headRepository.name) \(.headRefOid)"')
+          head=${info%% *}
+          sha=${info##* }
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          if [ "$head" = "$GITHUB_REPOSITORY" ]; then
+            echo "permitido=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "permitido=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::PR de fork: análise de documentação ignorada."
+          fi
+
+      - name: Checkout do PR
+        if: steps.pr.outputs.permitido != 'false'
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ steps.pr.outputs.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Preparar diff
+        if: steps.pr.outputs.permitido != 'false'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NUMERO: ${{ steps.pr.outputs.numero }}
+        run: |
+          set -euo pipefail
+          base=$(gh pr view "$NUMERO" --repo "$GITHUB_REPOSITORY" --json baseRefName --jq .baseRefName)
+          git fetch --no-tags origin "$base"
+          merge_base=$(git merge-base "origin/$base" HEAD)
+          git diff -U3 "$merge_base" HEAD > /tmp/pr-patch.txt
+          total=$(wc -c < /tmp/pr-patch.txt)
+          {
+            echo "Diff resumido:"
+            git diff --stat "$merge_base" HEAD
+            echo
+            echo "Patch (limitado a 200 KB):"
+            head -c 200000 /tmp/pr-patch.txt
+          } > /tmp/pr-diff.txt
+          wc -c /tmp/pr-diff.txt
+          if [ "$total" -gt 200000 ]; then
+            echo "::warning::Patch truncado em 200 KB (total $total bytes)."
+          fi
+
+      - name: Preparar prompt
+        if: steps.pr.outputs.permitido != 'false'
+        run: |
+          cat > /tmp/prompt.txt <<'PROMPT'
+          Você é o revisor de documentação de desenvolvimento do Fisga.
+
+          Antes de analisar, leia:
+          - AGENTS.md
+          - Projetos/fisga/AGENTS.md
+          - Projetos/fisga/docs/INDEX.md
+
+          O diff deste PR está anexado. Analise apenas o que mudou e diga qual
+          documentação ficou desatualizada por causa da mudança.
+
+          Verifique quando o diff tocar nesses pontos:
+          - rotas, contratos e DTOs: Projetos/fisga/docs/api/openapi.json e Projetos/fisga/docs/ddd.md
+          - regras de negócio, agregados e invariantes: Projetos/fisga/docs/ddd.md e Projetos/fisga/docs/adr/
+          - CI/CD, deploy, segredos e invariantes: Projetos/fisga/docs/ci-cd.md e Projetos/fisga/AGENTS.md
+          - configuração, variáveis de ambiente e migrações: Projetos/fisga/README.md (Configuração) e runbooks
+          - testes e camadas de review: Projetos/fisga/docs/review.md
+
+          Regras:
+          - Use o código como fonte. Não invente endpoints, variáveis nem comportamento.
+          - Não proponha mudança para o que o diff não alterou.
+          - Não comente estilo que o markdownlint já cobre.
+          - Cada achado: caminho do documento, motivo e trecho sugerido de 2 a 6 linhas.
+          - Se nada precisar mudar, responda exatamente: SEM_DRIFT
+          - Não altere arquivos. Sua resposta vira um comentário no PR, em português do Brasil.
+          PROMPT
+
+      - name: Instalar OpenCode
+        if: steps.pr.outputs.permitido != 'false'
+        run: curl -fsSL https://opencode.ai/v2/install | bash -s -- --version 2.3.2
+
+      - name: Analisar documentação
+        if: steps.pr.outputs.permitido != 'false'
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          OPENCODE_CONFIG_CONTENT: '{"permissions":[{"action":"edit","resource":"*","effect":"deny"},{"action":"shell","resource":"*","effect":"deny"},{"action":"subagent","resource":"*","effect":"deny"}]}'
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.opencode/bin:$PATH"
+          if ! opencode run \
+              --standalone \
+              --format json \
+              --model 'opencode-go/deepseek-v4.1-flash#max' \
+              --archived \
+              --file /tmp/pr-diff.txt \
+              "$(cat /tmp/prompt.txt)" > /tmp/resposta.jsonl 2> /tmp/erro.log; then
+            echo "::warning::A análise de documentação falhou; o PR não é bloqueado."
+            tail -30 /tmp/erro.log || true
+            exit 0
+          fi
+          # --format json emite JSONL; só os eventos "text" trazem a resposta.
+          # Verificado em 2026-11-18 com a CLI 2.3.2 instalada pelo instalador v2.
+          jq -r 'select(.type == "text") | .part.text' /tmp/resposta.jsonl \
+            > /tmp/resposta.md
+
+      - name: Publicar comentário
+        if: steps.pr.outputs.permitido != 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          NUMERO: ${{ steps.pr.outputs.numero }}
+        run: |
+          set -euo pipefail
+          if [ ! -s /tmp/resposta.md ]; then
+            echo "Sem resposta; nada a publicar."
+            exit 0
+          fi
+          id=$(gh api "repos/$REPO/issues/$NUMERO/comments" --paginate \
+            --jq '.[] | select(.body | startswith("<!-- fisga-docs-ai -->")) | .id' | sed -n '1p')
+          if tr -d '\r' < /tmp/resposta.md | grep -qx 'SEM_DRIFT'; then
+            if [ -n "$id" ]; then
+              gh api -X DELETE "repos/$REPO/issues/comments/$id" > /dev/null
+              echo "Sem drift; comentário anterior removido."
+            else
+              echo "Sem drift."
+            fi
+            exit 0
+          fi
+          head -c 60000 /tmp/resposta.md > /tmp/resposta.limitada.md
+          if [ "$(wc -c < /tmp/resposta.md)" -gt 60000 ]; then
+            echo "::warning::Resposta truncada em 60 KB para caber no comentário."
+          fi
+          {
+            echo "<!-- fisga-docs-ai -->"
+            echo "## Revisão de documentação (IA)"
+            echo
+            cat /tmp/resposta.limitada.md
+            echo
+            echo "_Análise automática. O gate determinístico é que decide o merge._"
+          } > /tmp/comentario.md
+          if [ -n "$id" ]; then
+            gh api -X PATCH "repos/$REPO/issues/comments/$id" -F body=@/tmp/comentario.md > /dev/null
+          else
+            gh api -X POST "repos/$REPO/issues/$NUMERO/comments" -F body=@/tmp/comentario.md > /dev/null
+          fi

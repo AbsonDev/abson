@@ -131,7 +131,7 @@ quando houver fonte oficial estável e abrir o diretório de guias com perfis ve
 
 - GitHub Actions com dois workflows: `fisga-pipeline` (CI em todo PR e push para `main`) e
   `fisga-deploy` (CD por `workflow_run`, só com CI verde na `main`).
-- `gate` obrigatório, 250 testes, `astro check`, 61 Playwright mockados e build Docker.
+- `gate` obrigatório, 326 testes, `astro check`, 61 Playwright mockados e build Docker.
 - Deploy API → web com verificação de `/health` pelo SHA e smoke tests; primeira validação em
   `725afd5`, revalidada no deploy dos docs em `f50560a`.
 - Pendente (Fase B): build once no GHCR, migration bundle, E2E real no CI/nightly, preview

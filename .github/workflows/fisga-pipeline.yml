@@ -26,6 +26,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       fisga: ${{ steps.diff.outputs.fisga }}
+      documentacao: ${{ steps.diff.outputs.documentacao }}
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -39,6 +40,7 @@ jobs:
 
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "fisga=true" >> "$GITHUB_OUTPUT"
+            echo "documentacao=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -56,10 +58,30 @@ jobs:
 
           FILES="$(git diff --name-only "$BASE" "$HEAD")"
 
-          if echo "$FILES" | grep -qE '^Projetos/fisga/|^\.github/workflows/fisga-pipeline\.yml$'; then
+          # Código = qualquer arquivo do Fisga que não seja documentação.
+          CODIGO="$(printf '%s\n' "$FILES" \
+            | grep -E '^Projetos/fisga/' \
+            | grep -vE '^Projetos/fisga/(docs/|README\.md$|AGENTS\.md$)' || true)"
+          # O contrato gerado conta como código: mudá-lo à mão precisa passar
+          # pelo build do job api, que regenera e compara.
+          GERADO="$(printf '%s\n' "$FILES" \
+            | grep -E '^Projetos/fisga/docs/api/openapi\.json$' || true)"
+          WORKFLOWS="$(printf '%s\n' "$FILES" \
+            | grep -E '^\.github/workflows/fisga-pipeline\.yml$' || true)"
+          DOCUMENTACAO="$(printf '%s\n' "$FILES" \
+            | grep -E '^Projetos/fisga/(docs/|README\.md$|AGENTS\.md$)|^AGENTS\.md$|^\.github/(copilot-instructions\.md|PULL_REQUEST_TEMPLATE\.md)$|^\.markdownlint-cli2\.jsonc$|^\.lychee\.toml$' \
+            | grep -vE '^Projetos/fisga/docs/api/openapi\.json$' || true)"
+
+          if [ -n "$CODIGO" ] || [ -n "$GERADO" ] || [ -n "$WORKFLOWS" ]; then
             echo "fisga=true" >> "$GITHUB_OUTPUT"
           else
             echo "fisga=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [ -n "$DOCUMENTACAO" ]; then
+            echo "documentacao=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "documentacao=false" >> "$GITHUB_OUTPUT"
           fi
 
   api:
@@ -105,6 +127,24 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+      - name: Gerar OpenAPI
+        run: ./scripts/gerar-openapi.sh
+
+      - name: Contrato documentado está atualizado
+        run: |
+          set -euo pipefail
+          if ! git diff --exit-code -- docs/api/openapi.json; then
+            echo "::error::docs/api/openapi.json está desatualizado. Rode ./scripts/gerar-openapi.sh e commite."
+            exit 1
+          fi
+
+      - name: Publicar OpenAPI
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: fisga-openapi
+          path: Projetos/fisga/docs/api/openapi.json
+          retention-days: 30
+
   web:
     name: web
     needs: changes
@@ -144,6 +184,32 @@ jobs:
 
       - name: E2E (mock)
         run: npm run test:e2e
+
+  docs:
+    name: docs
+    needs: changes
+    # Só em PR: link externo que morre depois do merge não pode bloquear o
+    # deploy de código já mergeado.
+    if: |
+      github.event_name != 'push' &&
+      (needs.changes.outputs.documentacao == 'true' || needs.changes.outputs.fisga == 'true')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Markdown
+        run: npx --yes markdownlint-cli2@0.24.1
+
+      - name: Links
+        uses: lycheeverse/lychee-action@v2.9.0
+        with:
+          # Sobrescrever `args` descarta os globs padrão da action: inclua-os.
+          args: >-
+            --config .lychee.toml --no-progress --verbose
+            'AGENTS.md' 'Projetos/fisga/README.md' 'Projetos/fisga/AGENTS.md'
+            'Projetos/fisga/docs/**/*.md'
+          fail: true
 
   docker:
     name: docker
@@ -204,6 +270,7 @@ jobs:
       - api
       - web
       - docker
+      - docs
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

@@ -66,35 +66,35 @@ O produto cresceu de “diário” para “copiloto”. A apresentação ainda c
 
 ### P1 — organização e vocabulário
 
-5. **Header sobrecarregado e duplicado.**
+1. **Header sobrecarregado e duplicado.**
    - Anônimo: 8 links + CTA + Entrar.
    - Logado: “Meu diário”, “Meus locais” e “Registrar” competem com o CTA.
    - “Como funciona” e “É grátis” são marketing, não ferramenta de campo.
 
-6. **Local, ponto e trilha se confundem.**
+2. **Local, ponto e trilha se confundem.**
    - `LocalDePesca` é a área usada nas condições.
    - `PontoPrivado` é uma coordenada exata.
    - `TrilhaPrivada` é um caminho.
    - O formulário de ponto ainda oferece o tipo “Trilha” para um único ponto.
    - `/locais` vive separado de `/mapa`, embora ambos sejam “meus lugares”.
 
-7. **Ferramentas e Wiki são dois menus para o mesmo trabalho de aprender.**
+3. **Ferramentas e Wiki são dois menus para o mesmo trabalho de aprender.**
    - Nós, checklists, defeso e guias ficam em `/ferramentas`.
    - Espécies, técnicas, iscas e regiões ficam em `/wiki`.
    - O usuário não sabe qual abrir para “aprender a pescar melhor”.
 
-8. **Estados vazios não puxam para o próximo passo certo.**
+4. **Estados vazios não puxam para o próximo passo certo.**
    - Diário vazio mostra quatro zeros e “Registrar primeira pescaria”.
    - Não oferece “ver condições de hoje”, “salvar meu local” ou “abrir o mapa”.
 
-9. **Registro é longo e não tem etapa de revisão.**
+5. **Registro é longo e não tem etapa de revisão.**
    - Já há prefill, EXIF, defeso e sugestão de espécie, mas eles aparecem como banners no meio do
      formulário.
    - Falta um resumo final: local, data, condições, capturas, fotos, avisos e o que será salvo.
 
-10. **Nomes inconsistentes.**
-    - “Condições” vs “Hoje”; “Meu diário” vs “Histórico”; “Mapa” vs “Mapa privado”;
-      “Meus locais” vs “Mapa”; “Registrar” vs “Registrar pescaria”.
+6. **Nomes inconsistentes.**
+   - “Condições” vs “Hoje”; “Meu diário” vs “Histórico”; “Mapa” vs “Mapa privado”;
+     “Meus locais” vs “Mapa”; “Registrar” vs “Registrar pescaria”.
 
 ### P2 — polimento
 
@@ -108,7 +108,7 @@ O produto cresceu de “diário” para “copiloto”. A apresentação ainda c
 
 ### Navegação principal (desktop)
 
-```
+```text
 [Fisga]   Hoje   Diário   Mapa   Aprender        [Registrar]   [Conta]
 ```
 
@@ -124,7 +124,7 @@ O produto cresceu de “diário” para “copiloto”. A apresentação ainda c
 
 Bottom tab bar com cinco espaços:
 
-```
+```text
 Hoje     Diário     [Registrar]     Mapa     Aprender
 ```
 
@@ -135,7 +135,7 @@ Hoje     Diário     [Registrar]     Mapa     Aprender
 
 ### Navegação pública (sem conta)
 
-```
+```text
 [Fisga]   Hoje   Mapa   Aprender        [Entrar]   [Registrar]
 ```
 
@@ -320,7 +320,7 @@ Implementado em 17/11/2026, depois da validação do protótipo `fisga-ux` no Op
 - Fluxo real testado: link mágico → onboarding com local → `/hoje` → mapa com abas → `/aprender` →
   registrar em 4 etapas → revisão → pescaria salva → diário com abas.
 - Bottom nav autenticada validada em 390 px, com Diário e Registrar visíveis.
-- `astro check`, build e 250 testes .NET passando; Playwright mockado 61/61 no CI. O E2E real roda
+- `astro check`, build e 326 testes .NET passando; Playwright mockado 61/61 no CI. O E2E real roda
   via `scripts/e2e-real.sh`.
 
 ### Diferença em relação ao protótipo
@@ -365,7 +365,7 @@ Protótipo aprovado pelo usuário em 2026-11-17 para implementação no Astro.
 A migração de identidade foi implementada e verificada de ponta a ponta. O rollout operacional está
 no runbook [`docs/superpowers/runbooks/2026-11-17-identity-rollout.md`](superpowers/runbooks/2026-11-17-identity-rollout.md).
 
-**Implementado**
+#### Implementado
 
 - `/entrar` com senha, link mágico e Google condicional; `/criar-conta`, `/esqueci-senha`,
   `/redefinir-senha` e `/confirmar-email` com estados reais de carregando, erro, sucesso e expirado.
@@ -381,9 +381,9 @@ no runbook [`docs/superpowers/runbooks/2026-11-17-identity-rollout.md`](superpow
   (mitigação de pré-sequestro; risco residual documentado no runbook).
 - Data Protection persistido no volume `fisga_keys` (`/app/data/keys`), exigido também em produção.
 
-**Verificação executada**
+#### Verificação executada
 
-- **250 testes .NET** aprovados (36 domínio, 48 aplicação, 166 API), incluindo confirmação, reset,
+- **326 testes .NET** aprovados (36 domínio, 54 aplicação, 236 API), incluindo confirmação, reset,
   consentimento, senha, sessões, Google e outbox de e-mail.
 - **`npm run check`**: 0 erros/avisos/hints em 89 arquivos; **`npm run build`** aprovado.
 - **Playwright mockado: 61/61** — UI, estados e contratos continuam iguais.
@@ -392,7 +392,7 @@ no runbook [`docs/superpowers/runbooks/2026-11-17-identity-rollout.md`](superpow
   preservada; reset de senha; “sair desta”/“sair de todos” com dois navegadores; `/conta`
   (senha, perfil, newsletter, exportação JSON) e Google indisponível.
 
-**Não verificado neste ambiente**
+#### Não verificado neste ambiente
 
 - Migration em PostgreSQL local: `docker` ausente e nenhum Postgres disponível. Fica como checklist
   pré-deploy no runbook, com contagens antes/depois de `usuarios`, `pescarias` e `AspNetUsers`.
@@ -401,7 +401,7 @@ no runbook [`docs/superpowers/runbooks/2026-11-17-identity-rollout.md`](superpow
 - Sentry em produção: sem DSN no E2E. O scrubber e os testes de API cobrem o comportamento, mas não
   houve envio real para inspeção.
 
-**Reprodução**
+#### Reprodução
 
 ```bash
 cd Projetos/fisga
