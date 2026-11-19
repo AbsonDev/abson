@@ -13,6 +13,7 @@
     "@astrojs/node": "^11.1.14",
     "@astrojs/react": "^7.1.4",
     "astro": "^7.4.13",
+    "posthog-js": "^1.453.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },

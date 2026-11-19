@@ -1,6 +1,7 @@
 ---
 import fallbackContent from "../data/site-content.json";
 import { buildCmsI18n, buildExtraI18n } from "../lib/cms-i18n";
+import PostHog from "../components/posthog.astro";
 
 const apiUrl = import.meta.env.API_URL ?? "https://api.abson.tech";
 let content: any = fallbackContent;
@@ -52,6 +53,7 @@ const jsonLdJson = JSON.stringify(jsonLd).replace(/</g, "\\u003c");
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <PostHog />
   <script is:inline>
     (function () {
       var root = document.documentElement;
