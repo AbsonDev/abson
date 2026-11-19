@@ -66,8 +66,8 @@ nunca são publicados.
   15 min e invalida as sessões antigas.
 - Data Protection persistido em `/app/data/keys`; sem esse volume, todo deploy invalidaria os
   cookies e os links em circulação.
-- **Conta obrigatória apenas para o diário e recursos privados**; condições, wiki e ferramentas são
-  públicas.
+- **Conta obrigatória apenas para salvar no diário e usar recursos privados**; preencher o
+  registro, condições, wiki e ferramentas são públicos.
 
 ### Diário e capturas
 

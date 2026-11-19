@@ -194,7 +194,8 @@ Ajuste imediato: renomear o tipo de ponto “Trilha” para **“Marco”** ou *
 ### Condições
 
 - Manter a página pública como está em conteúdo, com breadcrumb “Hoje > Aracaju”.
-- No topo, deixar claro que é pública e que salvar/comparar pede conta.
+- No topo, deixar claro que ver condições e preencher o registro são públicos; salvar no diário,
+  salvar local e comparar pedem conta.
 - Evitar duplicar a home logada; a página detalhada pode ser o “drill-down” de Hoje.
 
 ### Diário

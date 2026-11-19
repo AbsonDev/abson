@@ -26,6 +26,6 @@ com dois modelos.
 - O diário acompanha a conta em qualquer aparelho.
 - Não há link de backup para perder nem token para vazar.
 - O isolamento entre usuários passa a ser uma invariante testada.
-- O cadastro é necessário antes de salvar; o formulário de registro mostra a proposta e bloqueia o
-  envio até o login.
+- O cadastro continua necessário para salvar; desde o [ADR 0014](0014-registro-anonimo.md), o
+  formulário fica ativo para anônimos e a conta só é pedida na confirmação do envio.
 - A evolução para workspaces, membros ou compartilhamento privado pode ser feita sobre `UsuarioId`.
