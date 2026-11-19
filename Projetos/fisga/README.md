@@ -237,7 +237,8 @@ Contextos e agregados:
 - **Conhecimento** — Wiki do Pescador.
 - **Newsletter** — digest mensal, opt-in e descadastro HMAC.
 
-Migrações aplicadas: `Inicial`, `Contas`, `Sprint1`, `Sprint2`, `Sprint3`, `Sprint4`.
+Migrações aplicadas: `Inicial`, `Contas`, `Sprint1`, `Sprint2`, `Sprint3`, `Sprint4`,
+`IdentityConsentimento` e `NiveisDeDetalheDoLocal`.
 
 Detalhes em [`docs/ddd.md`](docs/ddd.md), [`docs/adr`](docs/adr) e
 [`docs/referencias`](docs/referencias).
