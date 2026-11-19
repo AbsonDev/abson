@@ -40,11 +40,13 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.FISGA_PROJECT_TOKEN }}
           GITHUB_EVENT_PATH: ${{ github.event_path }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          EVENT_URL: ${{ github.event.issue.html_url || github.event.pull_request.html_url }}
         run: |
           set -euo pipefail
 
-          # html_url é montado pelo GitHub (repo + número), não é texto livre do usuário.
-          URL="${{ github.event.issue.html_url || github.event.pull_request.html_url }}"
+          # A URL vem do payload do evento: passa por env para não ser interpolada no shell.
+          URL="$EVENT_URL"
           STATUS="$(node scripts/github-project-sync.mjs event-status)"
 
           if [ -z "$STATUS" ]; then

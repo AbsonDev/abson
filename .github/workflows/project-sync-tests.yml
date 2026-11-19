@@ -4,11 +4,13 @@ on:
   pull_request:
     paths:
       - 'scripts/github-project-sync*.mjs'
+      - '.github/workflows/project-sync.yml'
       - '.github/workflows/project-sync-tests.yml'
   push:
     branches: [main]
     paths:
       - 'scripts/github-project-sync*.mjs'
+      - '.github/workflows/project-sync.yml'
       - '.github/workflows/project-sync-tests.yml'
 
 permissions:

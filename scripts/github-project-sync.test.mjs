@@ -50,6 +50,24 @@ test('findDuplicateTitles devolve só os títulos que já existem', () => {
   assert.deepEqual(findDuplicateTitles(['A', 'B'], ['B', 'C']), ['B']);
 });
 
+test('semeadura ignora duplicados mesmo com diferença de caixa', async () => {
+  const { selecionarItensNovos } = await import('./github-project-sync.mjs');
+
+  assert.deepEqual(
+    selecionarItensNovos(
+      [{ title: 'Fonte e horário confiáveis' }, { title: 'Outro achado' }],
+      ['fonte e horário confiáveis']
+    ),
+    [{ title: 'Outro achado' }]
+  );
+});
+
+test('plano de seed rejeita iteração sem ID configurado', async () => {
+  const { exigirIteracao } = await import('./github-project-sync.mjs');
+
+  assert.throws(() => exigirIteracao('Iteration inexistente'), /Iteration inexistente/);
+});
+
 test('parseSeed aceita um item completo', () => {
   const itens = parseSeed(JSON.stringify([itemCompleto]));
 

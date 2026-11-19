@@ -192,6 +192,27 @@ function chaveTitulo(titulo) {
 }
 
 /**
+ * Resolve o ID de uma iteração configurada ou falha com mensagem acionável.
+ */
+export function exigirIteracao(chave) {
+  const iterationId = ITERATION_IDS[chave];
+
+  if (!iterationId) {
+    throw new Error(`Iteração "${chave}" sem ID configurado no quadro.`);
+  }
+
+  return iterationId;
+}
+
+/**
+ * Filtra itens do seed cujos títulos já existem, ignorando caixa e espaços.
+ */
+export function selecionarItensNovos(itens, duplicados) {
+  const duplicadosSet = new Set(duplicados.map(chaveTitulo));
+  return itens.filter((item) => !duplicadosSet.has(chaveTitulo(item.title)));
+}
+
+/**
  * Devolve os títulos que chegaram e já existem, sem repetir.
  * A comparação ignora espaços nas pontas e diferença de maiúsculas.
  */
@@ -453,7 +474,7 @@ function planejarItensDoSeed(itens, campos) {
     },
     iteration: {
       fieldId: iteracao.id,
-      iterationId: ITERATION_IDS[item.iteration]
+      iterationId: exigirIteracao(item.iteration)
     }
   }));
 }
@@ -503,8 +524,7 @@ function semearQuadro(caminho) {
     listarTitulosExistentes(),
     itens.map((item) => item.title)
   );
-  const duplicadosSet = new Set(duplicados);
-  const novos = itens.filter((item) => !duplicadosSet.has(item.title));
+  const novos = selecionarItensNovos(itens, duplicados);
   const planos = novos.length > 0 ? planejarItensDoSeed(novos, carregarCamposDoQuadro()) : [];
   const criados = planos.map((plano) => ({
     id: criarItemDoSeed(plano),
