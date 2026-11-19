@@ -467,21 +467,26 @@ npm run build   # astro build + pagefind + precache
 
 ## CI/CD
 
-O Fisga tem dois workflows no GitHub Actions: `fisga-pipeline.yml` (CI) e `fisga-deploy.yml` (CD).
-O CI roda em todo PR e em push para `main`, detecta mudanças em `Projetos/fisga/**` e executa:
+O Fisga tem três workflows no GitHub Actions: `fisga-pipeline.yml` (CI), `fisga-deploy.yml` (CD) e
+`fisga-docs-ai.yml` (revisão de documentação por IA, advisory — detalhes em
+[docs/review.md](docs/review.md)). O CI roda em todo PR e em push para `main`, separa mudança de
+código de mudança de documentação e executa:
 
-- `api`: restore locked, `dotnet format --verify-no-changes`, build `-warnaserror` e os 326 testes
-  xUnit.
+- `api`: restore locked, `dotnet format --verify-no-changes`, build `-warnaserror`, os 326 testes
+  xUnit e a regeneração/comparação de `docs/api/openapi.json`.
 - `web`: `npm ci`, `astro check`, `npm run build` e `npm run test:e2e` (61 testes Playwright
   mockados).
+- `docs`: `markdownlint-cli2` e checagem de links (`lychee`), em PR de código ou documentação.
 - `docker`: build das imagens da API e do web sem push (em PR e `workflow_dispatch`).
 - `gate`: job obrigatório; falha se qualquer job necessário falhar.
 
-No push para `main`, quando o `fisga-pipeline` conclui verde, o `fisga-deploy` roda por
-`workflow_run`: dispara o `fisga-api`, depois o `fisga-web`, acompanha o deployment, aguarda o
-`/health` retornar o SHA do commit e roda smoke tests. O `workflow_dispatch` na `main` roda o CI e,
-ao concluir, o deploy. Validação ponta a ponta: 18/11/2026, commit `725afd5`, deploy `44338998771`;
-revalidada no deploy dos docs em `f50560a` (`44348792718`).
+No push para `main`, quando o `fisga-pipeline` conclui verde **e** o commit mudou código do Fisga, o
+`fisga-deploy` roda por `workflow_run`: dispara o `fisga-api`, depois o `fisga-web`, acompanha o
+deployment, aguarda o `/health` retornar o SHA do commit e roda smoke tests. PR só de documentação
+não deploya; `docs/api/openapi.json` é exceção no CI, mas continua fora do filtro de deploy. O
+`workflow_dispatch` na `main` roda o CI e, ao concluir, o deploy. Validação ponta a ponta:
+18/11/2026, commit `725afd5`, deploy `44338998771`; revalidada no deploy dos docs em `f50560a`
+(`44348792718`).
 
 O check obrigatório da `main` é o job **`gate`** (a UI pode exibir `fisga-pipeline / gate`). Confirme
 o contexto exato com `gh api repos/AbsonDev/abson/commits/<sha>/check-runs`.

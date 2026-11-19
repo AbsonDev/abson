@@ -29,7 +29,7 @@ achado (uso real, auditoria, conversa)
         └── branch fix/123-<slug> .............. número da issue
             └── PR com "Closes #123" ........... project-sync grava In review
                 ├── gate ....................... check obrigatório (strict)
-                ├── revisores automáticos ...... PR-Agent, CodeQL, dependency-review, reviewdog
+                ├── revisores automáticos ...... PR-Agent, CodeQL, dependency-review, reviewdog, fisga-docs-ai
                 ├── /oc ........................ sob demanda, pode commitar
                 └── threads respondidas e resolvidas (isResolved: true)
                     └── merge na main .......... item do PR vira Done (mergeado)
@@ -172,7 +172,8 @@ O template fica em `.github/PULL_REQUEST_TEMPLATE.md` e começa com `Closes #<n>
 PR de trabalho sem issue ligada não entra no fluxo. Se a mudança não fecha a issue inteira, use
 `Refs #<n>` no corpo e mantenha a issue aberta. PRs automáticos do Dependabot são a exceção: não têm
 issue, não entram no quadro porque evento de bot é ignorado e não seguem o fluxo de issue. Ainda
-assim passam pelos checks do repositório — `gate`, dependency-review, CodeQL e reviewdog.
+assim passam pelos checks do repositório — `gate`, dependency-review, CodeQL, reviewdog e
+`fisga-docs-ai` (que pula bots).
 
 ## Revisão automática e comandos
 
@@ -185,6 +186,7 @@ comandos são comentários no PR, restritos a `OWNER`, `MEMBER` e `COLLABORATOR`
 | `/describe` | PR | reescreve a descrição do PR a partir do diff |
 | `/ask <pergunta>` | PR | responde uma pergunta específica no contexto do PR |
 | `/improve` | PR | sugere melhorias para o diff |
+| `/docs` | PR | análise de drift de documentação (advisory; `SEM_DRIFT` remove o comentário) |
 | `/oc` | PR (comentário) ou linha do diff | agente OpenCode: explica, corrige, implementa e pode commitar |
 
 Regras de uso:
@@ -192,8 +194,9 @@ Regras de uso:
 - `/ask` precisa do espaço depois do comando (`/ask por que ...`); sem argumento o job não roda.
 - `/oc` gasta muito mais que os outros comandos e altera código. Use quando precisar de execução,
   não como primeiro review.
-- PR-Agent e `/oc` são advisory. Não existe required check de LLM; o único check obrigatório é
-  `gate`.
+- PR-Agent, `fisga-docs-ai` e `/oc` são advisory. Não existe required check de LLM; o único check
+  obrigatório é `gate`. O `fisga-docs-ai` comenta o drift em um comentário único e roda
+  automaticamente em PR não draft de mesmo repo, sem autor bot.
 - PR de fork não recebe secrets no evento `pull_request`: o review automático do PR-Agent é pulado.
 - O `/oc` não roda no evento `pull_request`: ele escuta `issue_comment` (comentário de conversa) e
   `pull_request_review_comment` (resposta em linha do diff). Em `issue_comment`, o workflow e o
@@ -327,7 +330,8 @@ usar como atalho.
 ## Deploy e Done
 
 Depois do merge, o `fisga-deploy` dispara por `workflow_run` quando o `fisga-pipeline` conclui
-`success` na `main`. Ele acompanha o deployment no Coolify e exige `/health` com
+`success` na `main`; os jobs de deploy só executam com CI verde **e mudança de código do Fisga** —
+PR só de documentação não deploya. Ele acompanha o deployment no Coolify e exige `/health` com
 `version == head_sha` (o SHA que o CI validou); depois roda o smoke de `/ready`, `/` e `/condicoes`.
 O detalhe operacional está em [ci-cd.md](./ci-cd.md).
 
