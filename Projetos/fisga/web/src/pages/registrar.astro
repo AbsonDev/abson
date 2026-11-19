@@ -774,6 +774,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       decisaoExifTomada = true;
       document.getElementById('exif-aviso')?.classList.add('oculto');
       document.getElementById('exif-estado')?.classList.add('oculto');
+      document.getElementById('local')?.focus();
     }
 
     document.getElementById('exif-aplicar')?.addEventListener('click', confirmarExif);
@@ -802,7 +803,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
             `${API}/api/locais/reverso?lat=${gps.latitude}&lon=${gps.longitude}`
           ).catch(() => null);
           if (resposta?.ok) {
-            const local = await resposta.json();
+            const local = await resposta.json().catch(() => ({}));
             cidade = local.cidade || local.nome || '';
             estado = local.estado || '';
           }

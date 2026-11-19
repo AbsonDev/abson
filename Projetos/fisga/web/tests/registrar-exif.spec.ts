@@ -193,6 +193,23 @@ test('reverso indisponível ainda mostra data e aplica só o que veio da foto', 
   await expect(page.locator('#estado')).toHaveValue('');
 });
 
+test('reverso com corpo inválido ainda mostra a data da foto', async ({ page }) => {
+  await prepararUpload(page);
+  // Registrada depois do mock de sucesso: a última route vale neste teste.
+  await page.route(`${API}/api/locais/reverso**`, (route) =>
+    route.fulfill({ status: 200, headers: CORS, contentType: 'text/plain', body: 'não é JSON' })
+  );
+  await page.goto(`${ORIGEM}/registrar`);
+  await page.locator('#data').fill('');
+
+  await enviarFotoComExif(page);
+  await expect(page.locator('#exif-valores')).toHaveText('18/11/2026, 06:42');
+
+  await page.getByRole('button', { name: /Aplicar nos campos vazios/ }).click();
+  await expect(page.locator('#data')).toHaveValue('2026-11-18');
+  await expect(page.locator('#cidade')).toHaveValue('');
+});
+
 test('Ignorar não muda campo e não reaparece para a segunda foto', async ({ page }) => {
   await prepararUpload(page);
   await page.goto(`${ORIGEM}/registrar`);
@@ -213,6 +230,7 @@ test('Ignorar não muda campo e não reaparece para a segunda foto', async ({ pa
   await expect(page.locator('#local')).toHaveValue('');
   await expect(page.locator('#exif-aviso')).toBeHidden();
   await expect(page.locator('#exif-estado')).toBeHidden();
+  await expect(page.locator('#local')).toBeFocused();
 
   await expect(page.locator('input[type="file"]').first()).toBeEnabled();
   await page.locator('input[type="file"]').first().setInputFiles({
