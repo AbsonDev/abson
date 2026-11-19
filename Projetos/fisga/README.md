@@ -33,7 +33,7 @@ nunca são publicados.
 | Contexto | Itens principais |
 | --- | --- |
 | Desktop autenticado | **Hoje · Diário · Mapa · Aprender** + Registrar pescaria + conta |
-| Desktop anônimo | **Hoje · Mapa · Aprender** + Entrar |
+| Desktop anônimo | **Hoje · Mapa · Aprender** + Registrar pescaria + Entrar |
 | Mobile autenticado | Bottom nav: Hoje, Diário, Registrar (central), Mapa, Aprender |
 | Mobile anônimo | Bottom nav: Hoje, Mapa, Aprender |
 
