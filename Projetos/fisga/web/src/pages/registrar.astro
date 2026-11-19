@@ -939,6 +939,10 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
 
     window.addEventListener('pagehide', flushRascunho);
     window.addEventListener('beforeunload', flushRascunho);
+    window.addEventListener('fisga:logout', () => {
+      descartarRascunho = true;
+      window.clearTimeout(timerRascunho);
+    });
 
     function restaurarRascunho() {
       try {
@@ -960,6 +964,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         });
 
         if (resposta.status === 401) {
+          descartarRascunho = true;
           await encerrarSessaoExpirada(urlDeRetorno());
           return true;
         }

@@ -408,6 +408,39 @@ test.describe('logout sem service worker', () => {
     await expectPublicoPreservadoEPrivadoRemovido(page);
   });
 
+  test('sair do menu em /registrar apaga o rascunho mesmo com gravação pendente', async ({ page }) => {
+    await mockSessao(page);
+    await mockEntrar(page);
+    await page.goto(`${ORIGEM}/registrar`);
+    await page.locator('#local').fill('Ilhabela');
+    await expect
+      .poll(() => page.evaluate(() => localStorage.getItem('fisga:rascunho:v1')))
+      .not.toBeNull();
+
+    await page.locator('[data-conta-gatilho]').click();
+    await page.locator('[data-conta-sair]').click();
+
+    await expect(page).toHaveURL(/\/entrar\?saiu=1$/);
+    expect(await page.evaluate(() => localStorage.getItem('fisga:rascunho:v1'))).toBeNull();
+  });
+
+  test('registrar ?editar= com 401 limpa o rascunho e manda para entrar', async ({ page }) => {
+    await mockSessao(page);
+    await page.route(`${API}/api/pescarias/editar-401/editar`, (route) =>
+      route.fulfill({ status: 401, headers: CORS, body: '' })
+    );
+    await mockEntrar(page);
+
+    await semearEstadoPrivado(page);
+    await page.goto(`${ORIGEM}/registrar?editar=editar-401`);
+
+    await expect(page).toHaveURL(
+      (url) => url.pathname === '/entrar'
+        && url.searchParams.get('voltar') === '/registrar?editar=editar-401'
+    );
+    await expectPublicoPreservadoEPrivadoRemovido(page);
+  });
+
   test('boas-vindas anônimo limpa estado privado e manda para hoje', async ({ page }) => {
     await page.route(`${API}/api/auth/me`, (route) =>
       route.fulfill({
