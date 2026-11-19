@@ -19,8 +19,10 @@ on:
 
 permissions:
   contents: read
+  # Comentários em PR usam o endpoint /issues/{n}/comments, mas o GITHUB_TOKEN
+  # exige pull-requests: write; apenas issues: write devolve 403.
   issues: write
-  pull-requests: read
+  pull-requests: write
 
 concurrency:
   group: fisga-docs-ai-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
