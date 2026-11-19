@@ -767,10 +767,22 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       document.getElementById('local')?.focus();
     }
 
+    // Ignorar é definitivo na sessão: nenhum campo é tocado e nenhuma foto
+    // posterior volta a sugerir dados.
+    function ignorarExif() {
+      exifSugestoes = null;
+      decisaoExifTomada = true;
+      document.getElementById('exif-aviso')?.classList.add('oculto');
+      document.getElementById('exif-estado')?.classList.add('oculto');
+    }
+
     document.getElementById('exif-aplicar')?.addEventListener('click', confirmarExif);
+    document.getElementById('exif-ignorar')?.addEventListener('click', ignorarExif);
 
     async function aplicarExif(arquivo) {
-      if (decisaoExifTomada) return;
+      // A primeira foto com dados úteis decide: uma sugestão pendente não pode
+      // ser substituída por outra foto antes da decisão da pessoa.
+      if (decisaoExifTomada || exifSugestoes) return;
 
       try {
         const dados = await exifr.parse(arquivo, { pick: ['DateTimeOriginal', 'CreateDate'] }).catch(() => null);

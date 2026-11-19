@@ -158,7 +158,7 @@ test('Aplicar preenche data, período, cidade e estado vazios, nunca o local', a
   await expect(page.locator('#estado')).toHaveValue('SP');
   await expect(page.locator('#local')).toHaveValue('');
   await expect(page.locator('#exif-aviso')).toBeHidden();
-  await expect(page.locator('#exif-estado')).toHaveText('Campos vazios preenchidos pela foto.');
+  await expect(page.locator('#exif-estado-texto')).toHaveText('Campos vazios preenchidos pela foto.');
   await expect(page.locator('#local')).toBeFocused();
 });
 
@@ -174,7 +174,7 @@ test('Aplicar não sobrescreve campo digitado durante o upload', async ({ page }
   await expect(page.locator('#data')).toHaveValue('2026-11-19');
   await expect(page.locator('#periodo')).toHaveValue('Noite');
   await expect(page.locator('#cidade')).toHaveValue('Ilhabela');
-  await expect(page.locator('#exif-estado')).toHaveText('Campos vazios preenchidos pela foto.');
+  await expect(page.locator('#exif-estado-texto')).toHaveText('Campos vazios preenchidos pela foto.');
 });
 
 test('reverso indisponível ainda mostra data e aplica só o que veio da foto', async ({ page }) => {
@@ -191,4 +191,130 @@ test('reverso indisponível ainda mostra data e aplica só o que veio da foto', 
   await expect(page.locator('#data')).toHaveValue('2026-11-18');
   await expect(page.locator('#cidade')).toHaveValue('');
   await expect(page.locator('#estado')).toHaveValue('');
+});
+
+test('Ignorar não muda campo e não reaparece para a segunda foto', async ({ page }) => {
+  await prepararUpload(page);
+  await page.goto(`${ORIGEM}/registrar`);
+  await page.locator('#data').fill('');
+  await page.locator('#periodo').evaluate((elemento) => {
+    (elemento as HTMLSelectElement).value = '';
+  });
+
+  await enviarFotoComExif(page);
+  await expect(page.locator('#exif-valores')).toHaveText('18/11/2026, 06:42 · Ilhabela, SP');
+
+  await page.getByRole('button', { name: 'Ignorar' }).click();
+
+  await expect(page.locator('#data')).toHaveValue('');
+  await expect(page.locator('#periodo')).toHaveValue('');
+  await expect(page.locator('#cidade')).toHaveValue('');
+  await expect(page.locator('#estado')).toHaveValue('');
+  await expect(page.locator('#local')).toHaveValue('');
+  await expect(page.locator('#exif-aviso')).toBeHidden();
+  await expect(page.locator('#exif-estado')).toBeHidden();
+
+  await expect(page.locator('input[type="file"]').first()).toBeEnabled();
+  await page.locator('input[type="file"]').first().setInputFiles({
+    name: 'foto2.jpg',
+    mimeType: 'image/jpeg',
+    buffer: Buffer.from(FOTO_COM_EXIF_BASE64, 'base64')
+  });
+  await expect(page.locator('#exif-aviso')).toBeHidden();
+});
+
+test('rascunho restaurado não abre aviso e preserva os valores', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('fisga:rascunho:v1', JSON.stringify({
+    entrada: {
+      local: 'Ilhabela', cidade: 'Ilhabela', estado: 'SP', data: '2026-11-19',
+      periodo: 'Tarde', capturas: []
+    },
+    atualizadoEm: '2026-11-19T08:00:00Z'
+  })));
+  await prepararUpload(page);
+  await page.goto(`${ORIGEM}/registrar`);
+
+  await expect(page.locator('#exif-aviso')).toBeHidden();
+  await expect(page.locator('#data')).toHaveValue('2026-11-19');
+  await expect(page.locator('#periodo')).toHaveValue('Tarde');
+  await expect(page.locator('#local')).toHaveValue('Ilhabela');
+
+  await page.locator('input[type="file"]').first().setInputFiles({
+    name: 'foto-do-rascunho.jpg',
+    mimeType: 'image/jpeg',
+    buffer: Buffer.from(FOTO_COM_EXIF_BASE64, 'base64')
+  });
+  await expect(page.locator('#exif-aviso')).toBeHidden();
+  await expect(page.locator('#data')).toHaveValue('2026-11-19');
+});
+
+test('edição existente não abre aviso', async ({ page }) => {
+  await page.route(`${API}/api/pescarias/editar-1/editar`, (route) => route.fulfill({
+    status: 200, headers: { ...CORS, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      id: 'editar-1', shareToken: 'abc', entrada: {
+        local: 'Salvo no diário', cidade: 'Ilhabela', estado: 'SP', ambiente: 'Mar',
+        data: '2026-10-10', periodo: 'Manha', mare: 'Vazante', lua: 'Cheia', clima: 'Nublado',
+        clarezaDaAgua: 'NaoInformada', privacidadeDoLocal: 'Exato', observacoes: null, capturas: []
+      }
+    })
+  }));
+  await prepararUpload(page);
+  await page.goto(`${ORIGEM}/registrar?editar=editar-1`);
+
+  await expect(page.locator('#local')).toHaveValue('Salvo no diário');
+  await expect(page.locator('#exif-aviso')).toBeHidden();
+
+  await page.locator('input[type="file"]').first().setInputFiles({
+    name: 'foto-da-edicao.jpg',
+    mimeType: 'image/jpeg',
+    buffer: Buffer.from(FOTO_COM_EXIF_BASE64, 'base64')
+  });
+  await expect(page.locator('#exif-aviso')).toBeHidden();
+  await expect(page.locator('#data')).toHaveValue('2026-10-10');
+});
+
+test('Aplicar preserva data e período padrão e preenche só cidade e estado', async ({ page }) => {
+  await prepararUpload(page);
+  await page.goto(`${ORIGEM}/registrar`);
+  const dataPadrao = await page.locator('#data').inputValue();
+  const periodoPadrao = await page.locator('#periodo').inputValue();
+  expect(dataPadrao).not.toBe('');
+  expect(periodoPadrao).toBe('Manha');
+
+  await enviarFotoComExif(page);
+  await page.getByRole('button', { name: /Aplicar nos campos vazios/ }).click();
+
+  await expect(page.locator('#data')).toHaveValue(dataPadrao);
+  await expect(page.locator('#periodo')).toHaveValue(periodoPadrao);
+  await expect(page.locator('#cidade')).toHaveValue('Ilhabela');
+  await expect(page.locator('#estado')).toHaveValue('SP');
+  await expect(page.locator('#local')).toHaveValue('');
+});
+
+test('segunda foto com EXIF antes da decisão não troca a sugestão da primeira', async ({ page }) => {
+  await prepararUpload(page);
+  let reversos = 0;
+  // A última route vale: a segunda resposta distingue uma sugestão substituída.
+  await page.route(`${API}/api/locais/reverso**`, (route) => {
+    reversos += 1;
+    return route.fulfill({
+      status: 200,
+      headers: { ...CORS, 'content-type': 'application/json' },
+      body: JSON.stringify({ cidade: reversos === 1 ? 'Ilhabela' : 'Santos', estado: 'SP' })
+    });
+  });
+  await page.goto(`${ORIGEM}/registrar`);
+
+  await enviarFotoComExif(page, 'primeira.jpg');
+  await expect(page.locator('#exif-valores')).toHaveText('18/11/2026, 06:42 · Ilhabela, SP');
+
+  await expect(page.locator('input[type="file"]').first()).toBeEnabled();
+  await page.locator('input[type="file"]').first().setInputFiles({
+    name: 'segunda.jpg',
+    mimeType: 'image/jpeg',
+    buffer: Buffer.from(FOTO_COM_EXIF_BASE64, 'base64')
+  });
+
+  await expect(page.locator('#exif-valores')).toHaveText('18/11/2026, 06:42 · Ilhabela, SP');
 });
