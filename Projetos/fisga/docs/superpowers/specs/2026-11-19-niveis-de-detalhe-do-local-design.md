@@ -44,4 +44,4 @@ Permitir compartilhar a história da pescaria sem entregar o ponto. É a base da
 
 ## Referências
 
-- Draft privado no quadro: "Níveis de detalhe do local no link público (Exato / Trecho / Rio / Cidade / Oculto)" — https://github.com/users/AbsonDev/projects/6
+- Draft privado no quadro: "Níveis de detalhe do local no link público (Exato / Trecho / Rio / Cidade / Oculto)" — quadro privado `projects/6`
