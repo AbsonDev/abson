@@ -33,7 +33,7 @@ nunca são publicados.
 | Contexto | Itens principais |
 | --- | --- |
 | Desktop autenticado | **Hoje · Diário · Mapa · Aprender** + Registrar pescaria + conta |
-| Desktop anônimo | **Hoje · Mapa · Aprender** + Entrar |
+| Desktop anônimo | **Hoje · Mapa · Aprender** + Registrar pescaria + Entrar |
 | Mobile autenticado | Bottom nav: Hoje, Diário, Registrar (central), Mapa, Aprender |
 | Mobile anônimo | Bottom nav: Hoje, Mapa, Aprender |
 
@@ -66,8 +66,8 @@ nunca são publicados.
   15 min e invalida as sessões antigas.
 - Data Protection persistido em `/app/data/keys`; sem esse volume, todo deploy invalidaria os
   cookies e os links em circulação.
-- **Conta obrigatória apenas para o diário e recursos privados**; condições, wiki e ferramentas são
-  públicas.
+- **Conta obrigatória apenas para salvar no diário e usar recursos privados**; preencher o
+  registro, condições, wiki e ferramentas são públicos.
 
 ### Diário e capturas
 
@@ -304,7 +304,8 @@ Abra **`http://localhost:4323`**.
 
 ### Fluxo de teste
 
-1. Abra `/registrar`; o formulário aparece bloqueado.
+1. Abra `/registrar` sem sessão: o formulário está ativo e o rascunho é salvo neste aparelho;
+   a conta só é pedida ao salvar.
 2. Entre com um e-mail e abra o link de desenvolvimento.
 3. Preencha o nome e escolha um local padrão (busca ou GPS) no primeiro acesso.
 4. Confira `/hoje`: condições do local, janela com gráfico, 7 dias e atalhos.
@@ -442,7 +443,7 @@ tipos do Astro. Cobrem:
 - fallback manual da sugestão de espécie;
 - resolução da versão exposta em `/health`.
 
-O fluxo completo também é validado com Playwright: **61 testes mockados** (UI e estados) e
+O fluxo completo também é validado com Playwright: **129 testes mockados** (UI e estados) e
 **6 testes com backend real** para a migração de identidade. Os reais rodam com SQLite, chaves e
 outbox temporários:
 
@@ -474,7 +475,7 @@ código de mudança de documentação e executa:
 
 - `api`: restore locked, `dotnet format --verify-no-changes`, build `-warnaserror`, os 326 testes
   xUnit e a regeneração/comparação de `docs/api/openapi.json`.
-- `web`: `npm ci`, `astro check`, `npm run build` e `npm run test:e2e` (61 testes Playwright
+- `web`: `npm ci`, `astro check`, `npm run build` e `npm run test:e2e` (129 testes Playwright
   mockados).
 - `docs`: `markdownlint-cli2` e checagem de links (`lychee`), em PR de código ou documentação.
 - `docker`: build das imagens da API e do web sem push (em PR e `workflow_dispatch`).

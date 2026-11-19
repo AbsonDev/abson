@@ -273,6 +273,9 @@
           headers: { 'Content-Type': 'application/json' }
         });
       } finally {
+        // Avisa a página antes da limpeza: o logout navega e o unload de telas
+        // com autosave (ex.: /registrar) não pode regravar o rascunho apagado.
+        window.dispatchEvent(new Event('fisga:logout'));
         await limparCachePrivado();
         window.location.assign('/entrar?saiu=1');
       }

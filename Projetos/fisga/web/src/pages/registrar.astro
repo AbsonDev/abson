@@ -25,18 +25,9 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
 
   <section class="container">
     <div id="acesso-registrar" class="aviso-acesso oculto">
-      <div>
-        <span class="selo selo--terracota">Conta necessária</span>
-        <h2>Entre para salvar esta pescaria.</h2>
-        <p>
-          Seu diário fica na sua conta e abre em qualquer aparelho. O acesso é por e-mail, sem senha.
-          Você pode preencher o formulário agora e entrar quando terminar.
-        </p>
-      </div>
-      <div class="aviso-acesso-acoes">
-        <a class="btn btn--primario" href={`/entrar?voltar=${encodeURIComponent(retornoRegistro)}`}>Entrar com e-mail</a>
-        <a class="btn btn--contorno" href="/precos">É grátis</a>
-      </div>
+      <svg class="aviso-acesso-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="10.5" width="14" height="9.5" rx="2"></rect><path d="M8.5 10.5V8a3.5 3.5 0 0 1 6.8-1.1"></path></svg>
+      <p>Você pode preencher agora. Entrar só quando quiser salvar.</p>
+      <a class="aviso-acesso-link" href={`/entrar?voltar=${encodeURIComponent(retornoRegistro)}`}>Entrar</a>
     </div>
   </section>
 
@@ -49,6 +40,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
 
     <form id="pescaria-form" class="calc-form" novalidate>
       <div id="erro-form" class="erro-caixa" role="alert"></div>
+      <div id="rascunho-indicador" class="rascunho-indicador" role="status"></div>
 
       <nav class="registro-passos" aria-label="Etapas do registro">
         <button type="button" data-etapa-botao="1" aria-current="step">1 A pescaria</button>
@@ -279,6 +271,16 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
           <button class="btn btn--contorno" type="button" data-voltar>Voltar</button>
           <button class="btn btn--primario" type="submit" id="btn-salvar">Salvar pescaria</button>
         </div>
+
+        <div id="confirmar-salvar" class="confirmar-salvar oculto" role="status">
+          <h3>Seu registro está pronto.</h3>
+          <p>Para guardar no diário, entre com sua conta. O que você preencheu continua aqui, sem mudanças.</p>
+          <div class="confirmar-acoes">
+            <button id="confirmar-entrar" class="btn btn--primario" type="button">Entrar e salvar no diário</button>
+            <button id="confirmar-continuar" class="btn btn--contorno" type="button">Continuar aqui</button>
+          </div>
+        </div>
+
         <small class="revisao-nota">Diário privado, card do troféu e PDF gratuitos durante a validação.</small>
       </section>
     </form>
@@ -341,7 +343,11 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
     const listaCapturas = document.getElementById('lista-capturas');
     const contador = document.getElementById('contador-capturas');
     const botaoSalvar = document.getElementById('btn-salvar');
+    const painelConfirmacao = document.getElementById('confirmar-salvar');
+    const botaoConfirmarEntrar = document.getElementById('confirmar-entrar');
+    const botaoConfirmarContinuar = document.getElementById('confirmar-continuar');
     const erroFormulario = document.getElementById('erro-form');
+    const indicadorRascunho = document.getElementById('rascunho-indicador');
     const acessoRegistrar = document.getElementById('acesso-registrar');
     const chaveRascunho = CHAVE_RASCUNHO;
     const especieParam = new URLSearchParams(window.location.search).get('especie');
@@ -349,6 +355,12 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
     let uploadsPendentes = 0;
     let autenticado = false;
     let exifAplicado = false;
+    let capturasTocadas = false;
+    const camposTocados = new Set();
+    let formularioHidratado = false;
+    let especiePrimeiraTocada = false;
+    let suprimirMarcasTocadas = false;
+    let descartarRascunho = false;
 
     const reais = (valor) =>
       new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(Number(valor || 0));
@@ -382,16 +394,26 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       window.location.href = `/entrar?voltar=${encodeURIComponent(urlDeRetorno())}`;
     }
 
-    function bloquearFormulario() {
-      acessoRegistrar.classList.remove('oculto');
-      formulario.classList.add('form-bloqueado');
-      formulario.inert = true;
+    function mostrarConfirmacao() {
+      botaoSalvar.classList.add('oculto');
+      painelConfirmacao.classList.remove('oculto');
+      botaoConfirmarEntrar.focus();
     }
 
-    function liberarFormulario() {
-      acessoRegistrar.classList.add('oculto');
-      formulario.classList.remove('form-bloqueado');
-      formulario.inert = false;
+    function fecharConfirmacao() {
+      painelConfirmacao.classList.add('oculto');
+      botaoSalvar.classList.remove('oculto');
+      botaoSalvar.focus();
+    }
+
+    botaoConfirmarContinuar.addEventListener('click', fecharConfirmacao);
+    botaoConfirmarEntrar.addEventListener('click', () => {
+      flushRascunho();
+      irParaEntrar();
+    });
+
+    function mostrarOuOcultarBannerAutenticacao() {
+      acessoRegistrar.classList.toggle('oculto', autenticado);
     }
 
     function atualizarContador() {
@@ -444,6 +466,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
 
         thumb.addEventListener('click', (evento) => {
           if (evento.target.closest('.remover-foto')) return;
+          capturasTocadas = true;
           linha.dataset.fotoCapa = url;
           renderizarFotos(linha);
           agendarRascunho();
@@ -451,6 +474,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
 
         thumb.querySelector('.remover-foto').addEventListener('click', (evento) => {
           evento.stopPropagation();
+          capturasTocadas = true;
           const restantes = fotosDaLinha(linha).filter((foto) => foto !== url);
           definirFotos(linha, restantes, capa === url ? (restantes[0] || '') : capa);
           agendarRascunho();
@@ -486,6 +510,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
             <input type="file" accept="image/jpeg,image/png,image/webp" multiple />
             <span>Foto</span>
           </label>
+          <p class="foto-nota" role="status" hidden>A foto entra depois que você entra. O resto do registro continua aqui.</p>
         </div>
         <div class="sugestoes-especie" aria-live="polite"></div>
       `;
@@ -495,16 +520,37 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       linha.querySelector('.captura-comprimento').value = dados.comprimentoCm ? reais(dados.comprimentoCm) : '';
       linha.querySelector('.captura-isca').value = dados.isca || '';
       linha.querySelector('.captura-solto-check').checked = Boolean(dados.solto);
+      linha.querySelectorAll('input').forEach((campo) => {
+        campo.addEventListener('input', () => {
+          if (!suprimirMarcasTocadas) {
+            capturasTocadas = true;
+            if (campo.classList.contains('captura-especie')
+              && listaCapturas.querySelector('.linha-captura') === linha) {
+              especiePrimeiraTocada = true;
+            }
+          }
+        });
+        campo.addEventListener('change', () => {
+          if (!suprimirMarcasTocadas) capturasTocadas = true;
+        });
+      });
 
       const inputArquivo = linha.querySelector('input[type="file"]');
+      const notaFoto = linha.querySelector('.foto-nota');
+      linha.querySelector('.captura-foto-adicionar').addEventListener('click', (evento) => {
+        if (autenticado) return;
+        evento.preventDefault();
+        notaFoto.hidden = false;
+      });
       inputArquivo.addEventListener('change', async () => {
-        const arquivos = [...(inputArquivo.files || [])];
-        if (arquivos.length === 0) return;
-
         if (!autenticado) {
-          irParaEntrar();
+          inputArquivo.value = '';
+          notaFoto.hidden = false;
           return;
         }
+
+        const arquivos = [...(inputArquivo.files || [])];
+        if (arquivos.length === 0) return;
 
         const disponiveis = MAX_FOTOS - fotosDaLinha(linha).length;
         if (disponiveis <= 0) {
@@ -539,6 +585,8 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
             });
 
             if (resposta.status === 401) {
+              // A navegação dispensa o rascunho: o flush de saída não pode recriá-lo.
+              descartarRascunho = true;
               await encerrarSessaoExpirada(urlDeRetorno());
               return;
             }
@@ -564,6 +612,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       });
 
       linha.querySelector('.remover').addEventListener('click', () => {
+        capturasTocadas = true;
         linha.remove();
         atualizarContador();
         agendarRascunho();
@@ -749,7 +798,11 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
           fotos: fotosDaLinha(linha),
           observacao: null
         }))
-        .filter((captura) => captura.especie || captura.pesoKg || captura.comprimentoCm);
+        .filter((captura) =>
+          captura.especie || captura.pesoKg || captura.comprimentoCm
+          || captura.isca || captura.solto || captura.fotoUrl
+          || captura.fotos.length || captura.observacao
+        );
 
       return {
         local: valor('local').trim(),
@@ -769,25 +822,76 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       };
     }
 
-    function preencher(entrada) {
-      if (!entrada) return;
-      document.getElementById('local').value = entrada.local || '';
-      document.getElementById('pescador').value = entrada.pescador || '';
-      document.getElementById('cidade').value = entrada.cidade || '';
-      document.getElementById('estado').value = entrada.estado || '';
-      document.getElementById('ambiente').value = entrada.ambiente || 'Represa';
-      document.getElementById('data').value = entrada.data || new Date().toISOString().slice(0, 10);
-      document.getElementById('periodo').value = entrada.periodo || 'Manha';
-      document.getElementById('mare').value = entrada.mare || 'NaoSeAplica';
-      document.getElementById('lua').value = entrada.lua || 'NaoInformada';
-      document.getElementById('clima').value = entrada.clima || 'NaoInformado';
-      document.getElementById('clareza').value = entrada.clarezaDaAgua || 'NaoInformada';
-      document.getElementById('privacidade-local').value = entrada.privacidadeDoLocal || 'Exato';
-      document.getElementById('observacoes').value = entrada.observacoes || '';
+    function assinaturaCaptura(captura) {
+      return JSON.stringify({
+        especie: captura.especie || '',
+        pesoKg: captura.pesoKg || 0,
+        comprimentoCm: captura.comprimentoCm || 0,
+        isca: captura.isca || '',
+        solto: Boolean(captura.solto),
+        fotoUrl: captura.fotoUrl || '',
+        fotos: captura.fotos || [],
+        observacao: captura.observacao || null
+      });
+    }
 
-      listaCapturas.innerHTML = '';
-      (entrada.capturas || []).forEach((captura) => criarLinhaCaptura(captura));
-      if (!entrada.capturas || entrada.capturas.length === 0) criarLinhaCaptura();
+    function assinaturaLinha(linha) {
+      return assinaturaCaptura({
+        especie: linha.querySelector('.captura-especie').value.trim(),
+        pesoKg: numero(linha.querySelector('.captura-peso').value),
+        comprimentoCm: numero(linha.querySelector('.captura-comprimento').value),
+        isca: linha.querySelector('.captura-isca').value.trim(),
+        solto: linha.querySelector('.captura-solto-check').checked,
+        fotoUrl: capaDaLinha(linha),
+        fotos: fotosDaLinha(linha),
+        observacao: null
+      });
+    }
+
+    function preencher(entrada, opcoes = {}) {
+      if (!entrada) return;
+      formularioHidratado = true;
+      const preservarTocados = opcoes.preservarTocados !== false;
+      const preservarCapturas = opcoes.preservarCapturas === true;
+      const definir = (id, valor) => {
+        if (!preservarTocados || !camposTocados.has(id)) {
+          document.getElementById(id).value = valor;
+        }
+      };
+
+      definir('local', entrada.local || '');
+      definir('pescador', entrada.pescador || '');
+      definir('cidade', entrada.cidade || '');
+      definir('estado', entrada.estado || '');
+      definir('ambiente', entrada.ambiente || 'Represa');
+      definir('data', entrada.data || new Date().toISOString().slice(0, 10));
+      definir('periodo', entrada.periodo || 'Manha');
+      definir('mare', entrada.mare || 'NaoSeAplica');
+      definir('lua', entrada.lua || 'NaoInformada');
+      definir('clima', entrada.clima || 'NaoInformado');
+      definir('clareza', entrada.clarezaDaAgua || 'NaoInformada');
+      definir('privacidade-local', entrada.privacidadeDoLocal || 'Exato');
+      definir('observacoes', entrada.observacoes || '');
+
+      if (!preservarCapturas) {
+        if (capturasTocadas) {
+          const existentes = new Set(
+            [...listaCapturas.querySelectorAll('.linha-captura')].map(assinaturaLinha)
+          );
+          (entrada.capturas || []).forEach((captura) => {
+            const assinatura = assinaturaCaptura(captura);
+            if (existentes.has(assinatura)) return;
+            criarLinhaCaptura(captura);
+            existentes.add(assinatura);
+          });
+          if (!listaCapturas.querySelector('.linha-captura')) criarLinhaCaptura();
+        } else {
+          listaCapturas.innerHTML = '';
+          (entrada.capturas || []).forEach((captura) => criarLinhaCaptura(captura));
+          if (!entrada.capturas || entrada.capturas.length === 0) criarLinhaCaptura();
+        }
+      }
+
       atualizarContador();
       atualizarDefeso();
     }
@@ -807,13 +911,13 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       return 'Sol';
     }
 
-    async function aplicarCondicoesDaUrl() {
+    async function buscarCondicoesDaUrl() {
       const params = new URLSearchParams(window.location.search);
-      if (!params.get('lat') || !params.get('lon')) return false;
+      if (!params.get('lat') || !params.get('lon')) return null;
 
       try {
         const resposta = await fetch(`${API}/api/condicoes?${params.toString()}`);
-        if (!resposta.ok) return false;
+        if (!resposta.ok) return null;
         const condicoes = await resposta.json();
 
         const agora = new Date();
@@ -833,45 +937,56 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
           }
         }
 
-        preencher({
-          local: params.get('nome') || condicoes.local.nome,
-          cidade: params.get('cidade') || condicoes.local.cidade || '',
-          estado: params.get('estado') || condicoes.local.estado || '',
-          ambiente: params.get('ambiente') || condicoes.local.ambiente || 'Outro',
-          data: dataHojeLocal(),
-          periodo: periodoDeAgora(),
-          mare,
-          lua: condicoes.solunar.fase || 'NaoInformada',
-          clima: climaDe(condicoes.tempo),
-          clarezaDaAgua: 'NaoInformada',
-          privacidadeDoLocal: 'Exato',
-          capturas: []
-        });
+        const atualizado = new Intl.DateTimeFormat('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit'
+        }).format(new Date(condicoes.atualizadoEm));
+        const mareTexto = condicoes.temMare
+          ? mare === 'Enchente'
+            ? 'maré enchendo'
+            : mare === 'Vazante'
+              ? 'maré vazando'
+              : 'maré parada'
+          : 'sem maré';
 
-        const banner = document.getElementById('condicoes-aplicadas');
-        const texto = document.getElementById('condicoes-texto');
-        if (banner && texto) {
-          const atualizado = new Intl.DateTimeFormat('pt-BR', {
-            day: '2-digit',
-            month: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit'
-          }).format(new Date(condicoes.atualizadoEm));
-          const mareTexto = condicoes.temMare
-            ? mare === 'Enchente'
-              ? 'maré enchendo'
-              : mare === 'Vazante'
-                ? 'maré vazando'
-                : 'maré parada'
-            : 'sem maré';
-          texto.textContent = `${condicoes.local.nome} · ${atualizado} · ${mareTexto} · ${condicoes.solunar.faseNome.toLowerCase()} · vento ${Math.round(condicoes.tempo.ventoKmh)} km/h`;
-          banner.classList.remove('oculto');
-        }
-
-        return true;
+        return {
+          entrada: {
+            local: params.get('nome') || condicoes.local.nome,
+            cidade: params.get('cidade') || condicoes.local.cidade || '',
+            estado: params.get('estado') || condicoes.local.estado || '',
+            ambiente: params.get('ambiente') || condicoes.local.ambiente || '',
+            data: dataHojeLocal(),
+            periodo: periodoDeAgora(),
+            mare,
+            lua: condicoes.solunar.fase || 'NaoInformada',
+            clima: climaDe(condicoes.tempo)
+          },
+          texto: `${condicoes.local.nome} · ${atualizado} · ${mareTexto} · ${condicoes.solunar.faseNome.toLowerCase()} · vento ${Math.round(condicoes.tempo.ventoKmh)} km/h`
+        };
       } catch {
-        return false;
+        return null;
       }
+    }
+
+    function mesclarCondicoesComRascunho(condicoes, rascunho) {
+      const entrada = { ...condicoes.entrada };
+      Object.keys(rascunho || {}).forEach((chave) => {
+        const semValorDaUrl = entrada[chave] === undefined || entrada[chave] === '';
+        if (semValorDaUrl && rascunho[chave] !== undefined) {
+          entrada[chave] = rascunho[chave];
+        }
+      });
+      return entrada;
+    }
+
+    function mostrarCondicoesAplicadas(texto) {
+      const banner = document.getElementById('condicoes-aplicadas');
+      const destino = document.getElementById('condicoes-texto');
+      if (!banner || !destino) return;
+      destino.textContent = `Os valores do link vieram na frente do seu rascunho; o que você já tinha digitado continua aqui. ${texto}`;
+      banner.classList.remove('oculto');
     }
 
     function dataHojeLocal() {
@@ -881,16 +996,25 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
     }
 
     function iniciarFormularioVazio() {
-      document.getElementById('data').value = dataHojeLocal();
+      formularioHidratado = true;
+      if (!camposTocados.has('data')) {
+        document.getElementById('data').value = dataHojeLocal();
+      }
       criarLinhaCaptura();
     }
 
     function aplicarEspecieDaWiki() {
-      if (!especieParam) return;
+      if (!especieParam || especiePrimeiraTocada) return;
       const primeira = listaCapturas.querySelector('.captura-especie');
       if (primeira) {
         primeira.value = especieParam;
-        primeira.dispatchEvent(new Event('input', { bubbles: true }));
+        // O input sintético serve só para o autosave; não é toque da pessoa.
+        suprimirMarcasTocadas = true;
+        try {
+          primeira.dispatchEvent(new Event('input', { bubbles: true }));
+        } finally {
+          suprimirMarcasTocadas = false;
+        }
       }
     }
 
@@ -899,9 +1023,30 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       erroFormulario.classList.toggle('visivel', Boolean(mensagem));
     }
 
+    function atualizarIndicadorRascunho() {
+      if (!indicadorRascunho) return;
+      let atualizadoEm = null;
+      try {
+        atualizadoEm = JSON.parse(localStorage.getItem(chaveRascunho) || 'null')?.atualizadoEm;
+      } catch {
+        // Sem rascunho legível: o indicador fica vazio.
+      }
+      const data = atualizadoEm ? new Date(atualizadoEm) : null;
+      if (!data || Number.isNaN(data.getTime())) {
+        indicadorRascunho.textContent = '';
+        return;
+      }
+      const hora = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' }).format(data);
+      indicadorRascunho.textContent = `✓ Rascunho salvo neste aparelho · ${hora}`;
+    }
+
     function salvarRascunho() {
+      if (descartarRascunho) return;
+      // Antes da hidratação, um flush de saída gravaria um formulário vazio.
+      if (!formularioHidratado && camposTocados.size === 0 && !capturasTocadas) return;
       try {
         localStorage.setItem(chaveRascunho, JSON.stringify({ entrada: coletar(), atualizadoEm: new Date().toISOString() }));
+        atualizarIndicadorRascunho();
       } catch {
         // Sem localStorage: o formulário continua funcionando.
       }
@@ -913,13 +1058,26 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       timerRascunho = window.setTimeout(salvarRascunho, 500);
     }
 
-    function restaurarRascunho() {
+    function flushRascunho() {
+      window.clearTimeout(timerRascunho);
+      salvarRascunho();
+    }
+
+    window.addEventListener('pagehide', flushRascunho);
+    window.addEventListener('beforeunload', flushRascunho);
+    window.addEventListener('fisga:logout', () => {
+      descartarRascunho = true;
+      window.clearTimeout(timerRascunho);
       try {
-        const bruto = localStorage.getItem(chaveRascunho);
-        return bruto ? JSON.parse(bruto)?.entrada : null;
+        localStorage.removeItem(chaveRascunho);
       } catch {
-        return null;
+        // Sem localStorage: a limpeza assíncrona do logout cuida do resto.
       }
+    });
+
+    function restaurarRascunho() {
+      const bruto = localStorage.getItem(chaveRascunho);
+      return bruto ? JSON.parse(bruto)?.entrada : null;
     }
 
     async function iniciarEdicao() {
@@ -933,6 +1091,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         });
 
         if (resposta.status === 401) {
+          descartarRascunho = true;
           await encerrarSessaoExpirada(urlDeRetorno());
           return true;
         }
@@ -966,16 +1125,25 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
     formulario.addEventListener('change', atualizarDefeso);
 
     document.getElementById('adicionar-captura').addEventListener('click', () => {
+      capturasTocadas = true;
       criarLinhaCaptura();
       listaCapturas.lastElementChild?.querySelector('.captura-especie')?.focus();
     });
 
-    formulario.addEventListener('input', () => {
-      if (autenticado) agendarRascunho();
+    function marcarCampo(evento) {
+      if (suprimirMarcasTocadas) return;
+      const id = evento.target?.id;
+      if (id) camposTocados.add(id);
+    }
+
+    formulario.addEventListener('input', (evento) => {
+      marcarCampo(evento);
+      agendarRascunho();
     });
 
-    formulario.addEventListener('change', () => {
-      if (autenticado) agendarRascunho();
+    formulario.addEventListener('change', (evento) => {
+      marcarCampo(evento);
+      agendarRascunho();
     });
 
     let etapaAtual = 1;
@@ -1092,7 +1260,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       evento.preventDefault();
 
       if (!autenticado) {
-        irParaEntrar();
+        mostrarConfirmacao();
         return;
       }
 
@@ -1125,7 +1293,9 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         if (resposta.status === 401) {
           // Sessão expirada: aqui sim o rascunho privado é apagado. A navegação
           // explícita para /registrar sem sessão (200 anônimo) mantém o rascunho
-          // para o pescador continuar depois de entrar.
+          // para o pescador continuar depois de entrar. O flush de saída não
+          // pode recriar o rascunho apagado pela sessão expirada.
+          descartarRascunho = true;
           await encerrarSessaoExpirada(urlDeRetorno());
           return;
         }
@@ -1135,8 +1305,11 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
 
         const shareToken = editando ? estadoEdicao.shareToken : dados.shareToken;
 
+        descartarRascunho = true;
+        window.clearTimeout(timerRascunho);
         try {
           localStorage.removeItem(chaveRascunho);
+          atualizarIndicadorRascunho();
         } catch {
           // A pescaria já está salva no servidor.
         }
@@ -1149,10 +1322,28 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       }
     });
 
+    // A leitura e a hidratação do rascunho acontecem antes de qualquer await:
+    // assim um flush de saída durante a inicialização nunca grava um form vazio.
+    let rascunhoInicial = null;
+    let falhaLeituraRascunho = false;
+    let hidratadoSincronamente = false;
+    try {
+      rascunhoInicial = restaurarRascunho();
+    } catch {
+      falhaLeituraRascunho = true;
+    }
+    if (rascunhoInicial && !new URLSearchParams(window.location.search).get('editar')) {
+      preencher(rascunhoInicial, { preservarTocados: true });
+      hidratadoSincronamente = true;
+      exifAplicado = true;
+      atualizarIndicadorRascunho();
+    }
+
     (async function iniciar() {
       try {
         const resposta = await fetch(`${API}/api/auth/me`, { credentials: 'include' });
         if (resposta.status === 401) {
+          descartarRascunho = true;
           await encerrarSessaoExpirada(urlDeRetorno());
           return;
         }
@@ -1169,38 +1360,78 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         autenticado = false;
       }
 
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('editar') && autenticado) {
+        await iniciarEdicao();
+        return;
+      }
+
+      mostrarOuOcultarBannerAutenticacao();
+
       if (!autenticado) {
-        // Navegação explícita sem sessão: o formulário fica bloqueado e o
-        // estado da conta é limpo, mas o rascunho não salvo é preservado para
-        // o pescador entrar e continuar. Só o logout explícito apaga o rascunho.
+        // Navegação sem sessão: o formulário fica ativo e o estado da conta é
+        // limpo, mas o rascunho não salvo é preservado para continuar depois.
+        // Só o logout explícito apaga o rascunho.
         await limparCachePrivado({ preservarRascunho: true });
-        bloquearFormulario();
-        const aplicouCondicoes = await aplicarCondicoesDaUrl();
-        if (!aplicouCondicoes) iniciarFormularioVazio();
+      }
+
+      if (falhaLeituraRascunho) {
+        mostrarErro('Não conseguimos recuperar o rascunho. Você pode continuar preenchendo.');
+        iniciarFormularioVazio();
         aplicarEspecieDaWiki();
         return;
       }
 
-      liberarFormulario();
-
-      if (await iniciarEdicao()) return;
-
-      const rascunho = restaurarRascunho();
+      const rascunho = rascunhoInicial;
       if (rascunho) {
         exifAplicado = true;
-        preencher(rascunho);
-        aplicarEspecieDaWiki();
-        return;
+        atualizarIndicadorRascunho();
       }
 
-      const aplicouCondicoes = await aplicarCondicoesDaUrl();
-      if (!aplicouCondicoes) iniciarFormularioVazio();
+      // A hidratação síncrona já trouxe as capturas do rascunho para o DOM.
+      // Refazer a mesclagem aqui reintroduziria a captura original quando a
+      // pessoa editou algum valor durante a inicialização assíncrona.
+      const opcoesPreenchimento = { preservarTocados: true, preservarCapturas: hidratadoSincronamente };
+      const condicoes = await buscarCondicoesDaUrl();
+      if (condicoes) {
+        preencher(mesclarCondicoesComRascunho(condicoes, rascunho), opcoesPreenchimento);
+        mostrarCondicoesAplicadas(condicoes.texto);
+      } else if (rascunho) {
+        preencher(rascunho, opcoesPreenchimento);
+      } else {
+        iniciarFormularioVazio();
+      }
+
       aplicarEspecieDaWiki();
     })();
   </script>
 </Layout>
 
 <style>
+  .rascunho-indicador {
+    margin: -6px 0 12px;
+    color: var(--tinta-suave);
+    font-size: 0.72rem;
+    line-height: 1.4;
+  }
+
+  .rascunho-indicador:empty {
+    display: none;
+  }
+
+  /* A nota vive nas linhas de captura criadas pelo script, fora do escopo Astro. */
+  :global(.foto-nota) {
+    flex: 0 0 100%;
+    margin: 2px 0 0;
+    color: var(--tinta-suave);
+    font-size: 0.72rem;
+    line-height: 1.45;
+  }
+
+  :global(.foto-nota[hidden]) {
+    display: none;
+  }
+
   .sugestoes-especie {
     display: flex;
     flex-wrap: wrap;
@@ -1322,39 +1553,45 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
   .aviso-acesso {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 28px;
+    flex-wrap: wrap;
+    gap: 8px 12px;
     margin-bottom: 20px;
-    padding: 22px 24px;
-    border: 1px solid var(--linha-forte);
-    border-radius: 16px;
-    background: var(--creme);
-    box-shadow: var(--sombra-suave);
+    padding: 10px 14px;
+    border: 1px solid var(--linha);
+    border-radius: var(--raio-pequeno);
+    background: color-mix(in srgb, var(--superficie) 74%, var(--papel));
   }
 
-  .aviso-acesso h2 {
-    margin-top: 10px;
-    font-size: clamp(1.35rem, 2.4vw, 1.8rem);
+  .aviso-acesso-icone {
+    flex: 0 0 auto;
+    width: 19px;
+    height: 19px;
+    color: var(--terracota);
   }
 
   .aviso-acesso p {
-    max-width: 62ch;
-    margin-top: 6px;
-    color: var(--tinta-suave);
-    font-size: 0.8rem;
-    line-height: 1.6;
+    flex: 1 1 220px;
+    color: var(--tinta);
+    font-size: 0.875rem;
+    line-height: 1.5;
   }
 
-  .aviso-acesso-acoes {
-    display: flex;
-    flex: 0 0 auto;
-    flex-direction: column;
-    gap: 8px;
+  .aviso-acesso-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 4px;
+    color: var(--terracota);
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
   }
 
-  .form-bloqueado {
-    opacity: 0.52;
-    filter: saturate(0.7);
+  .aviso-acesso-link:hover {
+    color: var(--terracota-escura);
+    text-decoration-thickness: 2px;
   }
 
   .defeso-alerta {
@@ -1457,19 +1694,49 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
     line-height: 1.5;
   }
 
+  .confirmar-salvar {
+    margin-top: 14px;
+    padding: 16px 18px;
+    border: 1px solid var(--linha-forte);
+    border-radius: 12px;
+    background: var(--superficie);
+  }
+
+  .confirmar-salvar h3 {
+    margin: 0 0 4px;
+    font-family: var(--fonte-titulo);
+    font-size: 1.05rem;
+    line-height: 1.3;
+  }
+
+  .confirmar-salvar p {
+    margin: 0;
+    color: var(--tinta-suave);
+    font-size: 0.78rem;
+    line-height: 1.5;
+  }
+
+  .confirmar-acoes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 14px;
+  }
+
   [data-etapa][hidden] {
     display: none !important;
   }
 
   @media (max-width: 760px) {
     .aviso-acesso {
-      align-items: stretch;
-      flex-direction: column;
-      gap: 16px;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 9px 12px;
     }
 
-    .aviso-acesso-acoes .btn {
-      width: 100%;
+    .aviso-acesso p {
+      flex-basis: 180px;
+      font-size: 0.84rem;
     }
 
     .registro-passos {
@@ -1484,7 +1751,8 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       white-space: nowrap;
     }
 
-    .etapa-acoes .btn {
+    .etapa-acoes .btn,
+    .confirmar-acoes .btn {
       flex: 1;
     }
   }
@@ -1503,6 +1771,17 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
 
     .registro-passos button[aria-current='step'] {
       border-bottom-color: var(--terracota);
+    }
+
+    .confirmar-acoes {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 8px;
+    }
+
+    .confirmar-acoes .btn {
+      flex: 0 0 auto;
+      width: 100%;
     }
   }
 </style>

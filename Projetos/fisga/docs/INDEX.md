@@ -29,6 +29,7 @@ Conteúdo de produto (espécies, técnicas, locais) não fica aqui.
 
 - [Roadmap](roadmap.md)
 - [Auditoria de UX](ux-audit.md)
+- [Registrar anônimo](superpowers/specs/2026-11-19-registrar-anonimo-design.md)
 
 ## Referências
 

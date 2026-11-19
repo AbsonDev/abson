@@ -235,7 +235,8 @@ feita pelo **ASP.NET Core Identity**; o domínio guarda o pescador e os fatos qu
 - Mudanças bruscas de pressão geram um alerta textual, não uma promessa de captura.
 - A janela tem nota 1–5 e motivos explícitos (solunar, direção da maré, vento, chuva, luz do dia e
   tendência de pressão). Não é uma promessa nem um número mágico.
-- `/condicoes` é pública; salvar local, comparação e preenchimento automático exigem conta.
+- `/condicoes` é pública; preencher o registro e manter o rascunho no aparelho funcionam sem conta.
+  Salvar no diário, salvar locais e comparar com o histórico exigem conta.
 - `ServicoDeComparacao` usa lua, maré, clima e período para encontrar um dia parecido. Exige pelo
   menos 3 pescarias com captura; sem dados suficientes, devolve um estado honesto em vez de um
   padrão inventado.
@@ -394,5 +395,5 @@ isolamento entre usuários, exclusão, exportação, locais salvos, agregação 
 janela, comparação com o histórico e pontos privados. `Fisga.Api.Tests` cobre a API (identidade,
 consentimento, senha, sessões, Google e outbox) e a resolução da versão exposta em `/health`. A
 experiência completa (login, onboarding, registro, foto, troféu, PDF, conta, condições, locais, mapa
-e logout) é validada com Playwright: 61 testes mockados no CI e 6 com backend real via
+e logout) é validada com Playwright: 129 testes mockados no CI e 6 com backend real via
 `scripts/e2e-real.sh`.
