@@ -1,7 +1,7 @@
 # Fisga — confirmação explícita dos dados da foto
 
 **Data:** 19/11/2026  
-**Status:** aguardando aprovação  
+**Status:** aprovado pelo usuário em 19/11/2026  
 **Escopo:** `/registrar` (web) + protótipo no OpenDesign; sem mudança de API.
 
 ## Intenção
