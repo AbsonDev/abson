@@ -75,7 +75,8 @@ nunca são publicados.
 - **Várias capturas por pescaria**, cada uma com ID estável.
 - Espécie, peso, comprimento, isca, destino (solto/capturado), observação e **até 4 fotos por
   captura**, com escolha da capa.
-- Compressão de imagem no navegador (até 5 MB; JPG/PNG/WebP).
+- Compressão de imagem no navegador (até 5 MB; JPG/PNG/WebP e HEIC/HEIF quando o navegador
+  decodifica — sem decode, a tela orienta exportar em JPEG).
 - **Privacidade do local por pescaria**: exato, trecho, rio/lagoa, cidade/UF ou oculto — padrão
   cidade/UF. Vale para link público, troféu e PDF.
 - Edição preservando IDs das capturas; links de troféu não quebram.

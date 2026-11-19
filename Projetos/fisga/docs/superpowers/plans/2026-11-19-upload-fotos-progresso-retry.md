@@ -34,7 +34,7 @@
 | HEIC que decodifica mas falha na rede perde o retry | Task 2 Step 5/5b: só erro de decode vira `heic-recusado`; erro de transporte vira `falhou` |
 | Barra inventa percentual | Task 2: `onprogress` só quando `lengthComputable`; barra é `aria-hidden` |
 | `#btn-salvar` volta a habilitar antes do fim | Task 2: `uploadsPendentes` por entrada + `atualizarBotoes()` |
-| Slot de foto travado por foto falha | Task 2: só `enviado` e `enviando` contam para `MAX_FOTOS` |
+| Slot de foto travado por foto falha | Task 2: `vagasNaLinha` conta as URLs em `fotosDaLinha` e as entradas `enviando`; a concluída sai da lista, `falhou`/`heic-recusado` não ocupam slot |
 | `renderizarFotos()` apaga os chips de upload | Task 2: `.upload-lista` separada de `.captura-foto-thumb` |
 | Estilo novo fogue do design system | Task 3: só tokens existentes; 44 px; `focus-visible` de 3 px |
 | Texto de erro com contraste baixo | Task 3: `--acafrao` fica na borda; o texto usa `--tinta` com peso 700 |

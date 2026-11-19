@@ -64,15 +64,16 @@ já subiu.
 
 - `accept` passa a incluir `image/heic,image/heif`.
 - Cada arquivo selecionado vira uma entrada de upload com `id` estável,
-  `estado` (`enviando` | `enviado` | `falhou` | `heic-recusado`) e `arquivo`.
+  `estado` (`enviando` | `falhou` | `heic-recusado`) e `arquivo`.
   A entrada vive só na memória da página; a URL resultante continua indo para
-  o rascunho.
+  o rascunho. Não há estado `enviado`: no sucesso a entrada sai da lista e a
+  foto aparece como miniatura.
 - `comprimirImagem()` segue sendo a única via de conversão. Se
   `createImageBitmap` lançar para HEIC, a entrada vira `heic-recusado`, a nota
   inline aparece, nenhum campo é tocado e as outras fotos seguem.
-- O envio passa a `try/catch` por entrada. Sucesso: `fotos.push(url)`, entrada
-  vira `enviado`, `agendarRascunho()`. Falha: entrada vira `falhou`, mantém o
-  `arquivo` em memória e oferece "Tentar de novo".
+- O envio passa a `try/catch` por entrada. Sucesso: `fotos.push(url)`,
+  `agendarRascunho()` e a entrada sai da lista, virando miniatura. Falha: entrada
+  vira `falhou`, mantém o `arquivo` em memória e oferece "Tentar de novo".
 - "Tentar de novo" reenvia apenas a entrada falha, nunca as concluídas.
 - Progresso real de bytes via `XMLHttpRequest.upload.onprogress`, com o mesmo
   payload `FormData` e `withCredentials = true`; tratamento de 401 mantém a
