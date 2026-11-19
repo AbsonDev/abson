@@ -1,6 +1,6 @@
 # Decisões arquiteturais (ADRs)
 
-Uma ADR por decisão relevante. Nova decisão entra como `0015-<slug>.md` e
+Uma ADR por decisão relevante. Nova decisão entra como `0016-<slug>.md` e
 ganha linha nesta tabela.
 
 | ADR | Decisão | Status |
@@ -12,10 +12,11 @@ ganha linha nesta tabela.
 | [0005](0005-conta-obrigatoria.md) | Conta obrigatória para o diário | aceito |
 | [0006](0006-email-resend.md) | E-mail transacional com Resend e console em desenvolvimento | aceito |
 | [0007](0007-wiki-content-collections.md) | Wiki estática com Content Collections e Pagefind | aceito |
-| [0008](0008-privacidade-local-e-fotos.md) | Privacidade do local e múltiplas fotos por captura | aceito |
+| [0008](0008-privacidade-local-e-fotos.md) | Privacidade do local e múltiplas fotos por captura | parcialmente substituído pelo [ADR 0015](0015-niveis-de-detalhe-do-local.md) (só os três valores; fotos permanecem) |
 | [0009](0009-newsletter-mensal.md) | Newsletter mensal com descadastro assinado | aceito |
 | [0010](0010-condicoes-e-locais.md) | Condições, locais salvos e janela de pesca | aceito |
 | [0011](0011-mapa-privado.md) | Mapa privado e pontos do pescador | aceito |
 | [0012](0012-ferramentas-exif-e-visao.md) | Ferramentas, EXIF e sugestão de espécie | aceito |
 | [0013](0013-identity-completa.md) | Identidade completa com ASP.NET Core Identity | aceito |
 | [0014](0014-registro-anonimo.md) | Registro anônimo: capturar primeiro, conta depois | aceito |
+| [0015](0015-niveis-de-detalhe-do-local.md) | Cinco níveis de detalhe do local compartilhado | aceito |

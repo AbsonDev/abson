@@ -1,6 +1,9 @@
 # ADR 0008 — Privacidade do local e múltiplas fotos por captura
 
-**Status:** aceito · **Data:** 2026-11-17
+**Status:** parcialmente substituído pelo [ADR 0015](0015-niveis-de-detalhe-do-local.md) · **Data:** 2026-11-17
+
+> A substituição alcança apenas a decisão dos três valores de `PrivacidadeDoLocal`. As decisões
+> sobre fotos — quatro por captura, capa e galeria em JSON — permanecem aceitas.
 
 ## Contexto
 
@@ -9,7 +12,8 @@ apenas o troféu. Ao mesmo tempo, uma única foto por captura limitava o card e 
 
 ## Decisão
 
-- `Pescaria.PrivacidadeDoLocal` tem três valores: `Exato`, `Cidade` e `Oculto`.
+- `Pescaria.PrivacidadeDoLocal` tinha três valores: `Exato`, `Cidade` e `Oculto` — decisão
+  substituída pelo [ADR 0015](0015-niveis-de-detalhe-do-local.md), que define cinco níveis.
 - A projeção pública usa `LocalPublico`, `CidadePublica` e `EstadoPublico`; o diário privado
   continua mostrando o local completo.
 - O PDF, o troféu e o link público usam a projeção pública.
