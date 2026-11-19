@@ -1,6 +1,6 @@
 # Decisões arquiteturais (ADRs)
 
-Uma ADR por decisão relevante. Nova decisão entra como `0016-<slug>.md` e
+Uma ADR por decisão relevante. Nova decisão entra como `0017-<slug>.md` e
 ganha linha nesta tabela.
 
 | ADR | Decisão | Status |
@@ -16,7 +16,8 @@ ganha linha nesta tabela.
 | [0009](0009-newsletter-mensal.md) | Newsletter mensal com descadastro assinado | aceito |
 | [0010](0010-condicoes-e-locais.md) | Condições, locais salvos e janela de pesca | aceito |
 | [0011](0011-mapa-privado.md) | Mapa privado e pontos do pescador | aceito |
-| [0012](0012-ferramentas-exif-e-visao.md) | Ferramentas, EXIF e sugestão de espécie | aceito |
+| [0012](0012-ferramentas-exif-e-visao.md) | Ferramentas, EXIF e sugestão de espécie | parcialmente substituído pelo [ADR 0016](0016-confirmacao-exif.md) (só o preenchimento automático de EXIF) |
 | [0013](0013-identity-completa.md) | Identidade completa com ASP.NET Core Identity | aceito |
 | [0014](0014-registro-anonimo.md) | Registro anônimo: capturar primeiro, conta depois | aceito |
 | [0015](0015-niveis-de-detalhe-do-local.md) | Cinco níveis de detalhe do local compartilhado | aceito |
+| [0016](0016-confirmacao-exif.md) | Confirmação explícita dos dados da foto no registro | aceito |
