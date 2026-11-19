@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Net;
+using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
@@ -17,6 +19,9 @@ public sealed class OpenMeteoProvedorDeCondicoes(
     private const string Fonte = "Open-Meteo";
     private static readonly TimeSpan TtlMaximo = TimeSpan.FromMinutes(20);
     private static readonly TimeSpan TtlDaLua = TimeSpan.FromHours(12);
+    private const int TamanhoMaximoDoTrecho = 200;
+    private const int TentativasDeLeitura = 2;
+    private static readonly TimeSpan EsperaEntreTentativas = TimeSpan.FromMilliseconds(500);
 
     // CacheMinutos só encurta o TTL completo; nunca passa do teto da política.
     private TimeSpan TtlCompleto =>
@@ -173,15 +178,14 @@ public sealed class OpenMeteoProvedorDeCondicoes(
 
         try
         {
-            using var resposta = await http.GetAsync(url, ct);
-            if (!resposta.IsSuccessStatusCode)
+            var (corpo, status) = await LerJsonAsync(url, "Open-Meteo clima", ct);
+            if (corpo is null)
             {
-                logger.LogWarning("Open-Meteo recusou o clima: {Status}", resposta.StatusCode);
+                logger.LogWarning("Open-Meteo recusou o clima: {Status}", status);
                 return null;
             }
 
-            await using var fluxo = await resposta.Content.ReadAsStreamAsync(ct);
-            using var json = await JsonDocument.ParseAsync(fluxo, cancellationToken: ct);
+            using var json = JsonDocument.Parse(corpo);
             var raiz = json.RootElement;
 
             if (!raiz.TryGetProperty("hourly", out var hourly)
@@ -272,14 +276,13 @@ public sealed class OpenMeteoProvedorDeCondicoes(
 
         try
         {
-            using var resposta = await http.GetAsync(url, ct);
-            if (!resposta.IsSuccessStatusCode)
+            var (corpo, _) = await LerJsonAsync(url, "Open-Meteo mar", ct);
+            if (corpo is null)
             {
                 return [];
             }
 
-            await using var fluxo = await resposta.Content.ReadAsStreamAsync(ct);
-            using var json = await JsonDocument.ParseAsync(fluxo, cancellationToken: ct);
+            using var json = JsonDocument.Parse(corpo);
             var raiz = json.RootElement;
 
             if (!raiz.TryGetProperty("hourly", out var hourly)
@@ -360,14 +363,13 @@ public sealed class OpenMeteoProvedorDeCondicoes(
 
         try
         {
-            using var resposta = await http.GetAsync(url, ct);
-            if (!resposta.IsSuccessStatusCode)
+            var (corpo, _) = await LerJsonAsync(url, "MET Norway lua", ct);
+            if (corpo is null)
             {
                 return null;
             }
 
-            await using var fluxo = await resposta.Content.ReadAsStreamAsync(ct);
-            using var json = await JsonDocument.ParseAsync(fluxo, cancellationToken: ct);
+            using var json = JsonDocument.Parse(corpo);
             if (!json.RootElement.TryGetProperty("properties", out var propriedades))
             {
                 return null;
@@ -394,6 +396,77 @@ public sealed class OpenMeteoProvedorDeCondicoes(
             logger.LogInformation(excecao, "Lua indisponível em MET Norway");
             return null;
         }
+    }
+
+    // Um 200 nem sempre traz JSON: proxies/CDN do provedor às vezes devolvem
+    // texto (ex.: "Upstream ..."). Valida o primeiro byte e, quando o corpo não
+    // é JSON, tenta uma segunda vez antes de desistir. Se persistir, lança
+    // JsonException com status, content-type e trecho do corpo para diagnóstico.
+    private async Task<(byte[]? Corpo, HttpStatusCode Status)> LerJsonAsync(
+        string url,
+        string fonte,
+        CancellationToken ct)
+    {
+        for (var tentativa = 1; ; tentativa++)
+        {
+            using var resposta = await http.GetAsync(url, ct);
+            if (!resposta.IsSuccessStatusCode)
+            {
+                return (null, resposta.StatusCode);
+            }
+
+            var corpo = await resposta.Content.ReadAsByteArrayAsync(ct);
+            if (PareceJson(corpo))
+            {
+                return (corpo, resposta.StatusCode);
+            }
+
+            var host = resposta.RequestMessage?.RequestUri?.Host ?? new Uri(url).Host;
+            var tipo = resposta.Content.Headers.ContentType?.ToString() ?? "(sem content-type)";
+            var trecho = Trecho(Encoding.UTF8.GetString(corpo));
+
+            if (tentativa < TentativasDeLeitura)
+            {
+                logger.LogInformation(
+                    "{Fonte} devolveu resposta não JSON em {Host} (status {Status}, {ContentType}); tentando de novo: {Trecho}",
+                    fonte,
+                    host,
+                    (int)resposta.StatusCode,
+                    tipo,
+                    trecho);
+                await Task.Delay(EsperaEntreTentativas, ct);
+                continue;
+            }
+
+            throw new JsonException(
+                $"Resposta não-JSON de {host} ({fonte}) após {tentativa} tentativas "
+                + $"(status {(int)resposta.StatusCode}, content-type {tipo}): {trecho}");
+        }
+    }
+
+    private static bool PareceJson(byte[] corpo)
+    {
+        ReadOnlySpan<byte> inicio = corpo;
+        if (inicio.StartsWith(Encoding.UTF8.Preamble))
+        {
+            inicio = inicio[Encoding.UTF8.Preamble.Length..];
+        }
+
+        inicio = inicio.TrimStart(" \t\r\n"u8);
+        return !inicio.IsEmpty && (inicio[0] == (byte)'{' || inicio[0] == (byte)'[');
+    }
+
+    private static string Trecho(string corpo)
+    {
+        var limpo = corpo.ReplaceLineEndings(" ").Trim();
+        if (limpo.Length == 0)
+        {
+            return "(corpo vazio)";
+        }
+
+        return limpo.Length <= TamanhoMaximoDoTrecho
+            ? limpo
+            : limpo[..TamanhoMaximoDoTrecho] + "…";
     }
 
     private static DateTimeOffset? LerTempo(JsonElement propriedades, string nome)

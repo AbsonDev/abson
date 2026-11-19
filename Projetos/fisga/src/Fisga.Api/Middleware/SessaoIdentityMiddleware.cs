@@ -1,8 +1,10 @@
 using System.Security.Claims;
+using Fisga.Api.Observabilidade;
 using Fisga.Application.Abstractions;
 using Fisga.Application.Identidade;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
+using Sentry;
 
 namespace Fisga.Api.Middleware;
 
@@ -66,6 +68,8 @@ public sealed class SessaoIdentityMiddleware(RequestDelegate next)
         if (usuario is not null)
         {
             context.DefinirSessao(sessao, usuario);
+            SentrySdk.ConfigureScope(escopo =>
+                escopo.User = IdentidadeSentry.ParaUsuario(usuario.Id));
         }
 
         await next(context);

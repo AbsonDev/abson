@@ -358,7 +358,7 @@ test.describe('Conta — seus dados', () => {
     expect(corpo).toEqual({ nome: 'Marina Santos', aceitaNovidades: true });
   });
 
-  test('baixa a exportação JSON usando o nome do servidor', async ({ page }) => {
+  test('baixa a exportação JSON com nome datado', async ({ page }) => {
     await abrirConta(page);
 
     await page.route(`${API}/api/conta/exportar`, (route) =>
@@ -376,7 +376,10 @@ test.describe('Conta — seus dados', () => {
     await page.locator('#dados-exportar').click();
     const download = await downloadPromise;
 
-    expect(download.suggestedFilename()).toBe('fisga-conta-20261118.json');
+    // Em produção o CORS não expõe Content-Disposition, então o nome vem do
+    // fallback com a data UTC do navegador. Validar o padrão evita depender do
+    // dia em que o teste roda.
+    expect(download.suggestedFilename()).toMatch(/^fisga-conta-\d{8}\.json$/);
     await expect(page.locator('#dados-feedback')).toContainText('Download iniciado');
   });
 
