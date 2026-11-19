@@ -3,8 +3,10 @@ import { test, expect, type Page } from '@playwright/test';
 /**
  * Suíte mockada do seletor de nível de detalhe do local em `/registrar`.
  *
- * A API é interceptada no navegador com `page.route`; o objetivo aqui é validar
- * a interface e o corpo que o formulário envia, sem depender de backend.
+ * No describe de registro, a API é interceptada no navegador com `page.route`:
+ * validamos a interface e o corpo que o formulário envia, sem depender de
+ * backend. O describe de link público e troféu usa o SSR servido por
+ * `tests/mock-api.mjs`, que fornece as rotas `/p/<token>` e `/trofeu/...`.
  */
 
 async function abrirRegistrar(page: Page, caminho = '/registrar') {
@@ -68,6 +70,51 @@ test.describe('Registro — nível de detalhe do local', () => {
 
     await page.locator('label.priv-opt').filter({ hasText: 'Mostrar cidade/UF' }).click();
     await expect(campo).toBeHidden();
+  });
+
+  test('limpa o campo ao trocar para um nível que não usa rio ou trecho', async ({ page }) => {
+    await abrirRegistrar(page);
+
+    await page.locator('label.priv-opt').filter({ hasText: 'Mostrar rio ou lagoa' }).click();
+    const campo = page.locator('#corpo-ou-trecho');
+    await campo.fill('Rio Sergipe, trecho centro');
+
+    await page.locator('label.priv-opt').filter({ hasText: 'Mostrar cidade/UF' }).click();
+    await expect(page.locator('#campo-corpo-ou-trecho')).toBeHidden();
+    await expect(campo).toHaveValue('');
+
+    await page.locator('label.priv-opt').filter({ hasText: 'Mostrar trecho' }).click();
+    await expect(page.locator('#campo-corpo-ou-trecho')).toBeVisible();
+    await expect(campo).toHaveValue('');
+
+    await campo.fill('Rio Sergipe, trecho centro');
+    await page.locator('label.priv-opt').filter({ hasText: 'Ocultar local' }).click();
+    await expect(campo).toHaveValue('');
+  });
+
+  test('restaura rascunho com rio ou trecho e o nível escolhido', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem(
+        'fisga:rascunho:v1',
+        JSON.stringify({
+          entrada: {
+            privacidadeDoLocal: 'CorpoAgua',
+            corpoOuTrecho: 'Rio Sergipe, trecho centro',
+            capturas: []
+          },
+          atualizadoEm: new Date().toISOString()
+        })
+      );
+    });
+
+    await abrirRegistrar(page);
+
+    await expect(page.locator('#priv-agua')).toBeChecked();
+    await expect(page.locator('#campo-corpo-ou-trecho')).toBeVisible();
+    await expect(page.locator('#corpo-ou-trecho')).toHaveValue('Rio Sergipe, trecho centro');
+    await expect(page.locator('#privacidade-ajuda')).toHaveText(
+      'Aparece só o nome do rio ou da lagoa, sem o ponto exato.'
+    );
   });
 
   test('envia o nível escolhido e o rio/trecho no corpo do POST', async ({ page }) => {

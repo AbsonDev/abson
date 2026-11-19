@@ -1228,8 +1228,16 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       if (ajudaPrivacidade && selecionada?.dataset.ajuda) {
         ajudaPrivacidade.textContent = selecionada.dataset.ajuda;
       }
+      const aceitaCorpoOuTrecho = ['Trecho', 'CorpoAgua'].includes(selecionada?.value);
       if (campoCorpoOuTrecho) {
-        campoCorpoOuTrecho.hidden = !['Trecho', 'CorpoAgua'].includes(selecionada?.value);
+        campoCorpoOuTrecho.hidden = !aceitaCorpoOuTrecho;
+      }
+      // Quem troca para Cidade/Oculto/Exato não pode deixar o rio/trecho cru
+      // no payload nem no rascunho. preencher() escolhe o nível antes de
+      // preencher o campo, então um rascunho válido não é apagado aqui.
+      if (!aceitaCorpoOuTrecho) {
+        const campo = document.getElementById('corpo-ou-trecho');
+        if (campo) campo.value = '';
       }
     }
 
