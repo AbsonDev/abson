@@ -268,7 +268,7 @@ test('espécie digitada antes do auth não é substituída pela wiki', async ({ 
         data: '2026-11-19', periodo: 'Manha', mare: 'Vazante', lua: 'Minguante',
         clima: 'Nublado', clarezaDaAgua: 'Clara', privacidadeDoLocal: 'Exato',
         observacoes: null, pescador: null,
-        capturas: [{ especie: 'Robalo digitado antes do auth', pesoKg: 2 }]
+        capturas: [{ especie: 'Robalo', pesoKg: 2 }]
       },
       atualizadoEm: '2026-11-19T08:00:00Z'
     }));
@@ -288,6 +288,36 @@ test('espécie digitada antes do auth não é substituída pela wiki', async ({ 
   await page.waitForTimeout(200);
   await expect(page.locator('.captura-especie').first()).toHaveValue(especieDigitada);
   await expect(page.locator('.captura-especie')).toHaveCount(1);
+});
+
+test('editar captura do rascunho antes do auth não duplica a linha', async ({ page }) => {
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem('fisga:rascunho-semeado')) return;
+    localStorage.setItem('fisga:rascunho:v1', JSON.stringify({
+      entrada: {
+        local: 'Ilhabela', cidade: 'Ilhabela', estado: 'SP', ambiente: 'Mar',
+        data: '2026-11-19', periodo: 'Manha', mare: 'Vazante', lua: 'Minguante',
+        clima: 'Nublado', clarezaDaAgua: 'Clara', privacidadeDoLocal: 'Exato',
+        observacoes: null, pescador: null,
+        capturas: [{ especie: 'Robalo', pesoKg: 2 }]
+      },
+      atualizadoEm: '2026-11-19T08:00:00Z'
+    }));
+    sessionStorage.setItem('fisga:rascunho-semeado', '1');
+  });
+  await mockAnonimoLento(page, 1500);
+  await page.goto(`${ORIGEM}/registrar`);
+  await page.locator('[data-etapa="3"]').evaluate((etapa) => etapa.removeAttribute('hidden'));
+
+  const primeira = page.locator('.captura-especie').first();
+  await expect(primeira).toHaveValue('Robalo');
+  await primeira.fill('Robalo editado');
+  await expect(primeira).toHaveValue('Robalo editado');
+
+  await expect(page.locator('#acesso-registrar')).toBeVisible();
+  await page.waitForTimeout(200);
+  await expect(page.locator('.linha-captura')).toHaveCount(1);
+  await expect(page.locator('.captura-especie').first()).toHaveValue('Robalo editado');
 });
 
 test('foto anônima mostra nota inline e não redireciona', async ({ page }) => {

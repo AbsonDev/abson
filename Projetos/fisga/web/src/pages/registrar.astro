@@ -852,6 +852,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       if (!entrada) return;
       formularioHidratado = true;
       const preservarTocados = opcoes.preservarTocados !== false;
+      const preservarCapturas = opcoes.preservarCapturas === true;
       const definir = (id, valor) => {
         if (!preservarTocados || !camposTocados.has(id)) {
           document.getElementById(id).value = valor;
@@ -872,21 +873,23 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       definir('privacidade-local', entrada.privacidadeDoLocal || 'Exato');
       definir('observacoes', entrada.observacoes || '');
 
-      if (capturasTocadas) {
-        const existentes = new Set(
-          [...listaCapturas.querySelectorAll('.linha-captura')].map(assinaturaLinha)
-        );
-        (entrada.capturas || []).forEach((captura) => {
-          const assinatura = assinaturaCaptura(captura);
-          if (existentes.has(assinatura)) return;
-          criarLinhaCaptura(captura);
-          existentes.add(assinatura);
-        });
-        if (!listaCapturas.querySelector('.linha-captura')) criarLinhaCaptura();
-      } else {
-        listaCapturas.innerHTML = '';
-        (entrada.capturas || []).forEach((captura) => criarLinhaCaptura(captura));
-        if (!entrada.capturas || entrada.capturas.length === 0) criarLinhaCaptura();
+      if (!preservarCapturas) {
+        if (capturasTocadas) {
+          const existentes = new Set(
+            [...listaCapturas.querySelectorAll('.linha-captura')].map(assinaturaLinha)
+          );
+          (entrada.capturas || []).forEach((captura) => {
+            const assinatura = assinaturaCaptura(captura);
+            if (existentes.has(assinatura)) return;
+            criarLinhaCaptura(captura);
+            existentes.add(assinatura);
+          });
+          if (!listaCapturas.querySelector('.linha-captura')) criarLinhaCaptura();
+        } else {
+          listaCapturas.innerHTML = '';
+          (entrada.capturas || []).forEach((captura) => criarLinhaCaptura(captura));
+          if (!entrada.capturas || entrada.capturas.length === 0) criarLinhaCaptura();
+        }
       }
 
       atualizarContador();
@@ -1317,6 +1320,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
     // assim um flush de saída durante a inicialização nunca grava um form vazio.
     let rascunhoInicial = null;
     let falhaLeituraRascunho = false;
+    let hidratadoSincronamente = false;
     try {
       rascunhoInicial = restaurarRascunho();
     } catch {
@@ -1324,6 +1328,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
     }
     if (rascunhoInicial && !new URLSearchParams(window.location.search).get('editar')) {
       preencher(rascunhoInicial, { preservarTocados: true });
+      hidratadoSincronamente = true;
       exifAplicado = true;
       atualizarIndicadorRascunho();
     }
@@ -1377,12 +1382,16 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         atualizarIndicadorRascunho();
       }
 
+      // A hidratação síncrona já trouxe as capturas do rascunho para o DOM.
+      // Refazer a mesclagem aqui reintroduziria a captura original quando a
+      // pessoa editou algum valor durante a inicialização assíncrona.
+      const opcoesPreenchimento = { preservarTocados: true, preservarCapturas: hidratadoSincronamente };
       const condicoes = await buscarCondicoesDaUrl();
       if (condicoes) {
-        preencher(mesclarCondicoesComRascunho(condicoes, rascunho), { preservarTocados: true });
+        preencher(mesclarCondicoesComRascunho(condicoes, rascunho), opcoesPreenchimento);
         mostrarCondicoesAplicadas(condicoes.texto);
       } else if (rascunho) {
-        preencher(rascunho, { preservarTocados: true });
+        preencher(rascunho, opcoesPreenchimento);
       } else {
         iniciarFormularioVazio();
       }
