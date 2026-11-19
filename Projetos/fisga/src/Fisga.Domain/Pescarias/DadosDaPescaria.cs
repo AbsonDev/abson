@@ -21,6 +21,8 @@ public sealed record DadosDaPescaria
 
     public string? Estado { get; init; }
 
+    public string? CorpoOuTrecho { get; init; }
+
     public AmbienteDePesca Ambiente { get; init; }
 
     public DateOnly Data { get; init; }
