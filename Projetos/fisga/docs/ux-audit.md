@@ -33,7 +33,7 @@ O produto cresceu de “diário” para “copiloto”. A apresentação ainda c
 | `/locais` | Locais salvos | Conta |
 | `/ferramentas` | Hub de nós, checklists, defeso e guias | Público |
 | `/wiki` | Conteúdo de referência | Público |
-| `/registrar` | Registro da pescaria | Conta (formulário visível) |
+| `/registrar` | Registro da pescaria | Público (formulário ativo; conta só no salvamento) |
 | `/meu-diario` | Estatísticas, insights e histórico | Conta |
 | `/conta` | Perfil (nome/preferência de e-mail), senha, Google, sessões, exportação e exclusão | Conta |
 | `/entrar`, `/boas-vindas` | Acesso e primeiro uso | Público |

@@ -3,7 +3,7 @@
 **Data:** 2026-11-19
 **Rota:** `/registrar`
 ** Issues:** [#43](https://github.com/AbsonDev/abson/issues/43), [#44](https://github.com/AbsonDev/abson/issues/44), [#45](https://github.com/AbsonDev/abson/issues/45)
-**Status:** aguardando aprovação
+**Status:** aprovado
 
 ## Contexto
 
