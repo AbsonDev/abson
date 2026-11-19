@@ -1,6 +1,6 @@
 # Decisões arquiteturais (ADRs)
 
-Uma ADR por decisão relevante. Nova decisão entra como `0016-<slug>.md` e
+Uma ADR por decisão relevante. Nova decisão entra como `0017-<slug>.md` e
 ganha linha nesta tabela.
 
 | ADR | Decisão | Status |
