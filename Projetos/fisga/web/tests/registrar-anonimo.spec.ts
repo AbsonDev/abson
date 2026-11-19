@@ -252,6 +252,23 @@ test('submit anônimo abre confirmação, continua aqui mantém os dados e entra
   await expect(page.locator('#confirmar-salvar')).toBeVisible();
   await expect(page.locator('#btn-salvar')).toBeHidden();
   await expect(page).toHaveURL(/\/registrar/);
+
+  // Fidelidade ao artefato no mobile: botões empilhados e dentro da largura do painel.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('#confirmar-salvar').scrollIntoViewIfNeeded();
+  const caixaPainel = await page.locator('#confirmar-salvar').boundingBox();
+  const caixaEntrar = await page.locator('#confirmar-entrar').boundingBox();
+  const caixaContinuar = await page.locator('#confirmar-continuar').boundingBox();
+  expect(caixaPainel).not.toBeNull();
+  expect(caixaEntrar).not.toBeNull();
+  expect(caixaContinuar).not.toBeNull();
+  expect(caixaContinuar!.y).toBeGreaterThanOrEqual(caixaEntrar!.y + caixaEntrar!.height);
+  for (const caixa of [caixaEntrar!, caixaContinuar!]) {
+    expect(caixa.x).toBeGreaterThanOrEqual(caixaPainel!.x);
+    expect(caixa.x + caixa.width).toBeLessThanOrEqual(caixaPainel!.x + caixaPainel!.width);
+  }
+  await page.setViewportSize({ width: 1280, height: 720 });
+
   await page.locator('#confirmar-continuar').click();
   await expect(page.locator('#confirmar-salvar')).toBeHidden();
   await expect(page.locator('#btn-salvar')).toBeVisible();
