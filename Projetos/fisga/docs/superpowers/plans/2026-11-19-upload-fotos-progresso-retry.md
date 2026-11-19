@@ -576,7 +576,7 @@ O `finally` antigo (`uploadsPendentes -= 1; inputArquivo.disabled = false; input
 - [ ] **Step 7: validar GREEN**
 
 Run: `cd Projetos/fisga/web && npm run check && npm run build && npx playwright test tests/registrar-upload.spec.ts --reporter=list`
-Expected: os 5 testes passam. Se `Enviando 1 de 1 fotos…` não aparecer, verificar se o `role="status"` está sendo limpo por `renderizarUploads` antes da asserção — o texto é síncrono no `change`, então deve aparecer antes do `await` do XHR.
+Expected: os 6 testes passam (5 da Task 1 + 1 de regressão HEIC/503 da Task 2 Step 5b). Se `Enviando 1 de 1 fotos…` não aparecer, verificar se o `role="status"` está sendo limpo por `renderizarUploads` antes da asserção — o texto é síncrono no `change`, então deve aparecer antes do `await` do XHR.
 
 - [ ] **Step 8: regressão da suíte e commit**
 

@@ -77,6 +77,8 @@ nunca são publicados.
   captura**, com escolha da capa.
 - Compressão de imagem no navegador (até 5 MB; JPG/PNG/WebP e HEIC/HEIF quando o navegador
   decodifica — sem decode, a tela orienta exportar em JPEG).
+- **Envio de fotos com progresso individual e retry**: cada foto tem o próprio estado; se uma
+  falhar, "Tentar de novo" reenvia só ela e as já enviadas não duplicam.
 - **Privacidade do local por pescaria**: exato, trecho, rio/lagoa, cidade/UF ou oculto — padrão
   cidade/UF. Vale para link público, troféu e PDF.
 - Edição preservando IDs das capturas; links de troféu não quebram.
