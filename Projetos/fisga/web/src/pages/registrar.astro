@@ -271,6 +271,16 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
           <button class="btn btn--contorno" type="button" data-voltar>Voltar</button>
           <button class="btn btn--primario" type="submit" id="btn-salvar">Salvar pescaria</button>
         </div>
+
+        <div id="confirmar-salvar" class="confirmar-salvar oculto" role="status">
+          <h3>Seu registro está pronto.</h3>
+          <p>Para guardar no diário, entre com sua conta. O que você preencheu continua aqui, sem mudanças.</p>
+          <div class="confirmar-acoes">
+            <button id="confirmar-entrar" class="btn btn--primario" type="button">Entrar e salvar no diário</button>
+            <button id="confirmar-continuar" class="btn btn--contorno" type="button">Continuar aqui</button>
+          </div>
+        </div>
+
         <small class="revisao-nota">Diário privado, card do troféu e PDF gratuitos durante a validação.</small>
       </section>
     </form>
@@ -333,6 +343,9 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
     const listaCapturas = document.getElementById('lista-capturas');
     const contador = document.getElementById('contador-capturas');
     const botaoSalvar = document.getElementById('btn-salvar');
+    const painelConfirmacao = document.getElementById('confirmar-salvar');
+    const botaoConfirmarEntrar = document.getElementById('confirmar-entrar');
+    const botaoConfirmarContinuar = document.getElementById('confirmar-continuar');
     const erroFormulario = document.getElementById('erro-form');
     const indicadorRascunho = document.getElementById('rascunho-indicador');
     const acessoRegistrar = document.getElementById('acesso-registrar');
@@ -378,6 +391,24 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       guardarRetorno();
       window.location.href = `/entrar?voltar=${encodeURIComponent(urlDeRetorno())}`;
     }
+
+    function mostrarConfirmacao() {
+      botaoSalvar.classList.add('oculto');
+      painelConfirmacao.classList.remove('oculto');
+      botaoConfirmarEntrar.focus();
+    }
+
+    function fecharConfirmacao() {
+      painelConfirmacao.classList.add('oculto');
+      botaoSalvar.classList.remove('oculto');
+      botaoSalvar.focus();
+    }
+
+    botaoConfirmarContinuar.addEventListener('click', fecharConfirmacao);
+    botaoConfirmarEntrar.addEventListener('click', () => {
+      flushRascunho();
+      irParaEntrar();
+    });
 
     function mostrarOuOcultarBannerAutenticacao() {
       acessoRegistrar.classList.toggle('oculto', autenticado);
@@ -477,6 +508,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
             <input type="file" accept="image/jpeg,image/png,image/webp" multiple />
             <span>Foto</span>
           </label>
+          <p class="foto-nota" role="status" hidden>A foto entra depois que você entra. O resto do registro continua aqui.</p>
         </div>
         <div class="sugestoes-especie" aria-live="polite"></div>
       `;
@@ -496,14 +528,21 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       });
 
       const inputArquivo = linha.querySelector('input[type="file"]');
+      const notaFoto = linha.querySelector('.foto-nota');
+      linha.querySelector('.captura-foto-adicionar').addEventListener('click', (evento) => {
+        if (autenticado) return;
+        evento.preventDefault();
+        notaFoto.hidden = false;
+      });
       inputArquivo.addEventListener('change', async () => {
-        const arquivos = [...(inputArquivo.files || [])];
-        if (arquivos.length === 0) return;
-
         if (!autenticado) {
-          irParaEntrar();
+          inputArquivo.value = '';
+          notaFoto.hidden = false;
           return;
         }
+
+        const arquivos = [...(inputArquivo.files || [])];
+        if (arquivos.length === 0) return;
 
         const disponiveis = MAX_FOTOS - fotosDaLinha(linha).length;
         if (disponiveis <= 0) {
@@ -1200,7 +1239,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       evento.preventDefault();
 
       if (!autenticado) {
-        irParaEntrar();
+        mostrarConfirmacao();
         return;
       }
 
@@ -1337,6 +1376,19 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
   }
 
   .rascunho-indicador:empty {
+    display: none;
+  }
+
+  /* A nota vive nas linhas de captura criadas pelo script, fora do escopo Astro. */
+  :global(.foto-nota) {
+    flex: 0 0 100%;
+    margin: 2px 0 0;
+    color: var(--tinta-suave);
+    font-size: 0.72rem;
+    line-height: 1.45;
+  }
+
+  :global(.foto-nota[hidden]) {
     display: none;
   }
 
@@ -1602,6 +1654,35 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
     line-height: 1.5;
   }
 
+  .confirmar-salvar {
+    margin-top: 14px;
+    padding: 16px 18px;
+    border: 1px solid var(--linha-forte);
+    border-radius: 12px;
+    background: var(--superficie);
+  }
+
+  .confirmar-salvar h3 {
+    margin: 0 0 4px;
+    font-family: var(--fonte-titulo);
+    font-size: 1.05rem;
+    line-height: 1.3;
+  }
+
+  .confirmar-salvar p {
+    margin: 0;
+    color: var(--tinta-suave);
+    font-size: 0.78rem;
+    line-height: 1.5;
+  }
+
+  .confirmar-acoes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 14px;
+  }
+
   [data-etapa][hidden] {
     display: none !important;
   }
@@ -1630,7 +1711,8 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
       white-space: nowrap;
     }
 
-    .etapa-acoes .btn {
+    .etapa-acoes .btn,
+    .confirmar-acoes .btn {
       flex: 1;
     }
   }

@@ -229,3 +229,54 @@ test('data digitada antes do auth não é sobrescrita na inicialização vazia',
   await expect(page.locator('#contador-capturas')).toHaveText('1 captura');
   await expect(page.locator('#data')).toHaveValue('2001-02-03');
 });
+
+test('foto anônima mostra nota inline e não redireciona', async ({ page }) => {
+  await mockAnonimo(page);
+  await page.goto(`${ORIGEM}/registrar`);
+  // A foto mora na etapa 3; torná-la visível não altera o estado do formulário.
+  await page.locator('[data-etapa="3"]').evaluate((etapa) => etapa.removeAttribute('hidden'));
+  await page.locator('.captura-foto-adicionar').click();
+  await expect(page.locator('.foto-nota')).toBeVisible();
+  await expect(page.locator('.foto-nota')).toContainText('A foto entra depois que você entra.');
+  await expect(page).toHaveURL(/\/registrar$/);
+  await expect(page.locator('input[type="file"]').first()).toHaveJSProperty('files.length', 0);
+});
+
+test('submit anônimo abre confirmação, continua aqui mantém os dados e entrar preserva o volta', async ({ page }) => {
+  await mockAnonimo(page);
+  await page.goto(`${ORIGEM}/registrar`);
+  await page.locator('#local').fill('Ilhabela');
+  await page.locator('#data').fill('2026-11-19');
+  await page.getByRole('button', { name: /4 Revisar/ }).click();
+  await page.locator('#btn-salvar').click();
+  await expect(page.locator('#confirmar-salvar')).toBeVisible();
+  await expect(page.locator('#btn-salvar')).toBeHidden();
+  await expect(page).toHaveURL(/\/registrar/);
+  await page.locator('#confirmar-continuar').click();
+  await expect(page.locator('#confirmar-salvar')).toBeHidden();
+  await expect(page.locator('#btn-salvar')).toBeVisible();
+  await expect(page.locator('#local')).toHaveValue('Ilhabela');
+  await page.locator('#btn-salvar').click();
+  await Promise.all([
+    page.waitForURL((url) => url.pathname === '/entrar' && Boolean(url.searchParams.get('voltar')?.startsWith('/registrar'))),
+    page.locator('#confirmar-entrar').click()
+  ]);
+});
+
+test('com sessão, salvar segue para a pescaria sem painel de confirmação', async ({ page }) => {
+  await page.route(`${API}/api/auth/me`, (route) => route.fulfill({
+    status: 200, headers: { ...CORS, 'content-type': 'application/json' },
+    body: JSON.stringify({ autenticado: true, usuario: { id: '1', email: 'p@fisga.app', nome: 'Marina', nomeExibicao: 'Marina' }, consentimentoPendente: false, googleConectado: false, temSenha: true })
+  }));
+  await page.route(`${API}/api/pescarias`, (route) => route.fulfill({
+    status: 200, headers: { ...CORS, 'content-type': 'application/json' },
+    body: JSON.stringify({ id: 'nova', shareToken: 'xyz' })
+  }));
+  await page.goto(`${ORIGEM}/registrar`);
+  await page.locator('#local').fill('Ilhabela');
+  await page.locator('#data').fill('2026-11-19');
+  await page.getByRole('button', { name: /4 Revisar/ }).click();
+  await page.locator('#btn-salvar').click();
+  await expect(page).toHaveURL(/\/p\/xyz\?novo=1/);
+  await expect(page.locator('#confirmar-salvar')).toBeHidden();
+});
