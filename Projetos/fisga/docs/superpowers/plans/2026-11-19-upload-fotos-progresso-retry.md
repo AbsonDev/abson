@@ -752,7 +752,7 @@ dotnet restore Fisga.slnx --locked-mode
 dotnet build Fisga.slnx -c Release --no-restore -warnaserror
 dotnet test Fisga.slnx -c Release --no-build
 cd web && npm ci && npm run check && npm run build && npm run test:e2e
-cd ../.. && npx --yes markdownlint-cli2@0.24.1
+cd ../../.. && npx --yes markdownlint-cli2@0.24.1
 ```
 
 Expected: tudo PASS. A API não mudou, mas a CI roda `openapi.json`; não editar o contrato à mão.
