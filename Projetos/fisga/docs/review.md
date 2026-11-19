@@ -89,6 +89,9 @@ ensina o time a ignorar a ferramenta.
 
 ## Camadas
 
+O processo completo (draft, issue, branch, PR, merge e deploy) e o checklist obrigatório de merge
+estão em [github-workflow.md](./github-workflow.md); esta seção cobre só o julgamento do diff.
+
 ### `gate`
 
 - **Quando roda:** todo PR e todo push em `main`.

@@ -7,6 +7,10 @@ em produção.
 `44338998771`) e consolidação da documentação em `f50560a` (run `44348792718`). Em ambas, API e web
 responderam `/health` com o SHA do merge, além de `/ready`, `/` e `/condicoes` 200.
 
+O fluxo de trabalho completo (draft → issue → branch → PR → revisão → merge → deploy → Done), com
+convenções de branch, labels, campos do quadro e checklist de merge, está em
+[github-workflow.md](./github-workflow.md).
+
 ## Visão geral
 
 ```text

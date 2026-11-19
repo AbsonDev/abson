@@ -1,0 +1,84 @@
+name: Achado do Fisga
+description: Registre um achado de UX/UI, bug ou melhoria no Fisga com evidência e critério de aceite.
+title: "Achado Fisga: "
+labels: [ux]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Este achado entra no quadro do Fisga e vira a issue de trabalho.
+        Quanto mais concreta a evidência, mais rápido o diagnóstico.
+
+  - type: textarea
+    id: resumo
+    attributes:
+      label: Resumo
+      description: O que está errado ou pode melhorar, em uma ou duas frases.
+      placeholder: "Ex.: a lista de condições não mostra a fonte dos dados no celular."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Área
+      description: Onde o achado aparece.
+      options:
+        - API
+        - Web
+        - UX
+        - Docs
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidencia
+    attributes:
+      label: Evidência
+      description: URL, arquivo:linha, print ou gravação que comprove o achado.
+      placeholder: |
+        https://fisga.abson.tech/condicoes
+        web/src/pages/condicoes.astro:42
+        print no celular, 390px
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproducao
+    attributes:
+      label: Reprodução
+      description: Passos para reproduzir o problema, quando for bug.
+      placeholder: |
+        1. Abrir /condicoes no celular
+        2. Rolar até a lista de condições
+        3. ...
+    validations:
+      required: false
+
+  - type: textarea
+    id: esperado
+    attributes:
+      label: Esperado
+      description: O que deveria acontecer em vez disso.
+    validations:
+      required: false
+
+  - type: textarea
+    id: aceite
+    attributes:
+      label: Critério de aceite
+      description: Como saberemos que está resolvido. Liste verificações objetivas.
+      placeholder: |
+        - Fonte e horário visíveis no mobile
+        - Sem regressão no desktop
+    validations:
+      required: true
+
+  - type: input
+    id: artefato
+    attributes:
+      label: Artefato (OpenDesign)
+      description: Link do artefato no OpenDesign, quando existir.
+      placeholder: https://...
+    validations:
+      required: false
