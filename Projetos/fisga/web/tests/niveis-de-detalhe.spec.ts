@@ -96,8 +96,11 @@ test.describe('Registro — nível de detalhe do local', () => {
     await page.locator('#btn-salvar').click();
 
     await expect.poll(() => corpoPost).not.toBeNull();
-    expect(corpoPost?.privacidadeDoLocal).toBe('CorpoAgua');
-    expect(corpoPost?.corpoOuTrecho).toBe('Rio Sergipe, trecho centro');
+    // O POST é atribuído dentro do callback de `page.route`; o cast desfaz o
+    // estreitamento estático de `corpoPost` para `null` neste ponto.
+    const corpo = corpoPost as Record<string, unknown> | null;
+    expect(corpo?.privacidadeDoLocal).toBe('CorpoAgua');
+    expect(corpo?.corpoOuTrecho).toBe('Rio Sergipe, trecho centro');
   });
 
   test('o preenchimento vindo de /hoje mantém Cidade como padrão', async ({ page }) => {
@@ -123,5 +126,35 @@ test.describe('Registro — nível de detalhe do local', () => {
     await expect(page.locator('#condicoes-aplicadas')).toBeVisible();
     await expect(page.locator('#priv-cidade')).toBeChecked();
     await expect(page.locator('#priv-exato')).not.toBeChecked();
+  });
+});
+
+test.describe('Link público e troféu — badge por nível', () => {
+  test('mostra o badge de Cidade e o local uma vez no cabeçalho', async ({ page }) => {
+    await page.goto('/p/niveis-cidade');
+
+    const cabecalho = page.locator('.calculo-topo');
+    await expect(cabecalho.getByText('Cidade aproximada', { exact: true })).toBeVisible();
+    await expect(cabecalho).toContainText('Campinas · SP');
+
+    const ocorrencias = await cabecalho.evaluate(
+      (elemento) => (elemento.textContent?.match(/Campinas · SP/g) ?? []).length
+    );
+    expect(ocorrencias).toBe(1);
+  });
+
+  test('troféu mostra o local uma vez no card e no canvas', async ({ page }) => {
+    await page.goto('/trofeu/niveis-cidade/captura-cidade');
+
+    const rodape = page.locator('.trofeu-rodape');
+    await expect(rodape).toContainText('Campinas · SP');
+
+    const ocorrencias = await rodape.evaluate(
+      (elemento) => (elemento.textContent?.match(/Campinas · SP/g) ?? []).length
+    );
+    expect(ocorrencias).toBe(1);
+
+    const dados = JSON.parse((await page.locator('#trofeu-dados').textContent()) ?? '{}');
+    expect(dados.local).toBe('Campinas · SP');
   });
 });

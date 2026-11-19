@@ -23,9 +23,6 @@ const dataFormatada = pescaria
       new Date(`${pescaria.entrada.data}T12:00:00`)
     )
   : '';
-const localCompleto = pescaria
-  ? [pescaria.entrada.local, pescaria.entrada.cidade, pescaria.entrada.estado].filter(Boolean).join(' · ')
-  : '';
 const linkPescaria = `${(import.meta.env.PUBLIC_SITE_URL ?? Astro.url.origin).replace(/\/$/, '')}/p/${token}`;
 const trofeuJson = JSON.stringify({
   especie: captura?.especie ?? '',
@@ -33,7 +30,7 @@ const trofeuJson = JSON.stringify({
   comprimento: captura?.comprimentoCm ?? 0,
   isca: captura?.isca ?? '',
   solto: captura?.solto ?? false,
-  local: localCompleto,
+  local: pescaria?.entrada.local ?? '',
   data: dataFormatada,
   pescador: pescaria?.entrada.pescador ?? 'Pescador',
   foto
@@ -82,7 +79,7 @@ const mensagem = encodeURIComponent(
                 <div class="trofeu-rodape">
                   <span>
                     <strong>{pescaria.entrada.local}</strong>
-                    <small>{[pescaria.entrada.cidade, pescaria.entrada.estado].filter(Boolean).join(' · ')} · {dataFormatada}</small>
+                    <small>{dataFormatada}</small>
                     <small>{pescaria.entrada.pescador ?? 'Pescador'}</small>
                   </span>
                   <span style="font-size: 1.5rem;" aria-hidden="true">🎣</span>

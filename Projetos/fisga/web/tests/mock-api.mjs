@@ -1,15 +1,54 @@
 /**
- * API mínima para o teste de gate de consentimento de `/hoje`.
+ * API mínima para os testes cujas páginas são renderizadas no servidor.
  *
- * `/hoje` é renderizado no servidor e chama `/api/auth/me` fora do navegador,
- * onde `page.route` não alcança. O cookie `fisga_e2e_pendente=1` faz esta API
- * responder uma sessão com aceite pendente. Os demais testes continuam usando
- * `page.route`; aqui só respondemos o que o SSR precisa.
+ * `/hoje` chama `/api/auth/me` e `/p/[token]` chama `/api/pescarias/[token]`
+ * fora do navegador, onde `page.route` não alcança. O cookie
+ * `fisga_e2e_pendente=1` faz esta API responder uma sessão com aceite pendente.
+ * Os demais testes continuam usando `page.route`; aqui só respondemos o que o
+ * SSR precisa.
  */
 import { createServer } from 'node:http';
 
 const PORTA = 5184;
 const COOKIE_PENDENTE = 'fisga_e2e_pendente=1';
+
+const PESCARIA_NIVEIS_CIDADE = {
+  id: 'pescaria-niveis-cidade',
+  shareToken: 'niveis-cidade',
+  entrada: {
+    local: 'Campinas · SP',
+    pescador: 'Marina Sá',
+    cidade: 'Campinas',
+    estado: 'SP',
+    ambiente: 'Lagoa',
+    data: '2026-11-19',
+    periodo: 'Manha',
+    mare: 'NaoSeAplica',
+    lua: 'NaoInformada',
+    clima: 'Sol',
+    clarezaDaAgua: 'Clara',
+    privacidadeDoLocal: 'Cidade',
+    observacoes: null,
+    capturas: []
+  },
+  capturas: [
+    {
+      id: 'captura-cidade',
+      especie: 'Tilápia',
+      pesoKg: 1.25,
+      comprimentoCm: 34,
+      isca: 'Massa',
+      solto: false,
+      fotoUrl: null,
+      fotos: [],
+      observacao: null
+    }
+  ],
+  criadoEm: '2026-11-19T12:00:00Z',
+  atualizadoEm: '2026-11-19T12:00:00Z',
+  privacidadeDoLocal: 'Cidade',
+  podeEditar: false
+};
 
 function json(resposta, status, corpo) {
   const texto = JSON.stringify(corpo);
@@ -39,6 +78,11 @@ const servidor = createServer((requisicao, resposta) => {
 
   if (url.pathname === '/__health') {
     json(resposta, 200, { ok: true });
+    return;
+  }
+
+  if (url.pathname === '/api/pescarias/niveis-cidade') {
+    json(resposta, 200, PESCARIA_NIVEIS_CIDADE);
     return;
   }
 
