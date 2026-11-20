@@ -52,8 +52,8 @@ Português, sem barra final, com âncora estável por operação.
 
 Operação individual: `/referencia/<dominio>#<operationId>`. Âncora por
 `operationId`, não por posição, para link externo não quebrar quando a ordem
-muda. Enquanto o contrato não tiver `operationId` (lacuna 6 da F1), o gerador
-deriva um slug de `método + path` e o congela em um arquivo de mapa versionado.
+muda. O `operationId` é congelado no contrato; renomear rota exige atualizar o
+mapa versionado.
 
 ## Três camadas de conteúdo
 

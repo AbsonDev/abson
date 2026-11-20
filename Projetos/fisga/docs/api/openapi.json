@@ -8,44 +8,67 @@
     "/health": {
       "get": {
         "tags": [
-          "Fisga.Api"
+          "Sistema"
         ],
+        "summary": "Verifica se a API está no ar",
+        "description": "Funciona sem sessão. Retorna 200 com o status e a versão publicada, sem consultar o banco.",
+        "operationId": "obterSaude",
         "responses": {
           "200": {
             "description": "OK"
           }
-        }
+        },
+        "security": [ ],
+        "x-cache": "private, no-store"
       }
     },
     "/ready": {
       "get": {
         "tags": [
-          "Fisga.Api"
+          "Sistema"
         ],
+        "summary": "Verifica se a API está pronta para atender",
+        "description": "Funciona sem sessão. Consulta o banco e retorna 200 quando a conexão funciona ou 503 quando não funciona.",
+        "operationId": "obterProntidao",
         "responses": {
           "200": {
             "description": "OK"
           }
-        }
+        },
+        "security": [ ],
+        "x-cache": "private, no-store"
       }
     },
     "/api/legal/versoes": {
       "get": {
         "tags": [
-          "Fisga.Api"
+          "Sistema"
         ],
+        "summary": "Consulta as versões legais vigentes",
+        "description": "Retorna as versões dos termos de uso e da política de privacidade em vigor. Funciona sem sessão e fica em cache público por um dia.",
+        "operationId": "versoesLegais",
         "responses": {
           "200": {
             "description": "OK"
           }
+        },
+        "security": [ ],
+        "x-cache": "public, max-age=86400",
+        "x-rate-limit": {
+          "policy": "leitura",
+          "requests": 180,
+          "windowSeconds": 60
         }
       }
     },
     "/api/auth/solicitar": {
       "post": {
         "tags": [
-          "Fisga.Api"
+          "Autenticação"
         ],
+        "summary": "Solicita um link de acesso por e-mail",
+        "description": "Funciona sem sessão. Retorna 202 sempre com a mesma mensagem genérica, sem revelar se o e-mail existe; em ambiente local, sem envio de e-mail, o link volta na resposta.",
+        "operationId": "solicitarLink",
         "requestBody": {
           "content": {
             "application/json": {
@@ -60,14 +83,24 @@
           "200": {
             "description": "OK"
           }
+        },
+        "security": [ ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "auth",
+          "requests": 8,
+          "windowSeconds": 60
         }
       }
     },
     "/api/auth/registrar": {
       "post": {
         "tags": [
-          "Fisga.Api"
+          "Autenticação"
         ],
+        "summary": "Cria uma conta com e-mail e senha",
+        "description": "Funciona sem sessão. Retorna 201 e envia um link de confirmação; a conta só entra depois de confirmar o e-mail.",
+        "operationId": "registrarConta",
         "requestBody": {
           "content": {
             "application/json": {
@@ -82,14 +115,24 @@
           "200": {
             "description": "OK"
           }
+        },
+        "security": [ ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "auth",
+          "requests": 8,
+          "windowSeconds": 60
         }
       }
     },
     "/api/auth/entrar": {
       "post": {
         "tags": [
-          "Fisga.Api"
+          "Autenticação"
         ],
+        "summary": "Entra com e-mail e senha",
+        "description": "Funciona sem sessão. Retorna 200 com autenticado falso em qualquer falha, inclusive após bloqueio por tentativas; em caso de sucesso grava o cookie de sessão.",
+        "operationId": "entrarComSenha",
         "requestBody": {
           "content": {
             "application/json": {
@@ -104,14 +147,24 @@
           "200": {
             "description": "OK"
           }
+        },
+        "security": [ ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "auth",
+          "requests": 8,
+          "windowSeconds": 60
         }
       }
     },
     "/api/auth/confirmar-email": {
       "post": {
         "tags": [
-          "Fisga.Api"
+          "Autenticação"
         ],
+        "summary": "Confirma o e-mail pelo link enviado",
+        "description": "Funciona sem sessão. Recebe o identificador e o token do link, marca o e-mail como confirmado e retorna 400 quando o link é inválido ou expirado.",
+        "operationId": "confirmarEmail",
         "requestBody": {
           "content": {
             "application/json": {
@@ -126,14 +179,24 @@
           "200": {
             "description": "OK"
           }
+        },
+        "security": [ ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "auth",
+          "requests": 8,
+          "windowSeconds": 60
         }
       }
     },
     "/api/auth/esqueci-senha": {
       "post": {
         "tags": [
-          "Fisga.Api"
+          "Autenticação"
         ],
+        "summary": "Envia um link de redefinição de senha",
+        "description": "Funciona sem sessão. Retorna 202 sempre com a mesma mensagem, sem revelar se o e-mail está cadastrado; havendo conta, envia o link.",
+        "operationId": "esquecerSenha",
         "requestBody": {
           "content": {
             "application/json": {
@@ -148,14 +211,24 @@
           "200": {
             "description": "OK"
           }
+        },
+        "security": [ ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "auth",
+          "requests": 8,
+          "windowSeconds": 60
         }
       }
     },
     "/api/auth/redefinir-senha": {
       "post": {
         "tags": [
-          "Fisga.Api"
+          "Autenticação"
         ],
+        "summary": "Redefine a senha pelo link recebido",
+        "description": "Funciona sem sessão. Exige o identificador e o token do link e uma senha de 10 a 128 caracteres; ao concluir, revoga as sessões abertas.",
+        "operationId": "redefinirSenha",
         "requestBody": {
           "content": {
             "application/json": {
@@ -170,14 +243,24 @@
           "200": {
             "description": "OK"
           }
+        },
+        "security": [ ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "auth",
+          "requests": 8,
+          "windowSeconds": 60
         }
       }
     },
     "/api/auth/confirmar": {
       "get": {
         "tags": [
-          "Fisga.Api"
+          "Autenticação"
         ],
+        "summary": "Confirma o link de acesso e abre a sessão",
+        "description": "Funciona sem sessão. Para navegação do navegador, redireciona 302 para o web com a sessão criada ou para a tela de erro com o código do estado.",
+        "operationId": "confirmarLink",
         "parameters": [
           {
             "name": "token",
@@ -191,110 +274,212 @@
           "200": {
             "description": "OK"
           }
+        },
+        "security": [ ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "auth",
+          "requests": 8,
+          "windowSeconds": 60
         }
       }
     },
     "/api/auth/google/disponivel": {
       "get": {
         "tags": [
-          "Fisga.Api"
+          "Autenticação"
         ],
+        "summary": "Informa se o login com Google está disponível",
+        "description": "Funciona sem sessão. Retorna 200 com um indicador de disponibilidade, sem iniciar o fluxo de login.",
+        "operationId": "googleDisponivel",
         "responses": {
           "200": {
             "description": "OK"
           }
+        },
+        "security": [ ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "auth",
+          "requests": 8,
+          "windowSeconds": 60
         }
       }
     },
     "/api/auth/google/iniciar": {
       "get": {
         "tags": [
-          "Fisga.Api"
+          "Autenticação"
         ],
+        "summary": "Inicia o login com Google",
+        "description": "Funciona sem sessão. Para navegação do navegador, redireciona 302 ao Google e retorna 503 quando as credenciais não estão configuradas.",
+        "operationId": "iniciarLoginGoogle",
         "responses": {
           "200": {
             "description": "OK"
           }
+        },
+        "security": [ ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "auth",
+          "requests": 8,
+          "windowSeconds": 60
         }
       }
     },
     "/api/auth/google/concluir": {
       "get": {
         "tags": [
-          "Fisga.Api"
+          "Autenticação"
         ],
+        "summary": "Conclui o login com Google",
+        "description": "Funciona sem sessão. É o retorno do Google: cria a sessão e redireciona 302 para o web; sem a sessão externa válida, redireciona para a tela de erro.",
+        "operationId": "concluirLoginGoogle",
         "responses": {
           "200": {
             "description": "OK"
           }
+        },
+        "security": [ ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "auth",
+          "requests": 8,
+          "windowSeconds": 60
         }
       }
     },
     "/api/auth/google/conectar": {
       "get": {
         "tags": [
-          "Fisga.Api"
+          "Autenticação"
         ],
+        "summary": "Vincula uma conta Google à conta atual",
+        "description": "Exige sessão; com o Google não configurado, retorna 503 antes de autenticar, então chamadas sem sessão também recebem 503. Com credenciais, redireciona 302 ao Google para autorizar o vínculo.",
+        "operationId": "conectarGoogle",
         "responses": {
           "200": {
             "description": "OK"
           }
+        },
+        "security": [
+          {
+            "cookieAuth": [ ]
+          }
+        ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "auth",
+          "requests": 8,
+          "windowSeconds": 60
         }
       }
     },
     "/api/auth/google/conectar/concluir": {
       "get": {
         "tags": [
-          "Fisga.Api"
+          "Autenticação"
         ],
+        "summary": "Conclui o vínculo com a conta Google",
+        "description": "Exige sessão. Cria apenas o vínculo, sem trocar de usuário; sem sessão ou com intenção inválida, redireciona 302 para a página da conta com o estado do erro.",
+        "operationId": "concluirConexaoGoogle",
         "responses": {
           "200": {
             "description": "OK"
           }
+        },
+        "security": [
+          {
+            "cookieAuth": [ ]
+          }
+        ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "auth",
+          "requests": 8,
+          "windowSeconds": 60
         }
       }
     },
     "/api/auth/me": {
       "get": {
         "tags": [
-          "Fisga.Api"
+          "Autenticação"
         ],
+        "summary": "Consulta a sessão atual",
+        "description": "Funciona sem sessão. Retorna 200 com autenticado falso quando não há sessão; com sessão, retorna o usuário, o consentimento pendente e se há senha e Google vinculados.",
+        "operationId": "obterSessao",
         "responses": {
           "200": {
             "description": "OK"
           }
+        },
+        "security": [ ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "leitura",
+          "requests": 180,
+          "windowSeconds": 60
         }
       }
     },
     "/api/auth/sair": {
       "post": {
         "tags": [
-          "Fisga.Api"
+          "Autenticação"
         ],
+        "summary": "Encerra a sessão atual",
+        "description": "Funciona sem sessão. Retorna 204 sempre; havendo sessão, revoga também o dispositivo e apaga o cookie.",
+        "operationId": "sair",
         "responses": {
           "200": {
             "description": "OK"
           }
+        },
+        "security": [ ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "escrita",
+          "requests": 40,
+          "windowSeconds": 60
         }
       }
     },
     "/api/auth/sair-de-todos": {
       "post": {
         "tags": [
-          "Fisga.Api"
+          "Autenticação"
         ],
+        "summary": "Encerra a sessão em todos os dispositivos",
+        "description": "Exige sessão. Revoga todos os dispositivos, invalida cookies antigos e retorna 204.",
+        "operationId": "sairDeTodos",
         "responses": {
           "200": {
             "description": "OK"
           }
+        },
+        "security": [
+          {
+            "cookieAuth": [ ]
+          }
+        ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "escrita",
+          "requests": 40,
+          "windowSeconds": 60
         }
       }
     },
     "/api/auth/perfil": {
       "patch": {
         "tags": [
-          "Fisga.Api"
+          "Autenticação"
         ],
+        "summary": "Atualiza nome e preferência de novidades",
+        "description": "Exige sessão. Altera o nome e a escolha de receber novidades, retornando o usuário atualizado.",
+        "operationId": "atualizarPerfil",
         "requestBody": {
           "content": {
             "application/json": {
@@ -309,14 +494,28 @@
           "200": {
             "description": "OK"
           }
+        },
+        "security": [
+          {
+            "cookieAuth": [ ]
+          }
+        ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "escrita",
+          "requests": 40,
+          "windowSeconds": 60
         }
       }
     },
     "/api/conta/consentimento": {
       "post": {
         "tags": [
-          "Fisga.Api"
+          "Conta"
         ],
+        "summary": "Registra o aceite dos termos vigentes",
+        "description": "Exige sessão. Retorna 204 quando as versões enviadas são as vigentes e 400 quando não são.",
+        "operationId": "registrarConsentimento",
         "requestBody": {
           "content": {
             "application/json": {
@@ -331,14 +530,28 @@
           "200": {
             "description": "OK"
           }
+        },
+        "security": [
+          {
+            "cookieAuth": [ ]
+          }
+        ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "escrita",
+          "requests": 40,
+          "windowSeconds": 60
         }
       }
     },
     "/api/conta/senha": {
       "post": {
         "tags": [
-          "Fisga.Api"
+          "Conta"
         ],
+        "summary": "Define ou troca a senha da conta",
+        "description": "Exige sessão e, para quem já tem senha, a senha atual; aceita de 10 a 128 caracteres e preserva só a sessão que fez a troca.",
+        "operationId": "alterarSenha",
         "requestBody": {
           "content": {
             "application/json": {
@@ -353,38 +566,80 @@
           "200": {
             "description": "OK"
           }
+        },
+        "security": [
+          {
+            "cookieAuth": [ ]
+          }
+        ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "escrita",
+          "requests": 40,
+          "windowSeconds": 60
         }
       }
     },
     "/api/conta/sessoes": {
       "get": {
         "tags": [
-          "Fisga.Api"
+          "Conta"
         ],
+        "summary": "Lista os dispositivos com sessão aberta",
+        "description": "Exige sessão. Retorna as sessões do usuário e indica qual delas é a atual.",
+        "operationId": "listarSessoes",
         "responses": {
           "200": {
             "description": "OK"
           }
+        },
+        "security": [
+          {
+            "cookieAuth": [ ]
+          }
+        ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "leitura",
+          "requests": 180,
+          "windowSeconds": 60
         }
       }
     },
     "/api/conta/exportar": {
       "get": {
         "tags": [
-          "Fisga.Api"
+          "Conta"
         ],
+        "summary": "Exporta os dados da conta",
+        "description": "Exige sessão. Baixa um arquivo JSON com os dados do usuário e as pescarias registradas.",
+        "operationId": "exportarConta",
         "responses": {
           "200": {
             "description": "OK"
           }
+        },
+        "security": [
+          {
+            "cookieAuth": [ ]
+          }
+        ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "leitura",
+          "requests": 180,
+          "windowSeconds": 60
         }
       }
     },
     "/api/conta": {
       "delete": {
         "tags": [
-          "Fisga.Api"
+          "Conta"
         ],
+        "summary": "Exclui a conta e os dados",
+        "description": "Exige sessão e a confirmação EXCLUIR no corpo. Apaga a conta, as pescarias e as fotos, encerra a sessão e retorna 204.",
+        "operationId": "excluirConta",
         "requestBody": {
           "content": {
             "application/json": {
@@ -399,26 +654,49 @@
           "200": {
             "description": "OK"
           }
+        },
+        "security": [
+          {
+            "cookieAuth": [ ]
+          }
+        ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "escrita",
+          "requests": 40,
+          "windowSeconds": 60
         }
       }
     },
     "/api/newsletter/enviar": {
       "post": {
         "tags": [
-          "Fisga.Api"
+          "Newsletter"
         ],
+        "summary": "Envia a newsletter do mês aos assinantes",
+        "description": "Exige o header X-Admin-Token; token inválido ou vazio retorna 404 sem corpo. Aceita o mês de referência e o modo de simulação, que percorre o envio sem disparar e-mails, e retorna 200 com o resultado.",
+        "operationId": "enviarNewsletter",
         "responses": {
           "200": {
             "description": "OK"
           }
-        }
+        },
+        "security": [
+          {
+            "adminToken": [ ]
+          }
+        ],
+        "x-cache": "private, no-store"
       }
     },
     "/api/newsletter/preview": {
       "get": {
         "tags": [
-          "Fisga.Api"
+          "Newsletter"
         ],
+        "summary": "Pré-visualiza a newsletter do mês",
+        "description": "Exige o header X-Admin-Token; token inválido ou vazio retorna 404 sem corpo. O e-mail é obrigatório e a sua ausência retorna 404 sem corpo; o mês é opcional e, quando omitido, usa o mês atual. Retorna 200 com o HTML da mensagem, ou 404 sem corpo quando não há mensagem para o e-mail.",
+        "operationId": "preverNewsletter",
         "parameters": [
           {
             "name": "email",
@@ -439,14 +717,23 @@
           "200": {
             "description": "OK"
           }
-        }
+        },
+        "security": [
+          {
+            "adminToken": [ ]
+          }
+        ],
+        "x-cache": "private, no-store"
       }
     },
     "/api/newsletter/descadastrar": {
       "get": {
         "tags": [
-          "Fisga.Api"
+          "Newsletter"
         ],
+        "summary": "Descadastra o assinante pelo link do e-mail",
+        "description": "Funciona sem sessão e recebe o token do link na query. Retorna um redirect 302 para a página do web com `ok=1` no sucesso e `ok=0` na falha.",
+        "operationId": "descadastrarNewsletter",
         "parameters": [
           {
             "name": "token",
@@ -460,50 +747,98 @@
           "200": {
             "description": "OK"
           }
+        },
+        "security": [ ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "auth",
+          "requests": 8,
+          "windowSeconds": 60
         }
       }
     },
     "/api/catalogo": {
       "get": {
         "tags": [
-          "Fisga.Api"
+          "Catálogo"
         ],
+        "summary": "Consulta o catálogo de pesca",
+        "description": "Retorna as espécies, iscas, ambientes e demais opções usadas no registro, além de um exemplo de pescaria. Funciona sem sessão e fica em cache por um dia.",
+        "operationId": "obterCatalogo",
         "responses": {
           "200": {
             "description": "OK"
           }
+        },
+        "security": [ ],
+        "x-cache": "public, max-age=86400",
+        "x-rate-limit": {
+          "policy": "leitura",
+          "requests": 180,
+          "windowSeconds": 60
         }
       }
     },
     "/api/diario": {
       "get": {
         "tags": [
-          "Fisga.Api"
+          "Diário"
         ],
+        "summary": "Consulta o diário do pescador",
+        "description": "Exige sessão e reúne as pescarias da conta em ordem de data, com o número de capturas de cada uma.",
+        "operationId": "obterDiario",
         "responses": {
           "200": {
             "description": "OK"
           }
+        },
+        "security": [
+          {
+            "cookieAuth": [ ]
+          }
+        ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "leitura",
+          "requests": 180,
+          "windowSeconds": 60
         }
       }
     },
     "/api/midia": {
       "post": {
         "tags": [
-          "Fisga.Api"
+          "Mídia"
         ],
+        "summary": "Envia uma foto",
+        "description": "Exige sessão e recebe a imagem como formulário multipart, com até 5 MB em JPG, PNG ou WebP. Retorna o endereço público da foto.",
+        "operationId": "enviarMidia",
         "responses": {
           "200": {
             "description": "OK"
           }
+        },
+        "security": [
+          {
+            "cookieAuth": [ ]
+          }
+        ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "midia",
+          "requests": 30,
+          "windowSeconds": 60
         }
       }
     },
     "/api/condicoes": {
       "get": {
         "tags": [
-          "Fisga.Api"
+          "Condições"
         ],
+        "summary": "Consulta as condições de pesca de um local",
+        "description": "Funciona sem sessão e precisa de latitude e longitude; sem elas retorna 400. Reúne tempo, maré, lua e solunar para a coordenada informada.",
+        "operationId": "obterCondicoes",
         "parameters": [
           {
             "name": "lat",
@@ -562,14 +897,24 @@
           "200": {
             "description": "OK"
           }
+        },
+        "security": [ ],
+        "x-cache": "private, max-age=300, stale-while-revalidate=600",
+        "x-rate-limit": {
+          "policy": "leitura",
+          "requests": 180,
+          "windowSeconds": 60
         }
       }
     },
     "/api/condicoes/comparar": {
       "get": {
         "tags": [
-          "Fisga.Api"
+          "Condições"
         ],
+        "summary": "Compara as condições atuais com as pescarias registradas",
+        "description": "Exige sessão, latitude e longitude; sem as coordenadas retorna 400. Compara lua, maré, clima e período com as pescarias da própria conta e avisa quando ainda faltam registros.",
+        "operationId": "compararCondicoes",
         "parameters": [
           {
             "name": "lat",
@@ -628,14 +973,28 @@
           "200": {
             "description": "OK"
           }
+        },
+        "security": [
+          {
+            "cookieAuth": [ ]
+          }
+        ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "leitura",
+          "requests": 180,
+          "windowSeconds": 60
         }
       }
     },
     "/api/locais/reverso": {
       "get": {
         "tags": [
-          "Fisga.Api"
+          "Locais"
         ],
+        "summary": "Converte coordenadas em um local",
+        "description": "Funciona sem sessão e retorna 400 quando as coordenadas são inválidas. Retorna 404 quando nenhum local é encontrado.",
+        "operationId": "reverterCoordenadas",
         "parameters": [
           {
             "name": "lat",
@@ -666,14 +1025,24 @@
           "200": {
             "description": "OK"
           }
+        },
+        "security": [ ],
+        "x-cache": "private, max-age=86400",
+        "x-rate-limit": {
+          "policy": "leitura",
+          "requests": 180,
+          "windowSeconds": 60
         }
       }
     },
     "/api/locais/buscar": {
       "get": {
         "tags": [
-          "Fisga.Api"
+          "Locais"
         ],
+        "summary": "Busca locais pelo nome",
+        "description": "Funciona sem sessão e retorna uma lista vazia quando nada é encontrado.",
+        "operationId": "buscarLocais",
         "parameters": [
           {
             "name": "q",
@@ -687,26 +1056,50 @@
           "200": {
             "description": "OK"
           }
+        },
+        "security": [ ],
+        "x-cache": "private, max-age=3600",
+        "x-rate-limit": {
+          "policy": "leitura",
+          "requests": 180,
+          "windowSeconds": 60
         }
       }
     },
     "/api/especies/sugerir": {
       "post": {
         "tags": [
-          "Fisga.Api"
+          "Espécies"
         ],
+        "summary": "Sugere a espécie a partir da foto enviada",
+        "description": "Exige sessão e recebe a foto como formulário multipart no campo arquivo. Retorna 200 com a sugestão de espécie. Retorna 400 com o motivo quando o formulário está ausente, o arquivo está ausente, a foto passa de 5 MB ou o tipo não é aceito (JPG, PNG ou WebP).",
+        "operationId": "sugerirEspecies",
         "responses": {
           "200": {
             "description": "OK"
           }
+        },
+        "security": [
+          {
+            "cookieAuth": [ ]
+          }
+        ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "midia",
+          "requests": 30,
+          "windowSeconds": 60
         }
       }
     },
     "/api/pescarias": {
       "post": {
         "tags": [
-          "Fisga.Api"
+          "Pescarias"
         ],
+        "summary": "Registra uma pescaria",
+        "description": "Exige sessão. Retorna o identificador, o token público e o endereço da página de compartilhamento.",
+        "operationId": "criarPescaria",
         "requestBody": {
           "content": {
             "application/json": {
@@ -721,14 +1114,28 @@
           "200": {
             "description": "OK"
           }
+        },
+        "security": [
+          {
+            "cookieAuth": [ ]
+          }
+        ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "escrita",
+          "requests": 40,
+          "windowSeconds": 60
         }
       }
     },
     "/api/pescarias/{shareToken}": {
       "get": {
         "tags": [
-          "Fisga.Api"
+          "Pescarias"
         ],
+        "summary": "Abre uma pescaria compartilhada",
+        "description": "Funciona sem sessão e retorna 404 quando o token não existe. O dono recebe a pescaria com permissão de edição.",
+        "operationId": "obterPescariaPorToken",
         "parameters": [
           {
             "name": "shareToken",
@@ -743,14 +1150,24 @@
           "200": {
             "description": "OK"
           }
+        },
+        "security": [ ],
+        "x-cache": "private, max-age=30",
+        "x-rate-limit": {
+          "policy": "leitura",
+          "requests": 180,
+          "windowSeconds": 60
         }
       }
     },
     "/api/pescarias/{shareToken}/permissao": {
       "get": {
         "tags": [
-          "Fisga.Api"
+          "Pescarias"
         ],
+        "summary": "Consulta a permissão de edição de uma pescaria",
+        "description": "Funciona sem sessão e retorna 404 quando o token não existe. Informa se o visitante atual pode editar a pescaria.",
+        "operationId": "obterPermissaoPescaria",
         "parameters": [
           {
             "name": "shareToken",
@@ -765,14 +1182,24 @@
           "200": {
             "description": "OK"
           }
+        },
+        "security": [ ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "leitura",
+          "requests": 180,
+          "windowSeconds": 60
         }
       }
     },
     "/api/pescarias/{id}/editar": {
       "get": {
         "tags": [
-          "Fisga.Api"
+          "Pescarias"
         ],
+        "summary": "Carrega uma pescaria para edição",
+        "description": "Exige sessão e aceita apenas o dono da pescaria. Retorna 404 quando a pescaria não existe ou pertence a outra conta.",
+        "operationId": "obterPescariaDoDono",
         "parameters": [
           {
             "name": "id",
@@ -788,14 +1215,28 @@
           "200": {
             "description": "OK"
           }
+        },
+        "security": [
+          {
+            "cookieAuth": [ ]
+          }
+        ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "leitura",
+          "requests": 180,
+          "windowSeconds": 60
         }
       }
     },
     "/api/pescarias/{id}": {
       "put": {
         "tags": [
-          "Fisga.Api"
+          "Pescarias"
         ],
+        "summary": "Atualiza uma pescaria",
+        "description": "Exige sessão e aceita apenas o dono da pescaria. Retorna 404 quando a pescaria não existe ou pertence a outra conta.",
+        "operationId": "atualizarPescaria",
         "parameters": [
           {
             "name": "id",
@@ -821,14 +1262,28 @@
           "200": {
             "description": "OK"
           }
+        },
+        "security": [
+          {
+            "cookieAuth": [ ]
+          }
+        ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "escrita",
+          "requests": 40,
+          "windowSeconds": 60
         }
       }
     },
     "/api/pescarias/{shareToken}/pdf": {
       "get": {
         "tags": [
-          "Fisga.Api"
+          "Pescarias"
         ],
+        "summary": "Exporta uma pescaria em PDF",
+        "description": "Funciona sem sessão e retorna o arquivo pronto para baixar. Retorna 404 quando o token não existe.",
+        "operationId": "exportarPescariaPdf",
         "parameters": [
           {
             "name": "shareToken",
@@ -843,24 +1298,48 @@
           "200": {
             "description": "OK"
           }
+        },
+        "security": [ ],
+        "x-cache": "private, max-age=300",
+        "x-rate-limit": {
+          "policy": "pdf",
+          "requests": 30,
+          "windowSeconds": 60
         }
       }
     },
     "/api/locais": {
       "get": {
         "tags": [
-          "Fisga.Api"
+          "Locais"
         ],
+        "summary": "Lista os locais salvos",
+        "description": "Exige sessão e retorna apenas os locais da conta, com o local padrão na frente.",
+        "operationId": "listarLocais",
         "responses": {
           "200": {
             "description": "OK"
           }
+        },
+        "security": [
+          {
+            "cookieAuth": [ ]
+          }
+        ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "leitura",
+          "requests": 180,
+          "windowSeconds": 60
         }
       },
       "post": {
         "tags": [
-          "Fisga.Api"
+          "Locais"
         ],
+        "summary": "Salva um local de pesca",
+        "description": "Exige sessão. O primeiro local salvo vira o padrão, e cada conta pode manter até cinco locais.",
+        "operationId": "criarLocal",
         "requestBody": {
           "content": {
             "application/json": {
@@ -875,14 +1354,28 @@
           "200": {
             "description": "OK"
           }
+        },
+        "security": [
+          {
+            "cookieAuth": [ ]
+          }
+        ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "escrita",
+          "requests": 40,
+          "windowSeconds": 60
         }
       }
     },
     "/api/locais/{id}": {
       "put": {
         "tags": [
-          "Fisga.Api"
+          "Locais"
         ],
+        "summary": "Atualiza um local de pesca",
+        "description": "Exige sessão e aceita apenas o dono do local. Retorna 404 quando o local não existe.",
+        "operationId": "atualizarLocal",
         "parameters": [
           {
             "name": "id",
@@ -908,12 +1401,26 @@
           "200": {
             "description": "OK"
           }
+        },
+        "security": [
+          {
+            "cookieAuth": [ ]
+          }
+        ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "escrita",
+          "requests": 40,
+          "windowSeconds": 60
         }
       },
       "delete": {
         "tags": [
-          "Fisga.Api"
+          "Locais"
         ],
+        "summary": "Exclui um local de pesca",
+        "description": "Exige sessão e aceita apenas o dono do local. Se o local excluído era o padrão, o mais recente assume o posto. Retorna 404 quando o recurso não existe.",
+        "operationId": "excluirLocal",
         "parameters": [
           {
             "name": "id",
@@ -929,14 +1436,28 @@
           "200": {
             "description": "OK"
           }
+        },
+        "security": [
+          {
+            "cookieAuth": [ ]
+          }
+        ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "escrita",
+          "requests": 40,
+          "windowSeconds": 60
         }
       }
     },
     "/api/locais/{id}/padrao": {
       "post": {
         "tags": [
-          "Fisga.Api"
+          "Locais"
         ],
+        "summary": "Define o local padrão",
+        "description": "Exige sessão e aceita apenas o dono do local. O local que era padrão deixa de ser.",
+        "operationId": "definirLocalPadrao",
         "parameters": [
           {
             "name": "id",
@@ -952,24 +1473,52 @@
           "200": {
             "description": "OK"
           }
+        },
+        "security": [
+          {
+            "cookieAuth": [ ]
+          }
+        ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "escrita",
+          "requests": 40,
+          "windowSeconds": 60
         }
       }
     },
     "/api/pontos": {
       "get": {
         "tags": [
-          "Fisga.Api"
+          "Pontos"
         ],
+        "summary": "Lista os pontos privados",
+        "description": "Exige sessão e retorna apenas os pontos da conta, do mais recente para o mais antigo.",
+        "operationId": "listarPontos",
         "responses": {
           "200": {
             "description": "OK"
           }
+        },
+        "security": [
+          {
+            "cookieAuth": [ ]
+          }
+        ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "leitura",
+          "requests": 180,
+          "windowSeconds": 60
         }
       },
       "post": {
         "tags": [
-          "Fisga.Api"
+          "Pontos"
         ],
+        "summary": "Salva um ponto privado",
+        "description": "Exige sessão. Cada conta pode manter até duzentos pontos privados.",
+        "operationId": "criarPonto",
         "requestBody": {
           "content": {
             "application/json": {
@@ -984,14 +1533,28 @@
           "200": {
             "description": "OK"
           }
+        },
+        "security": [
+          {
+            "cookieAuth": [ ]
+          }
+        ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "escrita",
+          "requests": 40,
+          "windowSeconds": 60
         }
       }
     },
     "/api/pontos/{id}": {
       "put": {
         "tags": [
-          "Fisga.Api"
+          "Pontos"
         ],
+        "summary": "Atualiza um ponto privado",
+        "description": "Exige sessão e aceita apenas o dono do ponto. Retorna 404 quando o ponto não existe.",
+        "operationId": "atualizarPonto",
         "parameters": [
           {
             "name": "id",
@@ -1017,12 +1580,26 @@
           "200": {
             "description": "OK"
           }
+        },
+        "security": [
+          {
+            "cookieAuth": [ ]
+          }
+        ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "escrita",
+          "requests": 40,
+          "windowSeconds": 60
         }
       },
       "delete": {
         "tags": [
-          "Fisga.Api"
+          "Pontos"
         ],
+        "summary": "Exclui um ponto privado",
+        "description": "Exige sessão e aceita apenas o dono do ponto. Retorna 204 quando o ponto é removido. Retorna 404 quando o recurso não existe.",
+        "operationId": "excluirPonto",
         "parameters": [
           {
             "name": "id",
@@ -1038,24 +1615,52 @@
           "200": {
             "description": "OK"
           }
+        },
+        "security": [
+          {
+            "cookieAuth": [ ]
+          }
+        ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "escrita",
+          "requests": 40,
+          "windowSeconds": 60
         }
       }
     },
     "/api/trilhas": {
       "get": {
         "tags": [
-          "Fisga.Api"
+          "Trilhas"
         ],
+        "summary": "Lista as trilhas privadas",
+        "description": "Exige sessão e retorna apenas as trilhas da conta, da mais recente para a mais antiga.",
+        "operationId": "listarTrilhas",
         "responses": {
           "200": {
             "description": "OK"
           }
+        },
+        "security": [
+          {
+            "cookieAuth": [ ]
+          }
+        ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "leitura",
+          "requests": 180,
+          "windowSeconds": 60
         }
       },
       "post": {
         "tags": [
-          "Fisga.Api"
+          "Trilhas"
         ],
+        "summary": "Salva uma trilha privada",
+        "description": "Exige sessão. Cada conta pode manter até cem trilhas privadas.",
+        "operationId": "criarTrilha",
         "requestBody": {
           "content": {
             "application/json": {
@@ -1070,14 +1675,28 @@
           "200": {
             "description": "OK"
           }
+        },
+        "security": [
+          {
+            "cookieAuth": [ ]
+          }
+        ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "escrita",
+          "requests": 40,
+          "windowSeconds": 60
         }
       }
     },
     "/api/trilhas/{id}": {
       "put": {
         "tags": [
-          "Fisga.Api"
+          "Trilhas"
         ],
+        "summary": "Atualiza uma trilha privada",
+        "description": "Exige sessão e aceita apenas o dono da trilha. Retorna 404 quando a trilha não existe.",
+        "operationId": "atualizarTrilha",
         "parameters": [
           {
             "name": "id",
@@ -1103,12 +1722,26 @@
           "200": {
             "description": "OK"
           }
+        },
+        "security": [
+          {
+            "cookieAuth": [ ]
+          }
+        ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "escrita",
+          "requests": 40,
+          "windowSeconds": 60
         }
       },
       "delete": {
         "tags": [
-          "Fisga.Api"
+          "Trilhas"
         ],
+        "summary": "Exclui uma trilha privada",
+        "description": "Exige sessão e aceita apenas o dono da trilha. Retorna 204 quando a trilha é removida. Retorna 404 quando o recurso não existe.",
+        "operationId": "excluirTrilha",
         "parameters": [
           {
             "name": "id",
@@ -1124,6 +1757,17 @@
           "200": {
             "description": "OK"
           }
+        },
+        "security": [
+          {
+            "cookieAuth": [ ]
+          }
+        ],
+        "x-cache": "private, no-store",
+        "x-rate-limit": {
+          "policy": "escrita",
+          "requests": 40,
+          "windowSeconds": 60
         }
       }
     }
@@ -1713,11 +2357,61 @@
           "Deslocamento"
         ]
       }
+    },
+    "securitySchemes": {
+      "cookieAuth": {
+        "type": "apiKey",
+        "description": "Sessão do Fisga no cookie `fisga_auth` (`HttpOnly`, `SameSite=Lax`; `Secure` conforme configuração; validade deslizante de 30 dias).",
+        "name": "fisga_auth",
+        "in": "cookie"
+      },
+      "adminToken": {
+        "type": "apiKey",
+        "description": "Token administrativo no header `X-Admin-Token`.",
+        "name": "X-Admin-Token",
+        "in": "header"
+      }
     }
   },
   "tags": [
     {
-      "name": "Fisga.Api"
+      "name": "Sistema"
+    },
+    {
+      "name": "Autenticação"
+    },
+    {
+      "name": "Conta"
+    },
+    {
+      "name": "Newsletter"
+    },
+    {
+      "name": "Catálogo"
+    },
+    {
+      "name": "Diário"
+    },
+    {
+      "name": "Mídia"
+    },
+    {
+      "name": "Condições"
+    },
+    {
+      "name": "Locais"
+    },
+    {
+      "name": "Espécies"
+    },
+    {
+      "name": "Pescarias"
+    },
+    {
+      "name": "Pontos"
+    },
+    {
+      "name": "Trilhas"
     }
   ]
 }

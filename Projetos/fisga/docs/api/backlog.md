@@ -26,7 +26,7 @@ gerador da F2.1 estiver de pé.
 
 ## F1 — Contrato verdadeiro
 
-Fecha as 12 lacunas do [inventário](inventario.md#lacunas-de-contrato). Nenhuma
+Fecha as lacunas do [inventário](inventario.md#lacunas-de-contrato). Nenhuma
 mudança de comportamento da API; só metadata, anotações e dois ajustes
 aditivos de resposta.
 
