@@ -368,7 +368,11 @@ Nunca commite chaves, tokens ou senhas. Use variáveis de ambiente do provedor.
 | `Google__CallbackPath` | caminho do callback (padrão `/signin-google`) |
 | `Legal__TermsVersion` | versão vigente dos Termos (padrão `2026-11-17`) |
 | `Legal__PrivacyVersion` | versão vigente da Privacidade (padrão `2026-11-17`) |
-| `RateLimiting__Auth` | limite por minuto/IP da autenticação (padrão 8; só testes elevam) |
+| `RateLimiting__Leitura` | limite por minuto/IP das consultas (padrão 180) |
+| `RateLimiting__Escrita` | limite por minuto/IP das mutações (padrão 40) |
+| `RateLimiting__Auth` | limite por minuto/IP da autenticação (padrão 8) |
+| `RateLimiting__Pdf` | limite por minuto/IP da geração de PDF (padrão 30) |
+| `RateLimiting__Midia` | limite por minuto/IP de upload e sugestão (padrão 30) |
 | `SENTRY_DSN` | DSN do projeto `fisga-api` |
 | `SENTRY_ENVIRONMENT` | `production` ou `development` |
 | `SENTRY_RELEASE` | não usado diretamente pela API; o release vem de `GIT_SHA`/`SOURCE_COMMIT` |
