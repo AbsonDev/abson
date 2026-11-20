@@ -13,7 +13,8 @@ O contrato também não contava a história toda. O
 [inventário](../api/inventario.md) lista as lacunas do contrato: `201`/`202`/`204`
 ausentes, formato de erro real (`{codigo, detalhe}`) em vez de RFC 9457, uploads
 multipart sem schema e rotas administrativas que respondem `404` de propósito.
-Segurança, tags, `operationId`, rate limit e cache saíram no A1.
+Segurança, tags, `operationId`, rate limit e cache foram resolvidos no A1
+(2026-11-20).
 
 Publicar esse contrato cru produziria documentação que mente. Publicar
 documentação escrita à mão sem contrato produziria documentação que envelhece
@@ -29,10 +30,9 @@ sobreviver ao CI que já existe (`gate` + `workflow_run`).
    em tempo de build a partir de `docs/api/openapi.json`; nenhuma operação
    documentada pode existir só na prosa. Prosa cobre propósito, acesso,
    autenticação, limites, erros e exemplos.
-3. **Corrigir o contrato é pré-requisito da publicação.** F1 (as lacunas do
-   contrato)
-   fecha antes de o portal ir ao ar com a referência completa; o portal nasce
-   já com `securityScheme`, status reais, schemas de erro e tags por domínio.
+3. **Corrigir o contrato é pré-requisito da publicação.** F1 fecha as lacunas do
+   contrato antes de o portal ir ao ar; o portal nasce com status reais e
+   schemas de erro.
 4. **Leitura pública de tudo, execução restrita.** Todas as operações são
    documentadas, inclusive as administrativas. O console "Experimente" só
    executa `GET` públicos; escritas e rotas de sessão exigem credencial do

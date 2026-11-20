@@ -273,8 +273,8 @@ Confirmadas no `openapi.json` atual. Viram tickets da Fase 1.
 | 2 | Formato de erro real não é RFC 9457 | `ErroResponse` tem `{codigo, detalhe}` | Documentar o contrato real e decidir se migra para ProblemDetails |
 | 3 | Erros vêm de origens diferentes e nem todos têm corpo | Binding, middlewares, rate limiter e handlers | Catálogo de `codigo` + schema único de erro |
 | 4 | Upload `multipart/form-data` sem schema | `/api/midia`, `/api/especies/sugerir` | Schema multipart com campo, tipos e tamanho |
-| 5 | Admin responde `404` em vez de `401/403` | `NewsletterEndpoints.TokenValido` | Documentar como decisão intencional, com aviso |
-| 6 | Endpoints de auth com efeito colateral em `GET` e `302` | `/api/auth/confirmar`, `/api/auth/google/*` | Documentar redirects, cookies emitidos e estados |
+| 5 | Admin responde `404` em vez de `401/403` | `NewsletterEndpoints.TokenValido` | `description` já explica o `404` intencional; falta declarar `404` e `500` como respostas no spec |
+| 6 | Endpoints de auth com efeito colateral em `GET` e `302` | `/api/auth/confirmar`, `/api/auth/google/*` | `description` já descreve redirects, sessão criada e estados; falta declarar `302` e `503` como respostas no spec |
 | 7 | `info` incompleto e sem `servers` | `openapi.json` | `contact`, `license`, descrição e `servers` por ambiente |
 | 8 | `429` sai sem corpo e sem `Retry-After` | Configuração do rate limiter | Decidir se adiciona `Retry-After` e corpo de erro padronizado |
 | 9 | `GET /api/auth/me` é anônimo e devolve `200` | `AuthEndpoints.cs` | Documentar que a ausência de sessão é `200` com `autenticado:false` |

@@ -20,8 +20,9 @@ anteriores ao portal:
 
 A decisão de publicar em `docs.fisga.abson.tech` está na
 [ADR 0017](../adr/0017-portal-publico-da-api.md). A referência pública é gerada
-deste `openapi.json`; por isso a fase F1 (correção das lacunas abaixo) vem antes
-da publicação.
+deste `openapi.json`; por isso a fase F1 (correção das
+[lacunas do inventário](inventario.md#lacunas-de-contrato)) vem antes da
+publicação.
 
 ## Regenerar
 
@@ -49,13 +50,11 @@ Commite o arquivo gerado no mesmo PR da mudança de contrato.
   `if (app.Environment.IsDevelopment())`, então `/openapi/v1.json` responde
   apenas no ambiente local. Em produção o documento não é exposto; a fonte é o
   `openapi.json` versionado aqui.
-- **Autenticação por cookie não aparece como `securityScheme`.** A sessão do
-  Fisga é um cookie assinado tratado por middleware, não um esquema declarado
-  no documento. Ferramentas que geram clientes a partir do contrato não
-  mostram o requisito de login; nos endpoints protegidos, a resposta sem
-  sessão é `401`.
-- **Cache e rate limiting são metadados de runtime**, não fazem parte do
-  contrato gerado.
+- **O contrato já expressa acesso, cache e rate limit; falta o resto.** Cada
+  operação declara `security` (cookie de sessão ou token administrativo),
+  `x-cache` e, quando existe, `x-rate-limit`. O que ainda não está no contrato é
+  o status real de sucesso e o schema de erro: o
+  [inventário](inventario.md#lacunas-de-contrato) lista o que resta.
 - **O contrato não traz schemas de resposta.** Os endpoints devolvem
   `Results.Ok(...)` sem metadados `Produces<T>`, então nenhuma operação declara
   o corpo tipado da resposta. Quem gera cliente a partir de `openapi.json` vê os

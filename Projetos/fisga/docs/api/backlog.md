@@ -33,10 +33,13 @@ aditivos de resposta.
 ### F1.1 — Esquemas de segurança
 
 - **Issue:** [#63](https://github.com/AbsonDev/abson/issues/63)
-- **Escopo:** declarar `cookieAuth` (`fisga_auth`), `adminToken`
-  (`X-Admin-Token`) e `shareToken` (path/query); aplicar exigência por operação.
+- **Escopo:** declarar `cookieAuth` (`fisga_auth`) e `adminToken`
+  (`X-Admin-Token`) como esquemas, com exigência por operação. `shareToken` não
+  é esquema: é capacidade anônima por rota, e fica documentado como parâmetro de
+  rota.
 - **Aceite:** nenhuma operação autenticada sem `security`; `GET /api/auth/me` e
   `POST /api/auth/sair` explicitamente anônimos.
+- **Estado:** concluída no A1 (2026-11-20) — esta PR fecha #63.
 - **Est.:** 0,5 d · **Dep.:** —
 
 ### F1.2 — Status reais de sucesso
@@ -66,6 +69,7 @@ aditivos de resposta.
   `summary`/`description` de negócio em português.
 - **Aceite:** `operationId` congelado no mapa versionado; renomear rota exige
   atualizar o mapa; sem tag `Fisga.Api` residual.
+- **Estado:** concluída no A1 (2026-11-20) — esta PR fecha #62.
 - **Est.:** 1 d · **Dep.:** —
 
 ### F1.5 — Uploads com schema
@@ -86,6 +90,7 @@ aditivos de resposta.
 - **Aceite:** os valores do spec batem com `RateLimiting:*` e com
   `CachePolicy`; teste falha se um endpoint ganhar política sem refletir no
   spec.
+- **Estado:** concluída no A1 (2026-11-20) — esta PR fecha #67.
 - **Est.:** 1 d · **Dep.:** F1.4
 
 ### F1.7 — Identidade do documento
