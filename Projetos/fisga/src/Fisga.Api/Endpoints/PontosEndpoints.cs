@@ -21,7 +21,7 @@ public static class PontosEndpoints
             })
             .RequireRateLimiting("leitura")
             .WithSummary("Lista os pontos privados")
-            .WithDescription("Exige sessão e devolve apenas os pontos da conta, do mais recente para o mais antigo.");
+            .WithDescription("Exige sessão e retorna apenas os pontos da conta, do mais recente para o mais antigo.");
 
         grupo.MapPost("", async (
                 EntradaDePonto entrada,
@@ -64,7 +64,7 @@ public static class PontosEndpoints
             })
             .RequireRateLimiting("escrita")
             .WithSummary("Exclui um ponto privado")
-            .WithDescription("Exige sessão e aceita apenas o dono do ponto. Retorna 204 quando o ponto é removido.");
+            .WithDescription("Exige sessão e aceita apenas o dono do ponto. Retorna 204 quando o ponto é removido. Retorna 404 quando o recurso não existe.");
 
         return app;
     }

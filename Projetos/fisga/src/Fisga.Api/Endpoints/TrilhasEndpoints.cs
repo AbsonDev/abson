@@ -20,7 +20,7 @@ public static class TrilhasEndpoints
             })
             .RequireRateLimiting("leitura")
             .WithSummary("Lista as trilhas privadas")
-            .WithDescription("Exige sessão e devolve apenas as trilhas da conta, da mais recente para a mais antiga.");
+            .WithDescription("Exige sessão e retorna apenas as trilhas da conta, da mais recente para a mais antiga.");
 
         grupo.MapPost("", async (
                 EntradaDeTrilha entrada,
@@ -63,7 +63,7 @@ public static class TrilhasEndpoints
             })
             .RequireRateLimiting("escrita")
             .WithSummary("Exclui uma trilha privada")
-            .WithDescription("Exige sessão e aceita apenas o dono da trilha. Retorna 204 quando a trilha é removida.");
+            .WithDescription("Exige sessão e aceita apenas o dono da trilha. Retorna 204 quando a trilha é removida. Retorna 404 quando o recurso não existe.");
 
         return app;
     }

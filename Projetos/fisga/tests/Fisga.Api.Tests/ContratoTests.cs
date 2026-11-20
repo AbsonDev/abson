@@ -93,23 +93,38 @@ public sealed class ContratoTests
 
         Assert.Equal(54, operacoes.Count);
 
+        // Acumula todas as violações em vez de abortar na primeira: o gate de
+        // uma tarefa consegue provar que a sua própria área está limpa mesmo
+        // enquanto outra área do contrato ainda falha.
+        var violacoes = new List<string>();
+
         foreach (var (metodo, rota, operacao) in operacoes)
         {
-            Assert.True(
-                operacao.TryGetProperty("summary", out var resumo),
-                $"Operação sem summary: {metodo} {rota}");
+            if (!operacao.TryGetProperty("summary", out var resumo))
+            {
+                violacoes.Add($"Operação sem summary: {metodo} {rota}");
+                continue;
+            }
+
             var textoDoResumo = resumo.GetString();
-            Assert.False(
-                string.IsNullOrWhiteSpace(textoDoResumo),
-                $"summary vazio: {metodo} {rota}");
+            if (string.IsNullOrWhiteSpace(textoDoResumo))
+            {
+                violacoes.Add($"summary vazio: {metodo} {rota}");
+                continue;
+            }
 
             // Resumo é propósito de negócio, não nome de handler ou assinatura
             // de código copiada para o contrato.
             foreach (var jargao in new[] { "Fisga.Api", "{", "(", "Endpoints" })
             {
-                Assert.DoesNotContain(jargao, textoDoResumo);
+                if (textoDoResumo.Contains(jargao, StringComparison.Ordinal))
+                {
+                    violacoes.Add($"Resumo com jargão de código \"{jargao}\": {metodo} {rota}");
+                }
             }
         }
+
+        Assert.Empty(violacoes);
     }
 
     [Fact]
@@ -121,36 +136,65 @@ public sealed class ContratoTests
         Assert.Equal(13, Tags.Todas.Count);
         Assert.Equal(13, Tags.Todas.Distinct(StringComparer.Ordinal).Count());
 
+        // Acumula todas as violações em vez de abortar na primeira: o gate de
+        // uma tarefa consegue provar que a sua própria área está limpa mesmo
+        // enquanto outra área do contrato ainda falha.
+        var violacoes = new List<string>();
         var tagsUsadas = new HashSet<string>(StringComparer.Ordinal);
         foreach (var (metodo, rota, operacao) in operacoes)
         {
-            Assert.True(
-                operacao.TryGetProperty("tags", out var tags),
-                $"Operação sem tags: {metodo} {rota}");
-            Assert.Equal(JsonValueKind.Array, tags.ValueKind);
-            Assert.True(
-                tags.GetArrayLength() == 1,
-                $"Operação deve ter exatamente uma tag de domínio: {metodo} {rota}");
+            if (!operacao.TryGetProperty("tags", out var tags))
+            {
+                violacoes.Add($"Operação sem tags: {metodo} {rota}");
+                continue;
+            }
+
+            if (tags.ValueKind != JsonValueKind.Array)
+            {
+                violacoes.Add($"Operação deve ter exatamente uma tag de domínio: {metodo} {rota}");
+                continue;
+            }
+
+            if (tags.GetArrayLength() != 1)
+            {
+                violacoes.Add($"Operação deve ter exatamente uma tag de domínio: {metodo} {rota}");
+            }
 
             foreach (var tag in tags.EnumerateArray())
             {
                 var nome = tag.GetString();
-                Assert.False(
-                    string.IsNullOrWhiteSpace(nome),
-                    $"Tag vazia: {metodo} {rota}");
-                Assert.NotEqual("Fisga.Api", nome);
-                Assert.True(
-                    Tags.Todas.Contains(nome!, StringComparer.Ordinal),
-                    $"Tag fora do domínio: {nome} em {metodo} {rota}");
-                tagsUsadas.Add(nome!);
+                if (string.IsNullOrWhiteSpace(nome))
+                {
+                    violacoes.Add($"Tag vazia: {metodo} {rota}");
+                    continue;
+                }
+
+                if (nome == "Fisga.Api")
+                {
+                    violacoes.Add($"Tag fora do domínio: {nome} em {metodo} {rota}");
+                    continue;
+                }
+
+                if (!Tags.Todas.Contains(nome, StringComparer.Ordinal))
+                {
+                    violacoes.Add($"Tag fora do domínio: {nome} em {metodo} {rota}");
+                    continue;
+                }
+
+                tagsUsadas.Add(nome);
             }
         }
 
         // Nenhuma das 13 pode ficar órfã: toda área do domínio tem operação.
         foreach (var tag in Tags.Todas)
         {
-            Assert.Contains(tag, tagsUsadas);
+            if (!tagsUsadas.Contains(tag))
+            {
+                violacoes.Add($"Tag órfã sem operação: {tag}");
+            }
         }
+
+        Assert.Empty(violacoes);
     }
 
     [Fact]
