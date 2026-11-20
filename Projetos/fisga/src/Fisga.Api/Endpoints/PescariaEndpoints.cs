@@ -16,6 +16,8 @@ public static class PescariaEndpoints
     public static IEndpointRouteBuilder MapPescariaEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapGet("/api/catalogo", (ICatalogoDePesca catalogo) => Results.Ok(catalogo.ObterCatalogo()))
+            .Produces<CatalogoDto>(200)
+            .SemCorpo(429)
             .AllowAnonymous()
             .RequireRateLimiting("leitura")
             .WithMetadata(CachePolicy.Public(86400))
@@ -41,6 +43,11 @@ public static class PescariaEndpoints
                     $"/api/pescarias/{salva.ShareToken}",
                     new PescariaSalvaResponse(salva.Id, salva.ShareToken, url));
             })
+            .Produces<PescariaSalvaResponse>(201)
+            .ComErro(400)
+            .ComErro(401)
+            .ComErro(403)
+            .SemCorpo(429)
             .RequireRateLimiting("escrita")
             .WithSummary("Registra uma pescaria")
             .WithDescription("Exige sessão. Retorna o identificador, o token público e o endereço da página de compartilhamento.");
@@ -53,9 +60,12 @@ public static class PescariaEndpoints
             {
                 var pescaria = await servico.ObterPublicoAsync(shareToken, http.UsuarioId(), ct);
                 return pescaria is null
-                    ? Results.NotFound(new ErroResponse("pescaria_nao_encontrada", "Pescaria não encontrada."))
+                    ? Results.NotFound(new ErroResponse(CodigosDeErro.PescariaNaoEncontrada, "Pescaria não encontrada."))
                     : Results.Ok(pescaria);
             })
+            .Produces<PescariaDetalhadaDto>(200)
+            .ComErro(404)
+            .SemCorpo(429)
             .AllowAnonymous()
             .RequireRateLimiting("leitura")
             .WithMetadata(CachePolicy.Private(30))
@@ -70,9 +80,12 @@ public static class PescariaEndpoints
             {
                 var pescaria = await servico.ObterPublicoAsync(shareToken, http.UsuarioId(), ct);
                 return pescaria is null
-                    ? Results.NotFound(new ErroResponse("pescaria_nao_encontrada", "Pescaria não encontrada."))
+                    ? Results.NotFound(new ErroResponse(CodigosDeErro.PescariaNaoEncontrada, "Pescaria não encontrada."))
                     : Results.Ok(new PermissaoResponse(pescaria.Id, pescaria.PodeEditar));
             })
+            .Produces<PermissaoResponse>(200)
+            .ComErro(404)
+            .SemCorpo(429)
             .AllowAnonymous()
             .RequireRateLimiting("leitura")
             .WithSummary("Consulta a permissão de edição de uma pescaria")
@@ -88,6 +101,11 @@ public static class PescariaEndpoints
                 var pescaria = await servico.ObterDoUsuarioAsync(id, usuarioId, ct);
                 return Results.Ok(pescaria);
             })
+            .Produces<PescariaDetalhadaDto>(200)
+            .ComErro(401)
+            .ComErro(403)
+            .ComErro(404)
+            .SemCorpo(429)
             .RequireRateLimiting("leitura")
             .WithSummary("Carrega uma pescaria para edição")
             .WithDescription("Exige sessão e aceita apenas o dono da pescaria. Retorna 404 quando a pescaria não existe ou pertence a outra conta.");
@@ -104,6 +122,12 @@ public static class PescariaEndpoints
                 Metricas.PescariaAtualizada(entrada.Ambiente);
                 return Results.Ok(pescaria);
             })
+            .Produces<PescariaDetalhadaDto>(200)
+            .ComErro(400)
+            .ComErro(401)
+            .ComErro(403)
+            .ComErro(404)
+            .SemCorpo(429)
             .RequireRateLimiting("escrita")
             .WithSummary("Atualiza uma pescaria")
             .WithDescription("Exige sessão e aceita apenas o dono da pescaria. Retorna 404 quando a pescaria não existe ou pertence a outra conta.");
@@ -118,6 +142,9 @@ public static class PescariaEndpoints
                 var arquivo = await pdf.GerarAsync(shareToken, url, ct);
                 return Results.File(arquivo.Conteudo, "application/pdf", arquivo.NomeDoArquivo);
             })
+            .Produces(200, null, "application/pdf")
+            .ComErro(404)
+            .SemCorpo(429)
             .AllowAnonymous()
             .RequireRateLimiting("pdf")
             .WithMetadata(CachePolicy.Private(300))
@@ -133,6 +160,10 @@ public static class PescariaEndpoints
                 var resultado = await diario.ObterAsync(usuarioId, ct);
                 return Results.Ok(resultado);
             })
+            .Produces<DiarioDto>(200)
+            .ComErro(401)
+            .ComErro(403)
+            .SemCorpo(429)
             .RequireRateLimiting("leitura")
             .WithTags(Tags.Diario)
             .WithSummary("Consulta o diário do pescador")
@@ -152,7 +183,7 @@ public static class PescariaEndpoints
 
                 if (!http.Request.HasFormContentType)
                 {
-                    return Results.BadRequest(new ErroResponse("midia_sem_formulario", "Envie a foto como formulário multipart."));
+                    return Results.BadRequest(new ErroResponse(CodigosDeErro.MidiaSemFormulario, "Envie a foto como formulário multipart."));
                 }
 
                 var formulario = await http.Request.ReadFormAsync(ct);
@@ -160,18 +191,18 @@ public static class PescariaEndpoints
 
                 if (arquivo is null || arquivo.Length == 0)
                 {
-                    return Results.BadRequest(new ErroResponse("midia_vazia", "Selecione uma foto para enviar."));
+                    return Results.BadRequest(new ErroResponse(CodigosDeErro.MidiaVazia, "Selecione uma foto para enviar."));
                 }
 
                 if (arquivo.Length > 5 * 1024 * 1024)
                 {
-                    return Results.BadRequest(new ErroResponse("midia_grande", "A foto deve ter no máximo 5 MB."));
+                    return Results.BadRequest(new ErroResponse(CodigosDeErro.MidiaGrande, "A foto deve ter no máximo 5 MB."));
                 }
 
                 var tipos = new[] { "image/jpeg", "image/png", "image/webp" };
                 if (!tipos.Contains(arquivo.ContentType, StringComparer.OrdinalIgnoreCase))
                 {
-                    return Results.BadRequest(new ErroResponse("midia_tipo_invalido", "Envie uma imagem JPG, PNG ou WebP."));
+                    return Results.BadRequest(new ErroResponse(CodigosDeErro.MidiaTipoInvalido, "Envie uma imagem JPG, PNG ou WebP."));
                 }
 
                 await using var stream = arquivo.OpenReadStream();
@@ -179,6 +210,13 @@ public static class PescariaEndpoints
                 Metricas.MidiaEnviada(arquivo.ContentType, arquivo.Length);
                 return Results.Ok(new MidiaResponse(url));
             })
+            .Produces<MidiaResponse>(200)
+            .Accepts<FormularioDeFoto>("multipart/form-data")
+            .ComErro(400)
+            .ComErro(401)
+            .ComErro(403)
+            .SemCorpo(413)
+            .SemCorpo(429)
             .RequireRateLimiting("midia")
             .WithTags(Tags.Midia)
             .WithSummary("Envia uma foto")
