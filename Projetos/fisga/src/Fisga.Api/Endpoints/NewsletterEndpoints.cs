@@ -30,7 +30,8 @@ public static class NewsletterEndpoints
             .WithTags(Tags.Newsletter)
             .WithSummary("Envia a newsletter do mês aos assinantes")
             .WithDescription("Exige o header X-Admin-Token; token inválido ou vazio retorna 404 sem corpo. Aceita o mês de referência e o modo de simulação, que percorre o envio sem disparar e-mails, e retorna 200 com o resultado.")
-            .AllowAnonymous();
+            .AllowAnonymous()
+            .WithMetadata(new RequerTokenAdmin());
 
         app.MapGet("/api/newsletter/preview", async (
                 string? email,
@@ -53,7 +54,8 @@ public static class NewsletterEndpoints
             .WithTags(Tags.Newsletter)
             .WithSummary("Pré-visualiza a newsletter do mês")
             .WithDescription("Exige o header X-Admin-Token; token inválido ou vazio retorna 404 sem corpo. O e-mail é obrigatório e a sua ausência retorna 404 sem corpo; o mês é opcional e, quando omitido, usa o mês atual. Retorna 200 com o HTML da mensagem, ou 404 sem corpo quando não há mensagem para o e-mail.")
-            .AllowAnonymous();
+            .AllowAnonymous()
+            .WithMetadata(new RequerTokenAdmin());
 
         app.MapGet("/api/newsletter/descadastrar", async (
                 string? token,

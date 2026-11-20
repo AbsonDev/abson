@@ -45,6 +45,7 @@ builder.WebHost.UseSentry(opcoes =>
 builder.Services.AddProblemDetails();
 builder.Services.AddOpenApi(opcoes =>
 {
+    opcoes.AddDocumentTransformer<ContratoDocumentTransformer>();
     opcoes.AddOperationTransformer<ContratoOperationTransformer>();
 });
 builder.Services.ConfigureHttpJsonOptions(opcoes =>
