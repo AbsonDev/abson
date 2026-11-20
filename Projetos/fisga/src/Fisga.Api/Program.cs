@@ -12,6 +12,7 @@ using Fisga.Api.Caching;
 using Fisga.Api.Endpoints;
 using Fisga.Api.Middleware;
 using Fisga.Api.Observabilidade;
+using Fisga.Api.OpenApi;
 using Fisga.Application;
 using Fisga.Application.Identidade;
 using Fisga.Application.Observabilidade;
@@ -42,7 +43,10 @@ builder.WebHost.UseSentry(opcoes =>
 });
 
 builder.Services.AddProblemDetails();
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(opcoes =>
+{
+    opcoes.AddOperationTransformer<ContratoOperationTransformer>();
+});
 builder.Services.ConfigureHttpJsonOptions(opcoes =>
 {
     opcoes.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
