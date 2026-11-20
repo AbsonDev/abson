@@ -98,6 +98,32 @@ public sealed class NormalizacaoDeRespostasTests
         Assert.Single(resposta.Content!);
     }
 
+    // `byte[]` na metadata vira `format: byte` (base64), mas o handler escreve os
+    // bytes crus: publicar `byte` faria o cliente gerado decodificar e corromper
+    // o PDF. O transformer corrige o formato do media type de PDF.
+    [Fact]
+    public void PdfTrocaFormatBytePorBinary()
+    {
+        var resposta = new OpenApiResponse
+        {
+            Description = "OK",
+            Content = new Dictionary<string, OpenApiMediaType>
+            {
+                [RespostasPadrao.TipoPdf] = new()
+                {
+                    Schema = new OpenApiSchema { Type = JsonSchemaType.String, Format = "byte" }
+                }
+            }
+        };
+
+        ContratoOperationTransformer.NormalizarRespostas(Operacao("200", resposta));
+
+        var pdf = Assert.Contains(RespostasPadrao.TipoPdf, resposta.Content!);
+        Assert.Equal(JsonSchemaType.String, pdf.Schema!.Type);
+        Assert.Equal("binary", pdf.Schema.Format);
+        Assert.Equal("OK", resposta.Description);
+    }
+
     private static OpenApiOperation Operacao(string status, OpenApiResponse resposta) =>
         new()
         {

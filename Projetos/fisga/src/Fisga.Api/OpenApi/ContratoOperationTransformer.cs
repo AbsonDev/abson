@@ -146,6 +146,13 @@ public sealed partial class ContratoOperationTransformer(IConfiguration configur
                 };
             }
 
+            // O corpo do PDF é binário cru: `byte[]` publica `format: byte` (base64),
+            // e um cliente gerado corromperia o download ao decodificar.
+            if (concreta.Content?.TryGetValue(RespostasPadrao.TipoPdf, out var pdf) == true)
+            {
+                pdf.Schema = new OpenApiSchema { Type = JsonSchemaType.String, Format = "binary" };
+            }
+
             if (concreta.Content?.ContainsKey(RespostasPadrao.TipoProblema) == true)
             {
                 var problema = concreta.Content[RespostasPadrao.TipoProblema];

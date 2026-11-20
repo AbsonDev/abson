@@ -11,6 +11,7 @@ public static class RespostasPadrao
 {
     public const string TipoProblema = "application/problem+json";
     public const string TipoJson = "application/json";
+    public const string TipoPdf = "application/pdf";
 
     /// <summary>
     /// Descrição do erro com corpo. Só é chamada para status que publicam

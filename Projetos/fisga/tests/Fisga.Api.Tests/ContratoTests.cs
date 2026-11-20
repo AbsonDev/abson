@@ -576,7 +576,8 @@ public sealed class ContratoTests
     // type e um schema binário. Produces(200, null, ...) compila mas o gerador
     // descarta o content quando o tipo é nulo, então o media type sumiria do
     // contrato sem ninguém notar. O schema pode ser inline ou $ref para um schema
-    // de string; o formato binário/byte é o que descreve o download.
+    // de string; o formato precisa ser `binary` (bytes crus), porque `byte`
+    // mandaria o cliente base64-decodificar e corromper o arquivo.
     [Fact]
     public async Task PdfPublicoDeclaraMediaTypeBinario()
     {
@@ -613,9 +614,7 @@ public sealed class ContratoTests
         Assert.Equal("string", schema.GetProperty("type").GetString());
 
         var formato = schema.TryGetProperty("format", out var valor) ? valor.GetString() : null;
-        Assert.True(
-            formato is "binary" or "byte",
-            $"Schema do PDF deveria ser binário/byte, veio format: {formato ?? "<ausente>"}");
+        Assert.Equal("binary", formato);
     }
 
     [Fact]
