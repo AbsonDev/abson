@@ -16,8 +16,9 @@ public static IEndpointRouteBuilder Map<Area>Endpoints(this IEndpointRouteBuilde
 }
 ```
 
-Registre em `src/Fisga.Api/Program.cs`, junto das chamadas existentes
-(linhas ~156–164): `app.Map<Area>Endpoints();`.
+Registre em `src/Fisga.Api/Program.cs`, junto das chamadas existentes de
+`app.Map<Area>Endpoints();`: nada mais é necessário para a rota aparecer no
+contrato.
 
 ## 2. DTOs
 
@@ -37,13 +38,18 @@ A API orquestra e traduz HTTP — não coloque regra no endpoint.
   valida a sessão de dispositivo a cada requisição `/api`.
 - A rota só é privada porque o handler chama `http.ExigirUsuarioId()`. O app
   não tem `UseAuthorization`/`RequireAuthorization()`: `AllowAnonymous()` não
-  muda quem pode chamar a rota. Esse metadata é lido apenas pelo
+  muda quem pode chamar a rota. Esse metadata é lido pelo
   `ConsentimentoMiddleware`, para dispensar a rota do aceite de termos vigentes
   (sem o metadata, usuário com consentimento pendente recebe
-  `403 consentimento_pendente`). Rota que nunca chama `ExigirUsuarioId()` fica
-  pública mesmo sem esse metadata.
+  `403 consentimento_pendente`), e pelo `ContratoOperationTransformer`, que
+  publica `security`: rota sem `AllowAnonymous()` sai como `cookieAuth` e rota
+  com ele sai como anônima (`security: []`). Rota que nunca chama
+  `ExigirUsuarioId()` fica pública mesmo sem esse metadata.
+- Rota administrativa com token manual não é sessão nem rota pública: aplique
+  `.WithMetadata(new RequerTokenAdmin())` para o contrato publicar
+  `adminToken` em vez de `security: []`.
 - Rate limiting com as políticas existentes em `Program.cs` (`AddRateLimiter`,
-  linhas ~97–108), via `.RequireRateLimiting("<politica>")`: `leitura`,
+  linhas 102–112), via `.RequireRateLimiting("<politica>")`: `leitura`,
   `escrita`, `auth`, `pdf`, `midia`. `web` não é política de rate limit — é a
   política de CORS (`AddCors`/`UseCors("web")`). Usar `web` em
   `RequireRateLimiting` não retorna 429: a política não existe no rate limiter e
@@ -64,7 +70,14 @@ padrão de integração já usado na pasta (`TestWebApplicationFactory` e afins)
 
 ## 7. Contrato OpenAPI
 
-Regenere e commite o contrato publicado:
+Toda rota precisa de uma entrada no mapa congelado antes de o contrato ser
+gerado. Sem ela, `gerar-openapi.sh` falha com `Operação sem operationId`.
+
+1. Adicione a operação em `src/Fisga.Api/OpenApi/MapaDeOperacoes.cs` com um
+   `operationId` estável, no formato `verboSubstantivo`.
+2. Aplique `.WithTags(Tags.X)`, `.WithSummary` e `.WithDescription` no handler.
+   Sem tag de domínio ou sem resumo de negócio, `ContratoTests` falha.
+3. Regenere e commite o contrato publicado:
 
 ```bash
 ./scripts/gerar-openapi.sh

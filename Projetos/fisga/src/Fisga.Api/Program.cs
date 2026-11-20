@@ -12,6 +12,7 @@ using Fisga.Api.Caching;
 using Fisga.Api.Endpoints;
 using Fisga.Api.Middleware;
 using Fisga.Api.Observabilidade;
+using Fisga.Api.OpenApi;
 using Fisga.Application;
 using Fisga.Application.Identidade;
 using Fisga.Application.Observabilidade;
@@ -42,7 +43,11 @@ builder.WebHost.UseSentry(opcoes =>
 });
 
 builder.Services.AddProblemDetails();
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(opcoes =>
+{
+    opcoes.AddDocumentTransformer<ContratoDocumentTransformer>();
+    opcoes.AddOperationTransformer<ContratoOperationTransformer>();
+});
 builder.Services.ConfigureHttpJsonOptions(opcoes =>
 {
     opcoes.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
@@ -146,12 +151,19 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.MapGet("/health", () => Results.Ok(new { status = "ok", version = versao })).AllowAnonymous();
+app.MapGet("/health", () => Results.Ok(new { status = "ok", version = versao }))
+    .AllowAnonymous()
+    .WithTags(Tags.Sistema)
+    .WithSummary("Verifica se a API está no ar")
+    .WithDescription("Funciona sem sessão. Retorna 200 com o status e a versão publicada, sem consultar o banco.");
 app.MapGet("/ready", async (FisgaDbContext db, CancellationToken ct) =>
         await db.Database.CanConnectAsync(ct)
             ? Results.Ok(new { status = "ready" })
             : Results.StatusCode(StatusCodes.Status503ServiceUnavailable))
-    .AllowAnonymous();
+    .AllowAnonymous()
+    .WithTags(Tags.Sistema)
+    .WithSummary("Verifica se a API está pronta para atender")
+    .WithDescription("Funciona sem sessão. Consulta o banco e retorna 200 quando a conexão funciona ou 503 quando não funciona.");
 
 app.MapAuthEndpoints();
 app.MapContaEndpoints();

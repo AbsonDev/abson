@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Fisga.Api.Caching;
 using Fisga.Api.Contracts;
 using Fisga.Api.Observabilidade;
+using Fisga.Api.OpenApi;
 using Fisga.Application.Abstractions;
 using Fisga.Application.Identidade;
 using Fisga.Domain.Common;
@@ -28,7 +29,10 @@ public static class AuthEndpoints
                 Results.Ok(new VersoesLegaisResponse(opcoes.TermsVersion, opcoes.PrivacyVersion)))
             .AllowAnonymous()
             .RequireRateLimiting("leitura")
-            .WithMetadata(CachePolicy.Public(86400));
+            .WithMetadata(CachePolicy.Public(86400))
+            .WithTags(Tags.Sistema)
+            .WithSummary("Consulta as versões legais vigentes")
+            .WithDescription("Retorna as versões dos termos de uso e da política de privacidade em vigor. Funciona sem sessão e fica em cache público por um dia.");
 
         app.MapPost("/api/auth/solicitar", async (
                 SolicitarLinkRequest entrada,
@@ -49,7 +53,10 @@ public static class AuthEndpoints
                         link));
             })
             .AllowAnonymous()
-            .RequireRateLimiting("auth");
+            .RequireRateLimiting("auth")
+            .WithTags(Tags.Autenticacao)
+            .WithSummary("Solicita um link de acesso por e-mail")
+            .WithDescription("Funciona sem sessão. Retorna 202 sempre com a mesma mensagem genérica, sem revelar se o e-mail existe; em ambiente local, sem envio de e-mail, o link volta na resposta.");
 
         app.MapPost("/api/auth/registrar", async (
                 RegistrarRequest entrada,
@@ -75,7 +82,10 @@ public static class AuthEndpoints
                     new RegistrarResponse("Conta criada. Enviamos um link de confirmação para o seu e-mail."));
             })
             .AllowAnonymous()
-            .RequireRateLimiting("auth");
+            .RequireRateLimiting("auth")
+            .WithTags(Tags.Autenticacao)
+            .WithSummary("Cria uma conta com e-mail e senha")
+            .WithDescription("Funciona sem sessão. Retorna 201 e envia um link de confirmação; a conta só entra depois de confirmar o e-mail.");
 
         app.MapPost("/api/auth/entrar", async (
                 EntrarRequest entrada,
@@ -173,7 +183,10 @@ public static class AuthEndpoints
                 return Results.Ok(new EntrarResponse(false, MensagemCredenciaisInvalidas));
             })
             .AllowAnonymous()
-            .RequireRateLimiting("auth");
+            .RequireRateLimiting("auth")
+            .WithTags(Tags.Autenticacao)
+            .WithSummary("Entra com e-mail e senha")
+            .WithDescription("Funciona sem sessão. Retorna 200 com autenticado falso em qualquer falha, inclusive após bloqueio por tentativas; em caso de sucesso grava o cookie de sessão.");
 
         app.MapPost("/api/auth/confirmar-email", async (
                 ConfirmarEmailRequest entrada,
@@ -216,7 +229,10 @@ public static class AuthEndpoints
                 return Results.Ok(new ConfirmarEmailResponse("E-mail confirmado. Você já pode entrar."));
             })
             .AllowAnonymous()
-            .RequireRateLimiting("auth");
+            .RequireRateLimiting("auth")
+            .WithTags(Tags.Autenticacao)
+            .WithSummary("Confirma o e-mail pelo link enviado")
+            .WithDescription("Funciona sem sessão. Recebe o identificador e o token do link, marca o e-mail como confirmado e retorna 400 quando o link é inválido ou expirado.");
 
         app.MapPost("/api/auth/esqueci-senha", async (
                 EsqueciSenhaRequest entrada,
@@ -246,7 +262,10 @@ public static class AuthEndpoints
                 return Results.Accepted("/api/auth/me", new EsqueciSenhaResponse(mensagem));
             })
             .AllowAnonymous()
-            .RequireRateLimiting("auth");
+            .RequireRateLimiting("auth")
+            .WithTags(Tags.Autenticacao)
+            .WithSummary("Envia um link de redefinição de senha")
+            .WithDescription("Funciona sem sessão. Retorna 202 sempre com a mesma mensagem, sem revelar se o e-mail está cadastrado; havendo conta, envia o link.");
 
         app.MapPost("/api/auth/redefinir-senha", async (
                 RedefinirSenhaRequest entrada,
@@ -308,7 +327,10 @@ public static class AuthEndpoints
                 return Results.Ok(new RedefinirSenhaResponse("Senha redefinida. Você já pode entrar."));
             })
             .AllowAnonymous()
-            .RequireRateLimiting("auth");
+            .RequireRateLimiting("auth")
+            .WithTags(Tags.Autenticacao)
+            .WithSummary("Redefine a senha pelo link recebido")
+            .WithDescription("Funciona sem sessão. Exige o identificador e o token do link e uma senha de 10 a 128 caracteres; ao concluir, revoga as sessões abertas.");
 
         app.MapGet("/api/auth/confirmar", async (
                 string? token,
@@ -346,12 +368,18 @@ public static class AuthEndpoints
                 }
             })
             .AllowAnonymous()
-            .RequireRateLimiting("auth");
+            .RequireRateLimiting("auth")
+            .WithTags(Tags.Autenticacao)
+            .WithSummary("Confirma o link de acesso e abre a sessão")
+            .WithDescription("Funciona sem sessão. Para navegação do navegador, redireciona 302 para o web com a sessão criada ou para a tela de erro com o código do estado.");
 
         app.MapGet("/api/auth/google/disponivel", (IConfiguration configuration) =>
                 Results.Ok(new GoogleDisponivelResponse(GoogleConfigurado(configuration))))
             .AllowAnonymous()
-            .RequireRateLimiting("auth");
+            .RequireRateLimiting("auth")
+            .WithTags(Tags.Autenticacao)
+            .WithSummary("Informa se o login com Google está disponível")
+            .WithDescription("Funciona sem sessão. Retorna 200 com um indicador de disponibilidade, sem iniciar o fluxo de login.");
 
         app.MapGet("/api/auth/google/iniciar", (IConfiguration configuration) =>
             {
@@ -377,7 +405,10 @@ public static class AuthEndpoints
                 return Results.Challenge(propriedades, [GoogleDefaults.AuthenticationScheme]);
             })
             .AllowAnonymous()
-            .RequireRateLimiting("auth");
+            .RequireRateLimiting("auth")
+            .WithTags(Tags.Autenticacao)
+            .WithSummary("Inicia o login com Google")
+            .WithDescription("Funciona sem sessão. Para navegação do navegador, redireciona 302 ao Google e retorna 503 quando as credenciais não estão configuradas.");
 
         app.MapGet("/api/auth/google/concluir", async (
                 HttpContext http,
@@ -447,7 +478,10 @@ public static class AuthEndpoints
                 }
             })
             .AllowAnonymous()
-            .RequireRateLimiting("auth");
+            .RequireRateLimiting("auth")
+            .WithTags(Tags.Autenticacao)
+            .WithSummary("Conclui o login com Google")
+            .WithDescription("Funciona sem sessão. É o retorno do Google: cria a sessão e redireciona 302 para o web; sem a sessão externa válida, redireciona para a tela de erro.");
 
         // Conectar Google em /conta: fluxo SEPARADO do login da Task 8. A conta
         // é a da sessão atual — nunca trocamos de usuário, nunca emitimos cookie.
@@ -489,7 +523,10 @@ public static class AuthEndpoints
                 propriedades.Items[ChaveProvedorExterno] = GoogleIdentityValidator.Provider;
                 return Results.Challenge(propriedades, [GoogleDefaults.AuthenticationScheme]);
             })
-            .RequireRateLimiting("auth");
+            .RequireRateLimiting("auth")
+            .WithTags(Tags.Autenticacao)
+            .WithSummary("Vincula uma conta Google à conta atual")
+            .WithDescription("Exige sessão; com o Google não configurado, retorna 503 antes de autenticar, então chamadas sem sessão também recebem 503. Com credenciais, redireciona 302 ao Google para autorizar o vínculo.");
 
         app.MapGet("/api/auth/google/conectar/concluir", async (
                 HttpContext http,
@@ -570,7 +607,10 @@ public static class AuthEndpoints
                         $"{web}/conta?estado={Uri.EscapeDataString(excecao.Codigo)}");
                 }
             })
-            .RequireRateLimiting("auth");
+            .RequireRateLimiting("auth")
+            .WithTags(Tags.Autenticacao)
+            .WithSummary("Conclui o vínculo com a conta Google")
+            .WithDescription("Exige sessão. Cria apenas o vínculo, sem trocar de usuário; sem sessão ou com intenção inválida, redireciona 302 para a página da conta com o estado do erro.");
 
         app.MapGet("/api/auth/me", async (
                 HttpContext http,
@@ -602,7 +642,10 @@ public static class AuthEndpoints
                     temSenha));
             })
             .AllowAnonymous()
-            .RequireRateLimiting("leitura");
+            .RequireRateLimiting("leitura")
+            .WithTags(Tags.Autenticacao)
+            .WithSummary("Consulta a sessão atual")
+            .WithDescription("Funciona sem sessão. Retorna 200 com autenticado falso quando não há sessão; com sessão, retorna o usuário, o consentimento pendente e se há senha e Google vinculados.");
 
         app.MapPost("/api/auth/sair", async (
                 HttpContext http,
@@ -630,7 +673,10 @@ public static class AuthEndpoints
                 return Results.NoContent();
             })
             .AllowAnonymous()
-            .RequireRateLimiting("escrita");
+            .RequireRateLimiting("escrita")
+            .WithTags(Tags.Autenticacao)
+            .WithSummary("Encerra a sessão atual")
+            .WithDescription("Funciona sem sessão. Retorna 204 sempre; havendo sessão, revoga também o dispositivo e apaga o cookie.");
 
         app.MapPost("/api/auth/sair-de-todos", async (
                 HttpContext http,
@@ -658,7 +704,10 @@ public static class AuthEndpoints
                 LimparCookie(http, opcoes);
                 return Results.NoContent();
             })
-            .RequireRateLimiting("escrita");
+            .RequireRateLimiting("escrita")
+            .WithTags(Tags.Autenticacao)
+            .WithSummary("Encerra a sessão em todos os dispositivos")
+            .WithDescription("Exige sessão. Revoga todos os dispositivos, invalida cookies antigos e retorna 204.");
 
         app.MapPatch("/api/auth/perfil", async (
                 AtualizarPerfilRequest entrada,
@@ -675,7 +724,10 @@ public static class AuthEndpoints
 
                 return Results.Ok(UsuarioResponse.De(usuario));
             })
-            .RequireRateLimiting("escrita");
+            .RequireRateLimiting("escrita")
+            .WithTags(Tags.Autenticacao)
+            .WithSummary("Atualiza nome e preferência de novidades")
+            .WithDescription("Exige sessão. Altera o nome e a escolha de receber novidades, retornando o usuário atualizado.");
 
         return app;
     }
@@ -703,7 +755,10 @@ public static class AuthEndpoints
                 await consentimento.RegistrarAsync(usuarioId, termosVersao, privacidadeVersao, ct);
                 return Results.NoContent();
             })
-            .RequireRateLimiting("escrita");
+            .RequireRateLimiting("escrita")
+            .WithTags(Tags.Conta)
+            .WithSummary("Registra o aceite dos termos vigentes")
+            .WithDescription("Exige sessão. Retorna 204 quando as versões enviadas são as vigentes e 400 quando não são.");
 
         app.MapPost("/api/conta/senha", async (
                 AlterarSenhaRequest entrada,
@@ -811,7 +866,10 @@ public static class AuthEndpoints
 
                 return Results.NoContent();
             })
-            .RequireRateLimiting("escrita");
+            .RequireRateLimiting("escrita")
+            .WithTags(Tags.Conta)
+            .WithSummary("Define ou troca a senha da conta")
+            .WithDescription("Exige sessão e, para quem já tem senha, a senha atual; aceita de 10 a 128 caracteres e preserva só a sessão que fez a troca.");
 
         app.MapGet("/api/conta/sessoes", async (
                 HttpContext http,
@@ -824,7 +882,10 @@ public static class AuthEndpoints
                     .Select(sessao => SessaoResponse.De(sessao, http.SessaoAtual()?.Id))
                     .ToList());
             })
-            .RequireRateLimiting("leitura");
+            .RequireRateLimiting("leitura")
+            .WithTags(Tags.Conta)
+            .WithSummary("Lista os dispositivos com sessão aberta")
+            .WithDescription("Exige sessão. Retorna as sessões do usuário e indica qual delas é a atual.");
 
         app.MapGet("/api/conta/exportar", async (
                 HttpContext http,
@@ -839,7 +900,10 @@ public static class AuthEndpoints
                     "application/json",
                     $"fisga-conta-{DateTime.UtcNow:yyyyMMdd}.json");
             })
-            .RequireRateLimiting("leitura");
+            .RequireRateLimiting("leitura")
+            .WithTags(Tags.Conta)
+            .WithSummary("Exporta os dados da conta")
+            .WithDescription("Exige sessão. Baixa um arquivo JSON com os dados do usuário e as pescarias registradas.");
 
         app.MapDelete("/api/conta", async (
                 [Microsoft.AspNetCore.Mvc.FromBody] ExcluirContaRequest entrada,
@@ -856,7 +920,10 @@ public static class AuthEndpoints
                 LimparCookie(http, opcoes);
                 return Results.NoContent();
             })
-            .RequireRateLimiting("escrita");
+            .RequireRateLimiting("escrita")
+            .WithTags(Tags.Conta)
+            .WithSummary("Exclui a conta e os dados")
+            .WithDescription("Exige sessão e a confirmação EXCLUIR no corpo. Apaga a conta, as pescarias e as fotos, encerra a sessão e retorna 204.");
 
         return app;
     }

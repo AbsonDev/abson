@@ -41,7 +41,7 @@ Português, sem barra final, com âncora estável por operação.
 | `/referencia/pontos` | Pontos privados | `openapi.json` |
 | `/referencia/trilhas` | Trilhas privadas | `openapi.json` |
 | `/referencia/midia` | Upload de foto | `openapi.json` |
-| `/referencia/visao` | Sugestão de espécie por foto | `openapi.json` |
+| `/referencia/especies` | Sugestão de espécie por foto | `openapi.json` |
 | `/referencia/newsletter` | Envio, preview e descadastro | `openapi.json` |
 | `/referencia/erros` | Catálogo de `codigo` | `docs/publico/referencia/erros.md` |
 | `/limites` | Rate limit, cache e CORS | `docs/publico/limites.md` |
@@ -52,8 +52,8 @@ Português, sem barra final, com âncora estável por operação.
 
 Operação individual: `/referencia/<dominio>#<operationId>`. Âncora por
 `operationId`, não por posição, para link externo não quebrar quando a ordem
-muda. Enquanto o contrato não tiver `operationId` (lacuna 6 da F1), o gerador
-deriva um slug de `método + path` e o congela em um arquivo de mapa versionado.
+muda. O `operationId` é congelado no contrato; renomear rota exige atualizar o
+mapa versionado.
 
 ## Três camadas de conteúdo
 
@@ -67,13 +67,13 @@ O override é curto e obrigatório. Frontmatter:
 
 ```yaml
 ---
-operacao: post-pescarias        # tem que existir no contrato
+operacao: criarPescaria         # tem que existir no contrato
 acesso: sessao                  # publico | sessao | dono | admin | token
 consentimento: true
 limites: escrita                # politica de rate limit
 cache: no-store
 verificar: "GET /api/pescarias/{shareToken} devolve a pescaria criada."
-relacionados: [get-pescarias-sharetoken, put-pescarias-id]
+relacionados: [obterPescariaPorToken, atualizarPescaria]
 ---
 ```
 

@@ -11,7 +11,7 @@ O programa de documentação pública tem quatro documentos de apoio, todos
 anteriores ao portal:
 
 - [Inventário](inventario.md) — uma linha por operação: acesso, rate limit,
-  cache, status real e erros, mais as 12 lacunas medidas no contrato.
+  cache, status real e erros, mais as lacunas do contrato.
 - [Política editorial](politica-editorial.md) — template obrigatório de página,
   voz, exemplos e checklist de revisão.
 - [Arquitetura do portal](portal.md) — mapa de URL, gerador, build, hospedagem e
@@ -20,8 +20,9 @@ anteriores ao portal:
 
 A decisão de publicar em `docs.fisga.abson.tech` está na
 [ADR 0017](../adr/0017-portal-publico-da-api.md). A referência pública é gerada
-deste `openapi.json`; por isso a fase F1 (correção das lacunas abaixo) vem antes
-da publicação.
+deste `openapi.json`; por isso a fase F1 (correção das
+[lacunas do inventário](inventario.md#lacunas-de-contrato)) vem antes da
+publicação.
 
 ## Regenerar
 
@@ -38,6 +39,9 @@ Commite o arquivo gerado no mesmo PR da mudança de contrato.
 
 - Rotas registradas em `src/Fisga.Api/Endpoints/` e os dois endpoints de saúde
   em `src/Fisga.Api/Program.cs`.
+- Metadados do contrato em `src/Fisga.Api/OpenApi/`: `operationId` congelado em
+  `MapaDeOperacoes.cs`, tags em `Tags.cs` e `security`, `x-cache` e
+  `x-rate-limit` derivados por `ContratoOperationTransformer.cs`.
 - DTOs de entrada e saída em `src/Fisga.Api/Contracts/`.
 - A contagem de paths e schemas muda a cada mudança de contrato e não é
   mantida à mão aqui: consulte o próprio `openapi.json`, que é a fonte da
@@ -49,13 +53,12 @@ Commite o arquivo gerado no mesmo PR da mudança de contrato.
   `if (app.Environment.IsDevelopment())`, então `/openapi/v1.json` responde
   apenas no ambiente local. Em produção o documento não é exposto; a fonte é o
   `openapi.json` versionado aqui.
-- **Autenticação por cookie não aparece como `securityScheme`.** A sessão do
-  Fisga é um cookie assinado tratado por middleware, não um esquema declarado
-  no documento. Ferramentas que geram clientes a partir do contrato não
-  mostram o requisito de login; nos endpoints protegidos, a resposta sem
-  sessão é `401`.
-- **Cache e rate limiting são metadados de runtime**, não fazem parte do
-  contrato gerado.
+- **O contrato já expressa acesso, cache e rate limit; falta o resto.** Toda
+  operação declara `security` — vazio quando a rota é anônima **e** não usa
+  token administrativo — e `x-cache`; as
+  que têm política declaram também `x-rate-limit`. Ainda faltam os status reais,
+  o schema de erro, o schema de upload e `info`/`servers`: o
+  [inventário](inventario.md#lacunas-de-contrato) lista o que resta.
 - **O contrato não traz schemas de resposta.** Os endpoints devolvem
   `Results.Ok(...)` sem metadados `Produces<T>`, então nenhuma operação declara
   o corpo tipado da resposta. Quem gera cliente a partir de `openapi.json` vê os

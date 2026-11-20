@@ -1,4 +1,5 @@
 using Fisga.Api.Contracts;
+using Fisga.Api.OpenApi;
 using Fisga.Application.Vision;
 
 namespace Fisga.Api.Endpoints;
@@ -45,7 +46,10 @@ public static class VisionEndpoints
                 var resultado = await reconhecedor.SugerirAsync(fluxo, arquivo.ContentType, ct);
                 return Results.Ok(resultado);
             })
-            .RequireRateLimiting("midia");
+            .RequireRateLimiting("midia")
+            .WithTags(Tags.Especies)
+            .WithSummary("Sugere a espécie a partir da foto enviada")
+            .WithDescription("Exige sessão e recebe a foto como formulário multipart no campo arquivo. Retorna 200 com a sugestão de espécie. Retorna 400 com o motivo quando o formulário está ausente, o arquivo está ausente, a foto passa de 5 MB ou o tipo não é aceito (JPG, PNG ou WebP).");
 
         return app;
     }

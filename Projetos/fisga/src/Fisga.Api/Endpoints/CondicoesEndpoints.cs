@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Fisga.Api.Caching;
 using Fisga.Api.Contracts;
 using Fisga.Api.Observabilidade;
+using Fisga.Api.OpenApi;
 using Fisga.Application.Comparacao;
 using Fisga.Application.Condicoes;
 using Fisga.Application.Locais;
@@ -51,7 +52,10 @@ public static class CondicoesEndpoints
             })
             .AllowAnonymous()
             .RequireRateLimiting("leitura")
-            .WithMetadata(CachePolicy.Private(300, swr: 600));
+            .WithMetadata(CachePolicy.Private(300, swr: 600))
+            .WithTags(Tags.Condicoes)
+            .WithSummary("Consulta as condições de pesca de um local")
+            .WithDescription("Funciona sem sessão e precisa de latitude e longitude; sem elas retorna 400. Reúne tempo, maré, lua e solunar para a coordenada informada.");
 
         app.MapGet("/api/condicoes/comparar", async (
                 double? lat,
@@ -101,7 +105,10 @@ public static class CondicoesEndpoints
                 var resultado = await comparacao.CompararAsync(usuarioId, lua, mare, clima, periodo, ct);
                 return Results.Ok(resultado);
             })
-            .RequireRateLimiting("leitura");
+            .RequireRateLimiting("leitura")
+            .WithTags(Tags.Condicoes)
+            .WithSummary("Compara as condições atuais com as pescarias registradas")
+            .WithDescription("Exige sessão, latitude e longitude; sem as coordenadas retorna 400. Compara lua, maré, clima e período com as pescarias da própria conta e avisa quando ainda faltam registros.");
 
         app.MapGet("/api/locais/reverso", async (
                 double? lat,
@@ -122,7 +129,10 @@ public static class CondicoesEndpoints
             })
             .AllowAnonymous()
             .RequireRateLimiting("leitura")
-            .WithMetadata(CachePolicy.Private(86400));
+            .WithMetadata(CachePolicy.Private(86400))
+            .WithTags(Tags.Locais)
+            .WithSummary("Converte coordenadas em um local")
+            .WithDescription("Funciona sem sessão e retorna 400 quando as coordenadas são inválidas. Retorna 404 quando nenhum local é encontrado.");
 
         app.MapGet("/api/locais/buscar", async (
                 string? q,
@@ -134,9 +144,12 @@ public static class CondicoesEndpoints
             })
             .AllowAnonymous()
             .RequireRateLimiting("leitura")
-            .WithMetadata(CachePolicy.Private(3600));
+            .WithMetadata(CachePolicy.Private(3600))
+            .WithTags(Tags.Locais)
+            .WithSummary("Busca locais pelo nome")
+            .WithDescription("Funciona sem sessão e retorna uma lista vazia quando nada é encontrado.");
 
-        var locais = app.MapGroup("/api/locais");
+        var locais = app.MapGroup("/api/locais").WithTags(Tags.Locais);
 
         locais.MapGet("", async (
                 HttpContext http,
@@ -147,7 +160,9 @@ public static class CondicoesEndpoints
                 var lista = await servico.ListarAsync(usuarioId, ct);
                 return Results.Ok(lista);
             })
-            .RequireRateLimiting("leitura");
+            .RequireRateLimiting("leitura")
+            .WithSummary("Lista os locais salvos")
+            .WithDescription("Exige sessão e retorna apenas os locais da conta, com o local padrão na frente.");
 
         locais.MapPost("", async (
                 EntradaDeLocal entrada,
@@ -160,7 +175,9 @@ public static class CondicoesEndpoints
                 Metricas.LocalSalvo(entrada.Ambiente);
                 return Results.Created($"/api/locais/{local.Id}", local);
             })
-            .RequireRateLimiting("escrita");
+            .RequireRateLimiting("escrita")
+            .WithSummary("Salva um local de pesca")
+            .WithDescription("Exige sessão. O primeiro local salvo vira o padrão, e cada conta pode manter até cinco locais.");
 
         locais.MapPut("/{id:guid}", async (
                 Guid id,
@@ -173,7 +190,9 @@ public static class CondicoesEndpoints
                 var local = await servico.AtualizarAsync(id, entrada, usuarioId, ct);
                 return Results.Ok(local);
             })
-            .RequireRateLimiting("escrita");
+            .RequireRateLimiting("escrita")
+            .WithSummary("Atualiza um local de pesca")
+            .WithDescription("Exige sessão e aceita apenas o dono do local. Retorna 404 quando o local não existe.");
 
         locais.MapPost("/{id:guid}/padrao", async (
                 Guid id,
@@ -185,7 +204,9 @@ public static class CondicoesEndpoints
                 var local = await servico.DefinirPadraoAsync(id, usuarioId, ct);
                 return Results.Ok(local);
             })
-            .RequireRateLimiting("escrita");
+            .RequireRateLimiting("escrita")
+            .WithSummary("Define o local padrão")
+            .WithDescription("Exige sessão e aceita apenas o dono do local. O local que era padrão deixa de ser.");
 
         locais.MapDelete("/{id:guid}", async (
                 Guid id,
@@ -197,7 +218,9 @@ public static class CondicoesEndpoints
                 await servico.ExcluirAsync(id, usuarioId, ct);
                 return Results.NoContent();
             })
-            .RequireRateLimiting("escrita");
+            .RequireRateLimiting("escrita")
+            .WithSummary("Exclui um local de pesca")
+            .WithDescription("Exige sessão e aceita apenas o dono do local. Se o local excluído era o padrão, o mais recente assume o posto. Retorna 404 quando o recurso não existe.");
 
         return app;
     }

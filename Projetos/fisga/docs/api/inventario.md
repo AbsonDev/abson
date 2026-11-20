@@ -5,7 +5,8 @@ Matriz de cobertura da API usada como insumo da documentação pública
 pode chamar, como autentica, qual limite e cache se aplicam, qual resposta de
 sucesso o código devolve de verdade e quais erros precisam ser documentados.
 
-**Estado:** Fase 0 concluída em 2026-11-20 · **Contrato de referência:**
+**Estado:** Fase 0 concluída em 2026-11-20 · A1 (identidade e segurança do
+contrato) concluído em 2026-11-20 · **Contrato de referência:**
 [`openapi.json`](openapi.json) (OpenAPI 3.1.1, 54 operações em 48 rotas).
 
 ## Como manter
@@ -14,7 +15,8 @@ sucesso o código devolve de verdade e quais erros precisam ser documentados.
    mesmo PR.
 2. O `openapi.json` é gerado por `scripts/gerar-openapi.sh`; este inventário é
    escrito à mão porque cobre comportamento que o gerador ainda não expressa
-   (acesso, rate limit, cache, semântica de erro).
+   (status reais de sucesso e semântica de erro). Acesso, rate limit e cache já
+   saem no contrato como `security`, `x-rate-limit` e `x-cache`.
 3. A coluna "Sucesso real" reflete o código, não o que o spec declara hoje. As
    divergências estão na seção [Lacunas de contrato](#lacunas-de-contrato).
 
@@ -260,20 +262,22 @@ responde `503` quando o banco não responde.
 
 Confirmadas no `openapi.json` atual. Viram tickets da Fase 1.
 
+> **Resolvido no A1 (2026-11-20):** segurança, tags de domínio, `operationId`,
+> rate limit e cache já estão no [`openapi.json`](openapi.json), como
+> `components.securitySchemes` + `security` por operação, `x-rate-limit` e
+> `x-cache`. As linhas abaixo são o que resta no contrato.
+
 | # | Lacuna | Evidência | Correção alvo |
 | --- | --- | --- | --- |
 | 1 | Spec declara apenas `200` em operações que devolvem `201`, `202` ou `204` | `POST /api/pescarias`, `/api/locais`, `/api/pontos`, `/api/trilhas` (201); `/api/auth/solicitar`, `/api/auth/esqueci-senha` (202); `DELETE`s, `sair`, `sair-de-todos`, consentimento e senha (204) | `Produces<T>` nos handlers e `ProducesProblem` nos erros |
-| 2 | Nenhum `securityScheme` declarado | Cookie `fisga_auth` vive no middleware; `X-Admin-Token` e `shareToken` só existem no código | Declarar `cookieAuth`, `adminToken` e `shareToken`; exigir por operação |
-| 3 | Formato de erro real não é RFC 9457 | `ErroResponse` tem `{codigo, detalhe}` | Documentar o contrato real e decidir se migra para ProblemDetails |
-| 4 | Erros vêm de origens diferentes e nem todos têm corpo | Binding, middlewares, rate limiter e handlers | Catálogo de `codigo` + schema único de erro |
-| 5 | Rate limit e cache não aparecem no contrato | `AddRateLimiter` e `CacheHeadersMiddleware` | Documentar headers e limites na referência e no portal |
-| 6 | Tag única `Fisga.Api`, sem `operationId`, `summary` ou `description` | `openapi.json` | Tags por domínio, `operationId` estável e descrições de negócio |
-| 7 | Upload `multipart/form-data` sem schema | `/api/midia`, `/api/especies/sugerir` | Schema multipart com campo, tipos e tamanho |
-| 8 | Admin responde `404` em vez de `401/403` | `NewsletterEndpoints.TokenValido` | Documentar como decisão intencional, com aviso |
-| 9 | Endpoints de auth com efeito colateral em `GET` e `302` | `/api/auth/confirmar`, `/api/auth/google/*` | Documentar redirects, cookies emitidos e estados |
-| 10 | `info` incompleto e sem `servers` | `openapi.json` | `contact`, `license`, descrição e `servers` por ambiente |
-| 11 | `429` sai sem corpo e sem `Retry-After` | Configuração do rate limiter | Decidir se adiciona `Retry-After` e corpo de erro padronizado |
-| 12 | `GET /api/auth/me` é anônimo e devolve `200` | `AuthEndpoints.cs` | Documentar que a ausência de sessão é `200` com `autenticado:false` |
+| 2 | Formato de erro real não é RFC 9457 | `ErroResponse` tem `{codigo, detalhe}` | Documentar o contrato real e decidir se migra para ProblemDetails |
+| 3 | Erros vêm de origens diferentes e nem todos têm corpo | Binding, middlewares, rate limiter e handlers | Catálogo de `codigo` + schema único de erro |
+| 4 | Upload `multipart/form-data` sem schema | `/api/midia`, `/api/especies/sugerir` | Schema multipart com campo, tipos e tamanho |
+| 5 | Admin responde `404` em vez de `401/403` | `NewsletterEndpoints.TokenValido` | `description` já explica o `404` intencional; falta declarar `404` e `500` como respostas no spec |
+| 6 | Endpoints de auth com efeito colateral em `GET` e `302` | `/api/auth/confirmar`, `/api/auth/google/*` | `description` já descreve redirects, sessão criada e estados; falta declarar `302` e `503` como respostas no spec |
+| 7 | `info` incompleto e sem `servers` | `openapi.json` | `contact`, `license`, descrição e `servers` fixo com produção e local, independente de ambiente |
+| 8 | `429` sai sem corpo e sem `Retry-After` | Configuração do rate limiter | Decidir se adiciona `Retry-After` e corpo de erro padronizado |
+| 9 | `GET /api/auth/me` é anônimo e devolve `200` | `AuthEndpoints.cs` | `description` já explica o `200` com `autenticado:false` e a operação declara `security: []`; falta declarar a resposta `200` no spec (A2) e registrar em "comportamentos que surpreendem" (A3) |
 
 ## Verificação em execução local
 

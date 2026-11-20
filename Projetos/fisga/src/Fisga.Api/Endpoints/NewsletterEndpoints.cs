@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using Fisga.Api.OpenApi;
 using Fisga.Application.Identidade;
 using Fisga.Application.Newsletter;
 
@@ -26,7 +27,11 @@ public static class NewsletterEndpoints
                 var resultado = await servico.EnviarAsync(mes, simulacao, ct);
                 return Results.Ok(resultado);
             })
-            .AllowAnonymous();
+            .WithTags(Tags.Newsletter)
+            .WithSummary("Envia a newsletter do mês aos assinantes")
+            .WithDescription("Exige o header X-Admin-Token; token inválido ou vazio retorna 404 sem corpo. Aceita o mês de referência e o modo de simulação, que percorre o envio sem disparar e-mails, e retorna 200 com o resultado.")
+            .AllowAnonymous()
+            .WithMetadata(new RequerTokenAdmin());
 
         app.MapGet("/api/newsletter/preview", async (
                 string? email,
@@ -46,7 +51,11 @@ public static class NewsletterEndpoints
                     ? Results.NotFound()
                     : Results.Content(mensagem.Html, "text/html; charset=utf-8");
             })
-            .AllowAnonymous();
+            .WithTags(Tags.Newsletter)
+            .WithSummary("Pré-visualiza a newsletter do mês")
+            .WithDescription("Exige o header X-Admin-Token; token inválido ou vazio retorna 404 sem corpo. O e-mail é obrigatório e a sua ausência retorna 404 sem corpo; o mês é opcional e, quando omitido, usa o mês atual. Retorna 200 com o HTML da mensagem, ou 404 sem corpo quando não há mensagem para o e-mail.")
+            .AllowAnonymous()
+            .WithMetadata(new RequerTokenAdmin());
 
         app.MapGet("/api/newsletter/descadastrar", async (
                 string? token,
@@ -58,6 +67,9 @@ public static class NewsletterEndpoints
                 var web = auth.WebUrl.TrimEnd('/');
                 return Results.Redirect($"{web}/newsletter/descadastrado?ok={(ok ? "1" : "0")}");
             })
+            .WithTags(Tags.Newsletter)
+            .WithSummary("Descadastra o assinante pelo link do e-mail")
+            .WithDescription("Funciona sem sessão e recebe o token do link na query. Retorna um redirect 302 para a página do web com `ok=1` no sucesso e `ok=0` na falha.")
             .AllowAnonymous()
             .RequireRateLimiting("auth");
 

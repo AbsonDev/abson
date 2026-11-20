@@ -44,6 +44,8 @@ Conteúdo de produto (espécies, técnicas, locais) não fica aqui.
 - [Plano — Upload de fotos com progresso e retry](superpowers/plans/2026-11-19-upload-fotos-progresso-retry.md)
 - [Spec — Aviso de defeso por captura](superpowers/specs/2026-11-20-defeso-por-captura-design.md)
 - [Plano — Aviso de defeso por captura](superpowers/plans/2026-11-20-defeso-por-captura.md)
+- [Spec — Contrato verdadeiro da API](superpowers/specs/2026-11-20-f1-contrato-verdadeiro-design.md)
+- [Plano — A1 do contrato verdadeiro](superpowers/plans/2026-11-20-f1-a1-contrato-identidade.md)
 
 ## Referências
 
