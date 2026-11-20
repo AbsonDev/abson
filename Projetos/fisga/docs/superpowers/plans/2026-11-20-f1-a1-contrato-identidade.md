@@ -100,7 +100,7 @@ Expected: compila; os quatro testes falham por asserção (mapa vazio, sem tags,
 - [ ] **Step 3: Commit**
 
 ```bash
-git add src/Fisga.Api/OpenApi tests/Fisga.Api.Tests/ContratoTests.cs
+git add src/Fisga.Api/OpenApi
 git commit -m "test(fisga): invariantes do contrato por operação (F1/A1)"
 ```
 
@@ -297,7 +297,7 @@ Expected: PASS. Conferir manualmente que `/api/condicoes` traz `stale-while-reva
 - [ ] **Step 3: Commit**
 
 ```bash
-git add src/Fisga.Api/OpenApi tests/Fisga.Api.Tests/ContratoTests.cs
+git add src/Fisga.Api/OpenApi
 git commit -m "feat(fisga): rate limit e cache visíveis no contrato"
 ```
 
@@ -307,7 +307,7 @@ git commit -m "feat(fisga): rate limit e cache visíveis no contrato"
 
 **Files:**
 - Modify: `Projetos/fisga/docs/api/openapi.json` (gerado)
-- Modify: `Projetos/fisga/docs/api/inventario.md` (remover lacunas 2 e 6; renumerar; sem contagem mágica)
+- Modify: `Projetos/fisga/docs/api/inventario.md` (remover lacunas 2, 5 e 6; renumerar; sem contagem mágica)
 - Modify: `Projetos/fisga/docs/api/backlog.md` (F1 intro sem número)
 - Modify: `Projetos/fisga/docs/api/README.md` (idem)
 - Modify: `Projetos/fisga/docs/adr/0017-portal-publico-da-api.md` (as três ocorrências de número)
@@ -320,9 +320,12 @@ Expected: `docs/api/openapi.json` atualizado; diff mostra `tags`, `operationId`,
 
 - [ ] **Step 2: Atualizar inventário e textos**
 
-- Remover as linhas 2 (security) e 6 (tags/`operationId`) da tabela de lacunas; renumerar 1..10.
+- Remover as linhas 2 (security), 5 (rate limit/cache fora do contrato) e 6
+  (tags/`operationId`) da tabela de lacunas — as três fecham no A1 — e
+  renumerar 1..9. A lacuna 5 fecha porque `x-rate-limit`/`x-cache` passam a
+  existir em todas as operações do spec; confira no JSON antes de remover.
 - Trocar "as 12 lacunas"/"as lacunas medidas" por "as lacunas do contrato" nos quatro arquivos, mantendo número só se a frase precisar (o inventário é a fonte).
-- Registrar em `inventario.md`, na seção de lacunas, que segurança, tag e `operationId` foram resolvidos no A1 (uma linha).
+- Registrar em `inventario.md`, na seção de lacunas, que segurança, tag, `operationId`, rate limit e cache foram resolvidos no A1 (uma linha).
 
 - [ ] **Step 3: Rodar tudo**
 
@@ -334,7 +337,7 @@ Expected: build e testes verdes; 0 issues de markdown.
 
 ```bash
 git add docs/api src
-git commit -m "docs(fisga): contrato regerado e inventário sem as lacunas 2 e 6"
+git commit -m "docs(fisga): contrato regerado e inventário sem as lacunas do A1"
 ```
 
 ---
