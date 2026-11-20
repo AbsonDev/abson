@@ -575,31 +575,47 @@ public sealed class ContratoTests
 
     // Saúde e prontidão respondem JSON de verdade: Produces(200, null, …) compila
     // mas o gerador descarta o content quando o tipo é nulo, e o contrato passaria
-    // a dizer "200 sem corpo". O $ref prova que o schema publicado é o record certo.
+    // a dizer "200 sem corpo". O $ref prova que o schema publicado é o record certo;
+    // as propriedades provam que o contrato e o corpo real falam a mesma língua —
+    // renomear Version para Versao publicaria `versao` e o corpo continuaria `version`.
     [Fact]
     public async Task SaudeDeclaraCorpoJson()
     {
         var documento = await LoadAsync();
+        var schemas = documento.RootElement.GetProperty("components").GetProperty("schemas");
 
-        foreach (var (metodo, rota, schema) in new[]
+        foreach (var (metodo, rota, nome, propriedades) in new[]
                  {
-                     ("GET", "/health", nameof(SaudeResponse)),
-                     ("GET", "/ready", nameof(ProntidaoResponse))
+                     ("GET", "/health", nameof(SaudeResponse), new[] { "status", "version" }),
+                     ("GET", "/ready", nameof(ProntidaoResponse), new[] { "status" })
                  })
         {
             var operacao = Operacoes(documento).Single(o => o.Metodo == metodo && o.Rota == rota).Operacao;
             var resposta = operacao.GetProperty("responses").GetProperty("200");
             var json = resposta.GetProperty("content").GetProperty(RespostasPadrao.TipoJson);
 
+            var referencia = json.GetProperty("schema").GetProperty("$ref").GetString()!;
+            Assert.Equal($"#/components/schemas/{nome}", referencia);
+
+            var schema = schemas.GetProperty(referencia["#/components/schemas/".Length..]);
+            foreach (var propriedade in propriedades)
+            {
+                Assert.True(
+                    schema.GetProperty("properties").TryGetProperty(propriedade, out var membro),
+                    $"{nome} sem a propriedade {propriedade}");
+                Assert.Equal("string", membro.GetProperty("type").GetString());
+            }
+
+            // O gerador marca os parâmetros não anuláveis do record como required;
+            // a comparação exata pega tanto propriedade faltando quanto sobrando.
+            var obrigatorias = schema.GetProperty("required")
+                .EnumerateArray()
+                .Select(valor => valor.GetString()!)
+                .Order(StringComparer.Ordinal)
+                .ToArray();
             Assert.Equal(
-                $"#/components/schemas/{schema}",
-                json.GetProperty("schema").GetProperty("$ref").GetString());
-            Assert.True(
-                documento.RootElement
-                    .GetProperty("components")
-                    .GetProperty("schemas")
-                    .TryGetProperty(schema, out _),
-                $"components.schemas.{schema} ausente");
+                propriedades.Order(StringComparer.Ordinal).ToArray(),
+                obrigatorias);
         }
     }
 
