@@ -39,7 +39,14 @@ sucesso o código devolve de verdade e quais erros precisam ser documentados.
 
 Métodos: 27 `GET`, 18 `POST`, 4 `PUT`, 4 `DELETE`, 1 `PATCH`. "Público" inclui
 leitura por capacidade (`shareToken` da pescaria e token assinado do
-descadastro), que não exige conta.
+descadastro), que não exige conta. A contagem sai do próprio contrato, não das
+tabelas abaixo:
+
+```bash
+python3 -c "import json,collections; s=json.load(open('docs/api/openapi.json')); \
+print(collections.Counter(m.upper() for p in s['paths'].values() for m in p \
+if m in ('get','post','put','patch','delete')))"
+```
 
 ## Regras transversais
 

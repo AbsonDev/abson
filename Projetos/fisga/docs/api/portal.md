@@ -168,7 +168,7 @@ razão de a referência publicada ser gerada do contrato, e não escrita à mão
 | Header | Valor |
 | --- | --- |
 | `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` |
-| `Content-Security-Policy` | `default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://api.fisga.abson.tech; frame-ancestors 'none'` |
+| `Content-Security-Policy` | `default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'` |
 | `X-Content-Type-Options` | `nosniff` |
 | `Referrer-Policy` | `strict-origin-when-cross-origin` |
 | `Permissions-Policy` | `camera=(), microphone=(), geolocation=()` |
@@ -176,6 +176,13 @@ razão de a referência publicada ser gerada do contrato, e não escrita à mão
 - Cache: HTML com `max-age=60, stale-while-revalidate=600`; assets com hash,
   `immutable` por um ano; `sitemap.xml`, `robots.txt` e `/health.txt` na raiz.
 - `/health.txt` contém versão do contrato e SHA do build — é o alvo do smoke.
+
+**CSP e o console.** A CSP acima é a da v1, sem console: `connect-src 'self'`
+fecha a possibilidade de o navegador chamar a API antes de existir código que
+faça isso. A F3.1 libera `connect-src 'self' https://api.fisga.abson.tech` no
+mesmo PR que implementa o console, junto com o CORS da API. Sem esse ajuste o
+`fetch` do console falharia no navegador sem erro visível no servidor — por isso
+a liberação é parte do critério de aceite da F3.1, não um passo separado.
 
 ## CI/CD
 
@@ -199,9 +206,15 @@ Duas mudanças no pipeline atual, sem tocar no comportamento da API.
 2. Novo job `deploy-docs`: valida `COOLIFY_WEBHOOK_FISGA_DOCS`, dispara o
    deploy, acompanha o `deployment_uuid` e faz smoke em
    `https://docs.fisga.abson.tech/health.txt` conferindo o SHA do build.
-3. Roda **em paralelo** a `deploy-api`/`deploy-web`, porque portal e API não
-   compartilham estado. Mudança que altera contrato e portal no mesmo PR já
-   entra consistente, porque o portal consome o spec do mesmo commit.
+3. **Ordem obrigatória: API primeiro, portal depois.** `deploy-docs` depende de
+   `deploy-api` e só roda se ele terminou em sucesso. Sem isso, um PR que muda
+   contrato e portal junto publicaria a documentação de um contrato que ainda
+   não está no ar — o leitor veria operação documentada e `404` na API. Quando a
+   mudança é só de prosa, `deploy-api` fica `skipped` por falta de mudança de
+   código; o job de docs usa `if: always()` e falha apenas se `deploy-api`
+   terminou em `failure` ou `cancelled`. Custo: alguns minutos a mais em PR que
+   mexe em contrato e portal ao mesmo tempo — barato perto de documentação
+   mentindo por minutos.
 
 Novo secret: `COOLIFY_WEBHOOK_FISGA_DOCS`. Nada mais muda em credencial.
 

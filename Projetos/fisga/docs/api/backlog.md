@@ -241,7 +241,9 @@ aditivos de resposta.
   `web/src/content`.
 - Tradução para outro idioma.
 - Documentação interna de arquitetura, que já está em [`ddd.md`](../ddd.md).
-- Qualquer mudança de comportamento da API além do `Retry-After` da F1.8.
+- Qualquer mudança de comportamento da API além dos ajustes aditivos já listados
+  na própria F1: `Location` nos `201` (F1.2) e `Retry-After` no `429` (F1.8).
+  Nenhuma rota, campo de request ou regra de negócio muda de semântica.
 
 ## Riscos do programa
 
@@ -252,3 +254,4 @@ aditivos de resposta.
 | Portal divergir do design system | médio | `design-system/` versionado, revisão visual no PR da F2.1 |
 | Referência pública de rotas administrativas | baixo | `404` sem token já é o comportamento; portal explica |
 | Custo do terceiro app no Coolify | baixo | site estático; medir na F2.5 |
+| Portal publicar contrato antes da API | médio | `deploy-docs` depende de `deploy-api`; portal nunca sai antes do contrato estar no ar |
