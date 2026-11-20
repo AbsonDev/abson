@@ -1,6 +1,6 @@
 # Arquitetura do portal de documentação
 
-Como o portal [`docs.fisga.abson.tech`](https://docs.fisga.abson.tech) é
+Como o portal `docs.fisga.abson.tech` é
 construído, publicado e mantido. Decisão registrada na
 [ADR 0017](../adr/0017-portal-publico-da-api.md); regras de escrita na
 [política editorial](politica-editorial.md).

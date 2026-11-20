@@ -1,7 +1,7 @@
 # Política editorial da documentação da API
 
 Regras para escrever e revisar as páginas do portal
-[`docs.fisga.abson.tech`](https://docs.fisga.abson.tech). Vale para guias,
+`docs.fisga.abson.tech` (F2). Vale para guias,
 referência e changelog. O objetivo é que quem integra consiga fazer a primeira
 chamada sem abrir o código-fonte e sem perguntar nada a ninguém.
 
