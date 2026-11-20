@@ -34,6 +34,13 @@ public sealed partial class ContratoOperationTransformer(IConfiguration configur
     // Janela fixa de um minuto em Program.cs (FixedWindowRateLimiterOptions.Window).
     private const int JanelaEmSegundos = 60;
 
+    // Token da pescaria compartilhada: parâmetro de rota, não scheme. O nome é
+    // único no contrato, então a regra não precisa de tabela de rotas.
+    private const string ParametroShareToken = "shareToken";
+
+    private const string DescricaoShareToken =
+        "Credencial de leitura da pescaria compartilhada: quem tem o token vê o recurso sem sessão.";
+
     public Task TransformAsync(
         OpenApiOperation operation,
         OpenApiOperationTransformerContext context,
@@ -48,11 +55,34 @@ public sealed partial class ContratoOperationTransformer(IConfiguration configur
         operation.OperationId = MapaDeOperacoes.Para(metodo, rota)
             ?? throw new InvalidOperationException($"Operação sem operationId: {metodo} {rota}");
 
+        DescreverCredencialDeLeitura(operation);
+
         operation.Security = Seguranca(context, $"{metodo} {rota}");
 
         EscreverExtensoes(operation, context, $"{metodo} {rota}");
 
         return Task.CompletedTask;
+    }
+
+    // O shareToken é credencial de leitura: o consumidor do contrato precisa
+    // saber disso no parâmetro, não no corpo da operação. Só o parâmetro de
+    // path com esse nome ganha a descrição; {id:guid} continua sem.
+    private static void DescreverCredencialDeLeitura(OpenApiOperation operation)
+    {
+        if (operation.Parameters is null)
+        {
+            return;
+        }
+
+        foreach (var parametro in operation.Parameters)
+        {
+            if (parametro.In == ParameterLocation.Path
+                && string.Equals(parametro.Name, ParametroShareToken, StringComparison.Ordinal)
+                && parametro is OpenApiParameter concreto)
+            {
+                concreto.Description = DescricaoShareToken;
+            }
+        }
     }
 
     // x-cache e x-rate-limit saem exatamente da metadata que o pipeline usa:

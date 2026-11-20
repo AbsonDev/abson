@@ -277,7 +277,7 @@ Confirmadas no `openapi.json` atual. Viram tickets da Fase 1.
 | 6 | Endpoints de auth com efeito colateral em `GET` e `302` | `/api/auth/confirmar`, `/api/auth/google/*` | `description` já descreve redirects, sessão criada e estados; falta declarar `302` e `503` como respostas no spec |
 | 7 | `info` incompleto e sem `servers` | `openapi.json` | `contact`, `license`, descrição e `servers` por ambiente |
 | 8 | `429` sai sem corpo e sem `Retry-After` | Configuração do rate limiter | Decidir se adiciona `Retry-After` e corpo de erro padronizado |
-| 9 | `GET /api/auth/me` é anônimo e devolve `200` | `AuthEndpoints.cs` | Documentar que a ausência de sessão é `200` com `autenticado:false` |
+| 9 | `GET /api/auth/me` é anônimo e devolve `200` | `AuthEndpoints.cs` | `description` já explica o `200` com `autenticado:false` e a operação declara `security: []`; falta declarar a resposta `200` no spec (A2) e registrar em "comportamentos que surpreendem" (A3) |
 
 ## Verificação em execução local
 

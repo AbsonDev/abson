@@ -51,7 +51,8 @@ Commite o arquivo gerado no mesmo PR da mudança de contrato.
   apenas no ambiente local. Em produção o documento não é exposto; a fonte é o
   `openapi.json` versionado aqui.
 - **O contrato já expressa acesso, cache e rate limit; falta o resto.** Toda
-  operação declara `security` — vazio quando a rota é anônima — e `x-cache`; as
+  operação declara `security` — vazio quando a rota é anônima **e** não usa
+  token administrativo — e `x-cache`; as
   que têm política declaram também `x-rate-limit`. Ainda faltam os status reais,
   o schema de erro, o schema de upload e `info`/`servers`: o
   [inventário](inventario.md#lacunas-de-contrato) lista o que resta.

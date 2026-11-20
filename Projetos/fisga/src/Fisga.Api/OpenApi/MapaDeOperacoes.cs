@@ -46,7 +46,7 @@ public static class MapaDeOperacoes
             ["POST api/midia"] = "enviarMidia",
             ["GET api/newsletter/descadastrar"] = "descadastrarNewsletter",
             ["POST api/newsletter/enviar"] = "enviarNewsletter",
-            ["GET api/newsletter/preview"] = "preverNewsletter",
+            ["GET api/newsletter/preview"] = "previsualizarNewsletter",
             ["POST api/pescarias"] = "criarPescaria",
             ["PUT api/pescarias/{id}"] = "atualizarPescaria",
             ["GET api/pescarias/{id}/editar"] = "obterPescariaDoDono",

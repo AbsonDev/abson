@@ -104,7 +104,7 @@ obterDiario            sugerirEspecies        versoesLegais
 listarLocais           criarLocal             atualizarLocal
 excluirLocal           definirLocalPadrao     buscarLocais
 reverterCoordenadas    enviarMidia            descadastrarNewsletter
-enviarNewsletter       preverNewsletter       criarPescaria
+enviarNewsletter       criarPescaria           previsualizarNewsletter
 atualizarPescaria      obterPescariaDoDono    obterPescariaPorToken
 exportarPescariaPdf    obterPermissaoPescaria listarPontos
 criarPonto             atualizarPonto         excluirPonto

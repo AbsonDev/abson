@@ -315,7 +315,7 @@ public sealed class ContratoTests
     }
 
     /// <summary>
-    /// Carrega /openapi/v1.json uma única vez por execução de teste; os quatro
+    /// Carrega /openapi/v1.json uma única vez por execução de teste; os
     /// invariantes leem o mesmo documento.
     /// </summary>
     private Task<JsonDocument> LoadAsync() =>

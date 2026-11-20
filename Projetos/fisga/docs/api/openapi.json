@@ -696,7 +696,7 @@
         ],
         "summary": "Pré-visualiza a newsletter do mês",
         "description": "Exige o header X-Admin-Token; token inválido ou vazio retorna 404 sem corpo. O e-mail é obrigatório e a sua ausência retorna 404 sem corpo; o mês é opcional e, quando omitido, usa o mês atual. Retorna 200 com o HTML da mensagem, ou 404 sem corpo quando não há mensagem para o e-mail.",
-        "operationId": "preverNewsletter",
+        "operationId": "previsualizarNewsletter",
         "parameters": [
           {
             "name": "email",
@@ -1140,6 +1140,7 @@
           {
             "name": "shareToken",
             "in": "path",
+            "description": "Credencial de leitura da pescaria compartilhada: quem tem o token vê o recurso sem sessão.",
             "required": true,
             "schema": {
               "type": "string"
@@ -1172,6 +1173,7 @@
           {
             "name": "shareToken",
             "in": "path",
+            "description": "Credencial de leitura da pescaria compartilhada: quem tem o token vê o recurso sem sessão.",
             "required": true,
             "schema": {
               "type": "string"
@@ -1288,6 +1290,7 @@
           {
             "name": "shareToken",
             "in": "path",
+            "description": "Credencial de leitura da pescaria compartilhada: quem tem o token vê o recurso sem sessão.",
             "required": true,
             "schema": {
               "type": "string"
