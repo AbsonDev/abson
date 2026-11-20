@@ -32,6 +32,7 @@ aditivos de resposta.
 
 ### F1.1 — Esquemas de segurança
 
+- **Issue:** [#63](https://github.com/AbsonDev/abson/issues/63)
 - **Escopo:** declarar `cookieAuth` (`fisga_auth`), `adminToken`
   (`X-Admin-Token`) e `shareToken` (path/query); aplicar exigência por operação.
 - **Aceite:** nenhuma operação autenticada sem `security`; `GET /api/auth/me` e
@@ -40,6 +41,7 @@ aditivos de resposta.
 
 ### F1.2 — Status reais de sucesso
 
+- **Issue:** [#64](https://github.com/AbsonDev/abson/issues/64)
 - **Escopo:** `Produces<T>(201/202/204)` nos handlers que devolvem algo diferente
   de `200`; `Location` no `201` de pescaria, local, ponto e trilha.
 - **Aceite:** o spec lista o status que o código devolve em todas as 54
@@ -49,6 +51,7 @@ aditivos de resposta.
 
 ### F1.3 — Um único formato de erro, documentado
 
+- **Issue:** [#65](https://github.com/AbsonDev/abson/issues/65)
 - **Escopo:** schema `ErroResponse` (`codigo`, `detalhe`), `ProducesProblem` por
   status em cada operação e catálogo de `codigo` em um único lugar do código.
 - **Aceite:** todos os erros de handler e middleware apontam para o mesmo
@@ -58,6 +61,7 @@ aditivos de resposta.
 
 ### F1.4 — Tags, `operationId` e descrições
 
+- **Issue:** [#62](https://github.com/AbsonDev/abson/issues/62)
 - **Escopo:** 13 tags de domínio, `operationId` estável por operação e
   `summary`/`description` de negócio em português.
 - **Aceite:** `operationId` congelado no mapa versionado; renomear rota exige
@@ -66,6 +70,7 @@ aditivos de resposta.
 
 ### F1.5 — Uploads com schema
 
+- **Issue:** [#66](https://github.com/AbsonDev/abson/issues/66)
 - **Escopo:** schema `multipart/form-data` para `/api/midia` e
   `/api/especies/sugerir`: campo `arquivo`, tipos aceitos e limite de 5 MB.
 - **Aceite:** o spec descreve o campo e o limite; erro de tipo e de tamanho
@@ -74,6 +79,7 @@ aditivos de resposta.
 
 ### F1.6 — Rate limit e cache no contrato
 
+- **Issue:** [#67](https://github.com/AbsonDev/abson/issues/67)
 - **Escopo:** expor a política de rate limit e o `Cache-Control` de cada
   operação como extensão (`x-rate-limit`, `x-cache`) gerada da metadata real,
   não escrita à mão.
@@ -84,6 +90,7 @@ aditivos de resposta.
 
 ### F1.7 — Identidade do documento
 
+- **Issue:** [#68](https://github.com/AbsonDev/abson/issues/68)
 - **Escopo:** `info.contact`, `info.license` (proprietária), `info.description`
   e `servers` por ambiente.
 - **Aceite:** spec válido no lint de OpenAPI, sem `servers` apontando para
@@ -92,6 +99,7 @@ aditivos de resposta.
 
 ### F1.8 — `429` com `Retry-After`
 
+- **Issue:** [#69](https://github.com/AbsonDev/abson/issues/69)
 - **Escopo:** adicionar `Retry-After` na rejeição do rate limiter. Corpo
   permanece vazio.
 - **Aceite:** resposta `429` traz `Retry-After` em segundos; teste cobre; portal
@@ -100,6 +108,7 @@ aditivos de resposta.
 
 ### F1.9 — Comportamentos que surpreendem
 
+- **Issue:** [#70](https://github.com/AbsonDev/abson/issues/70)
 - **Escopo:** descrever no contrato: `404` proposital das rotas administrativas,
   `GET` de auth com efeito colateral e `302`, `200` com `autenticado:false` em
   `/api/auth/me`, `403 consentimento_pendente`, `403 origem_invalida`.
@@ -109,6 +118,7 @@ aditivos de resposta.
 
 ### F1.10 — Impedir divergência entre spec, README e inventário
 
+- **Issue:** [#71](https://github.com/AbsonDev/abson/issues/71)
 - **Escopo:** script no job `docs` que extrai as rotas do `openapi.json`, do
   resumo do `README.md` e das linhas do inventário e falha listando a operação
   divergente. Hoje os três coincidem; a comparação é manual e nada quebra quando
