@@ -112,7 +112,7 @@ public sealed partial class ContratoOperationTransformer(IConfiguration configur
     // Respostas são geradas pela metadata Produces<T>; aqui elas ganham o que a
     // metadata não expressa: o espelho do schema de erro em application/json,
     // descrição por status e os headers Location/Retry-After.
-    private static void NormalizarRespostas(OpenApiOperation operation)
+    internal static void NormalizarRespostas(OpenApiOperation operation)
     {
         if (operation.Responses is null)
         {
@@ -126,10 +126,9 @@ public sealed partial class ContratoOperationTransformer(IConfiguration configur
                 continue;
             }
 
-            concreta.Headers ??= new Dictionary<string, IOpenApiHeader>();
-
             if (status is StatusCodes.Status201Created or StatusCodes.Status202Accepted)
             {
+                concreta.Headers ??= new Dictionary<string, IOpenApiHeader>();
                 concreta.Headers["Location"] = new OpenApiHeader
                 {
                     Description = "URL do recurso criado ou do próximo passo.",
@@ -139,6 +138,7 @@ public sealed partial class ContratoOperationTransformer(IConfiguration configur
 
             if (status == StatusCodes.Status429TooManyRequests)
             {
+                concreta.Headers ??= new Dictionary<string, IOpenApiHeader>();
                 concreta.Headers["Retry-After"] = new OpenApiHeader
                 {
                     Description = RejeicaoDoRateLimiter.DescricaoDoHeader,
@@ -148,12 +148,16 @@ public sealed partial class ContratoOperationTransformer(IConfiguration configur
 
             if (concreta.Content?.ContainsKey(RespostasPadrao.TipoProblema) == true)
             {
+                var problema = concreta.Content[RespostasPadrao.TipoProblema];
+
+                // Cópia, não a mesma instância: editar o espelho em JSON não pode
+                // alterar silenciosamente o media type de erro original.
                 concreta.Content.TryAdd(
                     RespostasPadrao.TipoJson,
-                    concreta.Content[RespostasPadrao.TipoProblema]);
-                concreta.Description = RespostasPadrao.ComCorpo(status);
+                    new OpenApiMediaType { Schema = problema.Schema, Example = problema.Example });
+                concreta.Description = RespostasPadrao.DescricaoComErro(status);
             }
-            else if (RespostasPadrao.SemCorpo(status) is { } descricao)
+            else if (RespostasPadrao.DescricaoSemSchema(status) is { } descricao)
             {
                 concreta.Description = descricao;
             }

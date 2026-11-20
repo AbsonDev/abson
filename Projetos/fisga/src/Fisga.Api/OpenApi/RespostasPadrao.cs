@@ -12,22 +12,33 @@ public static class RespostasPadrao
     public const string TipoProblema = "application/problem+json";
     public const string TipoJson = "application/json";
 
-    public static string ComCorpo(int status) => status switch
+    /// <summary>
+    /// Descrição do erro com corpo. Só é chamada para status que publicam
+    /// <c>application/problem+json</c>; qualquer outro status é falha de
+    /// configuração do contrato e estoura na geração do documento.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">Status sem descrição de erro com corpo.</exception>
+    public static string DescricaoComErro(int status) => status switch
     {
         StatusCodes.Status400BadRequest =>
             "Requisição inválida. Regra de negócio devolve `codigo` e `detalhe`; corpo JSON malformado devolve ProblemDetails do framework.",
         StatusCodes.Status401Unauthorized =>
-            "Sessão ausente, expirada ou revogada (`codigo`: `nao_autenticado`).",
+            $"Sessão ausente, expirada ou revogada (`codigo`: `{CodigosDeErro.NaoAutenticado}`).",
         StatusCodes.Status403Forbidden =>
-            "Sem permissão (`acesso_negado`), consentimento pendente (`consentimento_pendente`) ou origem não permitida (`origem_invalida`).",
+            $"Sem permissão (`{CodigosDeErro.AcessoNegado}`), consentimento pendente (`{CodigosDeErro.ConsentimentoPendente}`) ou origem não permitida (`{CodigosDeErro.OrigemInvalida}`).",
         StatusCodes.Status404NotFound => "Recurso não encontrado.",
         StatusCodes.Status500InternalServerError =>
-            "Erro inesperado (`codigo`: `erro_inesperado`). Tente novamente em instantes.",
+            $"Erro inesperado (`codigo`: `{CodigosDeErro.ErroInesperado}`). Tente novamente em instantes.",
         StatusCodes.Status503ServiceUnavailable => "Serviço indisponível no momento.",
         _ => throw new InvalidOperationException($"Status sem descrição de erro com corpo: {status}")
     };
 
-    public static string? SemCorpo(int status) => status switch
+    /// <summary>
+    /// Descrição de resposta sem schema de corpo: 201, 202, 204, 302, o 404 sem
+    /// corpo, 413, 429 e 503. Status desconhecido devolve <see langword="null"/>
+    /// e o transformer preserva a descrição gerada pelo framework.
+    /// </summary>
+    public static string? DescricaoSemSchema(int status) => status switch
     {
         StatusCodes.Status201Created =>
             "Recurso criado. O header `Location` aponta para ele.",

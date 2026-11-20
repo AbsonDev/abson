@@ -8,14 +8,14 @@ namespace Fisga.Api.Tests;
 /// A tabela enumera o que a operação produz: status do handler, guardas de
 /// consentimento e autenticação, um <c>403</c> específico da operação e o
 /// <c>429</c>, porque o contrato expõe a política de rate limit em cada operação.
-/// Duas respostas universais de middleware são documentadas uma única vez em
-/// <c>inventario.md</c> § Regras transversais e não se repetem aqui:
-/// <c>403 origem_invalida</c> do <c>ProtecaoCsrfMiddleware</c> (toda mutação
-/// <c>/api</c> com <c>Origin</c> externa) e <c>500 erro_inesperado</c> do
-/// <c>ExceptionHandlingMiddleware</c> (qualquer exceção não tratada). O
-/// <c>500</c> só aparece por operação quando existe caminho de falha além do
-/// genérico (provedores externos: condições, comparar, espécies, newsletter,
-/// health, ready).
+/// O <c>500</c> só entra onde a operação tem caminho de falha próprio (provedor
+/// externo, banco, saúde) — não é o <c>500</c> genérico do
+/// <c>ExceptionHandlingMiddleware</c>, que vale para qualquer exceção não
+/// tratada e é documentado uma única vez em <c>inventario.md</c> § Regras
+/// transversais. Pelo mesmo motivo, o <c>403 origem_invalida</c> do
+/// <c>ProtecaoCsrfMiddleware</c> (toda mutação <c>/api</c> com <c>Origin</c>
+/// externa) nunca é enumerado aqui. A regra é o que a tabela pratica: em dúvida,
+/// compare a linha com o handler antes de acrescentar um status universal.
 /// </remarks>
 internal static class RespostasEsperadas
 {
@@ -25,10 +25,10 @@ internal static class RespostasEsperadas
             // Sistema & Legal
             [("GET", "/health")] = [200, 500],
             [("GET", "/ready")] = [200, 503, 500],
-            [("GET", "/api/legal/versoes")] = [200, 429, 500],
+            [("GET", "/api/legal/versoes")] = [200, 429],
 
             // Catálogo
-            [("GET", "/api/catalogo")] = [200, 429, 500],
+            [("GET", "/api/catalogo")] = [200, 429],
 
             // Autenticação & Sessão
             [("POST", "/api/auth/solicitar")] = [202, 400, 429],
@@ -42,7 +42,7 @@ internal static class RespostasEsperadas
             [("GET", "/api/auth/google/iniciar")] = [302, 503, 429],
             [("GET", "/api/auth/google/concluir")] = [302, 429],
             [("GET", "/api/auth/google/conectar")] = [302, 401, 403, 503, 429],
-            [("GET", "/api/auth/google/conectar/concluir")] = [302, 429],
+            [("GET", "/api/auth/google/conectar/concluir")] = [302, 403, 429],
             [("GET", "/api/auth/me")] = [200, 429],
             [("PATCH", "/api/auth/perfil")] = [200, 400, 401, 403, 429],
             [("POST", "/api/auth/sair")] = [204, 429],

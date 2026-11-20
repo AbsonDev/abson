@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.RateLimiting;
@@ -368,7 +369,7 @@ public sealed class ContratoTests
                 .Order(StringComparer.Ordinal)
                 .ToArray();
             var listaEsperada = esperados
-                .Select(status => status.ToString(System.Globalization.CultureInfo.InvariantCulture))
+                .Select(status => status.ToString(CultureInfo.InvariantCulture))
                 .Order(StringComparer.Ordinal)
                 .ToArray();
 
@@ -458,13 +459,24 @@ public sealed class ContratoTests
             var chave = (metodo, rota);
             foreach (var resposta in operacao.GetProperty("responses").EnumerateObject())
             {
-                var status = int.Parse(resposta.Name, System.Globalization.CultureInfo.InvariantCulture);
+                if (!int.TryParse(
+                        resposta.Name,
+                        NumberStyles.None,
+                        CultureInfo.InvariantCulture,
+                        out var status))
+                {
+                    violacoes.Add($"{metodo} {rota}: resposta não numérica \"{resposta.Name}\"");
+                    continue;
+                }
+
                 var objeto = resposta.Value;
-                var content = objeto.TryGetProperty("content", out var conteudo) ? conteudo : default;
+                var temConteudo = objeto.TryGetProperty("content", out var content)
+                    && content.ValueKind == JsonValueKind.Object
+                    && content.EnumerateObject().Any();
 
                 if (!RespostasEsperadas.TemCorpo(chave, status))
                 {
-                    if (content.ValueKind != JsonValueKind.Undefined && content.EnumerateObject().Any())
+                    if (temConteudo)
                     {
                         violacoes.Add($"{metodo} {rota} {status}: resposta sem corpo declarou content");
                     }
@@ -497,17 +509,25 @@ public sealed class ContratoTests
                     continue;
                 }
 
+                if (!temConteudo)
+                {
+                    violacoes.Add($"{metodo} {rota} {status}: resposta com corpo sem content");
+                    continue;
+                }
+
                 foreach (var tipo in new[] { RespostasPadrao.TipoProblema, RespostasPadrao.TipoJson })
                 {
                     if (!content.TryGetProperty(tipo, out var midia)
                         || !midia.TryGetProperty("schema", out var schema)
-                        || schema.GetProperty("$ref").GetString() != "#/components/schemas/ErroResponse")
+                        || !schema.TryGetProperty("$ref", out var referencia)
+                        || referencia.GetString() != "#/components/schemas/ErroResponse")
                     {
                         violacoes.Add($"{metodo} {rota} {status}: sem schema ErroResponse em {tipo}");
                     }
                 }
 
-                if (objeto.GetProperty("description").GetString() != RespostasPadrao.ComCorpo(status))
+                if (!objeto.TryGetProperty("description", out var descricao)
+                    || descricao.GetString() != RespostasPadrao.DescricaoComErro(status))
                 {
                     violacoes.Add($"{metodo} {rota} {status}: descrição fora do catálogo");
                 }
