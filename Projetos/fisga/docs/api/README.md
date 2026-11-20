@@ -50,10 +50,10 @@ Commite o arquivo gerado no mesmo PR da mudança de contrato.
   `if (app.Environment.IsDevelopment())`, então `/openapi/v1.json` responde
   apenas no ambiente local. Em produção o documento não é exposto; a fonte é o
   `openapi.json` versionado aqui.
-- **O contrato já expressa acesso, cache e rate limit; falta o resto.** Cada
-  operação declara `security` (cookie de sessão ou token administrativo),
-  `x-cache` e, quando existe, `x-rate-limit`. O que ainda não está no contrato é
-  o status real de sucesso e o schema de erro: o
+- **O contrato já expressa acesso, cache e rate limit; falta o resto.** Toda
+  operação declara `security` — vazio quando a rota é anônima — e `x-cache`; as
+  que têm política declaram também `x-rate-limit`. Ainda faltam os status reais,
+  o schema de erro, o schema de upload e `info`/`servers`: o
   [inventário](inventario.md#lacunas-de-contrato) lista o que resta.
 - **O contrato não traz schemas de resposta.** Os endpoints devolvem
   `Results.Ok(...)` sem metadados `Produces<T>`, então nenhuma operação declara
