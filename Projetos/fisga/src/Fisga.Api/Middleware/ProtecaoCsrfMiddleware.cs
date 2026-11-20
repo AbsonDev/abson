@@ -1,4 +1,5 @@
 using Fisga.Api.Contracts;
+using Fisga.Api.OpenApi;
 
 namespace Fisga.Api.Middleware;
 
@@ -23,7 +24,7 @@ public sealed class ProtecaoCsrfMiddleware(RequestDelegate next, IConfiguration 
                 context.Response.StatusCode = StatusCodes.Status403Forbidden;
                 context.Response.ContentType = "application/problem+json";
                 await context.Response.WriteAsJsonAsync(
-                    new ErroResponse("origem_invalida", "Origem da requisição não permitida."));
+                    new ErroResponse(CodigosDeErro.OrigemInvalida, "Origem da requisição não permitida."));
                 return;
             }
         }

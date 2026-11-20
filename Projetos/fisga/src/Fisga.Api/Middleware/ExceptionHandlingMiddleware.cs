@@ -1,3 +1,4 @@
+using Fisga.Api.OpenApi;
 using Fisga.Application.Abstractions;
 using Fisga.Application.Common;
 using Fisga.Domain.Common;
@@ -20,7 +21,7 @@ public sealed class ExceptionHandlingMiddleware(
         }
         catch (NaoAutenticadoException excecao)
         {
-            await EscreverAsync(context, StatusCodes.Status401Unauthorized, "nao_autenticado", excecao.Message);
+            await EscreverAsync(context, StatusCodes.Status401Unauthorized, CodigosDeErro.NaoAutenticado, excecao.Message);
         }
         catch (RecursoNaoEncontradoException excecao)
         {
@@ -28,7 +29,7 @@ public sealed class ExceptionHandlingMiddleware(
         }
         catch (AcessoNegadoException excecao)
         {
-            await EscreverAsync(context, StatusCodes.Status403Forbidden, "acesso_negado", excecao.Message);
+            await EscreverAsync(context, StatusCodes.Status403Forbidden, CodigosDeErro.AcessoNegado, excecao.Message);
         }
         catch (Exception excecao)
         {
@@ -38,7 +39,7 @@ public sealed class ExceptionHandlingMiddleware(
             await EscreverAsync(
                 context,
                 StatusCodes.Status500InternalServerError,
-                "erro_inesperado",
+                CodigosDeErro.ErroInesperado,
                 "Algo deu errado do nosso lado. Tente novamente em instantes.");
         }
     }

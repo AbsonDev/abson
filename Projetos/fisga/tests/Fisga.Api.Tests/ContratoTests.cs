@@ -1,6 +1,5 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
@@ -35,6 +34,38 @@ public sealed class ContratoTests
         ("POST", "/api/newsletter/enviar"),
         ("GET", "/api/newsletter/preview")
     ];
+
+    // Rotas anônimas por decisão de produto: leitura pública, login, recuperação,
+    // descadastro e saúde. A invariante é a intenção, não a metadata do endpoint —
+    // derivar de IAllowAnonymous faria o teste concordar com qualquer mudança.
+    private static readonly HashSet<(string Metodo, string Rota)> RotasAnonimasPorDecisao =
+    [
+        ("GET", "/api/auth/confirmar"),
+        ("POST", "/api/auth/confirmar-email"),
+        ("POST", "/api/auth/entrar"),
+        ("POST", "/api/auth/esqueci-senha"),
+        ("GET", "/api/auth/google/concluir"),
+        ("GET", "/api/auth/google/disponivel"),
+        ("GET", "/api/auth/google/iniciar"),
+        ("GET", "/api/auth/me"),
+        ("POST", "/api/auth/redefinir-senha"),
+        ("POST", "/api/auth/registrar"),
+        ("POST", "/api/auth/sair"),
+        ("POST", "/api/auth/solicitar"),
+        ("GET", "/api/catalogo"),
+        ("GET", "/api/condicoes"),
+        ("GET", "/api/legal/versoes"),
+        ("GET", "/api/locais/buscar"),
+        ("GET", "/api/locais/reverso"),
+        ("GET", "/api/newsletter/descadastrar"),
+        ("GET", "/api/pescarias/{shareToken}"),
+        ("GET", "/api/pescarias/{shareToken}/pdf"),
+        ("GET", "/api/pescarias/{shareToken}/permissao"),
+        ("GET", "/health"),
+        ("GET", "/ready")
+    ];
+
+    public static TheoryData<string> Dominios => new(Tags.Todas);
 
     private static Task<JsonDocument>? _documento;
 
@@ -216,7 +247,7 @@ public sealed class ContratoTests
                 continue;
             }
 
-            var anonima = Localizar(metodo, rota).Metadata.GetMetadata<IAllowAnonymous>() is not null;
+            var anonima = RotasAnonimasPorDecisao.Contains((metodo, rota));
             if (anonima)
             {
                 Assert.Empty(esquemas);
@@ -226,6 +257,9 @@ public sealed class ContratoTests
                 Assert.Contains("cookieAuth", esquemas);
             }
         }
+
+        Assert.Equal(23, RotasAnonimasPorDecisao.Count);
+        Assert.Equal(2, ComTokenAdmin.Count);
 
         var schemes = documento.RootElement
             .GetProperty("components")
@@ -305,6 +339,183 @@ public sealed class ContratoTests
         Assert.Equal(operacoes.Count - SemRateLimit.Count, comRateLimit);
     }
 
+    [Theory]
+    [MemberData(nameof(Dominios))]
+    public async Task RespostasDeclaradasSaoAsReais(string dominio)
+    {
+        var documento = await LoadAsync();
+        var operacoes = Operacoes(documento)
+            .Where(operacao => Tag(operacao.Operacao) == dominio)
+            .ToList();
+
+        Assert.NotEmpty(operacoes);
+
+        // Acumula todas as violações em vez de abortar na primeira: o gate de
+        // uma tarefa consegue provar que a sua própria área está limpa mesmo
+        // enquanto outra área do contrato ainda falha.
+        var violacoes = new List<string>();
+        foreach (var (metodo, rota, operacao) in operacoes)
+        {
+            var chave = (metodo, rota);
+            if (!RespostasEsperadas.PorOperacao.TryGetValue(chave, out var esperados))
+            {
+                violacoes.Add($"Operação sem status esperado: {metodo} {rota}");
+                continue;
+            }
+
+            var declarados = operacao.GetProperty("responses").EnumerateObject()
+                .Select(resposta => resposta.Name)
+                .Order(StringComparer.Ordinal)
+                .ToArray();
+            var listaEsperada = esperados
+                .Select(status => status.ToString(System.Globalization.CultureInfo.InvariantCulture))
+                .Order(StringComparer.Ordinal)
+                .ToArray();
+
+            if (!listaEsperada.SequenceEqual(declarados))
+            {
+                violacoes.Add(
+                    $"{metodo} {rota}: esperado [{string.Join(", ", listaEsperada)}], " +
+                    $"declarado [{string.Join(", ", declarados)}]");
+            }
+        }
+
+        Assert.Empty(violacoes);
+    }
+
+    [Fact]
+    public void TabelaDeRespostasCobreAs54Operacoes()
+    {
+        Assert.Equal(54, MapaDeOperacoes.Todos.Count);
+        Assert.Equal(
+            MapaDeOperacoes.Todos.Keys.Order(StringComparer.Ordinal),
+            RespostasEsperadas.PorOperacao.Keys
+                .Select(chave => $"{chave.Metodo} {chave.Rota.TrimStart('/')}")
+                .Order(StringComparer.Ordinal));
+    }
+
+    [Theory]
+    [MemberData(nameof(Dominios))]
+    public async Task ErrosUsamUmUnicoSchema(string dominio)
+    {
+        var documento = await LoadAsync();
+        var operacoes = Operacoes(documento)
+            .Where(operacao => Tag(operacao.Operacao) == dominio)
+            .ToList();
+
+        // Acumula todas as violações em vez de abortar na primeira: o gate de
+        // uma tarefa consegue provar que a sua própria área está limpa mesmo
+        // enquanto outra área do contrato ainda falha.
+        var violacoes = new List<string>();
+        foreach (var (metodo, rota, operacao) in operacoes)
+        {
+            var chave = (metodo, rota);
+            foreach (var resposta in operacao.GetProperty("responses").EnumerateObject())
+            {
+                var status = int.Parse(resposta.Name, System.Globalization.CultureInfo.InvariantCulture);
+                var objeto = resposta.Value;
+                var content = objeto.TryGetProperty("content", out var conteudo) ? conteudo : default;
+
+                if (!RespostasEsperadas.TemCorpo(chave, status))
+                {
+                    if (content.ValueKind != JsonValueKind.Undefined && content.EnumerateObject().Any())
+                    {
+                        violacoes.Add($"{metodo} {rota} {status}: resposta sem corpo declarou content");
+                    }
+
+                    if (status == 429)
+                    {
+                        var headers = objeto.TryGetProperty("headers", out var h) ? h : default;
+                        if (headers.ValueKind != JsonValueKind.Object
+                            || !headers.TryGetProperty("Retry-After", out _))
+                        {
+                            violacoes.Add($"{metodo} {rota}: 429 sem header Retry-After");
+                        }
+                    }
+
+                    continue;
+                }
+
+                if (status == 201 || status == 202)
+                {
+                    var headers = objeto.TryGetProperty("headers", out var h) ? h : default;
+                    if (headers.ValueKind != JsonValueKind.Object
+                        || !headers.TryGetProperty("Location", out _))
+                    {
+                        violacoes.Add($"{metodo} {rota}: {status} sem header Location");
+                    }
+                }
+
+                if (status < 400)
+                {
+                    continue;
+                }
+
+                foreach (var tipo in new[] { RespostasPadrao.TipoProblema, RespostasPadrao.TipoJson })
+                {
+                    if (!content.TryGetProperty(tipo, out var midia)
+                        || !midia.TryGetProperty("schema", out var schema)
+                        || schema.GetProperty("$ref").GetString() != "#/components/schemas/ErroResponse")
+                    {
+                        violacoes.Add($"{metodo} {rota} {status}: sem schema ErroResponse em {tipo}");
+                    }
+                }
+
+                if (objeto.GetProperty("description").GetString() != RespostasPadrao.ComCorpo(status))
+                {
+                    violacoes.Add($"{metodo} {rota} {status}: descrição fora do catálogo");
+                }
+            }
+        }
+
+        Assert.Empty(violacoes);
+    }
+
+    [Fact]
+    public async Task UploadsDescrevemMultipart()
+    {
+        var documento = await LoadAsync();
+
+        foreach (var (metodo, rota) in new[]
+                 {
+                     ("POST", "/api/midia"),
+                     ("POST", "/api/especies/sugerir")
+                 })
+        {
+            var operacao = Operacoes(documento).Single(o => o.Metodo == metodo && o.Rota == rota).Operacao;
+            var multipart = operacao.GetProperty("requestBody")
+                .GetProperty("content")
+                .GetProperty("multipart/form-data");
+            var referencia = multipart.GetProperty("schema").GetProperty("$ref").GetString()!;
+            var nome = referencia["#/components/schemas/".Length..];
+            var schema = documento.RootElement
+                .GetProperty("components")
+                .GetProperty("schemas")
+                .GetProperty(nome);
+
+            Assert.True(schema.GetProperty("properties").TryGetProperty("arquivo", out var arquivo));
+            Assert.Contains("arquivo", schema.GetProperty("required").EnumerateArray().Select(v => v.GetString()));
+
+            var arquivoRef = arquivo.GetProperty("$ref").GetString()!;
+            var arquivoSchema = documento.RootElement
+                .GetProperty("components")
+                .GetProperty("schemas")
+                .GetProperty(arquivoRef["#/components/schemas/".Length..]);
+            Assert.Equal("string", arquivoSchema.GetProperty("type").GetString());
+            Assert.Equal("binary", arquivoSchema.GetProperty("format").GetString());
+        }
+    }
+
+    [Fact]
+    public void CatalogoDeCodigosDeErroEhCoerente()
+    {
+        Assert.Equal(17, CodigosDeErro.Todos.Count);
+        foreach (var codigo in CodigosDeErro.Todos)
+        {
+            Assert.Matches("^[a-z]+(_[a-z]+)+$", codigo);
+        }
+    }
+
     /// <summary>
     /// Carrega /openapi/v1.json uma única vez por execução de teste; os
     /// invariantes leem o mesmo documento.
@@ -329,6 +540,13 @@ public sealed class ContratoTests
                 .EnumerateObject()
                 .Select(metodo => (metodo.Name.ToUpperInvariant(), caminho.Name, metodo.Value)))
             .ToList();
+
+    // Cada operação pertence a exatamente uma tag; sem ela o domínio não é
+    // identificável e a theory não tem como isolar a sua área.
+    private static string? Tag(JsonElement operacao) =>
+        operacao.TryGetProperty("tags", out var tags) && tags.GetArrayLength() == 1
+            ? tags[0].GetString()
+            : null;
 
     private static string[] Esquemas(JsonElement security) =>
         security.EnumerateArray()

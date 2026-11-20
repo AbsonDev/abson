@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using Fisga.Api.Caching;
 using Fisga.Api.RateLimiting;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Configuration;
@@ -45,6 +46,8 @@ public sealed partial class ContratoOperationTransformer(IConfiguration configur
         operation.Security = Seguranca(context, $"{metodo} {rota}");
 
         EscreverExtensoes(operation, context, $"{metodo} {rota}");
+
+        NormalizarRespostas(operation);
 
         return Task.CompletedTask;
     }
@@ -104,6 +107,57 @@ public sealed partial class ContratoOperationTransformer(IConfiguration configur
             ["requests"] = requests,
             ["windowSeconds"] = PoliticasDeTaxa.JanelaEmSegundos
         });
+    }
+
+    // Respostas são geradas pela metadata Produces<T>; aqui elas ganham o que a
+    // metadata não expressa: o espelho do schema de erro em application/json,
+    // descrição por status e os headers Location/Retry-After.
+    private static void NormalizarRespostas(OpenApiOperation operation)
+    {
+        if (operation.Responses is null)
+        {
+            return;
+        }
+
+        foreach (var (codigo, resposta) in operation.Responses)
+        {
+            if (!int.TryParse(codigo, out var status) || resposta is not OpenApiResponse concreta)
+            {
+                continue;
+            }
+
+            concreta.Headers ??= new Dictionary<string, IOpenApiHeader>();
+
+            if (status is StatusCodes.Status201Created or StatusCodes.Status202Accepted)
+            {
+                concreta.Headers["Location"] = new OpenApiHeader
+                {
+                    Description = "URL do recurso criado ou do próximo passo.",
+                    Schema = new OpenApiSchema { Type = JsonSchemaType.String, Format = "uri" }
+                };
+            }
+
+            if (status == StatusCodes.Status429TooManyRequests)
+            {
+                concreta.Headers["Retry-After"] = new OpenApiHeader
+                {
+                    Description = RejeicaoDoRateLimiter.DescricaoDoHeader,
+                    Schema = new OpenApiSchema { Type = JsonSchemaType.Integer, Format = "int32" }
+                };
+            }
+
+            if (concreta.Content?.ContainsKey(RespostasPadrao.TipoProblema) == true)
+            {
+                concreta.Content.TryAdd(
+                    RespostasPadrao.TipoJson,
+                    concreta.Content[RespostasPadrao.TipoProblema]);
+                concreta.Description = RespostasPadrao.ComCorpo(status);
+            }
+            else if (RespostasPadrao.SemCorpo(status) is { } descricao)
+            {
+                concreta.Description = descricao;
+            }
+        }
     }
 
     // A ordem da regra importa: a rota administrativa é AllowAnonymous no
