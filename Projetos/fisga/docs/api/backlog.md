@@ -109,6 +109,10 @@ aditivos de resposta.
   permanece vazio.
 - **Aceite:** resposta `429` traz `Retry-After` em segundos; teste cobre; portal
   documenta o header.
+- **Nota:** as duas rotas administrativas de newsletter continuam isentas de
+  rate limit por decisão do A1 (o contrato declara a ausência). O token é
+  comparado em tempo constante, mas não há throttling: se o abuso virar
+  problema, a política dedicada para essas rotas entra junto com este item.
 - **Est.:** 0,5 d · **Dep.:** —
 
 ### F1.9 — Comportamentos que surpreendem
