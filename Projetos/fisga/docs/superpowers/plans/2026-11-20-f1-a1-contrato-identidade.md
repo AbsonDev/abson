@@ -68,8 +68,12 @@ Arquivo com `[Collection("api")]`, um `JsonDocument` carregado uma vez (lazy est
 
 ```csharp
 [Fact] public void TodaOperacaoTemOperationIdDoMapa()
-// 54 operações; cada (metodo, rota) resolve em MapaDeOperacoes.Para; ids únicos;
+// 54 operações; cada (metodo, rota) resolve em MapaDeOperacoes.Para; ids únicos.
+
+[Fact] public void ResumosSaoDeNegocio()
 // summary não vazio e sem "Fisga.Api" / "{" / "(" / "Endpoints".
+// Teste separado do de operationId: cada task tem seu próprio GREEN. Ele fica
+// vermelho até a Task 3c, que é quem escreve os últimos resumos.
 
 [Fact] public void TagsSaoDeDominio()
 // tags de todas as operações ⊆ Tags.Todas (13); nenhuma "Fisga.Api";
@@ -133,7 +137,7 @@ builder.Services.AddOpenApi(opcoes =>
 - [ ] **Step 3: Rodar o teste 1**
 
 Run: `dotnet test Fisga.slnx -c Release --filter TodaOperacaoTemOperationIdDoMapa`
-Expected: PASS. Os outros três continuam vermelhos.
+Expected: PASS. Os demais continuam vermelhos (tags, segurança, extensões, resumos).
 
 - [ ] **Step 4: Commit**
 
@@ -163,7 +167,7 @@ git commit -m "feat(fisga): operationId congelado por operação no contrato"
 
 - [ ] **Step 2: Escrever resumo e descrição das operações do grupo**
 
-Regra: `summary` = uma frase de propósito no imperativo ("Cria uma pescaria", "Lista os locais do pescador"); `description` = uma ou duas frases de comportamento (o que muda, o que exige, o que retorna diferente). Proibido citar nome de handler, tipo C# ou `(HttpContext …)`.
+Regra: `summary` = uma frase de propósito no imperativo ("Cria uma pescaria", "Lista os locais do pescador"); `description` = uma ou duas frases de comportamento (o que muda, o que exige, o que retorna diferente). Proibido citar nome de handler, tipo C# ou `(HttpContext …)`, e **proibido parênteses no `summary`** — o teste rejeita `(` e `{`.
 
 - [ ] **Step 3: Rodar e ver falhar o restante**
 
@@ -223,10 +227,10 @@ git commit -m "docs(fisga): tags e descrições de autenticação, conta e siste
 
 Nas duas administrativas, a descrição diz que exigem `X-Admin-Token` e respondem `404` quando o token é inválido (o A3 detalha o porquê).
 
-- [ ] **Step 2: Rodar os testes 1 e 2**
+- [ ] **Step 2: Rodar os testes**
 
 Run: `dotnet test Fisga.slnx -c Release --filter "FullyQualifiedName~ContratoTests"`
-Expected: 1 e 2 PASS.
+Expected: operationId e tags PASS; `ResumosSaoDeNegocio` fecha aqui, junto com as últimas operações.
 
 - [ ] **Step 3: Commit**
 

@@ -92,29 +92,30 @@ Convenção `verboRecurso` em camelCase, português, congelada em
 `src/Fisga.Api/OpenApi/MapaDeOperacoes.cs`:
 
 ```text
-criarPescaria          obterPescariaPorToken  obterPermissaoPescaria
-obterPescariaDoDono    atualizarPescaria      exportarPescariaPdf
+confirmarLink          confirmarEmail         entrarComSenha
+esquecerSenha          concluirLoginGoogle    conectarGoogle
+concluirConexaoGoogle  googleDisponivel       iniciarLoginGoogle
+obterSessao            atualizarPerfil        redefinirSenha
+registrarConta         sair                   sairDeTodos
+solicitarLink          obterCatalogo          obterCondicoes
+compararCondicoes      excluirConta           registrarConsentimento
+exportarConta          alterarSenha           listarSessoes
+obterDiario            sugerirEspecies        versoesLegais
 listarLocais           criarLocal             atualizarLocal
 excluirLocal           definirLocalPadrao     buscarLocais
-reverterCoordenadas    listarPontos           criarPonto
-atualizarPonto         excluirPonto           listarTrilhas
-criarTrilha            atualizarTrilha        excluirTrilha
-obterDiario            enviarMidia            sugerirEspecies
-obterCondicoes         compararCondicoes      obterCatalogo
-solicitarLink          confirmarLink          registrarConta
-entrarComSenha         sair                   sairDeTodos
-confirmarEmail         esquecerSenha          redefinirSenha
-iniciarLoginGoogle     concluirLoginGoogle    googleDisponivel
-conectarGoogle         concluirConexaoGoogle  obterSessao
-atualizarPerfil        obterConsentimento     registrarConsentimento
-alterarSenha           listarSessoes          exportarConta
-excluirConta           versoesLegais          enviarNewsletter
-preverNewsletter       descadastrarNewsletter obterSaude
-obterProntidao
+reverterCoordenadas    enviarMidia            descadastrarNewsletter
+enviarNewsletter       preverNewsletter       criarPescaria
+atualizarPescaria      obterPescariaDoDono    obterPescariaPorToken
+exportarPescariaPdf    obterPermissaoPescaria listarPontos
+criarPonto             atualizarPonto         excluirPonto
+listarTrilhas          criarTrilha            atualizarTrilha
+excluirTrilha          obterSaude             obterProntidao
 ```
 
 São exatamente 54 nomes, um por operação do spec. `GET /api/pescarias` não
-existe — não há `listarPescarias`.
+existe — não há `listarPescarias`. `GET /api/conta` também não existe: o
+consentimento é registrado por `POST /api/conta/consentimento`
+(`registrarConsentimento`) e não tem operação de leitura própria.
 
 O mapa é a fonte: um teste falha se o spec tiver operação sem entrada, entrada
 sem operação ou `operationId` duplicado.
