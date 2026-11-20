@@ -79,7 +79,22 @@ public sealed class ContratoTests
                 $"operationId vazio: {metodo} {rota}");
 
             operationIds.Add(operationId.GetString()!);
+        }
 
+        Assert.Equal(operacoes.Count, operationIds.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(operacoes.Count, MapaDeOperacoes.Todos.Count);
+    }
+
+    [Fact]
+    public async Task ResumosSaoDeNegocio()
+    {
+        var documento = await LoadAsync();
+        var operacoes = Operacoes(documento);
+
+        Assert.Equal(54, operacoes.Count);
+
+        foreach (var (metodo, rota, operacao) in operacoes)
+        {
             Assert.True(
                 operacao.TryGetProperty("summary", out var resumo),
                 $"Operação sem summary: {metodo} {rota}");
@@ -95,9 +110,6 @@ public sealed class ContratoTests
                 Assert.DoesNotContain(jargao, textoDoResumo);
             }
         }
-
-        Assert.Equal(operacoes.Count, operationIds.Distinct(StringComparer.Ordinal).Count());
-        Assert.Equal(operacoes.Count, MapaDeOperacoes.Todos.Count);
     }
 
     [Fact]
