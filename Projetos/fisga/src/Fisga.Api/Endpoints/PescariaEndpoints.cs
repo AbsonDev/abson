@@ -142,7 +142,7 @@ public static class PescariaEndpoints
                 var arquivo = await pdf.GerarAsync(shareToken, url, ct);
                 return Results.File(arquivo.Conteudo, "application/pdf", arquivo.NomeDoArquivo);
             })
-            .Produces(200, null, "application/pdf")
+            .Produces<byte[]>(200, "application/pdf")
             .ComErro(404)
             .SemCorpo(429)
             .AllowAnonymous()

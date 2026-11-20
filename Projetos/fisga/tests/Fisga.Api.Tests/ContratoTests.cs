@@ -572,6 +572,52 @@ public sealed class ContratoTests
         }
     }
 
+    // O PDF público existe para baixar o arquivo: o 200 precisa declarar o media
+    // type e um schema binário. Produces(200, null, ...) compila mas o gerador
+    // descarta o content quando o tipo é nulo, então o media type sumiria do
+    // contrato sem ninguém notar. O schema pode ser inline ou $ref para um schema
+    // de string; o formato binário/byte é o que descreve o download.
+    [Fact]
+    public async Task PdfPublicoDeclaraMediaTypeBinario()
+    {
+        var documento = await LoadAsync();
+        var operacao = Operacoes(documento)
+            .Single(o => o.Metodo == "GET" && o.Rota == "/api/pescarias/{shareToken}/pdf").Operacao;
+
+        Assert.True(
+            operacao.GetProperty("responses").TryGetProperty("200", out var resposta),
+            "GET /api/pescarias/{shareToken}/pdf sem resposta 200");
+
+        Assert.True(
+            resposta.TryGetProperty("content", out var content),
+            "200 do PDF sem content");
+        Assert.Equal(JsonValueKind.Object, content.ValueKind);
+        Assert.True(
+            content.TryGetProperty("application/pdf", out var pdf),
+            "200 do PDF sem content application/pdf");
+
+        Assert.True(
+            pdf.TryGetProperty("schema", out var schema),
+            "200 do PDF sem schema em application/pdf");
+
+        if (schema.TryGetProperty("$ref", out var referencia))
+        {
+            var nome = referencia.GetString()!;
+            Assert.StartsWith("#/components/schemas/", nome);
+            schema = documento.RootElement
+                .GetProperty("components")
+                .GetProperty("schemas")
+                .GetProperty(nome["#/components/schemas/".Length..]);
+        }
+
+        Assert.Equal("string", schema.GetProperty("type").GetString());
+
+        var formato = schema.TryGetProperty("format", out var valor) ? valor.GetString() : null;
+        Assert.True(
+            formato is "binary" or "byte",
+            $"Schema do PDF deveria ser binário/byte, veio format: {formato ?? "<ausente>"}");
+    }
+
     [Fact]
     public void CatalogoDeCodigosDeErroEhCoerente()
     {
