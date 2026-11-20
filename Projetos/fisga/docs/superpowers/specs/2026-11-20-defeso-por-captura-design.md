@@ -59,8 +59,8 @@ captura, com a espécie e a UF daquela linha.
 
 1. Remover `<div id="defeso-alerta">` da etapa 2.
 2. Em `criarLinhaCaptura()`, incluir
-   `<div class="defeso-alerta oculto" role="note" data-defeso></div>` no fim da linha,
-   antes de `.captura-fotos`, para ocupar a largura toda do card.
+   `<div class="defeso-alerta oculto" role="note"></div>` antes de `.captura-fotos`,
+   para ocupar a largura toda do card.
 3. `atualizarDefeso()` passa a iterar `listaCapturas.querySelectorAll('.linha-captura')`
    e preencher o aviso de cada linha quando `espécie` (trim) e UF (2 letras) existirem.
    Usa `textContent` para a espécie e limpa com `replaceChildren()`.
