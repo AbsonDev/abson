@@ -49,7 +49,7 @@ public static class VisionEndpoints
             .RequireRateLimiting("midia")
             .WithTags(Tags.Especies)
             .WithSummary("Sugere a espécie a partir da foto enviada")
-            .WithDescription("Exige sessão e recebe a foto como formulário multipart no campo arquivo, com até 5 MB em JPG, PNG ou WebP. Retorna 400 com o motivo quando o formulário, o arquivo ou o tipo não são aceitos.");
+            .WithDescription("Exige sessão e recebe a foto como formulário multipart no campo arquivo. Retorna 200 com a sugestão de espécie. Retorna 400 com o motivo quando o formulário está ausente, o arquivo está ausente, a foto passa de 5 MB ou o tipo não é aceito (JPG, PNG ou WebP).");
 
         return app;
     }
