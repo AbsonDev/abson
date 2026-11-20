@@ -14,4 +14,10 @@ public sealed record MidiaResponse(string Url);
 /// </summary>
 public sealed record FormularioDeFoto(Microsoft.AspNetCore.Http.IFormFile Arquivo);
 
+/// <summary>Corpo de <c>GET /health</c>.</summary>
+public sealed record SaudeResponse(string Status, string Version);
+
+/// <summary>Corpo de <c>GET /ready</c>.</summary>
+public sealed record ProntidaoResponse(string Status);
+
 public sealed record ErroResponse(string Codigo, string Detalhe);

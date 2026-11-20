@@ -9,6 +9,7 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
 using Fisga.Api;
 using Fisga.Api.Caching;
+using Fisga.Api.Contracts;
 using Fisga.Api.Endpoints;
 using Fisga.Api.Middleware;
 using Fisga.Api.Observabilidade;
@@ -153,6 +154,8 @@ if (app.Environment.IsDevelopment())
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok", version = versao }))
     .AllowAnonymous()
+    .Produces<SaudeResponse>(200)
+    .ComErro(500)
     .WithTags(Tags.Sistema)
     .WithSummary("Verifica se a API está no ar")
     .WithDescription("Funciona sem sessão. Retorna 200 com o status e a versão publicada, sem consultar o banco.");
@@ -161,6 +164,9 @@ app.MapGet("/ready", async (FisgaDbContext db, CancellationToken ct) =>
             ? Results.Ok(new { status = "ready" })
             : Results.StatusCode(StatusCodes.Status503ServiceUnavailable))
     .AllowAnonymous()
+    .Produces<ProntidaoResponse>(200)
+    .SemCorpo(503)
+    .ComErro(500)
     .WithTags(Tags.Sistema)
     .WithSummary("Verifica se a API está pronta para atender")
     .WithDescription("Funciona sem sessão. Consulta o banco e retorna 200 quando a conexão funciona ou 503 quando não funciona.");

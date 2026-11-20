@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Fisga.Api.Caching;
+using Fisga.Api.Contracts;
 using Fisga.Api.OpenApi;
 using Fisga.Api.RateLimiting;
 
@@ -569,6 +570,36 @@ public sealed class ContratoTests
                 .GetProperty(arquivoRef["#/components/schemas/".Length..]);
             Assert.Equal("string", arquivoSchema.GetProperty("type").GetString());
             Assert.Equal("binary", arquivoSchema.GetProperty("format").GetString());
+        }
+    }
+
+    // Saúde e prontidão respondem JSON de verdade: Produces(200, null, …) compila
+    // mas o gerador descarta o content quando o tipo é nulo, e o contrato passaria
+    // a dizer "200 sem corpo". O $ref prova que o schema publicado é o record certo.
+    [Fact]
+    public async Task SaudeDeclaraCorpoJson()
+    {
+        var documento = await LoadAsync();
+
+        foreach (var (metodo, rota, schema) in new[]
+                 {
+                     ("GET", "/health", nameof(SaudeResponse)),
+                     ("GET", "/ready", nameof(ProntidaoResponse))
+                 })
+        {
+            var operacao = Operacoes(documento).Single(o => o.Metodo == metodo && o.Rota == rota).Operacao;
+            var resposta = operacao.GetProperty("responses").GetProperty("200");
+            var json = resposta.GetProperty("content").GetProperty(RespostasPadrao.TipoJson);
+
+            Assert.Equal(
+                $"#/components/schemas/{schema}",
+                json.GetProperty("schema").GetProperty("$ref").GetString());
+            Assert.True(
+                documento.RootElement
+                    .GetProperty("components")
+                    .GetProperty("schemas")
+                    .TryGetProperty(schema, out _),
+                $"components.schemas.{schema} ausente");
         }
     }
 
