@@ -61,7 +61,7 @@ public static class AuthEndpoints
             .RequireRateLimiting("auth")
             .WithTags(Tags.Autenticacao)
             .WithSummary("Solicita um link de acesso por e-mail")
-            .WithDescription("Funciona sem sessão. Retorna 202 sempre com a mesma mensagem genérica, sem revelar se o e-mail existe; em ambiente local, sem envio de e-mail, o link volta na resposta.");
+            .WithDescription("Funciona sem sessão. Retorna 202 sempre com a mesma mensagem genérica, sem revelar se o e-mail existe; em ambiente local, sem envio de e-mail, o link volta na resposta. O `Location` aponta para `/api/auth/me`, que só reporta sessão autenticada depois de o link ser confirmado.");
 
         app.MapPost("/api/auth/registrar", async (
                 RegistrarRequest entrada,
@@ -93,7 +93,7 @@ public static class AuthEndpoints
             .RequireRateLimiting("auth")
             .WithTags(Tags.Autenticacao)
             .WithSummary("Cria uma conta com e-mail e senha")
-            .WithDescription("Funciona sem sessão. Retorna 201 e envia um link de confirmação; a conta só entra depois de confirmar o e-mail.");
+            .WithDescription("Funciona sem sessão. Retorna 201 e envia um link de confirmação; a conta só entra depois de confirmar o e-mail. O `Location` aponta para `/api/auth/me`, que só reporta sessão autenticada depois de o link ser confirmado.");
 
         app.MapPost("/api/auth/entrar", async (
                 EntrarRequest entrada,
@@ -389,7 +389,6 @@ public static class AuthEndpoints
             })
             .SemCorpo(302)
             .SemCorpo(429)
-            .ComErro(500)
             .AllowAnonymous()
             .RequireRateLimiting("auth")
             .WithTags(Tags.Autenticacao)

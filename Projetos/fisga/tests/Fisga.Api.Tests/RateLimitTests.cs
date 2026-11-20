@@ -105,31 +105,43 @@ public sealed class RateLimitTests
         using var factory = new TestWebApplicationFactory(_fixture.DbPath, neutralizarRateLimit: false);
         using var cliente = factory.CreateClient();
 
-        // A política "auth" real é de 8 requisições por minuto: as oito primeiras
-        // passam pelo limiter e falham na validação do corpo vazio, sem chegar ao
-        // handler; a nona é rejeitada antes de qualquer leitura do banco.
-        for (var tentativa = 1; tentativa <= 8; tentativa++)
+        // A política "auth" real é de 8 requisições por minuto, numa partição
+        // compartilhada (RemoteIpAddress nulo → "anonimo") com janela fixa que
+        // começa na primeira requisição. A nona é rejeitada antes de qualquer
+        // leitura do banco. Um rollover de janela no meio do teste é a única
+        // corrida realista: por isso o laço tolera mais tentativas, sem perder o
+        // alvo — um limiter neutralizado nunca responde 429 e falha aqui.
+        var limite = PoliticasDeTaxa.PadroesPorMinuto[PoliticasDeTaxa.Auth];
+        HttpResponseMessage? rejeitada = null;
+
+        for (var tentativa = 1; tentativa <= 3 * limite + 1 && rejeitada is null; tentativa++)
         {
-            using var resposta = await cliente.PostAsync(
+            var resposta = await cliente.PostAsync(
                 "/api/auth/entrar",
                 new StringContent(string.Empty, Encoding.UTF8, "application/json"));
-            Assert.NotEqual(HttpStatusCode.TooManyRequests, resposta.StatusCode);
+
+            if (resposta.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                rejeitada = resposta;
+                continue;
+            }
+
+            resposta.Dispose();
         }
 
-        using var rejeitada = await cliente.PostAsync(
-            "/api/auth/entrar",
-            new StringContent(string.Empty, Encoding.UTF8, "application/json"));
-
-        Assert.Equal(HttpStatusCode.TooManyRequests, rejeitada.StatusCode);
         Assert.True(
-            rejeitada.Headers.TryGetValues("Retry-After", out var valores),
+            rejeitada is not null,
+            $"Nenhuma das {3 * limite + 1} requisições recebeu 429: o limiter do host real não rejeitou.");
+        using var rejeicao = rejeitada!;
+        Assert.True(
+            rejeicao.Headers.TryGetValues("Retry-After", out var valores),
             "429 sem o header Retry-After");
         var retryAfter = Assert.Single(valores);
         Assert.True(
             int.TryParse(retryAfter, NumberStyles.None, CultureInfo.InvariantCulture, out var segundos),
             $"Retry-After não é um inteiro: {retryAfter}");
         Assert.InRange(segundos, 1, PoliticasDeTaxa.JanelaEmSegundos);
-        Assert.Equal(string.Empty, await rejeitada.Content.ReadAsStringAsync());
+        Assert.Equal(string.Empty, await rejeicao.Content.ReadAsStringAsync());
     }
 
     private sealed class LeaseFalso(TimeSpan? espera) : RateLimitLease

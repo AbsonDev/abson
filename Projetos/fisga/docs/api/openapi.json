@@ -103,7 +103,7 @@
           "Autenticação"
         ],
         "summary": "Solicita um link de acesso por e-mail",
-        "description": "Funciona sem sessão. Retorna 202 sempre com a mesma mensagem genérica, sem revelar se o e-mail existe; em ambiente local, sem envio de e-mail, o link volta na resposta.",
+        "description": "Funciona sem sessão. Retorna 202 sempre com a mesma mensagem genérica, sem revelar se o e-mail existe; em ambiente local, sem envio de e-mail, o link volta na resposta. O `Location` aponta para `/api/auth/me`, que só reporta sessão autenticada depois de o link ser confirmado.",
         "operationId": "solicitarLink",
         "requestBody": {
           "content": {
@@ -178,7 +178,7 @@
           "Autenticação"
         ],
         "summary": "Cria uma conta com e-mail e senha",
-        "description": "Funciona sem sessão. Retorna 201 e envia um link de confirmação; a conta só entra depois de confirmar o e-mail.",
+        "description": "Funciona sem sessão. Retorna 201 e envia um link de confirmação; a conta só entra depois de confirmar o e-mail. O `Location` aponta para `/api/auth/me`, que só reporta sessão autenticada depois de o link ser confirmado.",
         "operationId": "registrarConta",
         "requestBody": {
           "content": {
@@ -549,21 +549,6 @@
                 "schema": {
                   "type": "integer",
                   "format": "int32"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erro inesperado (`codigo`: `erro_inesperado`). Tente novamente em instantes.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErroResponse"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErroResponse"
                 }
               }
             }

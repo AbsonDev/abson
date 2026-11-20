@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.OpenApi;
 
@@ -162,13 +163,28 @@ public sealed partial class ContratoOperationTransformer(IConfiguration configur
                 concreta.Content.TryAdd(
                     RespostasPadrao.TipoJson,
                     new OpenApiMediaType { Schema = problema.Schema, Example = problema.Example });
-                concreta.Description = RespostasPadrao.DescricaoComErro(status);
+
+                // A metadata gera a reason phrase ("Bad Request", "OK") como
+                // descrição; isso é o default do framework, não uma descrição
+                // deliberada. Só nesse caso o catálogo escreve por cima.
+                if (DescricaoVaziaOuPadrao(concreta, status))
+                {
+                    concreta.Description = RespostasPadrao.DescricaoComErro(status);
+                }
             }
-            else if (RespostasPadrao.DescricaoSemSchema(status) is { } descricao)
+            else if (RespostasPadrao.DescricaoSemSchema(status) is { } descricao
+                     && DescricaoVaziaOuPadrao(concreta, status))
             {
                 concreta.Description = descricao;
             }
         }
+    }
+
+    private static bool DescricaoVaziaOuPadrao(OpenApiResponse resposta, int status)
+    {
+        var descricaoPadrao = ReasonPhrases.GetReasonPhrase(status);
+        return string.IsNullOrWhiteSpace(resposta.Description)
+            || string.Equals(resposta.Description, descricaoPadrao, StringComparison.Ordinal);
     }
 
     // A ordem da regra importa: a rota administrativa é AllowAnonymous no

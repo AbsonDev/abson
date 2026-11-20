@@ -11,11 +11,12 @@ namespace Fisga.Api.Tests;
 /// O <c>500</c> só entra onde o handler tem um ramo de falha próprio que
 /// termina nele: a chamada a provedor externo (<c>/api/condicoes</c>,
 /// <c>/api/condicoes/comparar</c>, <c>/api/especies/sugerir</c> e as duas rotas
-/// de newsletter) e a invariante que <c>/api/auth/confirmar</c> verifica depois
-/// de confirmar o link. Exceção de persistência — ou qualquer outra exceção não
-/// tratada — não é caminho da operação: é o <c>500</c> genérico do
+/// de newsletter). Invariante interna — as quatro <c>InvalidOperationException</c>
+/// de <c>/api/auth/registrar</c>, <c>/api/auth/entrar</c>,
+/// <c>/api/auth/confirmar</c> e <c>/api/conta/senha</c> — é o mesmo caminho de
+/// uma exceção de persistência: o <c>500</c> genérico do
 /// <c>ExceptionHandlingMiddleware</c>, documentado uma única vez em
-/// <c>inventario.md</c> § Regras transversais. A checagem de saúde do banco em
+/// <c>inventario.md</c> § Regras transversais, não um status por operação. A checagem de saúde do banco em
 /// <c>/ready</c> também é caminho próprio, mas termina em <c>503</c>
 /// (<c>CanConnectAsync</c> converte a falha em <c>false</c> dentro do handler);
 /// por isso a linha declara só esse status, não o <c>500</c>. Pelo mesmo motivo,
@@ -44,7 +45,7 @@ internal static class RespostasEsperadas
             [("POST", "/api/auth/confirmar-email")] = [200, 400, 429],
             [("POST", "/api/auth/esqueci-senha")] = [202, 400, 429],
             [("POST", "/api/auth/redefinir-senha")] = [200, 400, 429],
-            [("GET", "/api/auth/confirmar")] = [302, 429, 500],
+            [("GET", "/api/auth/confirmar")] = [302, 429],
             [("GET", "/api/auth/google/disponivel")] = [200, 429],
             [("GET", "/api/auth/google/iniciar")] = [302, 503, 429],
             [("GET", "/api/auth/google/concluir")] = [302, 429],

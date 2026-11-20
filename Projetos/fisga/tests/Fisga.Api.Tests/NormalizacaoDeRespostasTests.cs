@@ -1,5 +1,6 @@
 using Fisga.Api.OpenApi;
 using Fisga.Api.RateLimiting;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.OpenApi;
 
 namespace Fisga.Api.Tests;
@@ -18,7 +19,9 @@ public sealed class NormalizacaoDeRespostasTests
         var mediaTypeOriginal = new OpenApiMediaType { Schema = schemaDoErro };
         var resposta = new OpenApiResponse
         {
-            Description = "descrição gerada pela metadata",
+            // A metadata Produces<T> gera a reason phrase como descrição: é o
+            // default do framework, então o catálogo pode escrever por cima.
+            Description = ReasonPhrases.GetReasonPhrase(400),
             Content = new Dictionary<string, OpenApiMediaType>
             {
                 [RespostasPadrao.TipoProblema] = mediaTypeOriginal
@@ -73,6 +76,39 @@ public sealed class NormalizacaoDeRespostasTests
         ContratoOperationTransformer.NormalizarRespostas(Operacao("204", resposta));
 
         Assert.Equal(RespostasPadrao.DescricaoSemSchema(204), resposta.Description);
+        Assert.Null(resposta.Headers);
+        Assert.Null(resposta.Content);
+    }
+
+    // A descrição do catálogo é default, não imposição: um handler que escreve a
+    // própria descrição de erro mantém o texto, mas o espelho em JSON continua
+    // sendo necessário para o cliente.
+    [Fact]
+    public void DescricaoEspecificaNaoEhSobrescritaPeloCatalogo()
+    {
+        var resposta = new OpenApiResponse
+        {
+            Description = "detalhe de negócio",
+            Content = new Dictionary<string, OpenApiMediaType>
+            {
+                [RespostasPadrao.TipoProblema] = new() { Schema = new OpenApiSchema() }
+            }
+        };
+
+        ContratoOperationTransformer.NormalizarRespostas(Operacao("400", resposta));
+
+        Assert.Equal("detalhe de negócio", resposta.Description);
+        Assert.True(resposta.Content!.ContainsKey(RespostasPadrao.TipoJson));
+    }
+
+    [Fact]
+    public void DescricaoEspecificaDeStatusSemSchemaEhPreservada()
+    {
+        var resposta = new OpenApiResponse { Description = "sem corpo por decisão" };
+
+        ContratoOperationTransformer.NormalizarRespostas(Operacao("204", resposta));
+
+        Assert.Equal("sem corpo por decisão", resposta.Description);
         Assert.Null(resposta.Headers);
         Assert.Null(resposta.Content);
     }
