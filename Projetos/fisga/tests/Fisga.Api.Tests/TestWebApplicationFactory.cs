@@ -15,10 +15,12 @@ namespace Fisga.Api.Tests;
 public sealed class TestWebApplicationFactory : WebApplicationFactory<Program>
 {
     private readonly string _dbPath;
+    private readonly bool _neutralizarRateLimit;
 
-    public TestWebApplicationFactory(string dbPath)
+    public TestWebApplicationFactory(string dbPath, bool neutralizarRateLimit = true)
     {
         _dbPath = dbPath;
+        _neutralizarRateLimit = neutralizarRateLimit;
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -40,17 +42,22 @@ public sealed class TestWebApplicationFactory : WebApplicationFactory<Program>
             // "leitura", etc.) usam RemoteIpAddress, que é nulo no host em memória →
             // chave única "anonimo" compartilhada entre todas as classes; isso rejeitaria
             // requisições legítimas a partir da 9ª chamada na mesma janela. Reconfiguramos
-            // os mesmos nomes como "sem limite" para não quebrar os endpoints.
-            services.RemoveAll<IConfigureOptions<RateLimiterOptions>>();
-            services.Configure<RateLimiterOptions>(options =>
+            // os mesmos nomes como "sem limite" para não quebrar os endpoints. Com
+            // neutralizarRateLimit: false a configuração real do Program prevalece, que é
+            // o que prova o comportamento do pipeline de produção.
+            if (_neutralizarRateLimit)
             {
-                RejeicaoDoRateLimiter.Configurar(options);
-                options.AddPolicy<string>("leitura", _ => RateLimitPartition.GetNoLimiter(string.Empty));
-                options.AddPolicy<string>("escrita", _ => RateLimitPartition.GetNoLimiter(string.Empty));
-                options.AddPolicy<string>("auth", _ => RateLimitPartition.GetNoLimiter(string.Empty));
-                options.AddPolicy<string>("pdf", _ => RateLimitPartition.GetNoLimiter(string.Empty));
-                options.AddPolicy<string>("midia", _ => RateLimitPartition.GetNoLimiter(string.Empty));
-            });
+                services.RemoveAll<IConfigureOptions<RateLimiterOptions>>();
+                services.Configure<RateLimiterOptions>(options =>
+                {
+                    RejeicaoDoRateLimiter.Configurar(options);
+                    options.AddPolicy<string>(PoliticasDeTaxa.Leitura, _ => RateLimitPartition.GetNoLimiter(string.Empty));
+                    options.AddPolicy<string>(PoliticasDeTaxa.Escrita, _ => RateLimitPartition.GetNoLimiter(string.Empty));
+                    options.AddPolicy<string>(PoliticasDeTaxa.Auth, _ => RateLimitPartition.GetNoLimiter(string.Empty));
+                    options.AddPolicy<string>(PoliticasDeTaxa.Pdf, _ => RateLimitPartition.GetNoLimiter(string.Empty));
+                    options.AddPolicy<string>(PoliticasDeTaxa.Midia, _ => RateLimitPartition.GetNoLimiter(string.Empty));
+                });
+            }
         });
     }
 }

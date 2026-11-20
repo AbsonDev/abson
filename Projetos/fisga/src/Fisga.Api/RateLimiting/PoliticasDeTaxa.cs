@@ -28,10 +28,11 @@ public static class PoliticasDeTaxa
             [Midia] = 30
         };
 
-    public static int LimiteDe(IConfiguration configuracao, string politica) =>
+    public static int LimiteDe(IConfiguration configuracao, string politica, string? contexto = null) =>
         configuracao.GetValue<int?>($"RateLimiting:{politica}")
         ?? (PadroesPorMinuto.TryGetValue(politica, out var padrao)
             ? padrao
             : throw new InvalidOperationException(
-                $"Política sem limite conhecido: {politica}"));
+                $"Política sem limite conhecido: {politica}"
+                + (contexto is null ? string.Empty : $" ({contexto})")));
 }

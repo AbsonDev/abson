@@ -10,7 +10,7 @@ namespace Fisga.Api.RateLimiting;
 /// </summary>
 public static class RejeicaoDoRateLimiter
 {
-    public static string DescricaoDoHeader =>
+    public const string DescricaoDoHeader =
         "Segundos até a próxima janela de requisições.";
 
     public static void Configurar(RateLimiterOptions opcoes)

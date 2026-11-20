@@ -96,7 +96,7 @@ public sealed partial class ContratoOperationTransformer(IConfiguration configur
             ?? throw new InvalidOperationException(
                 $"Política de rate limit sem nome: {identificacaoDaOperacao}");
 
-        var requests = PoliticasDeTaxa.LimiteDe(configuration, nome);
+        var requests = PoliticasDeTaxa.LimiteDe(configuration, nome, identificacaoDaOperacao);
 
         operation.Extensions["x-rate-limit"] = new JsonNodeExtension(new JsonObject
         {

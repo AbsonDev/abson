@@ -288,17 +288,15 @@ public sealed class ContratoTests
                 $"Operação sem política de rate limit: {metodo} {rota}");
             var nomeDaPolitica = politica!.PolicyName;
             Assert.NotNull(nomeDaPolitica);
-            Assert.True(
-                PoliticasDeTaxa.PadroesPorMinuto.TryGetValue(nomeDaPolitica, out var limitePadrao),
-                $"Política sem limite padrão conhecido: {nomeDaPolitica} ({metodo} {rota})");
 
             Assert.True(
                 operacao.TryGetProperty("x-rate-limit", out var rateLimit),
                 $"Operação sem x-rate-limit: {metodo} {rota}");
             Assert.Equal(nomeDaPolitica, rateLimit.GetProperty("policy").GetString());
 
-            var esperado = configuracao.GetValue<int?>($"RateLimiting:{nomeDaPolitica}") ?? limitePadrao;
-            Assert.Equal(esperado, rateLimit.GetProperty("requests").GetInt32());
+            Assert.Equal(
+                PoliticasDeTaxa.LimiteDe(configuracao, nomeDaPolitica),
+                rateLimit.GetProperty("requests").GetInt32());
             Assert.Equal(
                 PoliticasDeTaxa.JanelaEmSegundos,
                 rateLimit.GetProperty("windowSeconds").GetInt32());
