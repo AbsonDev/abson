@@ -117,8 +117,8 @@ public sealed class ContratoTests
                 $"Operação sem tags: {metodo} {rota}");
             Assert.Equal(JsonValueKind.Array, tags.ValueKind);
             Assert.True(
-                tags.GetArrayLength() > 0,
-                $"Operação sem tag de domínio: {metodo} {rota}");
+                tags.GetArrayLength() == 1,
+                $"Operação deve ter exatamente uma tag de domínio: {metodo} {rota}");
 
             foreach (var tag in tags.EnumerateArray())
             {
@@ -145,8 +145,13 @@ public sealed class ContratoTests
     public async Task SegurancaExpressaPorOperacao()
     {
         var documento = await LoadAsync();
+        var operacoes = Operacoes(documento);
 
-        foreach (var (metodo, rota, operacao) in Operacoes(documento))
+        // A asserção de contagem impede que os invariantes passem vazios caso
+        // o documento publicado perca "paths" mas mantenha os schemes.
+        Assert.Equal(54, operacoes.Count);
+
+        foreach (var (metodo, rota, operacao) in operacoes)
         {
             // Chave presente mesmo quando o array é vazio: segurança é decisão
             // explícita por operação, nunca omissão.

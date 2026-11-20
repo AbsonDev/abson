@@ -15,5 +15,5 @@ public static class MapaDeOperacoes
         Mapa.TryGetValue(Chave(metodo, rota), out var operationId) ? operationId : null;
 
     private static string Chave(string metodo, string rota) =>
-        $"{metodo.ToUpperInvariant()} {rota.Trim('/')}";
+        $"{metodo.ToUpperInvariant()} {rota.TrimStart('/')}";
 }
