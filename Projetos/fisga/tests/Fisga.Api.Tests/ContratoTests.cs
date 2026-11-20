@@ -394,6 +394,52 @@ public sealed class ContratoTests
                 .Order(StringComparer.Ordinal));
     }
 
+    // A política de rate limit é publicada por operação em x-rate-limit; um 429
+    // que pode acontecer e não está declarado é contrato mentindo, e um 429
+    // declarado sem política é ruído. O lado do x-rate-limit vem do documento
+    // publicado, não da tabela: se a metadata do endpoint ou a tabela derivarem,
+    // este teste acusa.
+    [Fact]
+    public async Task RateLimitEContratoDeclaram429Juntos()
+    {
+        var documento = await LoadAsync();
+        var operacoes = Operacoes(documento);
+
+        Assert.Equal(54, operacoes.Count);
+
+        // Acumula todas as violações em vez de abortar na primeira: o gate de
+        // uma tarefa consegue provar que a sua própria área está limpa mesmo
+        // enquanto outra área do contrato ainda falha.
+        var violacoes = new List<string>();
+        var comRateLimit = 0;
+        foreach (var (metodo, rota, operacao) in operacoes)
+        {
+            var comPolitica = operacao.TryGetProperty("x-rate-limit", out _);
+            var declara429 = RespostasEsperadas.PorOperacao.TryGetValue((metodo, rota), out var esperados)
+                && esperados.Contains(429);
+
+            if (comPolitica)
+            {
+                comRateLimit++;
+            }
+
+            if (comPolitica && !declara429)
+            {
+                violacoes.Add($"{metodo} {rota}: publica x-rate-limit e não declara 429");
+            }
+            else if (!comPolitica && declara429)
+            {
+                violacoes.Add($"{metodo} {rota}: declara 429 sem política de rate limit");
+            }
+        }
+
+        Assert.Empty(violacoes);
+        Assert.Equal(50, comRateLimit);
+        Assert.Equal(
+            50,
+            RespostasEsperadas.PorOperacao.Values.Count(esperados => esperados.Contains(429)));
+    }
+
     [Theory]
     [MemberData(nameof(Dominios))]
     public async Task ErrosUsamUmUnicoSchema(string dominio)

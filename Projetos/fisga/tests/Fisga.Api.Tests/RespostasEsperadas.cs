@@ -4,6 +4,19 @@ namespace Fisga.Api.Tests;
 /// Status que cada operação devolve de fato, medidos no handler e no middleware.
 /// Não é a intenção do contrato: é a lista que o contrato precisa declarar.
 /// </summary>
+/// <remarks>
+/// A tabela enumera o que a operação produz: status do handler, guardas de
+/// consentimento e autenticação, um <c>403</c> específico da operação e o
+/// <c>429</c>, porque o contrato expõe a política de rate limit em cada operação.
+/// Duas respostas universais de middleware são documentadas uma única vez em
+/// <c>inventario.md</c> § Regras transversais e não se repetem aqui:
+/// <c>403 origem_invalida</c> do <c>ProtecaoCsrfMiddleware</c> (toda mutação
+/// <c>/api</c> com <c>Origin</c> externa) e <c>500 erro_inesperado</c> do
+/// <c>ExceptionHandlingMiddleware</c> (qualquer exceção não tratada). O
+/// <c>500</c> só aparece por operação quando existe caminho de falha além do
+/// genérico (provedores externos: condições, comparar, espécies, newsletter,
+/// health, ready).
+/// </remarks>
 internal static class RespostasEsperadas
 {
     public static IReadOnlyDictionary<(string Metodo, string Rota), int[]> PorOperacao { get; } =
@@ -12,10 +25,10 @@ internal static class RespostasEsperadas
             // Sistema & Legal
             [("GET", "/health")] = [200, 500],
             [("GET", "/ready")] = [200, 503, 500],
-            [("GET", "/api/legal/versoes")] = [200, 500],
+            [("GET", "/api/legal/versoes")] = [200, 429, 500],
 
             // Catálogo
-            [("GET", "/api/catalogo")] = [200, 500],
+            [("GET", "/api/catalogo")] = [200, 429, 500],
 
             // Autenticação & Sessão
             [("POST", "/api/auth/solicitar")] = [202, 400, 429],
@@ -24,11 +37,11 @@ internal static class RespostasEsperadas
             [("POST", "/api/auth/confirmar-email")] = [200, 400, 429],
             [("POST", "/api/auth/esqueci-senha")] = [202, 400, 429],
             [("POST", "/api/auth/redefinir-senha")] = [200, 400, 429],
-            [("GET", "/api/auth/confirmar")] = [302, 500],
+            [("GET", "/api/auth/confirmar")] = [302, 429, 500],
             [("GET", "/api/auth/google/disponivel")] = [200, 429],
             [("GET", "/api/auth/google/iniciar")] = [302, 503, 429],
             [("GET", "/api/auth/google/concluir")] = [302, 429],
-            [("GET", "/api/auth/google/conectar")] = [302, 401, 503, 429],
+            [("GET", "/api/auth/google/conectar")] = [302, 401, 403, 503, 429],
             [("GET", "/api/auth/google/conectar/concluir")] = [302, 429],
             [("GET", "/api/auth/me")] = [200, 429],
             [("PATCH", "/api/auth/perfil")] = [200, 400, 401, 403, 429],
@@ -44,9 +57,9 @@ internal static class RespostasEsperadas
 
             // Pescarias & Compartilhamento
             [("POST", "/api/pescarias")] = [201, 400, 401, 403, 429],
-            [("GET", "/api/pescarias/{shareToken}")] = [200, 404],
-            [("GET", "/api/pescarias/{shareToken}/permissao")] = [200, 404],
-            [("GET", "/api/pescarias/{id}/editar")] = [200, 401, 403, 404],
+            [("GET", "/api/pescarias/{shareToken}")] = [200, 404, 429],
+            [("GET", "/api/pescarias/{shareToken}/permissao")] = [200, 404, 429],
+            [("GET", "/api/pescarias/{id}/editar")] = [200, 401, 403, 404, 429],
             [("PUT", "/api/pescarias/{id}")] = [200, 400, 401, 403, 404, 429],
             [("GET", "/api/pescarias/{shareToken}/pdf")] = [200, 404, 429],
 
