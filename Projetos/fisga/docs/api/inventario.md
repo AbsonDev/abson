@@ -151,12 +151,15 @@ consentimento pendente se aplica.
 
 | Método e rota | Acesso | Rate limit | Cache | Sucesso real | Erros a documentar |
 | --- | --- | --- | --- | --- | --- |
-| `GET /health` | P | — | no-store | `200` `{status, version}` | `500` |
-| `GET /ready` | P | — | no-store | `200` `{status:"ready"}` | `503` (banco inacessível), `500` |
+| `GET /health` | P | — | no-store | `200` `{status, version}` | — |
+| `GET /ready` | P | — | no-store | `200` `{status:"ready"}` | `503` (banco inacessível) |
 | `GET /api/legal/versoes` | P | leitura | public 1 dia | `200` `VersoesLegaisResponse` | `429` |
 
 `/health` é liveness (não toca o banco). `/ready` executa `CanConnectAsync` e
-responde `503` quando o banco não responde.
+responde `503` quando o banco não responde. Nenhum dos dois tem caminho de
+falha próprio que termine em `500`: uma exceção ali é o `500` genérico do
+`ExceptionHandlingMiddleware`, descrito uma vez nas regras transversais acima e
+por isso fora das linhas.
 
 ### Catálogo
 

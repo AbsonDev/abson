@@ -155,7 +155,6 @@ if (app.Environment.IsDevelopment())
 app.MapGet("/health", () => Results.Ok(new SaudeResponse("ok", versao)))
     .AllowAnonymous()
     .Produces<SaudeResponse>(200)
-    .ComErro(500)
     .WithTags(Tags.Sistema)
     .WithSummary("Verifica se a API está no ar")
     .WithDescription("Funciona sem sessão. Retorna 200 com o status e a versão publicada, sem consultar o banco.");
@@ -166,7 +165,6 @@ app.MapGet("/ready", async (FisgaDbContext db, CancellationToken ct) =>
     .AllowAnonymous()
     .Produces<ProntidaoResponse>(200)
     .SemCorpo(503)
-    .ComErro(500)
     .WithTags(Tags.Sistema)
     .WithSummary("Verifica se a API está pronta para atender")
     .WithDescription("Funciona sem sessão. Consulta o banco e retorna 200 quando a conexão funciona ou 503 quando não funciona.");

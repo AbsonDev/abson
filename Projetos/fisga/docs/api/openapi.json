@@ -23,21 +23,6 @@
                 }
               }
             }
-          },
-          "500": {
-            "description": "Erro inesperado (`codigo`: `erro_inesperado`). Tente novamente em instantes.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErroResponse"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErroResponse"
-                }
-              }
-            }
           }
         },
         "security": [ ],
@@ -65,21 +50,6 @@
           },
           "503": {
             "description": "Serviço indisponível. Corpo vazio."
-          },
-          "500": {
-            "description": "Erro inesperado (`codigo`: `erro_inesperado`). Tente novamente em instantes.",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErroResponse"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErroResponse"
-                }
-              }
-            }
           }
         },
         "security": [ ],
@@ -662,7 +632,7 @@
             "description": "Redireciona o navegador para outra URL."
           },
           "503": {
-            "description": "Serviço indisponível no momento.",
+            "description": "Serviço indisponível no momento. Corpo `ErroResponse` com o motivo.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -775,7 +745,7 @@
             }
           },
           "503": {
-            "description": "Serviço indisponível no momento.",
+            "description": "Serviço indisponível no momento. Corpo `ErroResponse` com o motivo.",
             "content": {
               "application/problem+json": {
                 "schema": {

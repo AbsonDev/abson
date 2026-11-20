@@ -1421,6 +1421,33 @@ quando há corpo; schemas de sucesso vindos de `Fisga.Application`), o guia de
 endpoint (sem `413`; registro em `RespostasEsperadas`/`RotasAnonimasPorDecisao`
 e `NotFoundSemCorpo`) e o `docs/INDEX.md`, que passa a indexar este plano.
 
+#### Segunda rodada da revisão (PR-Agent, 2026-11-20)
+
+**A regra do `500` mentia sobre o banco.** O `<remarks>` de
+`RespostasEsperadas` dizia que o `500` entra "onde a operação tem caminho de
+falha próprio (provedor externo, banco, saúde)". "Banco" lê como qualquer
+persistência, o que poria `500` em quase toda escrita — mas a tabela só o tem
+em `/api/condicoes*`, `/api/especies/sugerir`, `/api/auth/confirmar` e nas duas
+rotas de newsletter. A regra agora nomeia o caminho real (chamada a provedor
+externo e a invariante pós-confirmação) e diz explicitamente que exceção de
+persistência é o `500` genérico do `ExceptionHandlingMiddleware`, não um status
+da operação.
+
+**`/health` não tinha caminho de `500`.** O handler só serializa
+`VersaoDaAplicacao.Resolver`; o `500` declarado ali era o genérico, que a regra
+diz para não enumerar. Saiu do handler e da tabela (`[200]`). Mesma conclusão
+para `/ready`: `CanConnectAsync` trata a falha de banco e o handler responde
+`503` sem corpo, então o `500` da linha também era só o genérico — removido
+(a linha fica `[200, 503]`), e o `503` continua declarado. `inventario.md`
+acompanhou: as duas linhas de Sistema & Legal perderam o `500` e o texto diz que
+o único `500` possível ali é o transversal.
+
+**Os dois `503` se contradiziam.** `DescricaoComErro(503)` dizia "Serviço
+indisponível no momento." e `DescricaoSemSchema(503)` dizia "Corpo vazio." O
+leitor não sabia se havia corpo. A descrição com corpo agora diz o que publica:
+"Serviço indisponível no momento. Corpo `ErroResponse` com o motivo." A sem
+corpo continua sendo a de `/ready`.
+
 ---
 
 ## Verificação final do pacote

@@ -30,7 +30,8 @@ public static class RespostasPadrao
         StatusCodes.Status404NotFound => "Recurso não encontrado.",
         StatusCodes.Status500InternalServerError =>
             $"Erro inesperado (`codigo`: `{CodigosDeErro.ErroInesperado}`). Tente novamente em instantes.",
-        StatusCodes.Status503ServiceUnavailable => "Serviço indisponível no momento.",
+        StatusCodes.Status503ServiceUnavailable =>
+            "Serviço indisponível no momento. Corpo `ErroResponse` com o motivo.",
         _ => throw new InvalidOperationException($"Status sem descrição de erro com corpo: {status}")
     };
 

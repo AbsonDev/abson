@@ -8,11 +8,18 @@ namespace Fisga.Api.Tests;
 /// A tabela enumera o que a operação produz: status do handler, guardas de
 /// consentimento e autenticação, um <c>403</c> específico da operação e o
 /// <c>429</c>, porque o contrato expõe a política de rate limit em cada operação.
-/// O <c>500</c> só entra onde a operação tem caminho de falha próprio (provedor
-/// externo, banco, saúde) — não é o <c>500</c> genérico do
-/// <c>ExceptionHandlingMiddleware</c>, que vale para qualquer exceção não
-/// tratada e é documentado uma única vez em <c>inventario.md</c> § Regras
-/// transversais. Pelo mesmo motivo, o <c>403 origem_invalida</c> do
+/// O <c>500</c> só entra onde o handler tem um ramo de falha próprio que
+/// termina nele: a chamada a provedor externo (<c>/api/condicoes</c>,
+/// <c>/api/condicoes/comparar</c>, <c>/api/especies/sugerir</c> e as duas rotas
+/// de newsletter) e a invariante que <c>/api/auth/confirmar</c> verifica depois
+/// de confirmar o link. Exceção de persistência — ou qualquer outra exceção não
+/// tratada — não é caminho da operação: é o <c>500</c> genérico do
+/// <c>ExceptionHandlingMiddleware</c>, documentado uma única vez em
+/// <c>inventario.md</c> § Regras transversais. A checagem de saúde do banco em
+/// <c>/ready</c> também é caminho próprio, mas termina em <c>503</c>
+/// (<c>CanConnectAsync</c> converte a falha em <c>false</c> dentro do handler);
+/// por isso a linha declara só esse status, não o <c>500</c>. Pelo mesmo motivo,
+/// o <c>403 origem_invalida</c> do
 /// <c>ProtecaoCsrfMiddleware</c> (toda mutação <c>/api</c> com <c>Origin</c>
 /// externa) nunca é enumerado aqui. A regra é o que a tabela pratica: em dúvida,
 /// compare a linha com o handler antes de acrescentar um status universal.
@@ -23,8 +30,8 @@ internal static class RespostasEsperadas
         new Dictionary<(string Metodo, string Rota), int[]>
         {
             // Sistema & Legal
-            [("GET", "/health")] = [200, 500],
-            [("GET", "/ready")] = [200, 503, 500],
+            [("GET", "/health")] = [200],
+            [("GET", "/ready")] = [200, 503],
             [("GET", "/api/legal/versoes")] = [200, 429],
 
             // Catálogo
