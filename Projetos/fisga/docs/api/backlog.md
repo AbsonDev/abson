@@ -133,6 +133,7 @@ aditivos de resposta.
 
 ### F2.1 — Esqueleto do site e gerador da referência
 
+- **Issue:** [#73](https://github.com/AbsonDev/abson/issues/73)
 - **Escopo:** `Projetos/fisga/docs-site/` em Astro estático; gerador
   `scripts/gerar-referencia.mjs` com as cinco falhas de build da
   [arquitetura](portal.md#pipeline-de-build); layout base com design system do
@@ -144,6 +145,7 @@ aditivos de resposta.
 
 ### F2.2 — Conteúdo de prosa
 
+- **Issue:** [#74](https://github.com/AbsonDev/abson/issues/74)
 - **Escopo:** `docs/publico/`: visão geral, guia rápido, 4 guias de conceito,
   erros, limites, glossário e privacidade.
 - **Aceite:** guia rápido executado do zero por alguém fora do time; checklist
@@ -152,6 +154,7 @@ aditivos de resposta.
 
 ### F2.3 — Busca, SEO e acessibilidade
 
+- **Issue:** [#75](https://github.com/AbsonDev/abson/issues/75)
 - **Escopo:** Pagefind, `sitemap.xml`, `robots.txt`, metadados por página,
   revisão AA.
 - **Aceite:** busca acha operação por nome de rota e por conceito; Lighthouse
@@ -160,6 +163,7 @@ aditivos de resposta.
 
 ### F2.4 — CI do portal
 
+- **Issue:** [#76](https://github.com/AbsonDev/abson/issues/76)
 - **Escopo:** output `portal` no job `changes`, job `docs-site` no
   `fisga-pipeline.yml`, `gate` dependendo dele.
 - **Aceite:** PR que muda só documentação roda `docs-site` e não roda `api`;
@@ -168,6 +172,7 @@ aditivos de resposta.
 
 ### F2.5 — Deploy e smoke
 
+- **Issue:** [#77](https://github.com/AbsonDev/abson/issues/77)
 - **Escopo:** app estático no Coolify, DNS `docs.fisga.abson.tech`, secret
   `COOLIFY_WEBHOOK_FISGA_DOCS`, job `deploy-docs` em paralelo a
   `deploy-api`/`deploy-web`, `/health.txt` com SHA.
