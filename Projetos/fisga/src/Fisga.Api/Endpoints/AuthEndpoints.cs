@@ -806,6 +806,10 @@ public static class AuthEndpoints
                 await consentimento.RegistrarAsync(usuarioId, termosVersao, privacidadeVersao, ct);
                 return Results.NoContent();
             })
+            .SemCorpo(204)
+            .ComErro(400)
+            .ComErro(401)
+            .SemCorpo(429)
             .RequireRateLimiting("escrita")
             .WithTags(Tags.Conta)
             .WithSummary("Registra o aceite dos termos vigentes")
@@ -917,6 +921,11 @@ public static class AuthEndpoints
 
                 return Results.NoContent();
             })
+            .SemCorpo(204)
+            .ComErro(400)
+            .ComErro(401)
+            .ComErro(403)
+            .SemCorpo(429)
             .RequireRateLimiting("escrita")
             .WithTags(Tags.Conta)
             .WithSummary("Define ou troca a senha da conta")
@@ -933,6 +942,10 @@ public static class AuthEndpoints
                     .Select(sessao => SessaoResponse.De(sessao, http.SessaoAtual()?.Id))
                     .ToList());
             })
+            .Produces<List<SessaoResponse>>(200)
+            .ComErro(401)
+            .ComErro(403)
+            .SemCorpo(429)
             .RequireRateLimiting("leitura")
             .WithTags(Tags.Conta)
             .WithSummary("Lista os dispositivos com sessão aberta")
@@ -951,6 +964,10 @@ public static class AuthEndpoints
                     "application/json",
                     $"fisga-conta-{DateTime.UtcNow:yyyyMMdd}.json");
             })
+            .Produces<ExportacaoDaConta>(200, "application/json")
+            .ComErro(401)
+            .ComErro(403)
+            .SemCorpo(429)
             .RequireRateLimiting("leitura")
             .WithTags(Tags.Conta)
             .WithSummary("Exporta os dados da conta")
@@ -971,6 +988,11 @@ public static class AuthEndpoints
                 LimparCookie(http, opcoes);
                 return Results.NoContent();
             })
+            .SemCorpo(204)
+            .ComErro(400)
+            .ComErro(401)
+            .ComErro(403)
+            .SemCorpo(429)
             .RequireRateLimiting("escrita")
             .WithTags(Tags.Conta)
             .WithSummary("Exclui a conta e os dados")
