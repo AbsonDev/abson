@@ -2,6 +2,7 @@ using Microsoft.Extensions.Options;
 using Fisga.Api.Caching;
 using Fisga.Api.Contracts;
 using Fisga.Api.Observabilidade;
+using Fisga.Api.OpenApi;
 using Fisga.Application.Abstractions;
 using Fisga.Application.Catalogo;
 using Fisga.Application.Documentos;
@@ -17,9 +18,12 @@ public static class PescariaEndpoints
         app.MapGet("/api/catalogo", (ICatalogoDePesca catalogo) => Results.Ok(catalogo.ObterCatalogo()))
             .AllowAnonymous()
             .RequireRateLimiting("leitura")
-            .WithMetadata(CachePolicy.Public(86400));
+            .WithMetadata(CachePolicy.Public(86400))
+            .WithTags(Tags.Catalogo)
+            .WithSummary("Consulta o catálogo de pesca")
+            .WithDescription("Devolve as espécies, iscas, ambientes e demais opções usadas no registro, além de um exemplo de pescaria. Aberto sem sessão e mantido em cache por um dia.");
 
-        var grupo = app.MapGroup("/api/pescarias");
+        var grupo = app.MapGroup("/api/pescarias").WithTags(Tags.Pescarias);
 
         grupo.MapPost("", async (
                 EntradaDePescaria entrada,
@@ -37,7 +41,9 @@ public static class PescariaEndpoints
                     $"/api/pescarias/{salva.ShareToken}",
                     new PescariaSalvaResponse(salva.Id, salva.ShareToken, url));
             })
-            .RequireRateLimiting("escrita");
+            .RequireRateLimiting("escrita")
+            .WithSummary("Registra uma pescaria")
+            .WithDescription("Exige sessão. Devolve o identificador, o token público e o endereço da página de compartilhamento.");
 
         grupo.MapGet("/{shareToken}", async (
                 string shareToken,
@@ -52,7 +58,9 @@ public static class PescariaEndpoints
             })
             .AllowAnonymous()
             .RequireRateLimiting("leitura")
-            .WithMetadata(CachePolicy.Private(30));
+            .WithMetadata(CachePolicy.Private(30))
+            .WithSummary("Abre uma pescaria compartilhada")
+            .WithDescription("Funciona sem sessão e devolve 404 quando o token não existe. O dono recebe a pescaria com permissão de edição.");
 
         grupo.MapGet("/{shareToken}/permissao", async (
                 string shareToken,
@@ -66,7 +74,9 @@ public static class PescariaEndpoints
                     : Results.Ok(new PermissaoResponse(pescaria.Id, pescaria.PodeEditar));
             })
             .AllowAnonymous()
-            .RequireRateLimiting("leitura");
+            .RequireRateLimiting("leitura")
+            .WithSummary("Consulta a permissão de edição de uma pescaria")
+            .WithDescription("Funciona sem sessão e devolve 404 quando o token não existe. Informa se o visitante atual pode editar a pescaria.");
 
         grupo.MapGet("/{id:guid}/editar", async (
                 Guid id,
@@ -78,7 +88,9 @@ public static class PescariaEndpoints
                 var pescaria = await servico.ObterDoUsuarioAsync(id, usuarioId, ct);
                 return Results.Ok(pescaria);
             })
-            .RequireRateLimiting("leitura");
+            .RequireRateLimiting("leitura")
+            .WithSummary("Carrega uma pescaria para edição")
+            .WithDescription("Exige sessão e aceita apenas o dono da pescaria. Devolve 404 quando a pescaria não existe ou pertence a outra conta.");
 
         grupo.MapPut("/{id:guid}", async (
                 Guid id,
@@ -92,7 +104,9 @@ public static class PescariaEndpoints
                 Metricas.PescariaAtualizada(entrada.Ambiente);
                 return Results.Ok(pescaria);
             })
-            .RequireRateLimiting("escrita");
+            .RequireRateLimiting("escrita")
+            .WithSummary("Atualiza uma pescaria")
+            .WithDescription("Exige sessão e aceita apenas o dono da pescaria. Devolve 404 quando a pescaria não existe ou pertence a outra conta.");
 
         grupo.MapGet("/{shareToken}/pdf", async (
                 string shareToken,
@@ -106,7 +120,9 @@ public static class PescariaEndpoints
             })
             .AllowAnonymous()
             .RequireRateLimiting("pdf")
-            .WithMetadata(CachePolicy.Private(300));
+            .WithMetadata(CachePolicy.Private(300))
+            .WithSummary("Exporta uma pescaria em PDF")
+            .WithDescription("Funciona sem sessão e devolve o arquivo pronto para baixar. Retorna 404 quando o token não existe.");
 
         app.MapGet("/api/diario", async (
                 HttpContext http,
@@ -117,7 +133,10 @@ public static class PescariaEndpoints
                 var resultado = await diario.ObterAsync(usuarioId, ct);
                 return Results.Ok(resultado);
             })
-            .RequireRateLimiting("leitura");
+            .RequireRateLimiting("leitura")
+            .WithTags(Tags.Diario)
+            .WithSummary("Consulta o diário do pescador")
+            .WithDescription("Exige sessão e reúne as pescarias da conta em ordem de data, com as capturas de cada uma.");
 
         return app;
     }
@@ -160,7 +179,10 @@ public static class PescariaEndpoints
                 Metricas.MidiaEnviada(arquivo.ContentType, arquivo.Length);
                 return Results.Ok(new MidiaResponse(url));
             })
-            .RequireRateLimiting("midia");
+            .RequireRateLimiting("midia")
+            .WithTags(Tags.Midia)
+            .WithSummary("Envia uma foto")
+            .WithDescription("Exige sessão e recebe a imagem como formulário multipart, com até 5 MB em JPG, PNG ou WebP. Devolve o endereço público da foto.");
 
         return app;
     }

@@ -1,3 +1,4 @@
+using Fisga.Api.OpenApi;
 using Fisga.Application.Trilhas;
 
 namespace Fisga.Api.Endpoints;
@@ -6,7 +7,7 @@ public static class TrilhasEndpoints
 {
     public static IEndpointRouteBuilder MapTrilhasEndpoints(this IEndpointRouteBuilder app)
     {
-        var grupo = app.MapGroup("/api/trilhas");
+        var grupo = app.MapGroup("/api/trilhas").WithTags(Tags.Trilhas);
 
         grupo.MapGet("", async (
                 HttpContext http,
@@ -17,7 +18,9 @@ public static class TrilhasEndpoints
                 var lista = await servico.ListarAsync(usuarioId, ct);
                 return Results.Ok(lista);
             })
-            .RequireRateLimiting("leitura");
+            .RequireRateLimiting("leitura")
+            .WithSummary("Lista as trilhas privadas")
+            .WithDescription("Exige sessão e devolve apenas as trilhas da conta, da mais recente para a mais antiga.");
 
         grupo.MapPost("", async (
                 EntradaDeTrilha entrada,
@@ -29,7 +32,9 @@ public static class TrilhasEndpoints
                 var trilha = await servico.CriarAsync(entrada, usuarioId, ct);
                 return Results.Created($"/api/trilhas/{trilha.Id}", trilha);
             })
-            .RequireRateLimiting("escrita");
+            .RequireRateLimiting("escrita")
+            .WithSummary("Salva uma trilha privada")
+            .WithDescription("Exige sessão. Cada conta pode manter até cem trilhas privadas.");
 
         grupo.MapPut("/{id:guid}", async (
                 Guid id,
@@ -42,7 +47,9 @@ public static class TrilhasEndpoints
                 var trilha = await servico.AtualizarAsync(id, entrada, usuarioId, ct);
                 return Results.Ok(trilha);
             })
-            .RequireRateLimiting("escrita");
+            .RequireRateLimiting("escrita")
+            .WithSummary("Atualiza uma trilha privada")
+            .WithDescription("Exige sessão e aceita apenas o dono da trilha. Retorna 404 quando a trilha não existe.");
 
         grupo.MapDelete("/{id:guid}", async (
                 Guid id,
@@ -54,7 +61,9 @@ public static class TrilhasEndpoints
                 await servico.ExcluirAsync(id, usuarioId, ct);
                 return Results.NoContent();
             })
-            .RequireRateLimiting("escrita");
+            .RequireRateLimiting("escrita")
+            .WithSummary("Exclui uma trilha privada")
+            .WithDescription("Exige sessão e aceita apenas o dono da trilha. Retorna 204 quando a trilha é removida.");
 
         return app;
     }

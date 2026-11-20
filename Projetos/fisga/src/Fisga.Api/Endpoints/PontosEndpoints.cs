@@ -1,3 +1,4 @@
+using Fisga.Api.OpenApi;
 using Fisga.Application.Pontos;
 using Fisga.Domain.Pontos;
 
@@ -7,7 +8,7 @@ public static class PontosEndpoints
 {
     public static IEndpointRouteBuilder MapPontosEndpoints(this IEndpointRouteBuilder app)
     {
-        var grupo = app.MapGroup("/api/pontos");
+        var grupo = app.MapGroup("/api/pontos").WithTags(Tags.Pontos);
 
         grupo.MapGet("", async (
                 HttpContext http,
@@ -18,7 +19,9 @@ public static class PontosEndpoints
                 var lista = await servico.ListarAsync(usuarioId, ct);
                 return Results.Ok(lista);
             })
-            .RequireRateLimiting("leitura");
+            .RequireRateLimiting("leitura")
+            .WithSummary("Lista os pontos privados")
+            .WithDescription("Exige sessão e devolve apenas os pontos da conta, do mais recente para o mais antigo.");
 
         grupo.MapPost("", async (
                 EntradaDePonto entrada,
@@ -30,7 +33,9 @@ public static class PontosEndpoints
                 var ponto = await servico.CriarAsync(entrada, usuarioId, ct);
                 return Results.Created($"/api/pontos/{ponto.Id}", ponto);
             })
-            .RequireRateLimiting("escrita");
+            .RequireRateLimiting("escrita")
+            .WithSummary("Salva um ponto privado")
+            .WithDescription("Exige sessão. Cada conta pode manter até duzentos pontos privados.");
 
         grupo.MapPut("/{id:guid}", async (
                 Guid id,
@@ -43,7 +48,9 @@ public static class PontosEndpoints
                 var ponto = await servico.AtualizarAsync(id, entrada, usuarioId, ct);
                 return Results.Ok(ponto);
             })
-            .RequireRateLimiting("escrita");
+            .RequireRateLimiting("escrita")
+            .WithSummary("Atualiza um ponto privado")
+            .WithDescription("Exige sessão e aceita apenas o dono do ponto. Retorna 404 quando o ponto não existe.");
 
         grupo.MapDelete("/{id:guid}", async (
                 Guid id,
@@ -55,7 +62,9 @@ public static class PontosEndpoints
                 await servico.ExcluirAsync(id, usuarioId, ct);
                 return Results.NoContent();
             })
-            .RequireRateLimiting("escrita");
+            .RequireRateLimiting("escrita")
+            .WithSummary("Exclui um ponto privado")
+            .WithDescription("Exige sessão e aceita apenas o dono do ponto. Retorna 204 quando o ponto é removido.");
 
         return app;
     }
