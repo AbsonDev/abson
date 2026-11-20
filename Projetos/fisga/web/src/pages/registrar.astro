@@ -302,8 +302,6 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
           preencher mesmo quando você “só sabe que estava bom”.
         </div>
 
-        <div id="defeso-alerta" class="defeso-alerta oculto" role="note"></div>
-
         <div class="etapa-acoes">
           <button class="btn btn--contorno" type="button" data-voltar>Voltar</button>
           <button class="btn btn--primario" type="button" data-avancar>Continuar</button>
@@ -525,6 +523,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
     const MAX_FOTOS = 4;
     const uploadsPorLinha = new WeakMap();
     let sequenciaUploads = 0;
+    let sequenciaDefeso = 0;
     let exifDaSelecaoTentado = false;
 
     class SessaoExpirada extends Error {}
@@ -702,6 +701,7 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         <input class="captura-isca" type="text" list="lista-iscas" placeholder="Isca" autocomplete="off" aria-label="Isca" />
         <label class="captura-solto"><input type="checkbox" class="captura-solto-check" /> Solto</label>
         <button class="botao-icone remover" type="button" aria-label="Remover captura">×</button>
+        <div class="defeso-alerta oculto" role="note"></div>
         <div class="captura-fotos">
           <label class="captura-foto-adicionar">
             <input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" multiple />
@@ -713,6 +713,9 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
         </div>
         <div class="sugestoes-especie" aria-live="polite"></div>
       `;
+
+      const alertaDefeso = linha.querySelector<HTMLElement>('.defeso-alerta');
+      if (alertaDefeso) alertaDefeso.id = `defeso-${++sequenciaDefeso}`;
 
       linha.querySelector('.captura-especie').value = dados.especie || '';
       linha.querySelector('.captura-peso').value = dados.pesoKg ? reais(dados.pesoKg) : '';
@@ -973,26 +976,31 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
     }
 
     function atualizarDefeso() {
-      const alerta = document.getElementById('defeso-alerta');
-      if (!alerta) return;
-
-      const especieInput = document.querySelector('.captura-especie');
-      const especie = especieInput?.value.trim() || '';
       const estado = document.getElementById('estado').value.trim().toUpperCase();
+      const ufValida = estado.length === 2;
 
-      if (!especie || estado.length !== 2) {
-        alerta.classList.add('oculto');
-        return;
+      for (const linha of listaCapturas.querySelectorAll('.linha-captura')) {
+        const alerta = linha.querySelector<HTMLElement>('.defeso-alerta');
+        const especieInput = linha.querySelector<HTMLInputElement>('.captura-especie');
+        if (!alerta || !especieInput) continue;
+
+        const especie = especieInput.value.trim();
+        if (!ufValida || !especie) {
+          alerta.classList.add('oculto');
+          alerta.replaceChildren();
+          especieInput.removeAttribute('aria-describedby');
+          continue;
+        }
+
+        const texto = document.createElement('span');
+        texto.textContent = `Antes de manter: confira tamanho mínimo e defeso de ${especie} em ${estado}.`;
+        const link = document.createElement('a');
+        link.href = `/ferramentas/defeso?uf=${encodeURIComponent(estado)}`;
+        link.textContent = 'Abrir órgão oficial';
+        alerta.replaceChildren(texto, link);
+        alerta.classList.remove('oculto');
+        if (alerta.id) especieInput.setAttribute('aria-describedby', alerta.id);
       }
-
-      alerta.innerHTML = '';
-      const texto = document.createElement('span');
-      texto.textContent = `Antes de manter: confira tamanho mínimo e defeso de ${especie} em ${estado}.`;
-      const link = document.createElement('a');
-      link.href = `/ferramentas/defeso?uf=${encodeURIComponent(estado)}`;
-      link.textContent = 'Abrir órgão oficial';
-      alerta.append(texto, link);
-      alerta.classList.remove('oculto');
     }
 
     function enviarMidia(blob, aoProgressar) {
@@ -2152,7 +2160,8 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
     flex-wrap: wrap;
     align-items: center;
     gap: 6px 10px;
-    margin-top: 12px;
+    grid-column: 1 / -1;
+    margin-top: 0;
     padding: 10px 12px;
     border: 1px solid var(--acafrao);
     border-radius: 9px;
@@ -2217,7 +2226,8 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
     flex-wrap: wrap;
     align-items: center;
     gap: 6px 10px;
-    margin-top: 12px;
+    grid-column: 1 / -1;
+    margin-top: 0;
     padding: 10px 12px;
     border: 1px solid var(--acafrao);
     border-radius: 9px;
@@ -2372,6 +2382,12 @@ const retornoRegistro = `/registrar${Astro.url.search}`;
     .etapa-acoes .btn,
     .confirmar-acoes .btn {
       flex: 1;
+    }
+
+    .defeso-alerta a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 44px;
     }
   }
 
