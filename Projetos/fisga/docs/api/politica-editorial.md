@@ -108,7 +108,9 @@ obrigatória.
 ## Erros: o que sempre dizer
 
 O corpo de erro é `application/json` nos handlers e `application/problem+json`
-nos middlewares; os dois carregam o mesmo `{codigo, detalhe}`:
+nos middlewares — exceto o `503 google_indisponivel` do Google, que os handlers
+já escrevem em `application/problem+json`; os dois carregam o mesmo
+`{codigo, detalhe}`:
 
 ```json
 { "codigo": "pescaria_nao_encontrada", "detalhe": "Pescaria não encontrada." }

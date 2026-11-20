@@ -1296,10 +1296,15 @@ Em `docs/api/inventario.md`:
 
 ```markdown
 > **Resolvido no A2 (2026-11-20):** status reais (`201`/`202`/`204`/`302`/`413`/`503`),
-> schema único de erro (`ErroResponse`) nos dois media types, catálogo de `codigo`,
-> uploads `multipart/form-data` e `Retry-After` no `429` estão no
-> [`openapi.json`](openapi.json). Resta a identidade do documento (`info`/`servers`).
+> schema único de erro (`ErroResponse`) nos dois media types, os `codigo` de erro
+> nas descrições de cada resposta, uploads `multipart/form-data` e `Retry-After`
+> no `429` estão no [`openapi.json`](openapi.json). Resta a identidade do
+> documento (`info`/`servers`).
 ```
+
+- Trocar "Confirmadas no `openapi.json` atual. Viram tickets da Fase 1." por uma linha no singular, coerente com a única lacuna restante.
+- Renomear `PescariaDto` para `PescariaDetalhadaDto` nas três linhas de pescaria: o nome não existe nem no código nem no artifact.
+- Mover o `302` com `ok=0` de `/api/newsletter/descadastrar` da coluna de erros para Nota, como já se fez em `auth/confirmar` e `google/*`.
 
 - Corrigir as linhas de erro que divergiam do handler, conferindo cada uma contra a tabela de `RespostasEsperadas` (as divergências conhecidas, já verificadas):
   - `GET /api/legal/versoes`: `429` (não `500`).
@@ -1356,7 +1361,7 @@ Renumerar o passo de regeneração para 4.
 
 Em `docs/api/portal.md`, a linha 158 cita "`429` com corpo" apenas como erro do protótipo; nenhuma mudança é necessária. Se houver qualquer outra frase dizendo que o spec não declara status/erros, atualizar.
 
-Em `docs/api/politica-editorial.md`, o bullet do `429` (linha ~119) diz "sem `Retry-After`", o que deixa de ser verdade: reescrever para "**`429` sem corpo, com `Retry-After`.** O rate limit responde vazio; o header informa os segundos até a próxima janela; o texto diz o limite e a janela." Na mesma seção, corrigir "O corpo de erro real é `application/problem+json`" para registrar os dois media types: `application/json` nos handlers e `application/problem+json` nos middlewares, com o mesmo corpo `{codigo, detalhe}`.
+Em `docs/api/politica-editorial.md`, o bullet do `429` (linha ~119) diz "sem `Retry-After`", o que deixa de ser verdade: reescrever para "**`429` sem corpo, com `Retry-After`.** O rate limit responde vazio; o header informa os segundos até a próxima janela; o texto diz o limite e a janela." Na mesma seção, corrigir "O corpo de erro real é `application/problem+json`" para registrar os dois media types: `application/json` nos handlers e `application/problem+json` nos middlewares, com o mesmo corpo `{codigo, detalhe}`. Registrar a exceção: os dois `503 google_indisponivel` (`/api/auth/google/iniciar` e `/api/auth/google/conectar`) já saem `application/problem+json` de dentro do handler.
 
 - [ ] **Step 7: Rodar tudo**
 

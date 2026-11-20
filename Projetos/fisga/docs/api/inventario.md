@@ -195,10 +195,10 @@ responde `503` quando o banco não responde.
 | Método e rota | Acesso | Rate limit | Cache | Sucesso real | Erros a documentar | Notas |
 | --- | --- | --- | --- | --- | --- | --- |
 | `POST /api/pescarias` | S, consent. | escrita | no-store | `201 Created` + `PescariaSalvaResponse` | `400`, `401`, `403`, `429` | `Location` aponta para a pescaria criada |
-| `GET /api/pescarias/{shareToken}` | P/T | leitura | private 30 s | `200` `PescariaDto` | `404` `pescaria_nao_encontrada`, `429` | Visão pública; com sessão do dono inclui `podeEditar` |
+| `GET /api/pescarias/{shareToken}` | P/T | leitura | private 30 s | `200` `PescariaDetalhadaDto` | `404` `pescaria_nao_encontrada`, `429` | Visão pública; com sessão do dono inclui `podeEditar` |
 | `GET /api/pescarias/{shareToken}/permissao` | P/T | leitura | no-store | `200` `PermissaoResponse` | `404` `pescaria_nao_encontrada`, `429` | |
-| `GET /api/pescarias/{id}/editar` | S/D | leitura | no-store | `200` `PescariaDto` | `401`, `403`, `404`, `429` | |
-| `PUT /api/pescarias/{id}` | S/D, consent. | escrita | no-store | `200` `PescariaDto` | `400`, `401`, `403`, `404`, `429` | |
+| `GET /api/pescarias/{id}/editar` | S/D | leitura | no-store | `200` `PescariaDetalhadaDto` | `401`, `403`, `404`, `429` | |
+| `PUT /api/pescarias/{id}` | S/D, consent. | escrita | no-store | `200` `PescariaDetalhadaDto` | `400`, `401`, `403`, `404`, `429` | |
 | `GET /api/pescarias/{shareToken}/pdf` | P/T | pdf | private 5 min | `200` `application/pdf` | `404`, `429` | Resposta binária com nome de arquivo |
 
 ### Diário
@@ -262,16 +262,17 @@ responde `503` quando o banco não responde.
 | --- | --- | --- | --- | --- | --- |
 | `POST /api/newsletter/enviar` | A | — | `200` resultado do envio | `404` (token inválido), `500` | Query `mes`, `dryRun=1`; `X-Admin-Token` obrigatório |
 | `GET /api/newsletter/preview` | A | — | `200` `text/html` | `404` (token inválido ou e-mail sem mensagem), `500` | Query `email`, `mes`; `X-Admin-Token` obrigatório |
-| `GET /api/newsletter/descadastrar` | T | auth | `302` para `/newsletter/descadastrado?ok=0\|1` | `302` com `ok=0`, `429` | Token assinado na query |
+| `GET /api/newsletter/descadastrar` | T | auth | `302` para `/newsletter/descadastrado?ok=0\|1` | `429` | Token assinado na query; o `302` (inclusive com `ok=0`) é o desfecho do fluxo, não um erro |
 
 ## Lacunas de contrato
 
-Confirmadas no `openapi.json` atual. Viram tickets da Fase 1.
+Confirmada no `openapi.json` atual. Vira ticket da Fase 1.
 
 > **Resolvido no A2 (2026-11-20):** status reais (`201`/`202`/`204`/`302`/`413`/`503`),
-> schema único de erro (`ErroResponse`) nos dois media types, catálogo de `codigo`,
-> uploads `multipart/form-data` e `Retry-After` no `429` estão no
-> [`openapi.json`](openapi.json). Resta a identidade do documento (`info`/`servers`).
+> schema único de erro (`ErroResponse`) nos dois media types, os `codigo` de erro
+> nas descrições de cada resposta, uploads `multipart/form-data` e `Retry-After`
+> no `429` estão no [`openapi.json`](openapi.json). Resta a identidade do
+> documento (`info`/`servers`).
 
 | # | Lacuna | Evidência | Correção alvo |
 | --- | --- | --- | --- |
