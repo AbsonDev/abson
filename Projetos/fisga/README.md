@@ -134,8 +134,8 @@ nunca são publicados.
 - **EXIF**: lê data/hora e GPS da foto apenas como sugestão. `Aplicar nos campos vazios` preenche
   data, período e cidade/UF sem escrever no local exato; `Ignorar` vale pelo resto da sessão. A
   cidade pode ser corrigida.
-- **Lembrete de defeso**: ao preencher espécie e UF, mostra “confira tamanho mínimo e defeso de X em
-  UF” com link para o órgão oficial.
+- **Lembrete de defeso**: em cada captura da etapa 3, ao preencher espécie e UF, mostra “confira
+  tamanho mínimo e defeso de X em UF” com link para o órgão oficial.
 - **Sugestão de espécie por foto**: porta plugável (`IReconhecedorDeEspecie`) com confirmação humana.
   Sem provedor configurado, o fluxo cai no preenchimento manual.
 
@@ -317,7 +317,8 @@ Abra **`http://localhost:4323`**.
 5. Em `/mapa`, alterne Locais/Pontos/Trilhas, crie um ponto, desenhe uma trilha e exporte GPX.
 6. Em `/registrar`, percorra as 4 etapas (pescaria, condições, capturas, revisar); envie uma foto com
    EXIF, confira as sugestões no aviso e clique em **Aplicar nos campos vazios** para preencher
-   cidade/UF e ver o lembrete de defeso.
+   cidade/UF. Na etapa **As capturas**, preencha a espécie e confira o lembrete de defeso de cada
+   captura.
 7. Revise o resumo, salve a pescaria, abra o troféu e baixe a imagem/PDF.
 8. Em `/meu-diario`, alterne Visão geral/Pescarias/Insights.
 9. Em `/aprender`, busque “robalo” ou “nó” e confira os selos offline.
