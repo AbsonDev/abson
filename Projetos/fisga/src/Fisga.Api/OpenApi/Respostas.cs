@@ -8,7 +8,7 @@ namespace Fisga.Api.OpenApi;
 /// Metadata de resposta para o contrato. <see cref="ComErro"/> publica o schema
 /// único de erro para qualquer status cujo corpo seja <c>ErroResponse</c>;
 /// <see cref="SemCorpo"/> declara um status sem corpo (204, 302, 404 de rota
-/// administrativa ou sem resultado, 413, 429, 503). O transformer normaliza
+/// administrativa ou sem resultado, 429, 503). O transformer normaliza
 /// media types, headers e descrições.
 /// </summary>
 public static class Respostas

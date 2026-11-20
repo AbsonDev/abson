@@ -215,7 +215,6 @@ public static class PescariaEndpoints
             .ComErro(400)
             .ComErro(401)
             .ComErro(403)
-            .SemCorpo(413)
             .SemCorpo(429)
             .RequireRateLimiting("midia")
             .WithTags(Tags.Midia)

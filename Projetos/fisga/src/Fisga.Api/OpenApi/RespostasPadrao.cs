@@ -36,8 +36,10 @@ public static class RespostasPadrao
 
     /// <summary>
     /// Descrição de resposta sem schema de corpo: 201, 202, 204, 302, o 404 sem
-    /// corpo, 413, 429 e 503. Status desconhecido devolve <see langword="null"/>
-    /// e o transformer preserva a descrição gerada pelo framework.
+    /// corpo, 429 e 503. O catálogo também cobre 413 para a operação que venha a
+    /// recusar o upload antes do handler; hoje nenhuma publica esse status.
+    /// Status desconhecido devolve <see langword="null"/> e o transformer
+    /// preserva a descrição gerada pelo framework.
     /// </summary>
     public static string? DescricaoSemSchema(int status) => status switch
     {

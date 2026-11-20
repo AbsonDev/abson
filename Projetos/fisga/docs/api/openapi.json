@@ -1869,9 +1869,6 @@
               }
             }
           },
-          "413": {
-            "description": "Upload recusado pelo servidor antes do handler. Corpo vazio; reduza a imagem e tente de novo."
-          },
           "429": {
             "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
             "headers": {

@@ -152,7 +152,7 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.MapGet("/health", () => Results.Ok(new { status = "ok", version = versao }))
+app.MapGet("/health", () => Results.Ok(new SaudeResponse("ok", versao)))
     .AllowAnonymous()
     .Produces<SaudeResponse>(200)
     .ComErro(500)
@@ -161,7 +161,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok", version = versao }))
     .WithDescription("Funciona sem sessão. Retorna 200 com o status e a versão publicada, sem consultar o banco.");
 app.MapGet("/ready", async (FisgaDbContext db, CancellationToken ct) =>
         await db.Database.CanConnectAsync(ct)
-            ? Results.Ok(new { status = "ready" })
+            ? Results.Ok(new ProntidaoResponse("ready"))
             : Results.StatusCode(StatusCodes.Status503ServiceUnavailable))
     .AllowAnonymous()
     .Produces<ProntidaoResponse>(200)

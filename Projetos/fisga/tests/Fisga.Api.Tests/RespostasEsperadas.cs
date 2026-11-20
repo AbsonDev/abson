@@ -92,7 +92,7 @@ internal static class RespostasEsperadas
             [("DELETE", "/api/trilhas/{id}")] = [204, 401, 403, 404, 429],
 
             // Mídia
-            [("POST", "/api/midia")] = [200, 400, 401, 403, 413, 429],
+            [("POST", "/api/midia")] = [200, 400, 401, 403, 429],
 
             // Visão/Espécies
             [("POST", "/api/especies/sugerir")] = [200, 400, 401, 403, 429, 500],
@@ -114,7 +114,7 @@ internal static class RespostasEsperadas
 
     public static bool TemCorpo((string Metodo, string Rota) operacao, int status) => status switch
     {
-        204 or 302 or 413 or 429 => false,
+        204 or 302 or 429 => false,
         404 => !NotFoundSemCorpo.Contains(operacao),
         503 => operacao != ("GET", "/ready"),
         _ => true

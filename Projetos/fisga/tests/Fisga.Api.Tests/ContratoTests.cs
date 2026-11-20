@@ -9,6 +9,9 @@ using Fisga.Api.Caching;
 using Fisga.Api.Contracts;
 using Fisga.Api.OpenApi;
 using Fisga.Api.RateLimiting;
+using Fisga.Application.Locais;
+using Fisga.Application.Pontos;
+using Fisga.Application.Trilhas;
 
 namespace Fisga.Api.Tests;
 
@@ -575,14 +578,16 @@ public sealed class ContratoTests
 
     // Saúde e prontidão respondem JSON de verdade: Produces(200, null, …) compila
     // mas o gerador descarta o content quando o tipo é nulo, e o contrato passaria
-    // a dizer "200 sem corpo". O $ref prova que o schema publicado é o record certo;
-    // as propriedades provam que o contrato e o corpo real falam a mesma língua —
-    // renomear Version para Versao publicaria `versao` e o corpo continuaria `version`.
+    // a dizer "200 sem corpo". O $ref prova que o schema publicado é o record que o
+    // handler devolve, e o corpo real é lido para garantir que `status` e `version`
+    // são as propriedades que a operação serve — um rename no record muda schema e
+    // corpo juntos, e este teste acusa a divergência em vez de benzer o contrato.
     [Fact]
     public async Task SaudeDeclaraCorpoJson()
     {
         var documento = await LoadAsync();
         var schemas = documento.RootElement.GetProperty("components").GetProperty("schemas");
+        using var cliente = _fixture.Factory.CreateClient();
 
         foreach (var (metodo, rota, nome, propriedades) in new[]
                  {
@@ -616,6 +621,17 @@ public sealed class ContratoTests
             Assert.Equal(
                 propriedades.Order(StringComparer.Ordinal).ToArray(),
                 obrigatorias);
+
+            // O documento sozinho não prova que o handler devolve o record: um
+            // anônimo com os mesmos nomes passaria. O corpo real fecha o laço.
+            using var respostaHttp = await cliente.GetAsync(rota);
+            respostaHttp.EnsureSuccessStatusCode();
+            using var corpo = JsonDocument.Parse(await respostaHttp.Content.ReadAsStringAsync());
+            var servidas = corpo.RootElement.EnumerateObject()
+                .Select(propriedade => propriedade.Name)
+                .Order(StringComparer.Ordinal)
+                .ToArray();
+            Assert.Equal(obrigatorias, servidas);
         }
     }
 
@@ -662,6 +678,115 @@ public sealed class ContratoTests
 
         var formato = schema.TryGetProperty("format", out var valor) ? valor.GetString() : null;
         Assert.Equal("binary", formato);
+    }
+
+    // Todo 2xx com corpo tem que publicar o schema desse corpo — JSON, HTML ou o
+    // PDF binário —, senão o cliente gera o tipo errado. O mesmo passo pega
+    // Produces(200, null, "application/json"), que some com o content inteiro.
+    [Fact]
+    public async Task TodoSucessoComCorpoDeclaraSchema()
+    {
+        var documento = await LoadAsync();
+        var operacoes = Operacoes(documento);
+        var schemas = documento.RootElement.GetProperty("components").GetProperty("schemas");
+
+        Assert.Equal(54, operacoes.Count);
+
+        // Acumula todas as violações em vez de abortar na primeira: o gate de
+        // uma tarefa consegue provar que a sua própria área está limpa mesmo
+        // enquanto outra área do contrato ainda falha.
+        var violacoes = new List<string>();
+        foreach (var (metodo, rota, operacao) in operacoes)
+        {
+            var chave = (metodo, rota);
+            foreach (var resposta in operacao.GetProperty("responses").EnumerateObject())
+            {
+                if (!int.TryParse(
+                        resposta.Name,
+                        NumberStyles.None,
+                        CultureInfo.InvariantCulture,
+                        out var status)
+                    || status is < 200 or > 299)
+                {
+                    continue;
+                }
+
+                var temConteudo = resposta.Value.TryGetProperty("content", out var content)
+                    && content.ValueKind == JsonValueKind.Object
+                    && content.EnumerateObject().Any();
+
+                if (!RespostasEsperadas.TemCorpo(chave, status))
+                {
+                    if (temConteudo)
+                    {
+                        violacoes.Add($"{metodo} {rota} {status}: sucesso sem corpo declarou content");
+                    }
+
+                    continue;
+                }
+
+                if (!temConteudo)
+                {
+                    violacoes.Add($"{metodo} {rota} {status}: sucesso com corpo sem content");
+                    continue;
+                }
+
+                foreach (var midia in content.EnumerateObject())
+                {
+                    if (!midia.Value.TryGetProperty("schema", out var schema)
+                        || schema.ValueKind != JsonValueKind.Object)
+                    {
+                        violacoes.Add($"{metodo} {rota} {status} {midia.Name}: sucesso sem schema");
+                        continue;
+                    }
+
+                    if (schema.TryGetProperty("$ref", out var referencia))
+                    {
+                        var nome = referencia.GetString() ?? string.Empty;
+                        var prefixo = "#/components/schemas/";
+                        if (!nome.StartsWith(prefixo, StringComparison.Ordinal)
+                            || !schemas.TryGetProperty(nome[prefixo.Length..], out _))
+                        {
+                            violacoes.Add(
+                                $"{metodo} {rota} {status} {midia.Name}: $ref não resolve em components.schemas ({nome})");
+                        }
+
+                        continue;
+                    }
+
+                    // PDF e HTML publicam schema inline; o type é o mínimo que o
+                    // gerador de cliente precisa para não tratar o corpo como opaco.
+                    if (!schema.TryGetProperty("type", out _))
+                    {
+                        violacoes.Add($"{metodo} {rota} {status} {midia.Name}: schema sem $ref e sem type");
+                    }
+                }
+            }
+        }
+
+        Assert.Empty(violacoes);
+    }
+
+    // As quatro criações devolvem o recurso criado; trocar o Produces<T> por
+    // outro DTO compila e passa no resto da suíte, mas quebraria o cliente que
+    // lê o 201. A expectativa é literal, não derivada do endpoint.
+    [Theory]
+    [InlineData("/api/pescarias", nameof(PescariaSalvaResponse))]
+    [InlineData("/api/locais", nameof(LocalDto))]
+    [InlineData("/api/pontos", nameof(PontoDto))]
+    [InlineData("/api/trilhas", nameof(TrilhaDto))]
+    public async Task CriacaoDeclaraODtoDevolvido(string rota, string nomeDoSchema)
+    {
+        var documento = await LoadAsync();
+        var operacao = Operacoes(documento)
+            .Single(o => o.Metodo == "POST" && o.Rota == rota).Operacao;
+
+        var criado = operacao.GetProperty("responses").GetProperty("201");
+        var json = criado.GetProperty("content").GetProperty(RespostasPadrao.TipoJson);
+        var referencia = json.GetProperty("schema").GetProperty("$ref").GetString()!;
+
+        Assert.StartsWith("#/components/schemas/", referencia, StringComparison.Ordinal);
+        Assert.EndsWith($"/{nomeDoSchema}", referencia, StringComparison.Ordinal);
     }
 
     [Fact]
