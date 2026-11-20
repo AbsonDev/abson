@@ -216,7 +216,10 @@ Duas mudanças no pipeline atual, sem tocar no comportamento da API.
    mexe em contrato e portal ao mesmo tempo — barato perto de documentação
    mentindo por minutos.
 
-Novo secret: `COOLIFY_WEBHOOK_FISGA_DOCS`. Nada mais muda em credencial.
+Novo secret: `COOLIFY_WEBHOOK_FISGA_DOCS`. O `COOLIFY_TOKEN` também precisa de
+`read` + `deploy` no app `fisga-docs`, porque o job acompanha o
+`deployment_uuid` pela API — ou um token dedicado, se preferir não ampliar o
+existente. O escopo novo entra em `docs/ci-cd.md` junto com o webhook.
 
 ## Versionamento e changelog
 

@@ -10,7 +10,7 @@ repositório: em produção, `/openapi/v1.json`, `/swagger` e `/scalar` responde
 `404`. Quem integra precisa ler o código-fonte.
 
 O contrato também não conta a história toda. O
-[inventário](../api/inventario.md) mostra 13 lacunas: `201`/`202`/`204` ausentes,
+[inventário](../api/inventario.md) mostra 12 lacunas: `201`/`202`/`204` ausentes,
 nenhum `securityScheme` (cookie `fisga_auth`, `X-Admin-Token`, `shareToken`),
 formato de erro real (`{codigo, detalhe}`) em vez de RFC 9457, rate limit e
 cache fora do contrato, tag única `Fisga.Api`, uploads multipart sem schema e
@@ -30,7 +30,7 @@ sobreviver ao CI que já existe (`gate` + `workflow_run`).
    em tempo de build a partir de `docs/api/openapi.json`; nenhuma operação
    documentada pode existir só na prosa. Prosa cobre propósito, acesso,
    autenticação, limites, erros e exemplos.
-3. **Corrigir o contrato é pré-requisito da publicação.** F1 (as 13 lacunas)
+3. **Corrigir o contrato é pré-requisito da publicação.** F1 (as 12 lacunas)
    fecha antes de o portal ir ao ar com a referência completa; o portal nasce
    já com `securityScheme`, status reais, schemas de erro e tags por domínio.
 4. **Leitura pública de tudo, execução restrita.** Todas as operações são
@@ -53,8 +53,8 @@ sobreviver ao CI que já existe (`gate` + `workflow_run`).
 | **A — rota `/docs` no app Astro do Fisga** | Amarra o ciclo de deploy da documentação ao do produto. Um typo em um guia exigiria deploy do app inteiro, e o portal herdaria SSR, Sentry e cookies do app. |
 | **C — plataforma hospedada (Mintlify, ReadMe, Bump.sh)** | Rápido no começo, mas preço por assento, lock-in de conteúdo, dependência de CDN de terceiros e pouca liberdade para a identidade do Fisga. Contraria a decisão de manter a documentação no repositório. |
 | **Embed de Scalar/Redoc em runtime** | Referência só existe com JavaScript, sem HTML indexável, sujeita a mudança de comportamento de CDN e a CSP mais frouxa. O visual também não conversa com o design system do Fisga. |
-| **Documentação manual em Markdown sem geração** | Divergiria do contrato no primeiro endpoint novo. Já acontece hoje: `/api/catalogo` não está no resumo do README. |
-| **Publicar o `openapi.json` cru em produção** | Não resolve nada do ponto de vista de quem integra: continua sendo leitura de máquina sobre um contrato com 13 lacunas. |
+| **Documentação manual em Markdown sem geração** | Divergiria do contrato no primeiro endpoint novo. Já acontece hoje: o resumo do README, o inventário e o spec só coincidem enquanto alguém compara à mão; nenhum job falha quando um endpoint novo entra só no código. |
+| **Publicar o `openapi.json` cru em produção** | Não resolve nada do ponto de vista de quem integra: continua sendo leitura de máquina sobre um contrato com 12 lacunas. |
 
 ## Consequências
 

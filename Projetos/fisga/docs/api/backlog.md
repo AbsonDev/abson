@@ -26,7 +26,7 @@ gerador da F2.1 estiver de pé.
 
 ## F1 — Contrato verdadeiro
 
-Fecha as 13 lacunas do [inventário](inventario.md#lacunas-de-contrato). Nenhuma
+Fecha as 12 lacunas do [inventário](inventario.md#lacunas-de-contrato). Nenhuma
 mudança de comportamento da API; só metadata, anotações e dois ajustes
 aditivos de resposta.
 
@@ -107,12 +107,14 @@ aditivos de resposta.
   resposta no spec.
 - **Est.:** 0,5 d · **Dep.:** F1.4
 
-### F1.10 — Alinhar resumo e inventário
+### F1.10 — Impedir divergência entre spec, README e inventário
 
-- **Escopo:** `/api/catalogo` no resumo do `README.md`, revisão do inventário
-  contra o spec gerado.
-- **Aceite:** nenhuma operação do spec ausente no README e no inventário; script
-  simples compara os três.
+- **Escopo:** script no job `docs` que extrai as rotas do `openapi.json`, do
+  resumo do `README.md` e das linhas do inventário e falha listando a operação
+  divergente. Hoje os três coincidem; a comparação é manual e nada quebra quando
+  um endpoint novo entra só no código.
+- **Aceite:** rota adicionada, removida ou renomeada no spec quebra o job com a
+  lista do que falta em cada documento.
 - **Est.:** 0,5 d · **Dep.:** F1.4
 
 ---

@@ -11,7 +11,7 @@ O programa de documentação pública tem quatro documentos de apoio, todos
 anteriores ao portal:
 
 - [Inventário](inventario.md) — uma linha por operação: acesso, rate limit,
-  cache, status real e erros, mais as 13 lacunas medidas no contrato.
+  cache, status real e erros, mais as 12 lacunas medidas no contrato.
 - [Política editorial](politica-editorial.md) — template obrigatório de página,
   voz, exemplos e checklist de revisão.
 - [Arquitetura do portal](portal.md) — mapa de URL, gerador, build, hospedagem e

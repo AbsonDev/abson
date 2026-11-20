@@ -272,9 +272,8 @@ Confirmadas no `openapi.json` atual. Viram tickets da Fase 1.
 | 8 | Admin responde `404` em vez de `401/403` | `NewsletterEndpoints.TokenValido` | Documentar como decisão intencional, com aviso |
 | 9 | Endpoints de auth com efeito colateral em `GET` e `302` | `/api/auth/confirmar`, `/api/auth/google/*` | Documentar redirects, cookies emitidos e estados |
 | 10 | `info` incompleto e sem `servers` | `openapi.json` | `contact`, `license`, descrição e `servers` por ambiente |
-| 11 | `/api/catalogo` não aparece no resumo manual do README | `PescariaEndpoints.cs` × `README.md` | Alinhar o resumo de produto ao inventário |
-| 12 | `429` sai sem corpo e sem `Retry-After` | Configuração do rate limiter | Decidir se adiciona `Retry-After` e corpo de erro padronizado |
-| 13 | `GET /api/auth/me` é anônimo e devolve `200` | `AuthEndpoints.cs` | Documentar que a ausência de sessão é `200` com `autenticado:false` |
+| 11 | `429` sai sem corpo e sem `Retry-After` | Configuração do rate limiter | Decidir se adiciona `Retry-After` e corpo de erro padronizado |
+| 12 | `GET /api/auth/me` é anônimo e devolve `200` | `AuthEndpoints.cs` | Documentar que a ausência de sessão é `200` com `autenticado:false` |
 
 ## Verificação em execução local
 
