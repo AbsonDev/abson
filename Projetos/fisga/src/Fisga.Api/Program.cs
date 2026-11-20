@@ -154,7 +154,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok", version = versao }))
     .AllowAnonymous()
     .WithTags(Tags.Sistema)
     .WithSummary("Verifica se a API está no ar")
-    .WithDescription("Aberto. Responde 200 com o status e a versão publicada, sem consultar o banco.");
+    .WithDescription("Funciona sem sessão. Retorna 200 com o status e a versão publicada, sem consultar o banco.");
 app.MapGet("/ready", async (FisgaDbContext db, CancellationToken ct) =>
         await db.Database.CanConnectAsync(ct)
             ? Results.Ok(new { status = "ready" })
@@ -162,7 +162,7 @@ app.MapGet("/ready", async (FisgaDbContext db, CancellationToken ct) =>
     .AllowAnonymous()
     .WithTags(Tags.Sistema)
     .WithSummary("Verifica se a API está pronta para atender")
-    .WithDescription("Aberto. Consulta o banco e responde 200 quando a conexão funciona ou 503 quando não funciona.");
+    .WithDescription("Funciona sem sessão. Consulta o banco e retorna 200 quando a conexão funciona ou 503 quando não funciona.");
 
 app.MapAuthEndpoints();
 app.MapContaEndpoints();

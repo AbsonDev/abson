@@ -32,7 +32,7 @@ public static class AuthEndpoints
             .WithMetadata(CachePolicy.Public(86400))
             .WithTags(Tags.Sistema)
             .WithSummary("Consulta as versões legais vigentes")
-            .WithDescription("Retorna as versões dos termos de uso e da política de privacidade em vigor. Aberto sem sessão e mantido em cache público por um dia.");
+            .WithDescription("Retorna as versões dos termos de uso e da política de privacidade em vigor. Funciona sem sessão e fica em cache público por um dia.");
 
         app.MapPost("/api/auth/solicitar", async (
                 SolicitarLinkRequest entrada,
@@ -56,7 +56,7 @@ public static class AuthEndpoints
             .RequireRateLimiting("auth")
             .WithTags(Tags.Autenticacao)
             .WithSummary("Solicita um link de acesso por e-mail")
-            .WithDescription("Aberto. Responde 202 com mensagem genérica e não revela se o e-mail existe; em desenvolvimento o link de acesso volta na resposta.");
+            .WithDescription("Funciona sem sessão. Retorna 202 sempre com a mesma mensagem genérica, sem revelar se o e-mail existe; em ambiente local, sem envio de e-mail, o link volta na resposta.");
 
         app.MapPost("/api/auth/registrar", async (
                 RegistrarRequest entrada,
@@ -85,7 +85,7 @@ public static class AuthEndpoints
             .RequireRateLimiting("auth")
             .WithTags(Tags.Autenticacao)
             .WithSummary("Cria uma conta com e-mail e senha")
-            .WithDescription("Aberto. Responde 201 e envia um link de confirmação; a conta só entra depois de confirmar o e-mail.");
+            .WithDescription("Funciona sem sessão. Retorna 201 e envia um link de confirmação; a conta só entra depois de confirmar o e-mail.");
 
         app.MapPost("/api/auth/entrar", async (
                 EntrarRequest entrada,
@@ -186,7 +186,7 @@ public static class AuthEndpoints
             .RequireRateLimiting("auth")
             .WithTags(Tags.Autenticacao)
             .WithSummary("Entra com e-mail e senha")
-            .WithDescription("Aberto. Responde 200 com autenticado falso em qualquer falha, inclusive após bloqueio por tentativas; em caso de sucesso grava o cookie de sessão.");
+            .WithDescription("Funciona sem sessão. Retorna 200 com autenticado falso em qualquer falha, inclusive após bloqueio por tentativas; em caso de sucesso grava o cookie de sessão.");
 
         app.MapPost("/api/auth/confirmar-email", async (
                 ConfirmarEmailRequest entrada,
@@ -232,7 +232,7 @@ public static class AuthEndpoints
             .RequireRateLimiting("auth")
             .WithTags(Tags.Autenticacao)
             .WithSummary("Confirma o e-mail pelo link enviado")
-            .WithDescription("Aberto. Recebe o identificador e o token do link, marca o e-mail como confirmado e responde 400 quando o link é inválido ou expirado.");
+            .WithDescription("Funciona sem sessão. Recebe o identificador e o token do link, marca o e-mail como confirmado e retorna 400 quando o link é inválido ou expirado.");
 
         app.MapPost("/api/auth/esqueci-senha", async (
                 EsqueciSenhaRequest entrada,
@@ -265,7 +265,7 @@ public static class AuthEndpoints
             .RequireRateLimiting("auth")
             .WithTags(Tags.Autenticacao)
             .WithSummary("Envia um link de redefinição de senha")
-            .WithDescription("Aberto. Responde 202 sempre com a mesma mensagem, sem revelar se o e-mail está cadastrado; havendo conta, envia o link.");
+            .WithDescription("Funciona sem sessão. Retorna 202 sempre com a mesma mensagem, sem revelar se o e-mail está cadastrado; havendo conta, envia o link.");
 
         app.MapPost("/api/auth/redefinir-senha", async (
                 RedefinirSenhaRequest entrada,
@@ -330,7 +330,7 @@ public static class AuthEndpoints
             .RequireRateLimiting("auth")
             .WithTags(Tags.Autenticacao)
             .WithSummary("Redefine a senha pelo link recebido")
-            .WithDescription("Aberto. Exige o identificador e o token do link e uma senha de 10 a 128 caracteres; ao concluir, revoga as sessões abertas.");
+            .WithDescription("Funciona sem sessão. Exige o identificador e o token do link e uma senha de 10 a 128 caracteres; ao concluir, revoga as sessões abertas.");
 
         app.MapGet("/api/auth/confirmar", async (
                 string? token,
@@ -371,7 +371,7 @@ public static class AuthEndpoints
             .RequireRateLimiting("auth")
             .WithTags(Tags.Autenticacao)
             .WithSummary("Confirma o link de acesso e abre a sessão")
-            .WithDescription("Aberto, para navegação do navegador: redireciona 302 para o web com a sessão criada ou para a tela de erro com o código do estado.");
+            .WithDescription("Funciona sem sessão. Para navegação do navegador, redireciona 302 para o web com a sessão criada ou para a tela de erro com o código do estado.");
 
         app.MapGet("/api/auth/google/disponivel", (IConfiguration configuration) =>
                 Results.Ok(new GoogleDisponivelResponse(GoogleConfigurado(configuration))))
@@ -379,7 +379,7 @@ public static class AuthEndpoints
             .RequireRateLimiting("auth")
             .WithTags(Tags.Autenticacao)
             .WithSummary("Informa se o login com Google está disponível")
-            .WithDescription("Aberto. Responde 200 com um indicador de disponibilidade, sem iniciar o fluxo de login.");
+            .WithDescription("Funciona sem sessão. Retorna 200 com um indicador de disponibilidade, sem iniciar o fluxo de login.");
 
         app.MapGet("/api/auth/google/iniciar", (IConfiguration configuration) =>
             {
@@ -408,7 +408,7 @@ public static class AuthEndpoints
             .RequireRateLimiting("auth")
             .WithTags(Tags.Autenticacao)
             .WithSummary("Inicia o login com Google")
-            .WithDescription("Aberto, para navegação do navegador: redireciona 302 ao Google e responde 503 quando as credenciais não estão configuradas.");
+            .WithDescription("Funciona sem sessão. Para navegação do navegador, redireciona 302 ao Google e retorna 503 quando as credenciais não estão configuradas.");
 
         app.MapGet("/api/auth/google/concluir", async (
                 HttpContext http,
@@ -481,7 +481,7 @@ public static class AuthEndpoints
             .RequireRateLimiting("auth")
             .WithTags(Tags.Autenticacao)
             .WithSummary("Conclui o login com Google")
-            .WithDescription("Aberto. Retorno do Google que cria a sessão e redireciona 302 para o web; sem a sessão externa válida, redireciona para a tela de erro.");
+            .WithDescription("Funciona sem sessão. É o retorno do Google: cria a sessão e redireciona 302 para o web; sem a sessão externa válida, redireciona para a tela de erro.");
 
         // Conectar Google em /conta: fluxo SEPARADO do login da Task 8. A conta
         // é a da sessão atual — nunca trocamos de usuário, nunca emitimos cookie.
@@ -526,7 +526,7 @@ public static class AuthEndpoints
             .RequireRateLimiting("auth")
             .WithTags(Tags.Autenticacao)
             .WithSummary("Vincula uma conta Google à conta atual")
-            .WithDescription("Exige sessão. Redireciona 302 ao Google para autorizar o vínculo e responde 503 quando as credenciais não estão configuradas.");
+            .WithDescription("Exige sessão; com o Google não configurado, retorna 503 antes de autenticar, então chamadas sem sessão também recebem 503. Com credenciais, redireciona 302 ao Google para autorizar o vínculo.");
 
         app.MapGet("/api/auth/google/conectar/concluir", async (
                 HttpContext http,
@@ -645,7 +645,7 @@ public static class AuthEndpoints
             .RequireRateLimiting("leitura")
             .WithTags(Tags.Autenticacao)
             .WithSummary("Consulta a sessão atual")
-            .WithDescription("Aberto. Responde 200 com autenticado falso quando não há sessão; com sessão, devolve o usuário, o consentimento pendente e se há senha e Google vinculados.");
+            .WithDescription("Funciona sem sessão. Retorna 200 com autenticado falso quando não há sessão; com sessão, retorna o usuário, o consentimento pendente e se há senha e Google vinculados.");
 
         app.MapPost("/api/auth/sair", async (
                 HttpContext http,
@@ -676,7 +676,7 @@ public static class AuthEndpoints
             .RequireRateLimiting("escrita")
             .WithTags(Tags.Autenticacao)
             .WithSummary("Encerra a sessão atual")
-            .WithDescription("Aberto. Responde 204 mesmo sem sessão; havendo sessão, revoga também o dispositivo e apaga o cookie.");
+            .WithDescription("Funciona sem sessão. Retorna 204 sempre; havendo sessão, revoga também o dispositivo e apaga o cookie.");
 
         app.MapPost("/api/auth/sair-de-todos", async (
                 HttpContext http,
@@ -707,7 +707,7 @@ public static class AuthEndpoints
             .RequireRateLimiting("escrita")
             .WithTags(Tags.Autenticacao)
             .WithSummary("Encerra a sessão em todos os dispositivos")
-            .WithDescription("Exige sessão. Revoga todos os dispositivos, invalida cookies antigos e responde 204.");
+            .WithDescription("Exige sessão. Revoga todos os dispositivos, invalida cookies antigos e retorna 204.");
 
         app.MapPatch("/api/auth/perfil", async (
                 AtualizarPerfilRequest entrada,
@@ -727,7 +727,7 @@ public static class AuthEndpoints
             .RequireRateLimiting("escrita")
             .WithTags(Tags.Autenticacao)
             .WithSummary("Atualiza nome e preferência de novidades")
-            .WithDescription("Exige sessão. Altera o nome e a escolha de receber novidades, devolvendo o usuário atualizado.");
+            .WithDescription("Exige sessão. Altera o nome e a escolha de receber novidades, retornando o usuário atualizado.");
 
         return app;
     }
@@ -758,7 +758,7 @@ public static class AuthEndpoints
             .RequireRateLimiting("escrita")
             .WithTags(Tags.Conta)
             .WithSummary("Registra o aceite dos termos vigentes")
-            .WithDescription("Exige sessão. Responde 204 quando as versões enviadas são as vigentes e 400 quando não são.");
+            .WithDescription("Exige sessão. Retorna 204 quando as versões enviadas são as vigentes e 400 quando não são.");
 
         app.MapPost("/api/conta/senha", async (
                 AlterarSenhaRequest entrada,
@@ -885,7 +885,7 @@ public static class AuthEndpoints
             .RequireRateLimiting("leitura")
             .WithTags(Tags.Conta)
             .WithSummary("Lista os dispositivos com sessão aberta")
-            .WithDescription("Exige sessão. Devolve as sessões do usuário e indica qual delas é a atual.");
+            .WithDescription("Exige sessão. Retorna as sessões do usuário e indica qual delas é a atual.");
 
         app.MapGet("/api/conta/exportar", async (
                 HttpContext http,
@@ -923,7 +923,7 @@ public static class AuthEndpoints
             .RequireRateLimiting("escrita")
             .WithTags(Tags.Conta)
             .WithSummary("Exclui a conta e os dados")
-            .WithDescription("Exige sessão e a confirmação EXCLUIR no corpo. Apaga a conta, as pescarias e as fotos, encerra a sessão e responde 204.");
+            .WithDescription("Exige sessão e a confirmação EXCLUIR no corpo. Apaga a conta, as pescarias e as fotos, encerra a sessão e retorna 204.");
 
         return app;
     }

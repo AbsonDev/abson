@@ -21,7 +21,7 @@ public static class PescariaEndpoints
             .WithMetadata(CachePolicy.Public(86400))
             .WithTags(Tags.Catalogo)
             .WithSummary("Consulta o catálogo de pesca")
-            .WithDescription("Retorna as espécies, iscas, ambientes e demais opções usadas no registro, além de um exemplo de pescaria. Aberto sem sessão e mantido em cache por um dia.");
+            .WithDescription("Retorna as espécies, iscas, ambientes e demais opções usadas no registro, além de um exemplo de pescaria. Funciona sem sessão e fica em cache por um dia.");
 
         var grupo = app.MapGroup("/api/pescarias").WithTags(Tags.Pescarias);
 
