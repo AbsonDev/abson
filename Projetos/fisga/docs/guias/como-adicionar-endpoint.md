@@ -78,11 +78,15 @@ gerado. Sem ela, `gerar-openapi.sh` falha com `Operação sem operationId`.
 2. Aplique `.WithTags(Tags.X)`, `.WithSummary` e `.WithDescription` no handler.
    Sem tag de domínio ou sem resumo de negócio, `ContratoTests` falha.
 3. Declare as respostas: `.Produces<T>(status)` para o sucesso, `.ComErro(status)`
-   para erro com corpo e `.SemCorpo(status)` para `204`/`302`/`413`/`429`/`503`.
+   para erro com corpo e `.SemCorpo(status)` para `204`/`302`/`429`/`503`.
    Upload usa `.Accepts<FormularioDeFoto>("multipart/form-data")`. O status
    declarado precisa ser o que o handler devolve — `ContratoTests` compara a
    tabela de `RespostasEsperadas` com o documento gerado.
-4. Regenere e commite o contrato publicado:
+4. Registre a operação em `tests/Fisga.Api.Tests/RespostasEsperadas.cs` com os
+   status reais e, se a rota for pública, em `RotasAnonimasPorDecisao`
+   (`ContratoTests.cs`). Um `404` com corpo vazio (em vez de `ErroResponse`)
+   entra em `RespostasEsperadas.NotFoundSemCorpo`.
+5. Regenere e commite o contrato publicado:
 
 ```bash
 ./scripts/gerar-openapi.sh

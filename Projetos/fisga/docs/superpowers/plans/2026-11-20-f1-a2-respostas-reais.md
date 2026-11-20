@@ -28,7 +28,7 @@
 
 1. **`ProducesProblem` não é usado.** Ele publica o schema `ProblemDetails` do framework, mas o corpo real de negócio é `ErroResponse` (`codigo`, `detalhe`). Usar `ProducesProblem` faria o contrato mentir sobre o corpo. A distinção "qual é qual" fica na descrição do `400`: regra de negócio devolve `ErroResponse`; corpo JSON malformado devolve `ProblemDetails` do framework.
 2. **Erro de negócio é publicado em dois media types.** Handlers devolvem `Results.BadRequest(new ErroResponse(...))` em `application/json`; o `ExceptionHandlingMiddleware`, o `ConsentimentoMiddleware` e o `ProtecaoCsrfMiddleware` escrevem `application/problem+json`. O transformer espelha o mesmo schema nos dois — o formato é o mesmo, só o media type diverge.
-3. **Status sem corpo são explícitos:** `204`, `302`, `413` (Kestrel), `429`, o `404` de `/api/locais/reverso`, `/api/newsletter/enviar` e `/api/newsletter/preview` e o `503` de `/ready`.
+3. **Status sem corpo são explícitos:** `204`, `302`, `429`, o `404` de `/api/locais/reverso`, `/api/newsletter/enviar` e `/api/newsletter/preview` e o `503` de `/ready`.
 4. **`Location` em `201` e `202`.** `Results.Created` e `Results.Accepted` já escrevem o header; o transformer adiciona o header a qualquer resposta `201`/`202` do documento.
 5. **Defaults de rate limit em um único lugar:** `PoliticasDeTaxa` (antes duplicado em `Program.cs`, no transformer e em `ContratoTests`).
 6. **A invariante de segurança passa a ser intenção, não consistência.** `ContratoTests` deixa de derivar o esperado de `IAllowAnonymous` (a mesma metadata que o transformer lê) e passa a comparar com o conjunto curado das 23 rotas anônimas.
@@ -61,7 +61,7 @@
   - `Fisga.Api.RateLimiting.RejeicaoDoRateLimiter` com `Configurar(RateLimiterOptions)` e `EscreverAsync(OnRejectedContext, CancellationToken)`.
 - Consumes: `Microsoft.AspNetCore.RateLimiting`, `System.Threading.RateLimiting`.
 
-- [ ] **Step 1: Criar `PoliticasDeTaxa`**
+- [x] **Step 1: Criar `PoliticasDeTaxa`**
 
 ```csharp
 using Microsoft.Extensions.Configuration;
@@ -103,7 +103,7 @@ public static class PoliticasDeTaxa
 }
 ```
 
-- [ ] **Step 2: Criar `RejeicaoDoRateLimiter` sem comportamento (vermelho)**
+- [x] **Step 2: Criar `RejeicaoDoRateLimiter` sem comportamento (vermelho)**
 
 ```csharp
 using System.Globalization;
@@ -132,7 +132,7 @@ public static class RejeicaoDoRateLimiter
 }
 ```
 
-- [ ] **Step 3: Ligar no host e nos testes**
+- [x] **Step 3: Ligar no host e nos testes**
 
 Em `src/Fisga.Api/Program.cs`, trocar o bloco de políticas por:
 
@@ -181,7 +181,7 @@ Em `tests/Fisga.Api.Tests/ContratoTests.cs`, apagar o dicionário local `Limites
 
 Em `src/Fisga.Api/OpenApi/ContratoOperationTransformer.cs`, apagar o dicionário privado `LimitesPadraoPorMinuto` e a constante `JanelaEmSegundos`; `EscreverExtensoes` passa a chamar `PoliticasDeTaxa.LimiteDe(configuration, nome)` e `PoliticasDeTaxa.JanelaEmSegundos`. Adicionar `using Fisga.Api.RateLimiting;`.
 
-- [ ] **Step 4: Escrever os testes que falham**
+- [x] **Step 4: Escrever os testes que falham**
 
 `tests/Fisga.Api.Tests/RateLimitTests.cs`:
 
@@ -267,12 +267,12 @@ public sealed class RateLimitTests
 }
 ```
 
-- [ ] **Step 5: Rodar e ver falhar**
+- [x] **Step 5: Rodar e ver falhar**
 
 Run: `export PATH="$HOME/.dotnet:$PATH" && dotnet test Fisga.slnx -c Release --filter "FullyQualifiedName~RateLimitTests"`
 Expected: `HostRegistraORetornoDoCallback` PASS; os dois primeiros falham com `RetryAfter` vazio.
 
-- [ ] **Step 6: Implementar o header**
+- [x] **Step 6: Implementar o header**
 
 ```csharp
 public static ValueTask EscreverAsync(OnRejectedContext contexto, CancellationToken ct)
@@ -288,12 +288,12 @@ public static ValueTask EscreverAsync(OnRejectedContext contexto, CancellationTo
 }
 ```
 
-- [ ] **Step 7: Rodar tudo o que toca o contrato**
+- [x] **Step 7: Rodar tudo o que toca o contrato**
 
 Run: `dotnet test Fisga.slnx -c Release --filter "FullyQualifiedName~RateLimitTests|FullyQualifiedName~ContratoTests"`
 Expected: os 5 testes de `ContratoTests` continuam verdes; os 3 de `RateLimitTests` verdes.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add src/Fisga.Api/RateLimiting src/Fisga.Api/Program.cs src/Fisga.Api/OpenApi/ContratoOperationTransformer.cs tests/Fisga.Api.Tests
@@ -325,7 +325,7 @@ git commit -m "feat(fisga): Retry-After no 429 e fonte única das políticas de 
   - `RespostasEsperadas.PorOperacao`, `NotFoundSemCorpo`, `TemCorpo(operacao, status)`.
 - Consumes: `IOpenApiOperationTransformer`, `OpenApiResponses` (`OpenApiDictionary<IOpenApiResponse>`), `OpenApiResponse`, `OpenApiHeader`.
 
-- [ ] **Step 1: Criar o catálogo de códigos**
+- [x] **Step 1: Criar o catálogo de códigos**
 
 `src/Fisga.Api/OpenApi/CodigosDeErro.cs` — constantes para todo `codigo` que a camada de API produz. Códigos de regra de negócio continuam nascendo no domínio (`DomainException`), um lugar por regra; este catálogo cobre o vocabulário HTTP da API (middlewares + validações inline).
 
@@ -368,7 +368,7 @@ public static class CodigosDeErro
 }
 ```
 
-- [ ] **Step 2: Criar `RespostasPadrao`**
+- [x] **Step 2: Criar `RespostasPadrao`**
 
 `src/Fisga.Api/OpenApi/RespostasPadrao.cs`:
 
@@ -425,7 +425,7 @@ public static class RespostasPadrao
 }
 ```
 
-- [ ] **Step 3: Criar os helpers de endpoint**
+- [x] **Step 3: Criar os helpers de endpoint**
 
 `src/Fisga.Api/OpenApi/Respostas.cs`:
 
@@ -437,8 +437,10 @@ namespace Fisga.Api.OpenApi;
 
 /// <summary>
 /// Metadata de resposta para o contrato. <see cref="ComErro"/> publica o schema
-/// único de erro; <see cref="SemCorpo"/> declara respostas sem corpo (204, 302,
-/// 413, 429, 503). O transformer normaliza media types, headers e descrições.
+/// único de erro para qualquer status cujo corpo seja <c>ErroResponse</c>;
+/// <see cref="SemCorpo"/> declara um status sem corpo (204, 302, 404 de rota
+/// administrativa ou sem resultado, 429, 503). O transformer normaliza
+/// media types, headers e descrições.
 /// </summary>
 public static class Respostas
 {
@@ -450,7 +452,7 @@ public static class Respostas
 }
 ```
 
-- [ ] **Step 4: Normalizar no transformer**
+- [x] **Step 4: Normalizar no transformer**
 
 Em `ContratoOperationTransformer.cs`:
 
@@ -522,7 +524,7 @@ internal static void NormalizarRespostas(OpenApiOperation operation)
 }
 ```
 
-- [ ] **Step 5: Usar o catálogo nos middlewares**
+- [x] **Step 5: Usar o catálogo nos middlewares**
 
 Substituir os literais por `CodigosDeErro.*` nos três arquivos:
 
@@ -532,7 +534,7 @@ Substituir os literais por `CodigosDeErro.*` nos três arquivos:
 
 Cada arquivo ganha `using Fisga.Api.OpenApi;`.
 
-- [ ] **Step 6: Congelar a tabela de respostas por operação**
+- [x] **Step 6: Congelar a tabela de respostas por operação**
 
 `tests/Fisga.Api.Tests/RespostasEsperadas.cs` — status que cada operação pode devolver, medidos no handler e em `inventario.md`. A chave é a mesma de `MapaDeOperacoes` (método + rota normalizada).
 
@@ -628,7 +630,7 @@ internal static class RespostasEsperadas
             [("DELETE", "/api/trilhas/{id}")] = [204, 401, 403, 404, 429],
 
             // Mídia
-            [("POST", "/api/midia")] = [200, 400, 401, 403, 413, 429],
+            [("POST", "/api/midia")] = [200, 400, 401, 403, 429],
 
             // Visão/Espécies
             [("POST", "/api/especies/sugerir")] = [200, 400, 401, 403, 429, 500],
@@ -650,7 +652,7 @@ internal static class RespostasEsperadas
 
     public static bool TemCorpo((string Metodo, string Rota) operacao, int status) => status switch
     {
-        204 or 302 or 413 or 429 => false,
+        204 or 302 or 429 => false,
         404 => !NotFoundSemCorpo.Contains(operacao),
         503 => operacao != ("GET", "/ready"),
         _ => true
@@ -665,7 +667,7 @@ internal static class RespostasEsperadas
 > `302` mesmo sem sessão. Se outra linha divergir, o handler vence e o
 > `inventario.md` é corrigido na Task 8.
 
-- [ ] **Step 7: Escrever os testes invariantes**
+- [x] **Step 7: Escrever os testes invariantes**
 
 Acrescentar em `tests/Fisga.Api.Tests/ContratoTests.cs` (usar `using Microsoft.AspNetCore.Http;` se necessário):
 
@@ -878,7 +880,7 @@ private static string? Tag(JsonElement operacao) =>
         : null;
 ```
 
-- [ ] **Step 8: Trocar a invariante de segurança para o conjunto curado**
+- [x] **Step 8: Trocar a invariante de segurança para o conjunto curado**
 
 Em `ContratoTests.cs`, substituir a linha que lê `IAllowAnonymous` por um conjunto congelado de 23 rotas:
 
@@ -933,12 +935,12 @@ Assert.Equal(23, RotasAnonimasPorDecisao.Count);
 Assert.Equal(2, ComTokenAdmin.Count);
 ```
 
-- [ ] **Step 9: Rodar e ver o vermelho esperado**
+- [x] **Step 9: Rodar e ver o vermelho esperado**
 
 Run: `dotnet test Fisga.slnx -c Release --filter "FullyQualifiedName~ContratoTests"`
 Expected: `TodaOperacaoTemOperationIdDoMapa`, `ResumosSaoDeNegocio`, `TagsSaoDeDominio`, `SegurancaExpressaPorOperacao`, `RateLimitECacheRefletemMetadata`, `TabelaDeRespostasCobreAs54Operacoes`, `TodaOperacaoComRateLimitDeclara429` e `CatalogoDeCodigosDeErroEhCoerente` PASS. As theories `RespostasDeclaradasSaoAsReais` falham em todos os domínios (o spec ainda declara só `200`) e `UploadsDescrevemMultipart` falha (sem `Accepts`) — esse é o vermelho das Tasks 3–7. `ErrosUsamUmUnicoSchema` passa porque ainda não existe resposta de erro declarada; a cobertura da normalização (espelho de media type, descrição e headers) vem de `NormalizacaoDeRespostasTests`, que exercita `NormalizarRespostas` num `OpenApiOperation` construído à mão. A theory ganha corpo real quando a Task 3 declarar o primeiro 4xx.
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add src/Fisga.Api/OpenApi src/Fisga.Api/Middleware tests/Fisga.Api.Tests
@@ -958,7 +960,7 @@ git commit -m "test(fisga): respostas reais, erro único e multipart como invari
 - Consumes: `Respostas.ComErro`, `Respostas.SemCorpo`, `CodigosDeErro`, `Tags`.
 - Produces: `Fisga.Api.Contracts.FormularioDeFoto(Microsoft.AspNetCore.Http.IFormFile Arquivo)`.
 
-- [ ] **Step 1: Criar o formulário de upload**
+- [x] **Step 1: Criar o formulário de upload**
 
 Em `src/Fisga.Api/Contracts/Contracts.cs`:
 
@@ -971,7 +973,7 @@ Em `src/Fisga.Api/Contracts/Contracts.cs`:
 public sealed record FormularioDeFoto(Microsoft.AspNetCore.Http.IFormFile Arquivo);
 ```
 
-- [ ] **Step 2: Anotar cada operação**
+- [x] **Step 2: Anotar cada operação**
 
 Na declaração de cada endpoint, logo antes de `.RequireRateLimiting(...)`:
 
@@ -985,7 +987,7 @@ Na declaração de cada endpoint, logo antes de `.RequireRateLimiting(...)`:
 | `PUT /api/pescarias/{id:guid}` | `.Produces<PescariaDetalhadaDto>(200)` `.ComErro(400)` `.ComErro(401)` `.ComErro(403)` `.ComErro(404)` `.SemCorpo(429)` |
 | `GET /api/pescarias/{shareToken}/pdf` | `.Produces<byte[]>(200, "application/pdf")` `.ComErro(404)` `.SemCorpo(429)` |
 | `GET /api/diario` | `.Produces<DiarioDto>(200)` `.ComErro(401)` `.ComErro(403)` `.SemCorpo(429)` |
-| `POST /api/midia` | `.Produces<MidiaResponse>(200)` `.Accepts<FormularioDeFoto>("multipart/form-data")` `.ComErro(400)` `.ComErro(401)` `.ComErro(403)` `.SemCorpo(413)` `.SemCorpo(429)` |
+| `POST /api/midia` | `.Produces<MidiaResponse>(200)` `.Accepts<FormularioDeFoto>("multipart/form-data")` `.ComErro(400)` `.ComErro(401)` `.ComErro(403)` `.SemCorpo(429)` |
 
 > **Atenção ao `404`:** só são corpo vazio `/api/locais/reverso`,
 > `/api/newsletter/enviar` e `/api/newsletter/preview`; todos os outros vêm do
@@ -994,21 +996,21 @@ Na declaração de cada endpoint, logo antes de `.RequireRateLimiting(...)`:
 
 Adicionar os `using` que faltarem: `Fisga.Application.Catalogo`, `Fisga.Application.Pescarias` (já presentes), `Fisga.Api.RateLimiting` se necessário.
 
-- [ ] **Step 3: Usar o catálogo nos erros de mídia e pescaria**
+- [x] **Step 3: Usar o catálogo nos erros de mídia e pescaria**
 
 Trocar os literais de `PescariaEndpoints.cs` pelas constantes: `PescariaNaoEncontrada`, `MidiaSemFormulario`, `MidiaVazia`, `MidiaGrande`, `MidiaTipoInvalido`.
 
-- [ ] **Step 4: Rodar as theories da área**
+- [x] **Step 4: Rodar as theories da área**
 
 Run: `dotnet test Fisga.slnx -c Release --filter "FullyQualifiedName~ContratoTests"`
 Expected: `RespostasDeclaradasSaoAsReais` e `ErrosUsamUmUnicoSchema` PASS para `Catálogo`, `Pescarias`, `Diário` e `Mídia`; continuam falhando para os demais domínios. `UploadsDescrevemMultipart` ainda falha só em `/api/especies/sugerir`.
 
-- [ ] **Step 5: Conferir no JSON gerado**
+- [x] **Step 5: Conferir no JSON gerado**
 
 Run: `./scripts/gerar-openapi.sh && python3 -c "import json; d=json.load(open('docs/api/openapi.json')); print(json.dumps(d['paths']['/api/pescarias']['post']['responses'], ensure_ascii=False, indent=1)); print(json.dumps(d['paths']['/api/midia']['post']['requestBody'], ensure_ascii=False))"`
 Expected: `201` com `Location`, `400`/`401`/`403` com `ErroResponse` nos dois media types, `429` sem conteúdo e com `Retry-After`; `requestBody` com `arquivo`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/Fisga.Api/Endpoints/PescariaEndpoints.cs src/Fisga.Api/Contracts/Contracts.cs
@@ -1022,13 +1024,13 @@ git commit -m "docs(fisga): respostas reais de catálogo, pescarias, diário e m
 
 ---
 
-### Task 4: Respostas de Autenticação (16 operações)
+### Task 4: Respostas de Autenticação (17 operações)
 
 **Files:**
 - Modify: `src/Fisga.Api/Endpoints/AuthEndpoints.cs`
 - Test: theories `Autenticação`
 
-- [ ] **Step 1: Anotar cada operação**
+- [x] **Step 1: Anotar cada operação**
 
 | Operação | Metadata de resposta |
 | --- | --- |
@@ -1050,16 +1052,16 @@ git commit -m "docs(fisga): respostas reais de catálogo, pescarias, diário e m
 | `POST /api/auth/sair` | `.SemCorpo(204)` `.SemCorpo(429)` |
 | `POST /api/auth/sair-de-todos` | `.SemCorpo(204)` `.ComErro(401)` `.ComErro(403)` `.SemCorpo(429)` |
 
-- [ ] **Step 2: Usar o catálogo no `google_indisponivel`**
+- [x] **Step 2: Usar o catálogo no `google_indisponivel`**
 
 As duas ocorrências de `new ErroResponse("google_indisponivel", ...)` passam a usar `CodigosDeErro.GoogleIndisponivel`.
 
-- [ ] **Step 3: Rodar**
+- [x] **Step 3: Rodar**
 
 Run: `dotnet test Fisga.slnx -c Release --filter "FullyQualifiedName~ContratoTests"`
 Expected: `Autenticação` verde nas duas theories; demais domínios continuam vermelhos.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/Fisga.Api/Endpoints/AuthEndpoints.cs
@@ -1074,7 +1076,7 @@ git commit -m "docs(fisga): respostas reais de autenticação e sessão"
 - Modify: `src/Fisga.Api/Endpoints/AuthEndpoints.cs` (bloco `MapContaEndpoints`)
 - Test: theory `Conta`
 
-- [ ] **Step 1: Anotar cada operação**
+- [x] **Step 1: Anotar cada operação**
 
 | Operação | Metadata de resposta |
 | --- | --- |
@@ -1084,12 +1086,12 @@ git commit -m "docs(fisga): respostas reais de autenticação e sessão"
 | `GET /api/conta/exportar` | `.Produces<ExportacaoDaConta>(200, "application/json")` `.ComErro(401)` `.ComErro(403)` `.SemCorpo(429)` |
 | `DELETE /api/conta` | `.SemCorpo(204)` `.ComErro(400)` `.ComErro(401)` `.ComErro(403)` `.SemCorpo(429)` |
 
-- [ ] **Step 2: Rodar**
+- [x] **Step 2: Rodar**
 
 Run: `dotnet test Fisga.slnx -c Release --filter "FullyQualifiedName~ContratoTests"`
 Expected: `Conta` verde; falham apenas os domínios das Tasks 6 e 7.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/Fisga.Api/Endpoints/AuthEndpoints.cs
@@ -1106,14 +1108,14 @@ git commit -m "docs(fisga): respostas reais de conta e consentimento"
 - Modify: `src/Fisga.Api/Endpoints/TrilhasEndpoints.cs`
 - Test: theories `Condições`, `Locais`, `Pontos`, `Trilhas`
 
-- [ ] **Step 1: Anotar Condições**
+- [x] **Step 1: Anotar Condições**
 
 | Operação | Metadata de resposta |
 | --- | --- |
 | `GET /api/condicoes` | `.Produces<CondicoesDto>(200)` `.ComErro(400)` `.SemCorpo(429)` `.ComErro(500)` |
 | `GET /api/condicoes/comparar` | `.Produces<ComparacaoDto>(200)` `.ComErro(400)` `.ComErro(401)` `.ComErro(403)` `.SemCorpo(429)` `.ComErro(500)` |
 
-- [ ] **Step 2: Anotar Locais**
+- [x] **Step 2: Anotar Locais**
 
 | Operação | Metadata de resposta |
 | --- | --- |
@@ -1125,7 +1127,7 @@ git commit -m "docs(fisga): respostas reais de conta e consentimento"
 | `POST /api/locais/{id:guid}/padrao` | `.Produces<LocalDto>(200)` `.ComErro(401)` `.ComErro(403)` `.ComErro(404)` `.SemCorpo(429)` |
 | `DELETE /api/locais/{id:guid}` | `.SemCorpo(204)` `.ComErro(401)` `.ComErro(403)` `.ComErro(404)` `.SemCorpo(429)` |
 
-- [ ] **Step 3: Anotar Pontos e Trilhas**
+- [x] **Step 3: Anotar Pontos e Trilhas**
 
 | Operação | Metadata de resposta |
 | --- | --- |
@@ -1138,16 +1140,16 @@ git commit -m "docs(fisga): respostas reais de conta e consentimento"
 | `PUT /api/trilhas/{id:guid}` | `.Produces<TrilhaDto>(200)` `.ComErro(400)` `.ComErro(401)` `.ComErro(403)` `.ComErro(404)` `.SemCorpo(429)` |
 | `DELETE /api/trilhas/{id:guid}` | `.SemCorpo(204)` `.ComErro(401)` `.ComErro(403)` `.ComErro(404)` `.SemCorpo(429)` |
 
-- [ ] **Step 4: Usar o catálogo em Condições**
+- [x] **Step 4: Usar o catálogo em Condições**
 
 `local_sem_coordenadas` → `CodigosDeErro.LocalSemCoordenadas`; `coordenadas_invalidas` → `CodigosDeErro.CoordenadasInvalidas`.
 
-- [ ] **Step 5: Rodar**
+- [x] **Step 5: Rodar**
 
 Run: `dotnet test Fisga.slnx -c Release --filter "FullyQualifiedName~ContratoTests"`
 Expected: `Condições`, `Locais`, `Pontos` e `Trilhas` verdes. Falta só `Sistema` e `Espécies`/`Newsletter`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/Fisga.Api/Endpoints/CondicoesEndpoints.cs src/Fisga.Api/Endpoints/PontosEndpoints.cs src/Fisga.Api/Endpoints/TrilhasEndpoints.cs
@@ -1165,7 +1167,7 @@ git commit -m "docs(fisga): respostas reais de condições, locais, pontos e tri
 - Modify: `src/Fisga.Api/Contracts/Contracts.cs` (`SaudeResponse`, `ProntidaoResponse`)
 - Test: theories `Espécies`, `Newsletter`, `Sistema`; fatos `UploadsDescrevemMultipart` e `SaudeDeclaraCorpoJson`
 
-- [ ] **Step 1: Anotar Espécies (multipart)**
+- [x] **Step 1: Anotar Espécies (multipart)**
 
 `POST /api/especies/sugerir`:
 
@@ -1181,7 +1183,7 @@ git commit -m "docs(fisga): respostas reais de condições, locais, pontos e tri
 
 Trocar os literais pelos códigos: `SugestaoSemFormulario`, `SugestaoSemFoto`, `SugestaoFotoGrande`, `SugestaoTipoInvalido`.
 
-- [ ] **Step 2: Anotar Newsletter**
+- [x] **Step 2: Anotar Newsletter**
 
 | Operação | Metadata de resposta |
 | --- | --- |
@@ -1189,7 +1191,7 @@ Trocar os literais pelos códigos: `SugestaoSemFormulario`, `SugestaoSemFoto`, `
 | `GET /api/newsletter/preview` | `.Produces<string>(200, "text/html")` `.SemCorpo(404)` `.ComErro(500)` |
 | `GET /api/newsletter/descadastrar` | `.SemCorpo(302)` `.SemCorpo(429)` |
 
-- [ ] **Step 3: Anotar saúde e prontidão**
+- [x] **Step 3: Anotar saúde e prontidão**
 
 Em `Program.cs`:
 
@@ -1240,12 +1242,12 @@ Acrescentar em `ContratoTests` o fato `SaudeDeclaraCorpoJson`: `GET /health` e
 `SaudeResponse`/`ProntidaoResponse`. Sem ele, voltar para `.Produces(200, null, …)`
 passa despercebido.
 
-- [ ] **Step 4: Rodar a suíte de contrato inteira**
+- [x] **Step 4: Rodar a suíte de contrato inteira**
 
 Run: `dotnet test Fisga.slnx -c Release --filter "FullyQualifiedName~ContratoTests|FullyQualifiedName~RateLimitTests"`
 Expected: todas as theories verdes, incluindo `UploadsDescrevemMultipart` e as 13 tags de `RespostasDeclaradasSaoAsReais`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/Fisga.Api/Endpoints/VisionEndpoints.cs src/Fisga.Api/Endpoints/NewsletterEndpoints.cs src/Fisga.Api/Program.cs src/Fisga.Api/Contracts/Contracts.cs tests/Fisga.Api.Tests/ContratoTests.cs
@@ -1266,7 +1268,7 @@ git commit -m "docs(fisga): respostas reais de espécies, newsletter e sistema"
 - Modify: `docs/api/portal.md` (somente se a linha sobre `429` com corpo ainda existir)
 - Test: suíte completa + markdownlint
 
-- [ ] **Step 1: Regenerar e auditar o contrato**
+- [x] **Step 1: Regenerar e auditar o contrato**
 
 ```bash
 export PATH="$HOME/.dotnet:$PATH"
@@ -1287,7 +1289,7 @@ EOF
 
 Expected: 54 operações; 50 com `429` e `Retry-After`; 7 com `Location` (5 `201` + 2 `202`); lista de erros fora do schema vazia; multipart nos dois uploads.
 
-- [ ] **Step 2: Zerar o inventário**
+- [x] **Step 2: Zerar o inventário**
 
 Em `docs/api/inventario.md`:
 
@@ -1295,11 +1297,11 @@ Em `docs/api/inventario.md`:
 - Trocar o aviso do topo por:
 
 ```markdown
-> **Resolvido no A2 (2026-11-20):** status reais (`201`/`202`/`204`/`302`/`413`/`503`),
-> schema único de erro (`ErroResponse`) nos dois media types, os `codigo` de erro
-> nas descrições de cada resposta, uploads `multipart/form-data` e `Retry-After`
-> no `429` estão no [`openapi.json`](openapi.json). Resta a identidade do
-> documento (`info`/`servers`).
+> **Resolvido no A2 (2026-11-20):** status reais (`201`/`202`/`204`/`302`/`503`),
+> schema único de erro (`ErroResponse`) nos dois media types, as descrições de
+> erro do catálogo, com `codigo` onde cabe, uploads `multipart/form-data` e
+> `Retry-After` no `429` estão no [`openapi.json`](openapi.json). Resta a
+> identidade do documento (`info`/`servers`).
 ```
 
 - Trocar "Confirmadas no `openapi.json` atual. Viram tickets da Fase 1." por uma linha no singular, coerente com a única lacuna restante.
@@ -1318,7 +1320,7 @@ Em `docs/api/inventario.md`:
 - Atualizar a tabela "Verificação em execução local": a linha do `429` passa a registrar `Retry-After` com o número de segundos (`sem corpo, com Retry-After: <n>`), não mais "sem `Retry-After`".
 - Conferir as demais linhas dessa tabela contra o contrato regerado e corrigir qualquer status que tenha mudado (ex.: `google/conectar/concluir` com `403`).
 
-- [ ] **Step 3: Marcar o backlog**
+- [x] **Step 3: Marcar o backlog**
 
 Em `docs/api/backlog.md`, acrescentar `**Estado:** concluída no A2 (2026-11-20) — esta PR fecha #64.` em F1.2, `#65` em F1.3, `#66` em F1.5 e `#69` em F1.8 (uma linha por item, no mesmo formato de F1.4/F1.6).
 
@@ -1335,35 +1337,39 @@ Ajustar o texto que o A2 tornou falso ou que descreve o caminho descartado:
 - F1.8: riscar o "portal documenta o header" só se o portal ainda não o fizer;
   caso contrário manter.
 
-- [ ] **Step 4: Atualizar o README do contrato**
+- [x] **Step 4: Atualizar o README do contrato**
 
 Em `docs/api/README.md`, reescrever a seção "Limites conhecidos":
 
 - Manter o bullet "Só existe em Development".
-- Substituir os dois bullets finais por um que descreva o que o contrato já expressa: status reais e corpo tipado de sucesso, `ErroResponse` em `application/json` e `application/problem+json`, `multipart/form-data` nos dois uploads, `Retry-After` no `429`, `Location` em `201`/`202`; e o que ainda falta: `info`/`servers` (F1.7).
+- Substituir os dois bullets finais por um que descreva o que o contrato já expressa: status reais e corpo tipado de sucesso quando há corpo, `ErroResponse` em `application/json` e `application/problem+json`, `multipart/form-data` nos dois uploads, `Retry-After` no `429`, `Location` em `201`/`202`; e o que ainda falta: `info`/`servers` (F1.7).
 - Acrescentar na seção "De onde vem o documento" que as respostas vêm de `Produces<T>` + `Respostas.ComErro`/`SemCorpo` e são normalizadas por `ContratoOperationTransformer`.
 
-- [ ] **Step 5: Atualizar o guia de endpoint**
+- [x] **Step 5: Atualizar o guia de endpoint**
 
 Em `docs/guias/como-adicionar-endpoint.md`, seção 7, inserir antes do passo 3:
 
 ```markdown
 3. Declare as respostas: `.Produces<T>(status)` para o sucesso, `.ComErro(status)`
-   para erro com corpo e `.SemCorpo(status)` para `204`/`302`/`413`/`429`/`503`.
+   para erro com corpo e `.SemCorpo(status)` para `204`/`302`/`429`/`503`.
    Upload usa `.Accepts<FormularioDeFoto>("multipart/form-data")`. O status
    declarado precisa ser o que o handler devolve — `ContratoTests` compara a
    tabela de `RespostasEsperadas` com o documento gerado.
+4. Registre a operação em `tests/Fisga.Api.Tests/RespostasEsperadas.cs` com os
+   status reais e, se a rota for pública, em `RotasAnonimasPorDecisao`
+   (`ContratoTests.cs`). Um `404` com corpo vazio (em vez de `ErroResponse`)
+   entra em `RespostasEsperadas.NotFoundSemCorpo`.
 ```
 
-Renumerar o passo de regeneração para 4.
+Renumerar o passo de regeneração para 5.
 
-- [ ] **Step 6: Conferir o portal e a política editorial**
+- [x] **Step 6: Conferir o portal e a política editorial**
 
 Em `docs/api/portal.md`, a linha 158 cita "`429` com corpo" apenas como erro do protótipo; nenhuma mudança é necessária. Se houver qualquer outra frase dizendo que o spec não declara status/erros, atualizar.
 
 Em `docs/api/politica-editorial.md`, o bullet do `429` (linha ~119) diz "sem `Retry-After`", o que deixa de ser verdade: reescrever para "**`429` sem corpo, com `Retry-After`.** O rate limit responde vazio; o header informa os segundos até a próxima janela; o texto diz o limite e a janela." Na mesma seção, corrigir "O corpo de erro real é `application/problem+json`" para registrar os dois media types: `application/json` nos handlers e `application/problem+json` nos middlewares, com o mesmo corpo `{codigo, detalhe}`. Registrar a exceção: os dois `503 google_indisponivel` (`/api/auth/google/iniciar` e `/api/auth/google/conectar`) já saem `application/problem+json` de dentro do handler.
 
-- [ ] **Step 7: Rodar tudo**
+- [x] **Step 7: Rodar tudo**
 
 ```bash
 export PATH="$HOME/.dotnet:$PATH"
@@ -1374,7 +1380,7 @@ cd ../.. && npx --yes markdownlint-cli2@0.24.1
 
 Expected: build sem warnings; suíte inteira verde, incluindo as 13 theories de `RespostasDeclaradasSaoAsReais`, `ErrosUsamUmUnicoSchema`, `UploadsDescrevemMultipart`, `SaudeDeclaraCorpoJson`, `NormalizacaoDeRespostasTests` e `RateLimitTests`; markdownlint 0 issues na raiz do repo.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add docs/api docs/guias docs/superpowers
@@ -1383,12 +1389,46 @@ git commit -m "docs(fisga): contrato A2 regerado e inventário sem as lacunas de
 
 ---
 
+### Task 9: Correção pós-revisão (2026-11-20)
+
+Correções feitas depois da revisão do pacote A2, no commit `3323fbf`.
+
+**O plano errou no `413`.** A decisão 3 tratava `413` como status de corpo vazio
+do Kestrel nos dois uploads. Medição no Kestrel real: corpo de 32 MB em
+`POST /api/midia` e `POST /api/especies/sugerir` devolve
+`500 {"codigo":"erro_inesperado"}`. O `BadHttpRequestException` (413) nasce na
+leitura do formulário e é capturado pelo `catch (Exception)` do
+`ExceptionHandlingMiddleware`, que responde o `500` genérico. A API nunca
+devolve `413` — documentá-lo publicava um status que não acontece. Removido de
+`POST /api/midia` (a tabela de `RespostasEsperadas` congela
+`[200, 400, 401, 403, 429]`) e do `openapi.json` regerado. O catálogo
+`RespostasPadrao` mantém a descrição do `413` para uma operação futura que
+realmente o devolva.
+
+**Saúde com tipo.** `/health` e `/ready` passam a devolver `SaudeResponse` e
+`ProntidaoResponse` e a declará-los com `Produces<T>` no handler; o JSON é
+byte a byte o mesmo (conferido por hash), então a mudança é só de contrato.
+
+**Dois fatos novos, cobertos por teste.** Todo 2xx com corpo declara schema
+(os `204`/`302` continuam sem corpo), e as quatro criações — `/api/pescarias`,
+`/api/locais`, `/api/pontos` e `/api/trilhas` — declaram o DTO que devolvem
+(`PescariaSalvaResponse`, `LocalDto`, `PontoDto`, `TrilhaDto`), em vez de um
+`201` sem tipo.
+
+**Documentação.** `docs/api/inventario.md` (sem `413`, nota de corpo acima de
+30 MB, aviso do A2 com `codigo` onde cabe), `docs/api/README.md` (corpo tipado
+quando há corpo; schemas de sucesso vindos de `Fisga.Application`), o guia de
+endpoint (sem `413`; registro em `RespostasEsperadas`/`RotasAnonimasPorDecisao`
+e `NotFoundSemCorpo`) e o `docs/INDEX.md`, que passa a indexar este plano.
+
+---
+
 ## Verificação final do pacote
 
-- [ ] `git diff origin/main...HEAD --stat` limitado a `Projetos/fisga/**`.
-- [ ] Nenhuma mudança de comportamento: revisar o diff dos handlers e confirmar que só entraram linhas `.Produces`/`.ComErro`/`.SemCorpo`/`.Accepts`, constantes de código e o `Retry-After`. Nenhum `Results.*` mudou de status.
-- [ ] `grep -rn 'new ErroResponse("' src/Fisga.Api` não retorna nada (todo código vem de `CodigosDeErro`).
-- [ ] `grep -rn "LimitesPadraoPorMinuto" src tests` não retorna nada (fonte única).
-- [ ] `openapi.json` com 54 operações, 54 `operationId`, 13 tags, 50 `x-rate-limit`, 54 `x-cache`, 50 `429` com `Retry-After`, dois `multipart/form-data`.
-- [ ] `/health` e `/ready` fora da contagem de `429` (isentos) e `/ready` com `503` sem corpo.
+- [x] `git diff origin/main...HEAD --stat` limitado a `Projetos/fisga/**`.
+- [x] Nenhuma mudança de comportamento: revisar o diff dos handlers e confirmar que só entraram linhas `.Produces`/`.ComErro`/`.SemCorpo`/`.Accepts`, constantes de código e o `Retry-After`. Nenhum `Results.*` mudou de status.
+- [x] `grep -rn 'new ErroResponse("' src/Fisga.Api` não retorna nada (todo código vem de `CodigosDeErro`).
+- [x] `grep -rn "LimitesPadraoPorMinuto" src tests` não retorna nada (fonte única).
+- [x] `openapi.json` com 54 operações, 54 `operationId`, 13 tags, 50 `x-rate-limit`, 54 `x-cache`, 50 `429` com `Retry-After`, dois `multipart/form-data`.
+- [x] `/health` e `/ready` fora da contagem de `429` (isentos) e `/ready` com `503` sem corpo.
 - [ ] PR com `Closes #64`, `Closes #65`, `Closes #66`, `Closes #69`; corpo lista o que mudou, como verificar e o desvio consciente de `ProducesProblem` → `ErroResponse`.

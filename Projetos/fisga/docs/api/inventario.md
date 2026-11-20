@@ -136,6 +136,11 @@ campos:
 | Rate limit | 429 | — (corpo vazio) |
 | Falha de binding do Minimal API | 400 | ProblemDetails padrão do ASP.NET Core |
 
+**Corpo acima de 30 MB:** o limite do Kestrel interrompe a leitura do
+formulário e o `ExceptionHandlingMiddleware` responde o `500` genérico
+(`erro_inesperado`). A API não responde `413`; os dois uploads validam tamanho
+em `400` (`midia_grande`, `sugestao_foto_grande`), ambos em 5 MB.
+
 ## Domínios
 
 Legenda de acesso: **P** público · **S** sessão · **D** dono · **A** admin ·
@@ -248,7 +253,7 @@ responde `503` quando o banco não responde.
 
 | Método e rota | Acesso | Rate limit | Sucesso real | Erros a documentar | Notas |
 | --- | --- | --- | --- | --- | --- |
-| `POST /api/midia` | S, consent. | midia | `200` `MidiaResponse` | `400` `midia_sem_formulario`/`midia_vazia`/`midia_grande`/`midia_tipo_invalido`, `401`, `403`, `413` (Kestrel), `429` | `multipart/form-data`, campo `arquivo`; JPG, PNG ou WebP até 5 MB |
+| `POST /api/midia` | S, consent. | midia | `200` `MidiaResponse` | `400` `midia_sem_formulario`/`midia_vazia`/`midia_grande`/`midia_tipo_invalido`, `401`, `403`, `429` | `multipart/form-data`, campo `arquivo`; JPG, PNG ou WebP até 5 MB |
 
 ### Visão/Espécies
 
@@ -268,11 +273,11 @@ responde `503` quando o banco não responde.
 
 Confirmada no `openapi.json` atual. Vira ticket da Fase 1.
 
-> **Resolvido no A2 (2026-11-20):** status reais (`201`/`202`/`204`/`302`/`413`/`503`),
-> schema único de erro (`ErroResponse`) nos dois media types, os `codigo` de erro
-> nas descrições de cada resposta, uploads `multipart/form-data` e `Retry-After`
-> no `429` estão no [`openapi.json`](openapi.json). Resta a identidade do
-> documento (`info`/`servers`).
+> **Resolvido no A2 (2026-11-20):** status reais (`201`/`202`/`204`/`302`/`503`),
+> schema único de erro (`ErroResponse`) nos dois media types, as descrições de
+> erro do catálogo, com `codigo` onde cabe, uploads `multipart/form-data` e
+> `Retry-After` no `429` estão no [`openapi.json`](openapi.json). Resta a
+> identidade do documento (`info`/`servers`).
 
 | # | Lacuna | Evidência | Correção alvo |
 | --- | --- | --- | --- |

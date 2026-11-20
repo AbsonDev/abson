@@ -46,7 +46,12 @@ Commite o arquivo gerado no mesmo PR da mudança de contrato.
   `ComErro`/`SemCorpo` (erro com corpo e sem corpo), e normalizadas por
   `ContratoOperationTransformer.cs` — media types, headers
   `Location`/`Retry-After` e descrição por status.
-- DTOs de entrada e saída em `src/Fisga.Api/Contracts/`.
+- DTOs de entrada em `src/Fisga.Api/Contracts/`. A maioria dos schemas de
+  sucesso vem de `src/Fisga.Application` (`PescariaDetalhadaDto`, `LocalDto`,
+  `DiarioDto`, `CondicoesDto`, `ComparacaoDto`, `ResultadoNewsletter`,
+  `SugestaoDeEspecieResultado`, `ExportacaoDaConta`) e é publicada direto pelo
+  `Produces<T>`. Renomear um record de `Fisga.Application` é uma mudança
+  incompatível (breaking) no contrato público.
 - A contagem de paths e schemas muda a cada mudança de contrato e não é
   mantida à mão aqui: consulte o próprio `openapi.json`, que é a fonte da
   verdade.
@@ -58,9 +63,9 @@ Commite o arquivo gerado no mesmo PR da mudança de contrato.
   apenas no ambiente local. Em produção o documento não é exposto; a fonte é o
   `openapi.json` versionado aqui.
 - **O contrato expressa respostas e erros; falta a identidade do documento.**
-  Cada operação declara o status real de sucesso com corpo tipado, as respostas
-  de erro apontam para o schema único `ErroResponse` em `application/json` e
-  `application/problem+json`, os dois uploads descrevem
+  Cada operação declara o status real de sucesso com corpo tipado quando há
+  corpo, as respostas de erro apontam para o schema único `ErroResponse` em
+  `application/json` e `application/problem+json`, os dois uploads descrevem
   `multipart/form-data`, o `429` traz `Retry-After` e `201`/`202` trazem
   `Location`. Acesso (`security`), cache (`x-cache`) e rate limit
   (`x-rate-limit`) também saem do código. Falta só `info`/`servers` (F1.7): o
