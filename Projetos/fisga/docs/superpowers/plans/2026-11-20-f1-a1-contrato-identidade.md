@@ -148,10 +148,10 @@ git commit -m "feat(fisga): operationId congelado por operação no contrato"
 
 ---
 
-### Task 3a: Tags e descrições — Pescarias, Catálogo, Locais, Pontos, Trilhas, Condições
+### Task 3a: Tags e descrições — Pescarias, Catálogo, Diário, Mídia, Locais, Pontos, Trilhas, Condições
 
 **Files:**
-- Modify: `src/Fisga.Api/Endpoints/PescariaEndpoints.cs` (Catálogo, Pescarias)
+- Modify: `src/Fisga.Api/Endpoints/PescariaEndpoints.cs` (Catálogo, Pescarias, Diário e Mídia — os dois últimos moram neste arquivo, não no `Program.cs`)
 - Modify: `src/Fisga.Api/Endpoints/CondicoesEndpoints.cs` (Condições, Locais)
 - Modify: `src/Fisga.Api/Endpoints/PontosEndpoints.cs` (Pontos)
 - Modify: `src/Fisga.Api/Endpoints/TrilhasEndpoints.cs` (Trilhas)
@@ -212,12 +212,12 @@ git commit -m "docs(fisga): tags e descrições de autenticação, conta e siste
 
 ---
 
-### Task 3c: Tags e descrições — Newsletter, Diário, Mídia, Espécies, Catálogo
+### Task 3c: Tags e descrições — Newsletter e Espécies
 
 **Files:**
 - Modify: `src/Fisga.Api/Endpoints/NewsletterEndpoints.cs`
-- Modify: `src/Fisga.Api/Program.cs` (Diário, Mídia, Espécies, se mapeados lá)
-- Test: `tests/Fisga.Api.Tests/ContratoTests.cs` (teste 2)
+- Modify: `src/Fisga.Api/Endpoints/VisionEndpoints.cs` (`/api/especies/sugerir`)
+- Test: `tests/Fisga.Api.Tests/ContratoTests.cs` (tags e resumos)
 
 **Interfaces:**
 - Consumes: `Tags.*`.
@@ -235,8 +235,8 @@ Expected: operationId e tags PASS; `ResumosSaoDeNegocio` fecha aqui, junto com a
 - [ ] **Step 3: Commit**
 
 ```bash
-git add src/Fisga.Api/Endpoints/NewsletterEndpoints.cs src/Fisga.Api/Program.cs
-git commit -m "docs(fisga): tags e descrições de newsletter, diário, mídia e espécies"
+git add src/Fisga.Api/Endpoints/NewsletterEndpoints.cs src/Fisga.Api/Endpoints/VisionEndpoints.cs
+git commit -m "docs(fisga): tags e descrições de newsletter e espécies"
 ```
 
 ---
