@@ -48,18 +48,27 @@ aditivos de resposta.
 - **Escopo:** `Produces<T>(201/202/204)` nos handlers que devolvem algo diferente
   de `200`; `Location` no `201` de pescaria, local, ponto e trilha.
 - **Aceite:** o spec lista o status que o código devolve em todas as 54
-  operações; teste de contrato compara spec × handler para os quatro `POST` de
-  criação.
+  operações; teste de contrato compara a tabela congelada com o documento
+  gerado nas 54 operações.
+- **Estado:** concluída no A2 (2026-11-20) — esta PR fecha #64.
 - **Est.:** 1 d · **Dep.:** —
 
 ### F1.3 — Um único formato de erro, documentado
 
 - **Issue:** [#65](https://github.com/AbsonDev/abson/issues/65)
-- **Escopo:** schema `ErroResponse` (`codigo`, `detalhe`), `ProducesProblem` por
-  status em cada operação e catálogo de `codigo` em um único lugar do código.
+- **Escopo:** schema `ErroResponse` (`codigo`, `detalhe`), `Respostas.ComErro`
+  por status em cada operação (`ProducesProblem` foi descartado: publica o
+  schema `ProblemDetails` do framework, não o corpo real) e catálogo de `codigo`
+  em um único lugar do código.
 - **Aceite:** todos os erros de handler e middleware apontam para o mesmo
   schema; o spec não mistura ProblemDetails do framework com `ErroResponse` sem
-  dizer qual é qual; `429` documentado como corpo vazio.
+  dizer qual é qual; `429` documentado como corpo vazio com `Retry-After`.
+- **Estado:** concluída no A2 (2026-11-20) — esta PR fecha #65.
+- **Dívida conhecida:** `CodigosDeErro.Todos` é um change-detector
+  intencional — constante nova quebra o teste e força a decisão consciente. O
+  que ele não cobre é um literal `codigo` reintroduzido em handler; um guard de
+  varredura do código-fonte resolveria, mas foi rejeitado pela fragilidade de
+  caminho — fica como item de checklist de review.
 - **Est.:** 1 d · **Dep.:** F1.1
 
 ### F1.4 — Tags, `operationId` e descrições
@@ -79,6 +88,7 @@ aditivos de resposta.
   `/api/especies/sugerir`: campo `arquivo`, tipos aceitos e limite de 5 MB.
 - **Aceite:** o spec descreve o campo e o limite; erro de tipo e de tamanho
   aparecem na tabela de erros.
+- **Estado:** concluída no A2 (2026-11-20) — esta PR fecha #66.
 - **Est.:** 0,5 d · **Dep.:** F1.3
 
 ### F1.6 — Rate limit e cache no contrato
@@ -107,8 +117,10 @@ aditivos de resposta.
 - **Issue:** [#69](https://github.com/AbsonDev/abson/issues/69)
 - **Escopo:** adicionar `Retry-After` na rejeição do rate limiter. Corpo
   permanece vazio.
-- **Aceite:** resposta `429` traz `Retry-After` em segundos; teste cobre; portal
-  documenta o header.
+- **Aceite:** resposta `429` traz `Retry-After` em segundos; teste cobre;
+  ~~portal documenta o header~~ (o portal ainda não o documenta; a referência da
+  F2.1 herda o header do spec).
+- **Estado:** concluída no A2 (2026-11-20) — esta PR fecha #69.
 - **Nota:** as duas rotas administrativas de newsletter continuam isentas de
   rate limit por decisão do A1 (o contrato declara a ausência). O token é
   comparado em tempo constante, mas não há throttling: se o abuso virar

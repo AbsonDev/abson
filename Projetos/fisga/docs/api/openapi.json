@@ -15,7 +15,14 @@
         "operationId": "obterSaude",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaudeResponse"
+                }
+              }
+            }
           }
         },
         "security": [ ],
@@ -32,7 +39,17 @@
         "operationId": "obterProntidao",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProntidaoResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Serviço indisponível. Corpo vazio."
           }
         },
         "security": [ ],
@@ -49,7 +66,26 @@
         "operationId": "versoesLegais",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersoesLegaisResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [ ],
@@ -67,7 +103,7 @@
           "Autenticação"
         ],
         "summary": "Solicita um link de acesso por e-mail",
-        "description": "Funciona sem sessão. Retorna 202 sempre com a mesma mensagem genérica, sem revelar se o e-mail existe; em ambiente local, sem envio de e-mail, o link volta na resposta.",
+        "description": "Funciona sem sessão. Retorna 202 sempre com a mesma mensagem genérica, sem revelar se o e-mail existe; em ambiente local, sem envio de e-mail, o link volta na resposta. O `Location` aponta para `/api/auth/me`, que só reporta sessão autenticada depois de o link ser confirmado.",
         "operationId": "solicitarLink",
         "requestBody": {
           "content": {
@@ -80,8 +116,51 @@
           "required": true
         },
         "responses": {
-          "200": {
-            "description": "OK"
+          "202": {
+            "description": "Requisição aceita para processamento.",
+            "headers": {
+              "Location": {
+                "description": "URL do recurso criado ou do próximo passo.",
+                "schema": {
+                  "type": "string",
+                  "format": "uri"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SolicitarLinkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requisição inválida. Regra de negócio devolve `codigo` e `detalhe`; corpo JSON malformado devolve ProblemDetails do framework.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [ ],
@@ -99,7 +178,7 @@
           "Autenticação"
         ],
         "summary": "Cria uma conta com e-mail e senha",
-        "description": "Funciona sem sessão. Retorna 201 e envia um link de confirmação; a conta só entra depois de confirmar o e-mail.",
+        "description": "Funciona sem sessão. Retorna 201 e envia um link de confirmação; a conta só entra depois de confirmar o e-mail. O `Location` aponta para `/api/auth/me`, que só reporta sessão autenticada depois de o link ser confirmado.",
         "operationId": "registrarConta",
         "requestBody": {
           "content": {
@@ -112,8 +191,51 @@
           "required": true
         },
         "responses": {
-          "200": {
-            "description": "OK"
+          "201": {
+            "description": "Recurso criado. O header `Location` aponta para ele.",
+            "headers": {
+              "Location": {
+                "description": "URL do recurso criado ou do próximo passo.",
+                "schema": {
+                  "type": "string",
+                  "format": "uri"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistrarResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requisição inválida. Regra de negócio devolve `codigo` e `detalhe`; corpo JSON malformado devolve ProblemDetails do framework.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [ ],
@@ -145,7 +267,41 @@
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntrarResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requisição inválida. Regra de negócio devolve `codigo` e `detalhe`; corpo JSON malformado devolve ProblemDetails do framework.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [ ],
@@ -177,7 +333,41 @@
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfirmarEmailResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requisição inválida. Regra de negócio devolve `codigo` e `detalhe`; corpo JSON malformado devolve ProblemDetails do framework.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [ ],
@@ -208,8 +398,51 @@
           "required": true
         },
         "responses": {
-          "200": {
-            "description": "OK"
+          "202": {
+            "description": "Requisição aceita para processamento.",
+            "headers": {
+              "Location": {
+                "description": "URL do recurso criado ou do próximo passo.",
+                "schema": {
+                  "type": "string",
+                  "format": "uri"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EsqueciSenhaResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requisição inválida. Regra de negócio devolve `codigo` e `detalhe`; corpo JSON malformado devolve ProblemDetails do framework.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [ ],
@@ -241,7 +474,41 @@
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RedefinirSenhaResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requisição inválida. Regra de negócio devolve `codigo` e `detalhe`; corpo JSON malformado devolve ProblemDetails do framework.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [ ],
@@ -271,8 +538,20 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "OK"
+          "302": {
+            "description": "Redireciona o navegador para outra URL."
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [ ],
@@ -294,7 +573,26 @@
         "operationId": "googleDisponivel",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoogleDisponivelResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [ ],
@@ -315,8 +613,35 @@
         "description": "Funciona sem sessão. Para navegação do navegador, redireciona 302 ao Google e retorna 503 quando as credenciais não estão configuradas.",
         "operationId": "iniciarLoginGoogle",
         "responses": {
-          "200": {
-            "description": "OK"
+          "302": {
+            "description": "Redireciona o navegador para outra URL."
+          },
+          "503": {
+            "description": "Serviço indisponível no momento. Corpo `ErroResponse` com o motivo.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [ ],
@@ -337,8 +662,20 @@
         "description": "Funciona sem sessão. É o retorno do Google: cria a sessão e redireciona 302 para o web; sem a sessão externa válida, redireciona para a tela de erro.",
         "operationId": "concluirLoginGoogle",
         "responses": {
-          "200": {
-            "description": "OK"
+          "302": {
+            "description": "Redireciona o navegador para outra URL."
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [ ],
@@ -359,8 +696,65 @@
         "description": "Exige sessão; com o Google não configurado, retorna 503 antes de autenticar, então chamadas sem sessão também recebem 503. Com credenciais, redireciona 302 ao Google para autorizar o vínculo.",
         "operationId": "conectarGoogle",
         "responses": {
-          "200": {
-            "description": "OK"
+          "302": {
+            "description": "Redireciona o navegador para outra URL."
+          },
+          "401": {
+            "description": "Sessão ausente, expirada ou revogada (`codigo`: `nao_autenticado`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão (`acesso_negado`), consentimento pendente (`consentimento_pendente`) ou origem não permitida (`origem_invalida`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Serviço indisponível no momento. Corpo `ErroResponse` com o motivo.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -385,8 +779,35 @@
         "description": "Exige sessão. Cria apenas o vínculo, sem trocar de usuário; sem sessão ou com intenção inválida, redireciona 302 para a página da conta com o estado do erro.",
         "operationId": "concluirConexaoGoogle",
         "responses": {
-          "200": {
-            "description": "OK"
+          "302": {
+            "description": "Redireciona o navegador para outra URL."
+          },
+          "403": {
+            "description": "Sem permissão (`acesso_negado`), consentimento pendente (`consentimento_pendente`) ou origem não permitida (`origem_invalida`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -412,7 +833,26 @@
         "operationId": "obterSessao",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [ ],
@@ -433,8 +873,20 @@
         "description": "Funciona sem sessão. Retorna 204 sempre; havendo sessão, revoga também o dispositivo e apaga o cookie.",
         "operationId": "sair",
         "responses": {
-          "200": {
-            "description": "OK"
+          "204": {
+            "description": "Resposta sem corpo."
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [ ],
@@ -455,8 +907,50 @@
         "description": "Exige sessão. Revoga todos os dispositivos, invalida cookies antigos e retorna 204.",
         "operationId": "sairDeTodos",
         "responses": {
-          "200": {
-            "description": "OK"
+          "204": {
+            "description": "Resposta sem corpo."
+          },
+          "401": {
+            "description": "Sessão ausente, expirada ou revogada (`codigo`: `nao_autenticado`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão (`acesso_negado`), consentimento pendente (`consentimento_pendente`) ou origem não permitida (`origem_invalida`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -492,7 +986,71 @@
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsuarioResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requisição inválida. Regra de negócio devolve `codigo` e `detalhe`; corpo JSON malformado devolve ProblemDetails do framework.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sessão ausente, expirada ou revogada (`codigo`: `nao_autenticado`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão (`acesso_negado`), consentimento pendente (`consentimento_pendente`) ou origem não permitida (`origem_invalida`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -527,8 +1085,50 @@
           "required": true
         },
         "responses": {
-          "200": {
-            "description": "OK"
+          "204": {
+            "description": "Resposta sem corpo."
+          },
+          "400": {
+            "description": "Requisição inválida. Regra de negócio devolve `codigo` e `detalhe`; corpo JSON malformado devolve ProblemDetails do framework.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sessão ausente, expirada ou revogada (`codigo`: `nao_autenticado`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -563,8 +1163,65 @@
           "required": true
         },
         "responses": {
-          "200": {
-            "description": "OK"
+          "204": {
+            "description": "Resposta sem corpo."
+          },
+          "400": {
+            "description": "Requisição inválida. Regra de negócio devolve `codigo` e `detalhe`; corpo JSON malformado devolve ProblemDetails do framework.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sessão ausente, expirada ou revogada (`codigo`: `nao_autenticado`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão (`acesso_negado`), consentimento pendente (`consentimento_pendente`) ou origem não permitida (`origem_invalida`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -590,7 +1247,59 @@
         "operationId": "listarSessoes",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SessaoResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sessão ausente, expirada ou revogada (`codigo`: `nao_autenticado`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão (`acesso_negado`), consentimento pendente (`consentimento_pendente`) ou origem não permitida (`origem_invalida`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -616,7 +1325,56 @@
         "operationId": "exportarConta",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportacaoDaConta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sessão ausente, expirada ou revogada (`codigo`: `nao_autenticado`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão (`acesso_negado`), consentimento pendente (`consentimento_pendente`) ou origem não permitida (`origem_invalida`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -651,8 +1409,65 @@
           "required": true
         },
         "responses": {
-          "200": {
-            "description": "OK"
+          "204": {
+            "description": "Resposta sem corpo."
+          },
+          "400": {
+            "description": "Requisição inválida. Regra de negócio devolve `codigo` e `detalhe`; corpo JSON malformado devolve ProblemDetails do framework.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sessão ausente, expirada ou revogada (`codigo`: `nao_autenticado`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão (`acesso_negado`), consentimento pendente (`consentimento_pendente`) ou origem não permitida (`origem_invalida`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -678,7 +1493,32 @@
         "operationId": "enviarNewsletter",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultadoNewsletter"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado. Corpo vazio."
+          },
+          "500": {
+            "description": "Erro inesperado (`codigo`: `erro_inesperado`). Tente novamente em instantes.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -715,7 +1555,32 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado. Corpo vazio."
+          },
+          "500": {
+            "description": "Erro inesperado (`codigo`: `erro_inesperado`). Tente novamente em instantes.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -744,8 +1609,20 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "OK"
+          "302": {
+            "description": "Redireciona o navegador para outra URL."
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [ ],
@@ -767,7 +1644,26 @@
         "operationId": "obterCatalogo",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogoDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [ ],
@@ -789,7 +1685,56 @@
         "operationId": "obterDiario",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiarioDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sessão ausente, expirada ou revogada (`codigo`: `nao_autenticado`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão (`acesso_negado`), consentimento pendente (`consentimento_pendente`) ou origem não permitida (`origem_invalida`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -813,9 +1758,83 @@
         "summary": "Envia uma foto",
         "description": "Exige sessão e recebe a imagem como formulário multipart, com até 5 MB em JPG, PNG ou WebP. Retorna o endereço público da foto.",
         "operationId": "enviarMidia",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/FormularioDeFoto"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MidiaResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requisição inválida. Regra de negócio devolve `codigo` e `detalhe`; corpo JSON malformado devolve ProblemDetails do framework.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sessão ausente, expirada ou revogada (`codigo`: `nao_autenticado`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão (`acesso_negado`), consentimento pendente (`consentimento_pendente`) ou origem não permitida (`origem_invalida`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -895,7 +1914,56 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CondicoesDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requisição inválida. Regra de negócio devolve `codigo` e `detalhe`; corpo JSON malformado devolve ProblemDetails do framework.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado (`codigo`: `erro_inesperado`). Tente novamente em instantes.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
           }
         },
         "security": [ ],
@@ -971,7 +2039,86 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComparacaoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requisição inválida. Regra de negócio devolve `codigo` e `detalhe`; corpo JSON malformado devolve ProblemDetails do framework.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sessão ausente, expirada ou revogada (`codigo`: `nao_autenticado`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão (`acesso_negado`), consentimento pendente (`consentimento_pendente`) ou origem não permitida (`origem_invalida`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado (`codigo`: `erro_inesperado`). Tente novamente em instantes.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1023,7 +2170,44 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultadoDeBusca"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requisição inválida. Regra de negócio devolve `codigo` e `detalhe`; corpo JSON malformado devolve ProblemDetails do framework.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado. Corpo vazio."
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [ ],
@@ -1054,7 +2238,29 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ResultadoDeBusca"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [ ],
@@ -1074,9 +2280,98 @@
         "summary": "Sugere a espécie a partir da foto enviada",
         "description": "Exige sessão e recebe a foto como formulário multipart no campo arquivo. Retorna 200 com a sugestão de espécie. Retorna 400 com o motivo quando o formulário está ausente, o arquivo está ausente, a foto passa de 5 MB ou o tipo não é aceito (JPG, PNG ou WebP).",
         "operationId": "sugerirEspecies",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/FormularioDeFoto"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SugestaoDeEspecieResultado"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requisição inválida. Regra de negócio devolve `codigo` e `detalhe`; corpo JSON malformado devolve ProblemDetails do framework.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sessão ausente, expirada ou revogada (`codigo`: `nao_autenticado`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão (`acesso_negado`), consentimento pendente (`consentimento_pendente`) ou origem não permitida (`origem_invalida`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro inesperado (`codigo`: `erro_inesperado`). Tente novamente em instantes.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1111,8 +2406,81 @@
           "required": true
         },
         "responses": {
-          "200": {
-            "description": "OK"
+          "201": {
+            "description": "Recurso criado. O header `Location` aponta para ele.",
+            "headers": {
+              "Location": {
+                "description": "URL do recurso criado ou do próximo passo.",
+                "schema": {
+                  "type": "string",
+                  "format": "uri"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PescariaSalvaResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requisição inválida. Regra de negócio devolve `codigo` e `detalhe`; corpo JSON malformado devolve ProblemDetails do framework.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sessão ausente, expirada ou revogada (`codigo`: `nao_autenticado`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão (`acesso_negado`), consentimento pendente (`consentimento_pendente`) ou origem não permitida (`origem_invalida`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1149,7 +2517,41 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PescariaDetalhadaDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [ ],
@@ -1182,7 +2584,41 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PermissaoResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [ ],
@@ -1215,7 +2651,71 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PescariaDetalhadaDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sessão ausente, expirada ou revogada (`codigo`: `nao_autenticado`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão (`acesso_negado`), consentimento pendente (`consentimento_pendente`) ou origem não permitida (`origem_invalida`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1262,7 +2762,86 @@
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PescariaDetalhadaDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requisição inválida. Regra de negócio devolve `codigo` e `detalhe`; corpo JSON malformado devolve ProblemDetails do framework.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sessão ausente, expirada ou revogada (`codigo`: `nao_autenticado`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão (`acesso_negado`), consentimento pendente (`consentimento_pendente`) ou origem não permitida (`origem_invalida`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1299,7 +2878,42 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [ ],
@@ -1321,7 +2935,59 @@
         "operationId": "listarLocais",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LocalDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sessão ausente, expirada ou revogada (`codigo`: `nao_autenticado`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão (`acesso_negado`), consentimento pendente (`consentimento_pendente`) ou origem não permitida (`origem_invalida`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1354,8 +3020,81 @@
           "required": true
         },
         "responses": {
-          "200": {
-            "description": "OK"
+          "201": {
+            "description": "Recurso criado. O header `Location` aponta para ele.",
+            "headers": {
+              "Location": {
+                "description": "URL do recurso criado ou do próximo passo.",
+                "schema": {
+                  "type": "string",
+                  "format": "uri"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocalDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requisição inválida. Regra de negócio devolve `codigo` e `detalhe`; corpo JSON malformado devolve ProblemDetails do framework.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sessão ausente, expirada ou revogada (`codigo`: `nao_autenticado`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão (`acesso_negado`), consentimento pendente (`consentimento_pendente`) ou origem não permitida (`origem_invalida`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1402,7 +3141,86 @@
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocalDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requisição inválida. Regra de negócio devolve `codigo` e `detalhe`; corpo JSON malformado devolve ProblemDetails do framework.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sessão ausente, expirada ou revogada (`codigo`: `nao_autenticado`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão (`acesso_negado`), consentimento pendente (`consentimento_pendente`) ou origem não permitida (`origem_invalida`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1436,8 +3254,65 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "OK"
+          "204": {
+            "description": "Resposta sem corpo."
+          },
+          "401": {
+            "description": "Sessão ausente, expirada ou revogada (`codigo`: `nao_autenticado`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão (`acesso_negado`), consentimento pendente (`consentimento_pendente`) ou origem não permitida (`origem_invalida`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1474,7 +3349,71 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocalDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sessão ausente, expirada ou revogada (`codigo`: `nao_autenticado`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão (`acesso_negado`), consentimento pendente (`consentimento_pendente`) ou origem não permitida (`origem_invalida`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1500,7 +3439,59 @@
         "operationId": "listarPontos",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PontoDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sessão ausente, expirada ou revogada (`codigo`: `nao_autenticado`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão (`acesso_negado`), consentimento pendente (`consentimento_pendente`) ou origem não permitida (`origem_invalida`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1533,8 +3524,81 @@
           "required": true
         },
         "responses": {
-          "200": {
-            "description": "OK"
+          "201": {
+            "description": "Recurso criado. O header `Location` aponta para ele.",
+            "headers": {
+              "Location": {
+                "description": "URL do recurso criado ou do próximo passo.",
+                "schema": {
+                  "type": "string",
+                  "format": "uri"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PontoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requisição inválida. Regra de negócio devolve `codigo` e `detalhe`; corpo JSON malformado devolve ProblemDetails do framework.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sessão ausente, expirada ou revogada (`codigo`: `nao_autenticado`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão (`acesso_negado`), consentimento pendente (`consentimento_pendente`) ou origem não permitida (`origem_invalida`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1581,7 +3645,86 @@
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PontoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requisição inválida. Regra de negócio devolve `codigo` e `detalhe`; corpo JSON malformado devolve ProblemDetails do framework.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sessão ausente, expirada ou revogada (`codigo`: `nao_autenticado`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão (`acesso_negado`), consentimento pendente (`consentimento_pendente`) ou origem não permitida (`origem_invalida`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1615,8 +3758,65 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "OK"
+          "204": {
+            "description": "Resposta sem corpo."
+          },
+          "401": {
+            "description": "Sessão ausente, expirada ou revogada (`codigo`: `nao_autenticado`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão (`acesso_negado`), consentimento pendente (`consentimento_pendente`) ou origem não permitida (`origem_invalida`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1642,7 +3842,59 @@
         "operationId": "listarTrilhas",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TrilhaDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sessão ausente, expirada ou revogada (`codigo`: `nao_autenticado`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão (`acesso_negado`), consentimento pendente (`consentimento_pendente`) ou origem não permitida (`origem_invalida`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1675,8 +3927,81 @@
           "required": true
         },
         "responses": {
-          "200": {
-            "description": "OK"
+          "201": {
+            "description": "Recurso criado. O header `Location` aponta para ele.",
+            "headers": {
+              "Location": {
+                "description": "URL do recurso criado ou do próximo passo.",
+                "schema": {
+                  "type": "string",
+                  "format": "uri"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrilhaDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requisição inválida. Regra de negócio devolve `codigo` e `detalhe`; corpo JSON malformado devolve ProblemDetails do framework.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sessão ausente, expirada ou revogada (`codigo`: `nao_autenticado`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão (`acesso_negado`), consentimento pendente (`consentimento_pendente`) ou origem não permitida (`origem_invalida`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1723,7 +4048,86 @@
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrilhaDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requisição inválida. Regra de negócio devolve `codigo` e `detalhe`; corpo JSON malformado devolve ProblemDetails do framework.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sessão ausente, expirada ou revogada (`codigo`: `nao_autenticado`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão (`acesso_negado`), consentimento pendente (`consentimento_pendente`) ou origem não permitida (`origem_invalida`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1757,8 +4161,65 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "OK"
+          "204": {
+            "description": "Resposta sem corpo."
+          },
+          "401": {
+            "description": "Sessão ausente, expirada ou revogada (`codigo`: `nao_autenticado`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão (`acesso_negado`), consentimento pendente (`consentimento_pendente`) ou origem não permitida (`origem_invalida`).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas requisições. Corpo vazio; o header `Retry-After` informa os segundos até a próxima tentativa.",
+            "headers": {
+              "Retry-After": {
+                "description": "Segundos até a próxima janela de requisições.",
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1777,6 +4238,38 @@
   },
   "components": {
     "schemas": {
+      "AgoraDto": {
+        "required": [
+          "resumo",
+          "mareEstado",
+          "proximoEvento",
+          "proximoEventoEm"
+        ],
+        "type": "object",
+        "properties": {
+          "resumo": {
+            "type": "string"
+          },
+          "mareEstado": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "proximoEvento": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "proximoEventoEm": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "AlterarSenhaRequest": {
         "required": [
           "senhaAtual",
@@ -1826,6 +4319,139 @@
           }
         }
       },
+      "CapturaDto": {
+        "required": [
+          "id",
+          "especie",
+          "pesoKg",
+          "comprimentoCm",
+          "isca",
+          "solto",
+          "fotoUrl",
+          "observacao",
+          "fotos"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "especie": {
+            "type": "string"
+          },
+          "pesoKg": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "comprimentoCm": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "isca": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "solto": {
+            "type": "boolean"
+          },
+          "fotoUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "observacao": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "fotos": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "CatalogoDto": {
+        "required": [
+          "especies",
+          "iscas",
+          "ambientes",
+          "periodos",
+          "fasesDeMare",
+          "fasesDeLua",
+          "climas",
+          "clarezasDeAgua",
+          "exemplo"
+        ],
+        "type": "object",
+        "properties": {
+          "especies": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "iscas": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "ambientes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "periodos": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "fasesDeMare": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "fasesDeLua": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "climas": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "clarezasDeAgua": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "exemplo": {
+            "$ref": "#/components/schemas/ModeloDePescaria"
+          }
+        }
+      },
       "ClarezaDaAgua": {
         "enum": [
           "NaoInformada",
@@ -1842,6 +4468,203 @@
           "Chuva",
           "Vento"
         ]
+      },
+      "ComparacaoDeCondicaoDto": {
+        "required": [
+          "dimensao",
+          "valor",
+          "diferencaPercentual",
+          "pescariasCom",
+          "capturasCom",
+          "pescariasSem",
+          "capturasSem"
+        ],
+        "type": "object",
+        "properties": {
+          "dimensao": {
+            "type": "string"
+          },
+          "valor": {
+            "type": "string"
+          },
+          "diferencaPercentual": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "pescariasCom": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "capturasCom": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pescariasSem": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "capturasSem": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "ComparacaoDto": {
+        "required": [
+          "temDados",
+          "titulo",
+          "detalhe",
+          "pescariaId",
+          "shareToken",
+          "fatores",
+          "pescariasConsideradas"
+        ],
+        "type": "object",
+        "properties": {
+          "temDados": {
+            "type": "boolean"
+          },
+          "titulo": {
+            "type": "string"
+          },
+          "detalhe": {
+            "type": "string"
+          },
+          "pescariaId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "shareToken": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "fatores": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "pescariasConsideradas": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "CondicoesDto": {
+        "required": [
+          "local",
+          "atualizadoEm",
+          "fuso",
+          "fonte",
+          "temMare",
+          "mareAproximada",
+          "aviso",
+          "agora",
+          "melhorJanela",
+          "dias",
+          "mare",
+          "solunar",
+          "tempo",
+          "linhaDoTempo"
+        ],
+        "type": "object",
+        "properties": {
+          "local": {
+            "$ref": "#/components/schemas/LocalDeCondicaoDto"
+          },
+          "atualizadoEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "fuso": {
+            "type": "string"
+          },
+          "fonte": {
+            "type": "string"
+          },
+          "temMare": {
+            "type": "boolean"
+          },
+          "mareAproximada": {
+            "type": "boolean"
+          },
+          "aviso": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "agora": {
+            "$ref": "#/components/schemas/AgoraDto"
+          },
+          "melhorJanela": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/JanelaDto"
+              }
+            ]
+          },
+          "dias": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DiaDto"
+            }
+          },
+          "mare": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MareDto"
+              }
+            ]
+          },
+          "solunar": {
+            "$ref": "#/components/schemas/SolunarDto"
+          },
+          "tempo": {
+            "$ref": "#/components/schemas/TempoDto"
+          },
+          "linhaDoTempo": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HoraDoDiaDto"
+            }
+          }
+        }
       },
       "ConfirmarEmailRequest": {
         "required": [
@@ -1861,6 +4684,17 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "ConfirmarEmailResponse": {
+        "required": [
+          "mensagem"
+        ],
+        "type": "object",
+        "properties": {
+          "mensagem": {
+            "type": "string"
           }
         }
       },
@@ -1886,6 +4720,187 @@
               "string"
             ],
             "format": "double"
+          }
+        }
+      },
+      "DiaDto": {
+        "required": [
+          "data",
+          "nota",
+          "forca",
+          "melhorInicio",
+          "melhorFim",
+          "resumo",
+          "nascerDoSol",
+          "porDoSol"
+        ],
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "string",
+            "format": "date"
+          },
+          "nota": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "forca": {
+            "type": "string"
+          },
+          "melhorInicio": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "melhorFim": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "resumo": {
+            "type": "string"
+          },
+          "nascerDoSol": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "porDoSol": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "DiarioDto": {
+        "required": [
+          "totalPescarias",
+          "totalCapturas",
+          "especiesDistintas",
+          "totalSoltos",
+          "maiorPesoKg",
+          "maiorComprimentoCm",
+          "especieTop",
+          "iscaTop",
+          "localTop",
+          "taxaDeSoltura",
+          "insights",
+          "recordesPorEspecie",
+          "iscasPorEspecie",
+          "comparacoes",
+          "pescarias"
+        ],
+        "type": "object",
+        "properties": {
+          "totalPescarias": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalCapturas": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "especiesDistintas": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalSoltos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "maiorPesoKg": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "maiorComprimentoCm": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "especieTop": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "iscaTop": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "localTop": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "taxaDeSoltura": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "insights": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InsightDto"
+            }
+          },
+          "recordesPorEspecie": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecordePorEspecieDto"
+            }
+          },
+          "iscasPorEspecie": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IscaPorEspecieDto"
+            }
+          },
+          "comparacoes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ComparacaoDeCondicaoDto"
+            }
+          },
+          "pescarias": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PescariaResumoDto"
+            }
           }
         }
       },
@@ -2191,6 +5206,39 @@
           }
         }
       },
+      "EntrarResponse": {
+        "required": [
+          "autenticado",
+          "mensagem"
+        ],
+        "type": "object",
+        "properties": {
+          "autenticado": {
+            "type": "boolean"
+          },
+          "mensagem": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ErroResponse": {
+        "required": [
+          "codigo",
+          "detalhe"
+        ],
+        "type": "object",
+        "properties": {
+          "codigo": {
+            "type": "string"
+          },
+          "detalhe": {
+            "type": "string"
+          }
+        }
+      },
       "EsqueciSenhaRequest": {
         "required": [
           "email"
@@ -2205,6 +5253,52 @@
           }
         }
       },
+      "EsqueciSenhaResponse": {
+        "required": [
+          "mensagem"
+        ],
+        "type": "object",
+        "properties": {
+          "mensagem": {
+            "type": "string"
+          }
+        }
+      },
+      "EventoDeMareDto": {
+        "required": [
+          "tipo",
+          "hora",
+          "alturaM",
+          "emHoras"
+        ],
+        "type": "object",
+        "properties": {
+          "tipo": {
+            "type": "string"
+          },
+          "hora": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "alturaM": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "emHoras": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          }
+        }
+      },
       "ExcluirContaRequest": {
         "required": [
           "confirmacao"
@@ -2216,6 +5310,69 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "ExportacaoDaConta": {
+        "required": [
+          "exportadoEm",
+          "usuario",
+          "pescarias"
+        ],
+        "type": "object",
+        "properties": {
+          "exportadoEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "usuario": {
+            "$ref": "#/components/schemas/ExportacaoDoUsuario"
+          },
+          "pescarias": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PescariaDetalhadaDto"
+            }
+          }
+        }
+      },
+      "ExportacaoDoUsuario": {
+        "required": [
+          "id",
+          "email",
+          "nome",
+          "aceitaNovidades",
+          "criadoEm",
+          "ultimoAcessoEm"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string"
+          },
+          "nome": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "aceitaNovidades": {
+            "type": "boolean"
+          },
+          "criadoEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "ultimoAcessoEm": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           }
         }
       },
@@ -2237,6 +5394,476 @@
           "Seca"
         ]
       },
+      "FormularioDeFoto": {
+        "required": [
+          "arquivo"
+        ],
+        "type": "object",
+        "properties": {
+          "arquivo": {
+            "$ref": "#/components/schemas/IFormFile"
+          }
+        }
+      },
+      "GoogleDisponivelResponse": {
+        "required": [
+          "disponivel"
+        ],
+        "type": "object",
+        "properties": {
+          "disponivel": {
+            "type": "boolean"
+          }
+        }
+      },
+      "HoraDoDiaDto": {
+        "required": [
+          "hora",
+          "alturaM",
+          "ventoKmh",
+          "chuvaProbabilidade",
+          "pressaoHpa",
+          "nota",
+          "solunar"
+        ],
+        "type": "object",
+        "properties": {
+          "hora": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "alturaM": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "ventoKmh": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "chuvaProbabilidade": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "pressaoHpa": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "nota": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "solunar": {
+            "type": "boolean"
+          }
+        }
+      },
+      "IFormFile": {
+        "type": "string",
+        "format": "binary"
+      },
+      "InsightDto": {
+        "required": [
+          "rotulo",
+          "valor",
+          "detalhe"
+        ],
+        "type": "object",
+        "properties": {
+          "rotulo": {
+            "type": "string"
+          },
+          "valor": {
+            "type": "string"
+          },
+          "detalhe": {
+            "type": "string"
+          }
+        }
+      },
+      "IscaPorEspecieDto": {
+        "required": [
+          "especie",
+          "isca",
+          "capturas"
+        ],
+        "type": "object",
+        "properties": {
+          "especie": {
+            "type": "string"
+          },
+          "isca": {
+            "type": "string"
+          },
+          "capturas": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "JanelaDto": {
+        "required": [
+          "inicio",
+          "fim",
+          "nota",
+          "forca",
+          "motivos"
+        ],
+        "type": "object",
+        "properties": {
+          "inicio": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "fim": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nota": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "forca": {
+            "type": "string"
+          },
+          "motivos": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "LocalDeCondicaoDto": {
+        "required": [
+          "nome",
+          "cidade",
+          "estado",
+          "latitude",
+          "longitude",
+          "ambiente"
+        ],
+        "type": "object",
+        "properties": {
+          "nome": {
+            "type": "string"
+          },
+          "cidade": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "estado": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "latitude": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "longitude": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "ambiente": {
+            "type": "string"
+          }
+        }
+      },
+      "LocalDto": {
+        "required": [
+          "id",
+          "nome",
+          "cidade",
+          "estado",
+          "latitude",
+          "longitude",
+          "ambiente",
+          "padrao",
+          "criadoEm"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "cidade": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "estado": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "latitude": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "longitude": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "ambiente": {
+            "type": "string"
+          },
+          "padrao": {
+            "type": "boolean"
+          },
+          "criadoEm": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "MareDto": {
+        "required": [
+          "estado",
+          "datum",
+          "proximoEvento",
+          "eventos",
+          "curva"
+        ],
+        "type": "object",
+        "properties": {
+          "estado": {
+            "type": "string"
+          },
+          "datum": {
+            "type": "string"
+          },
+          "proximoEvento": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EventoDeMareDto"
+              }
+            ]
+          },
+          "eventos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventoDeMareDto"
+            }
+          },
+          "curva": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PontoDaMareDto"
+            }
+          }
+        }
+      },
+      "MeResponse": {
+        "required": [
+          "autenticado",
+          "usuario",
+          "consentimentoPendente",
+          "googleConectado",
+          "temSenha"
+        ],
+        "type": "object",
+        "properties": {
+          "autenticado": {
+            "type": "boolean"
+          },
+          "usuario": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UsuarioResponse"
+              }
+            ]
+          },
+          "consentimentoPendente": {
+            "type": "boolean"
+          },
+          "googleConectado": {
+            "type": "boolean"
+          },
+          "temSenha": {
+            "type": "boolean"
+          }
+        }
+      },
+      "MidiaResponse": {
+        "required": [
+          "url"
+        ],
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        }
+      },
+      "ModeloDeCaptura": {
+        "required": [
+          "especie",
+          "pesoKg",
+          "comprimentoCm",
+          "isca",
+          "solto",
+          "observacao"
+        ],
+        "type": "object",
+        "properties": {
+          "especie": {
+            "type": "string"
+          },
+          "pesoKg": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "comprimentoCm": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "isca": {
+            "type": "string"
+          },
+          "solto": {
+            "type": "boolean"
+          },
+          "observacao": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ModeloDePescaria": {
+        "required": [
+          "local",
+          "pescador",
+          "cidade",
+          "estado",
+          "ambiente",
+          "data",
+          "periodo",
+          "mare",
+          "lua",
+          "clima",
+          "clarezaDaAgua",
+          "observacoes",
+          "capturas"
+        ],
+        "type": "object",
+        "properties": {
+          "local": {
+            "type": "string"
+          },
+          "pescador": {
+            "type": "string"
+          },
+          "cidade": {
+            "type": "string"
+          },
+          "estado": {
+            "type": "string"
+          },
+          "ambiente": {
+            "type": "string"
+          },
+          "data": {
+            "type": "string"
+          },
+          "periodo": {
+            "type": "string"
+          },
+          "mare": {
+            "type": "string"
+          },
+          "lua": {
+            "type": "string"
+          },
+          "clima": {
+            "type": "string"
+          },
+          "clarezaDaAgua": {
+            "type": "string"
+          },
+          "observacoes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "capturas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ModeloDeCaptura"
+            }
+          }
+        }
+      },
       "PeriodoDoDia": {
         "enum": [
           "Madrugada",
@@ -2244,6 +5871,250 @@
           "Tarde",
           "Noite"
         ]
+      },
+      "PeriodoSolunarDto": {
+        "required": [
+          "tipo",
+          "inicio",
+          "fim",
+          "motivo",
+          "atividade"
+        ],
+        "type": "object",
+        "properties": {
+          "tipo": {
+            "type": "string"
+          },
+          "inicio": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "fim": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "motivo": {
+            "type": "string"
+          },
+          "atividade": {
+            "type": "string"
+          }
+        }
+      },
+      "PermissaoResponse": {
+        "required": [
+          "pescariaId",
+          "podeEditar"
+        ],
+        "type": "object",
+        "properties": {
+          "pescariaId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "podeEditar": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PescariaDetalhadaDto": {
+        "required": [
+          "id",
+          "shareToken",
+          "entrada",
+          "capturas",
+          "criadoEm",
+          "atualizadoEm",
+          "privacidadeDoLocal",
+          "podeEditar"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "shareToken": {
+            "type": "string"
+          },
+          "entrada": {
+            "$ref": "#/components/schemas/EntradaDePescaria"
+          },
+          "capturas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CapturaDto"
+            }
+          },
+          "criadoEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "atualizadoEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "privacidadeDoLocal": {
+            "type": "string"
+          },
+          "podeEditar": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PescariaResumoDto": {
+        "required": [
+          "id",
+          "shareToken",
+          "local",
+          "data",
+          "ambiente",
+          "ambienteNome",
+          "capturas",
+          "maiorPesoKg",
+          "fotoCapa"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "shareToken": {
+            "type": "string"
+          },
+          "local": {
+            "type": "string"
+          },
+          "data": {
+            "type": "string",
+            "format": "date"
+          },
+          "ambiente": {
+            "type": "string"
+          },
+          "ambienteNome": {
+            "type": "string"
+          },
+          "capturas": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "maiorPesoKg": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "fotoCapa": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "PescariaSalvaResponse": {
+        "required": [
+          "id",
+          "shareToken",
+          "url"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "shareToken": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        }
+      },
+      "PontoDaMareDto": {
+        "required": [
+          "hora",
+          "alturaM"
+        ],
+        "type": "object",
+        "properties": {
+          "hora": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "alturaM": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          }
+        }
+      },
+      "PontoDto": {
+        "required": [
+          "id",
+          "nome",
+          "descricao",
+          "latitude",
+          "longitude",
+          "tipo",
+          "criadoEm",
+          "atualizadoEm"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "descricao": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "latitude": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "longitude": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "tipo": {
+            "type": "string"
+          },
+          "criadoEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "atualizadoEm": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
       },
       "PrivacidadeDoLocal": {
         "enum": [
@@ -2253,6 +6124,55 @@
           "Trecho",
           "CorpoAgua"
         ]
+      },
+      "ProntidaoResponse": {
+        "required": [
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "RecordePorEspecieDto": {
+        "required": [
+          "especie",
+          "pesoKg",
+          "comprimentoCm",
+          "capturas"
+        ],
+        "type": "object",
+        "properties": {
+          "especie": {
+            "type": "string"
+          },
+          "pesoKg": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "comprimentoCm": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "capturas": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
       },
       "RedefinirSenhaRequest": {
         "required": [
@@ -2279,6 +6199,17 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "RedefinirSenhaResponse": {
+        "required": [
+          "mensagem"
+        ],
+        "type": "object",
+        "properties": {
+          "mensagem": {
+            "type": "string"
           }
         }
       },
@@ -2331,6 +6262,169 @@
           }
         }
       },
+      "RegistrarResponse": {
+        "required": [
+          "mensagem"
+        ],
+        "type": "object",
+        "properties": {
+          "mensagem": {
+            "type": "string"
+          }
+        }
+      },
+      "ResultadoDeBusca": {
+        "required": [
+          "nome",
+          "cidade",
+          "estado",
+          "latitude",
+          "longitude",
+          "pais"
+        ],
+        "type": "object",
+        "properties": {
+          "nome": {
+            "type": "string"
+          },
+          "cidade": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "estado": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "latitude": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "longitude": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "pais": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ResultadoNewsletter": {
+        "required": [
+          "mes",
+          "elegiveis",
+          "enviados",
+          "falhas",
+          "simulacao",
+          "erros"
+        ],
+        "type": "object",
+        "properties": {
+          "mes": {
+            "type": "string"
+          },
+          "elegiveis": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "enviados": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "falhas": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "simulacao": {
+            "type": "boolean"
+          },
+          "erros": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "SaudeResponse": {
+        "required": [
+          "status",
+          "version"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        }
+      },
+      "SessaoResponse": {
+        "required": [
+          "id",
+          "userAgent",
+          "criadoEm",
+          "ultimoUsoEm",
+          "expiraEm",
+          "atual"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userAgent": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "criadoEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "ultimoUsoEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiraEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "atual": {
+            "type": "boolean"
+          }
+        }
+      },
       "SolicitarLinkRequest": {
         "required": [
           "email"
@@ -2342,6 +6436,248 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "SolicitarLinkResponse": {
+        "required": [
+          "mensagem",
+          "linkDesenvolvimento"
+        ],
+        "type": "object",
+        "properties": {
+          "mensagem": {
+            "type": "string"
+          },
+          "linkDesenvolvimento": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "SolunarDto": {
+        "required": [
+          "fase",
+          "faseNome",
+          "iluminacao",
+          "idadeDias",
+          "periodos"
+        ],
+        "type": "object",
+        "properties": {
+          "fase": {
+            "type": "string"
+          },
+          "faseNome": {
+            "type": "string"
+          },
+          "iluminacao": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "idadeDias": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "periodos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PeriodoSolunarDto"
+            }
+          }
+        }
+      },
+      "SugestaoDeEspecie": {
+        "required": [
+          "especie",
+          "confianca"
+        ],
+        "type": "object",
+        "properties": {
+          "especie": {
+            "type": "string"
+          },
+          "confianca": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          }
+        }
+      },
+      "SugestaoDeEspecieResultado": {
+        "required": [
+          "disponivel",
+          "mensagem",
+          "sugestoes"
+        ],
+        "type": "object",
+        "properties": {
+          "disponivel": {
+            "type": "boolean"
+          },
+          "mensagem": {
+            "type": "string"
+          },
+          "sugestoes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SugestaoDeEspecie"
+            }
+          }
+        }
+      },
+      "TempoDto": {
+        "required": [
+          "ventoKmh",
+          "rajadaKmh",
+          "direcaoGraus",
+          "direcao",
+          "chuvaProbabilidade",
+          "temperaturaC",
+          "sensacaoC",
+          "pressaoHpa",
+          "pressaoTendencia",
+          "pressaoAlerta",
+          "correnteKmh",
+          "correnteDirecaoGraus",
+          "correnteDirecao",
+          "temperaturaDaAguaC",
+          "ondaAlturaM",
+          "ondaPeriodoS"
+        ],
+        "type": "object",
+        "properties": {
+          "ventoKmh": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "rajadaKmh": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "direcaoGraus": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "direcao": {
+            "type": "string"
+          },
+          "chuvaProbabilidade": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "temperaturaC": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "sensacaoC": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "pressaoHpa": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "pressaoTendencia": {
+            "type": "string"
+          },
+          "pressaoAlerta": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "correnteKmh": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "correnteDirecaoGraus": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "correnteDirecao": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "temperaturaDaAguaC": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "ondaAlturaM": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "ondaPeriodoS": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
           }
         }
       },
@@ -2359,6 +6695,118 @@
           "Corrico",
           "Deslocamento"
         ]
+      },
+      "TrilhaDto": {
+        "required": [
+          "id",
+          "nome",
+          "descricao",
+          "tipo",
+          "pontos",
+          "distanciaKm",
+          "criadoEm",
+          "atualizadoEm"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "descricao": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "tipo": {
+            "type": "string"
+          },
+          "pontos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Coordenada"
+            }
+          },
+          "distanciaKm": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "criadoEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "atualizadoEm": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "UsuarioResponse": {
+        "required": [
+          "id",
+          "email",
+          "nome",
+          "nomeExibicao",
+          "aceitaNovidades",
+          "criadoEm",
+          "ultimoAcessoEm"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string"
+          },
+          "nome": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "nomeExibicao": {
+            "type": "string"
+          },
+          "aceitaNovidades": {
+            "type": "boolean"
+          },
+          "criadoEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "ultimoAcessoEm": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "VersoesLegaisResponse": {
+        "required": [
+          "termosVersao",
+          "privacidadeVersao"
+        ],
+        "type": "object",
+        "properties": {
+          "termosVersao": {
+            "type": "string"
+          },
+          "privacidadeVersao": {
+            "type": "string"
+          }
+        }
       }
     },
     "securitySchemes": {

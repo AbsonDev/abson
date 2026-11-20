@@ -14,7 +14,8 @@ O contrato também não contava a história toda. O
 ausentes, formato de erro real (`{codigo, detalhe}`) em vez de RFC 9457, uploads
 multipart sem schema e rotas administrativas que respondem `404` de propósito.
 Segurança, tags, `operationId`, rate limit e cache foram resolvidos no A1
-(2026-11-20).
+(2026-11-20). Status reais, erro único, uploads multipart e `Retry-After` foram
+resolvidos no A2 (2026-11-20), restando `info`/`servers` para o A3.
 
 Publicar esse contrato cru produziria documentação que mente. Publicar
 documentação escrita à mão sem contrato produziria documentação que envelhece
@@ -74,8 +75,9 @@ sobreviver ao CI que já existe (`gate` + `workflow_run`).
   `DESIGN.md` versionado em `design-system/`.
 - **Invariantes preservados.** O contrato continua gerado por
   `scripts/gerar-openapi.sh` e comparado no job `docs`; o portal **consome** esse
-  arquivo, não o reescreve. Nenhuma operação da API muda de comportamento nesta
-  fase.
+  arquivo, não o reescreve. Nenhuma operação muda de status, corpo ou media
+  type nesta fase; o único acréscimo é o header `Retry-After` no `429` (A2),
+  aditivo para quem já consome a API.
 
 ## Desdobramentos
 

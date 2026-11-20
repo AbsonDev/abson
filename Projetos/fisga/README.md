@@ -368,7 +368,11 @@ Nunca commite chaves, tokens ou senhas. Use variáveis de ambiente do provedor.
 | `Google__CallbackPath` | caminho do callback (padrão `/signin-google`) |
 | `Legal__TermsVersion` | versão vigente dos Termos (padrão `2026-11-17`) |
 | `Legal__PrivacyVersion` | versão vigente da Privacidade (padrão `2026-11-17`) |
-| `RateLimiting__Auth` | limite por minuto/IP da autenticação (padrão 8; só testes elevam) |
+| `RateLimiting__Leitura` | limite por minuto/IP das consultas (padrão 180) |
+| `RateLimiting__Escrita` | limite por minuto/IP das mutações (padrão 40) |
+| `RateLimiting__Auth` | limite por minuto/IP da autenticação (padrão 8) |
+| `RateLimiting__Pdf` | limite por minuto/IP da geração de PDF (padrão 30) |
+| `RateLimiting__Midia` | limite por minuto/IP de upload e sugestão (padrão 30) |
 | `SENTRY_DSN` | DSN do projeto `fisga-api` |
 | `SENTRY_ENVIRONMENT` | `production` ou `development` |
 | `SENTRY_RELEASE` | não usado diretamente pela API; o release vem de `GIT_SHA`/`SOURCE_COMMIT` |
@@ -439,7 +443,7 @@ npm run check && npm run build
 npx playwright test
 ```
 
-Atualmente: **353 testes de backend** (46 de domínio + 58 de aplicação + 249 de API) e checagem de
+Atualmente: **404 testes de backend** (46 de domínio + 58 de aplicação + 300 de API) e checagem de
 tipos do Astro. Cobrem:
 
 - criação/edição de pescaria, IDs de captura, validações e isolamento entre usuários;
@@ -480,7 +484,7 @@ O Fisga tem três workflows no GitHub Actions: `fisga-pipeline.yml` (CI), `fisga
 [docs/review.md](docs/review.md)). O CI roda em todo PR e em push para `main`, separa mudança de
 código de mudança de documentação e executa:
 
-- `api`: restore locked, `dotnet format --verify-no-changes`, build `-warnaserror`, os 353 testes
+- `api`: restore locked, `dotnet format --verify-no-changes`, build `-warnaserror`, os 404 testes
   xUnit e a regeneração/comparação de `docs/api/openapi.json`.
 - `web`: `npm ci`, `astro check`, `npm run build` e `npm run test:e2e` (165 testes Playwright
   mockados).

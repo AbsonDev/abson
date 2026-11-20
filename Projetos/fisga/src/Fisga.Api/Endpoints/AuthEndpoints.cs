@@ -27,6 +27,8 @@ public static class AuthEndpoints
     {
         app.MapGet("/api/legal/versoes", (LegalOptions opcoes) =>
                 Results.Ok(new VersoesLegaisResponse(opcoes.TermsVersion, opcoes.PrivacyVersion)))
+            .Produces<VersoesLegaisResponse>(200)
+            .SemCorpo(429)
             .AllowAnonymous()
             .RequireRateLimiting("leitura")
             .WithMetadata(CachePolicy.Public(86400))
@@ -52,11 +54,14 @@ public static class AuthEndpoints
                         "Se este e-mail puder entrar, enviamos um link de acesso. Confira sua caixa de entrada e o spam.",
                         link));
             })
+            .Produces<SolicitarLinkResponse>(202)
+            .ComErro(400)
+            .SemCorpo(429)
             .AllowAnonymous()
             .RequireRateLimiting("auth")
             .WithTags(Tags.Autenticacao)
             .WithSummary("Solicita um link de acesso por e-mail")
-            .WithDescription("Funciona sem sessão. Retorna 202 sempre com a mesma mensagem genérica, sem revelar se o e-mail existe; em ambiente local, sem envio de e-mail, o link volta na resposta.");
+            .WithDescription("Funciona sem sessão. Retorna 202 sempre com a mesma mensagem genérica, sem revelar se o e-mail existe; em ambiente local, sem envio de e-mail, o link volta na resposta. O `Location` aponta para `/api/auth/me`, que só reporta sessão autenticada depois de o link ser confirmado.");
 
         app.MapPost("/api/auth/registrar", async (
                 RegistrarRequest entrada,
@@ -81,11 +86,14 @@ public static class AuthEndpoints
                     "/api/auth/me",
                     new RegistrarResponse("Conta criada. Enviamos um link de confirmação para o seu e-mail."));
             })
+            .Produces<RegistrarResponse>(201)
+            .ComErro(400)
+            .SemCorpo(429)
             .AllowAnonymous()
             .RequireRateLimiting("auth")
             .WithTags(Tags.Autenticacao)
             .WithSummary("Cria uma conta com e-mail e senha")
-            .WithDescription("Funciona sem sessão. Retorna 201 e envia um link de confirmação; a conta só entra depois de confirmar o e-mail.");
+            .WithDescription("Funciona sem sessão. Retorna 201 e envia um link de confirmação; a conta só entra depois de confirmar o e-mail. O `Location` aponta para `/api/auth/me`, que só reporta sessão autenticada depois de o link ser confirmado.");
 
         app.MapPost("/api/auth/entrar", async (
                 EntrarRequest entrada,
@@ -182,6 +190,9 @@ public static class AuthEndpoints
                 Metricas.LoginFalhou("credenciais_invalidas");
                 return Results.Ok(new EntrarResponse(false, MensagemCredenciaisInvalidas));
             })
+            .Produces<EntrarResponse>(200)
+            .ComErro(400)
+            .SemCorpo(429)
             .AllowAnonymous()
             .RequireRateLimiting("auth")
             .WithTags(Tags.Autenticacao)
@@ -228,6 +239,9 @@ public static class AuthEndpoints
 
                 return Results.Ok(new ConfirmarEmailResponse("E-mail confirmado. Você já pode entrar."));
             })
+            .Produces<ConfirmarEmailResponse>(200)
+            .ComErro(400)
+            .SemCorpo(429)
             .AllowAnonymous()
             .RequireRateLimiting("auth")
             .WithTags(Tags.Autenticacao)
@@ -261,6 +275,9 @@ public static class AuthEndpoints
 
                 return Results.Accepted("/api/auth/me", new EsqueciSenhaResponse(mensagem));
             })
+            .Produces<EsqueciSenhaResponse>(202)
+            .ComErro(400)
+            .SemCorpo(429)
             .AllowAnonymous()
             .RequireRateLimiting("auth")
             .WithTags(Tags.Autenticacao)
@@ -326,6 +343,9 @@ public static class AuthEndpoints
                 Metricas.ResetConcluido();
                 return Results.Ok(new RedefinirSenhaResponse("Senha redefinida. Você já pode entrar."));
             })
+            .Produces<RedefinirSenhaResponse>(200)
+            .ComErro(400)
+            .SemCorpo(429)
             .AllowAnonymous()
             .RequireRateLimiting("auth")
             .WithTags(Tags.Autenticacao)
@@ -367,6 +387,8 @@ public static class AuthEndpoints
                     return Results.Redirect($"{web}/entrar/confirmar?estado={Uri.EscapeDataString(excecao.Codigo)}");
                 }
             })
+            .SemCorpo(302)
+            .SemCorpo(429)
             .AllowAnonymous()
             .RequireRateLimiting("auth")
             .WithTags(Tags.Autenticacao)
@@ -375,6 +397,8 @@ public static class AuthEndpoints
 
         app.MapGet("/api/auth/google/disponivel", (IConfiguration configuration) =>
                 Results.Ok(new GoogleDisponivelResponse(GoogleConfigurado(configuration))))
+            .Produces<GoogleDisponivelResponse>(200)
+            .SemCorpo(429)
             .AllowAnonymous()
             .RequireRateLimiting("auth")
             .WithTags(Tags.Autenticacao)
@@ -388,7 +412,7 @@ public static class AuthEndpoints
                     Metricas.LoginFalhou("google_indisponivel");
                     return Results.Json(
                         new ErroResponse(
-                            "google_indisponivel",
+                            CodigosDeErro.GoogleIndisponivel,
                             "O login com Google não está configurado."),
                         statusCode: StatusCodes.Status503ServiceUnavailable,
                         contentType: "application/problem+json");
@@ -404,6 +428,9 @@ public static class AuthEndpoints
 
                 return Results.Challenge(propriedades, [GoogleDefaults.AuthenticationScheme]);
             })
+            .SemCorpo(302)
+            .ComErro(503)
+            .SemCorpo(429)
             .AllowAnonymous()
             .RequireRateLimiting("auth")
             .WithTags(Tags.Autenticacao)
@@ -477,6 +504,8 @@ public static class AuthEndpoints
                         $"{web}/entrar/confirmar?estado={Uri.EscapeDataString(excecao.Codigo)}");
                 }
             })
+            .SemCorpo(302)
+            .SemCorpo(429)
             .AllowAnonymous()
             .RequireRateLimiting("auth")
             .WithTags(Tags.Autenticacao)
@@ -498,7 +527,7 @@ public static class AuthEndpoints
                     Metricas.LoginFalhou("google_indisponivel");
                     return Results.Json(
                         new ErroResponse(
-                            "google_indisponivel",
+                            CodigosDeErro.GoogleIndisponivel,
                             "A conexão com Google não está configurada."),
                         statusCode: StatusCodes.Status503ServiceUnavailable,
                         contentType: "application/problem+json");
@@ -523,6 +552,11 @@ public static class AuthEndpoints
                 propriedades.Items[ChaveProvedorExterno] = GoogleIdentityValidator.Provider;
                 return Results.Challenge(propriedades, [GoogleDefaults.AuthenticationScheme]);
             })
+            .SemCorpo(302)
+            .ComErro(401)
+            .ComErro(403)
+            .ComErro(503)
+            .SemCorpo(429)
             .RequireRateLimiting("auth")
             .WithTags(Tags.Autenticacao)
             .WithSummary("Vincula uma conta Google à conta atual")
@@ -607,6 +641,9 @@ public static class AuthEndpoints
                         $"{web}/conta?estado={Uri.EscapeDataString(excecao.Codigo)}");
                 }
             })
+            .SemCorpo(302)
+            .ComErro(403)
+            .SemCorpo(429)
             .RequireRateLimiting("auth")
             .WithTags(Tags.Autenticacao)
             .WithSummary("Conclui o vínculo com a conta Google")
@@ -641,6 +678,8 @@ public static class AuthEndpoints
                     googleConectado,
                     temSenha));
             })
+            .Produces<MeResponse>(200)
+            .SemCorpo(429)
             .AllowAnonymous()
             .RequireRateLimiting("leitura")
             .WithTags(Tags.Autenticacao)
@@ -672,6 +711,8 @@ public static class AuthEndpoints
                 LimparCookie(http, opcoes);
                 return Results.NoContent();
             })
+            .SemCorpo(204)
+            .SemCorpo(429)
             .AllowAnonymous()
             .RequireRateLimiting("escrita")
             .WithTags(Tags.Autenticacao)
@@ -704,6 +745,10 @@ public static class AuthEndpoints
                 LimparCookie(http, opcoes);
                 return Results.NoContent();
             })
+            .SemCorpo(204)
+            .ComErro(401)
+            .ComErro(403)
+            .SemCorpo(429)
             .RequireRateLimiting("escrita")
             .WithTags(Tags.Autenticacao)
             .WithSummary("Encerra a sessão em todos os dispositivos")
@@ -724,6 +769,11 @@ public static class AuthEndpoints
 
                 return Results.Ok(UsuarioResponse.De(usuario));
             })
+            .Produces<UsuarioResponse>(200)
+            .ComErro(400)
+            .ComErro(401)
+            .ComErro(403)
+            .SemCorpo(429)
             .RequireRateLimiting("escrita")
             .WithTags(Tags.Autenticacao)
             .WithSummary("Atualiza nome e preferência de novidades")
@@ -755,6 +805,10 @@ public static class AuthEndpoints
                 await consentimento.RegistrarAsync(usuarioId, termosVersao, privacidadeVersao, ct);
                 return Results.NoContent();
             })
+            .SemCorpo(204)
+            .ComErro(400)
+            .ComErro(401)
+            .SemCorpo(429)
             .RequireRateLimiting("escrita")
             .WithTags(Tags.Conta)
             .WithSummary("Registra o aceite dos termos vigentes")
@@ -866,6 +920,11 @@ public static class AuthEndpoints
 
                 return Results.NoContent();
             })
+            .SemCorpo(204)
+            .ComErro(400)
+            .ComErro(401)
+            .ComErro(403)
+            .SemCorpo(429)
             .RequireRateLimiting("escrita")
             .WithTags(Tags.Conta)
             .WithSummary("Define ou troca a senha da conta")
@@ -882,6 +941,10 @@ public static class AuthEndpoints
                     .Select(sessao => SessaoResponse.De(sessao, http.SessaoAtual()?.Id))
                     .ToList());
             })
+            .Produces<List<SessaoResponse>>(200)
+            .ComErro(401)
+            .ComErro(403)
+            .SemCorpo(429)
             .RequireRateLimiting("leitura")
             .WithTags(Tags.Conta)
             .WithSummary("Lista os dispositivos com sessão aberta")
@@ -900,6 +963,10 @@ public static class AuthEndpoints
                     "application/json",
                     $"fisga-conta-{DateTime.UtcNow:yyyyMMdd}.json");
             })
+            .Produces<ExportacaoDaConta>(200, "application/json")
+            .ComErro(401)
+            .ComErro(403)
+            .SemCorpo(429)
             .RequireRateLimiting("leitura")
             .WithTags(Tags.Conta)
             .WithSummary("Exporta os dados da conta")
@@ -920,6 +987,11 @@ public static class AuthEndpoints
                 LimparCookie(http, opcoes);
                 return Results.NoContent();
             })
+            .SemCorpo(204)
+            .ComErro(400)
+            .ComErro(401)
+            .ComErro(403)
+            .SemCorpo(429)
             .RequireRateLimiting("escrita")
             .WithTags(Tags.Conta)
             .WithSummary("Exclui a conta e os dados")

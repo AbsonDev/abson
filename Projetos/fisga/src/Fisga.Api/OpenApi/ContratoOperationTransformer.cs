@@ -1,9 +1,12 @@
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Fisga.Api.Caching;
+using Fisga.Api.RateLimiting;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.OpenApi;
 
@@ -18,22 +21,6 @@ namespace Fisga.Api.OpenApi;
 /// </summary>
 public sealed partial class ContratoOperationTransformer(IConfiguration configuration) : IOpenApiOperationTransformer
 {
-    // Mesmo limite padrão declarado em Program.cs para cada política. A
-    // configuração (RateLimiting:<política>) vence quando presente; a tabela é
-    // a rede de segurança para o contrato não publicar um número inventado.
-    private static readonly IReadOnlyDictionary<string, int> LimitesPadraoPorMinuto =
-        new Dictionary<string, int>(StringComparer.Ordinal)
-        {
-            ["leitura"] = 180,
-            ["escrita"] = 40,
-            ["auth"] = 8,
-            ["pdf"] = 30,
-            ["midia"] = 30
-        };
-
-    // Janela fixa de um minuto em Program.cs (FixedWindowRateLimiterOptions.Window).
-    private const int JanelaEmSegundos = 60;
-
     // Token da pescaria compartilhada: parâmetro de rota, não scheme. O nome é
     // único no contrato, então a regra não precisa de tabela de rotas.
     private const string ParametroShareToken = "shareToken";
@@ -60,6 +47,8 @@ public sealed partial class ContratoOperationTransformer(IConfiguration configur
         operation.Security = Seguranca(context, $"{metodo} {rota}");
 
         EscreverExtensoes(operation, context, $"{metodo} {rota}");
+
+        NormalizarRespostas(operation);
 
         return Task.CompletedTask;
     }
@@ -111,18 +100,91 @@ public sealed partial class ContratoOperationTransformer(IConfiguration configur
             ?? throw new InvalidOperationException(
                 $"Política de rate limit sem nome: {identificacaoDaOperacao}");
 
-        var requests = configuration.GetValue<int?>($"RateLimiting:{nome}")
-            ?? (LimitesPadraoPorMinuto.TryGetValue(nome, out var padrao)
-                ? padrao
-                : throw new InvalidOperationException(
-                    $"Política sem limite conhecido para o contrato: {nome} ({identificacaoDaOperacao})"));
+        var requests = PoliticasDeTaxa.LimiteDe(configuration, nome, identificacaoDaOperacao);
 
         operation.Extensions["x-rate-limit"] = new JsonNodeExtension(new JsonObject
         {
             ["policy"] = nome,
             ["requests"] = requests,
-            ["windowSeconds"] = JanelaEmSegundos
+            ["windowSeconds"] = PoliticasDeTaxa.JanelaEmSegundos
         });
+    }
+
+    // Respostas são geradas pela metadata Produces<T>; aqui elas ganham o que a
+    // metadata não expressa: o espelho do schema de erro em application/json,
+    // descrição por status e os headers Location/Retry-After.
+    internal static void NormalizarRespostas(OpenApiOperation operation)
+    {
+        if (operation.Responses is null)
+        {
+            return;
+        }
+
+        foreach (var (codigo, resposta) in operation.Responses)
+        {
+            if (!int.TryParse(codigo, out var status) || resposta is not OpenApiResponse concreta)
+            {
+                continue;
+            }
+
+            if (status is StatusCodes.Status201Created or StatusCodes.Status202Accepted)
+            {
+                concreta.Headers ??= new Dictionary<string, IOpenApiHeader>();
+                concreta.Headers["Location"] = new OpenApiHeader
+                {
+                    Description = "URL do recurso criado ou do próximo passo.",
+                    Schema = new OpenApiSchema { Type = JsonSchemaType.String, Format = "uri" }
+                };
+            }
+
+            if (status == StatusCodes.Status429TooManyRequests)
+            {
+                concreta.Headers ??= new Dictionary<string, IOpenApiHeader>();
+                concreta.Headers["Retry-After"] = new OpenApiHeader
+                {
+                    Description = RejeicaoDoRateLimiter.DescricaoDoHeader,
+                    Schema = new OpenApiSchema { Type = JsonSchemaType.Integer, Format = "int32" }
+                };
+            }
+
+            // O corpo do PDF é binário cru: `byte[]` publica `format: byte` (base64),
+            // e um cliente gerado corromperia o download ao decodificar.
+            if (concreta.Content?.TryGetValue(RespostasPadrao.TipoPdf, out var pdf) == true)
+            {
+                pdf.Schema = new OpenApiSchema { Type = JsonSchemaType.String, Format = "binary" };
+            }
+
+            if (concreta.Content?.ContainsKey(RespostasPadrao.TipoProblema) == true)
+            {
+                var problema = concreta.Content[RespostasPadrao.TipoProblema];
+
+                // Cópia, não a mesma instância: editar o espelho em JSON não pode
+                // alterar silenciosamente o media type de erro original.
+                concreta.Content.TryAdd(
+                    RespostasPadrao.TipoJson,
+                    new OpenApiMediaType { Schema = problema.Schema, Example = problema.Example });
+
+                // A metadata gera a reason phrase ("Bad Request", "OK") como
+                // descrição; isso é o default do framework, não uma descrição
+                // deliberada. Só nesse caso o catálogo escreve por cima.
+                if (DescricaoVaziaOuPadrao(concreta, status))
+                {
+                    concreta.Description = RespostasPadrao.DescricaoComErro(status);
+                }
+            }
+            else if (RespostasPadrao.DescricaoSemSchema(status) is { } descricao
+                     && DescricaoVaziaOuPadrao(concreta, status))
+            {
+                concreta.Description = descricao;
+            }
+        }
+    }
+
+    private static bool DescricaoVaziaOuPadrao(OpenApiResponse resposta, int status)
+    {
+        var descricaoPadrao = ReasonPhrases.GetReasonPhrase(status);
+        return string.IsNullOrWhiteSpace(resposta.Description)
+            || string.Equals(resposta.Description, descricaoPadrao, StringComparison.Ordinal);
     }
 
     // A ordem da regra importa: a rota administrativa é AllowAnonymous no

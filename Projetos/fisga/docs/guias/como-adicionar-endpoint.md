@@ -22,8 +22,15 @@ contrato.
 
 ## 2. DTOs
 
-Entrada e saída ficam em `src/Fisga.Api/Contracts/`. Reaproveite os tipos
-existentes; não devolva entidade de domínio direto na resposta.
+Entrada HTTP fica em `src/Fisga.Api/Contracts/`. Boa parte da saída não: os
+casos de uso já devolvem records de `Fisga.Application` (`PescariaDetalhadaDto`,
+`LocalDto`, `PontoDto`, `TrilhaDto`, `DiarioDto`, `CondicoesDto`,
+`ComparacaoDto`, `ResultadoNewsletter`, `SugestaoDeEspecieResultado`,
+`ExportacaoDaConta`) e o endpoint os publica direto em `.Produces<T>(status)`,
+sem DTO espelho na API. A consequência é de contrato: renomear ou remover um
+record de `Fisga.Application` publicado assim é uma mudança incompatível no
+OpenAPI, não um refactor interno. Reaproveite os tipos existentes; não devolva
+entidade de domínio direto na resposta.
 
 ## 3. Regra de negócio e persistência
 
@@ -48,10 +55,13 @@ A API orquestra e traduz HTTP — não coloque regra no endpoint.
 - Rota administrativa com token manual não é sessão nem rota pública: aplique
   `.WithMetadata(new RequerTokenAdmin())` para o contrato publicar
   `adminToken` em vez de `security: []`.
-- Rate limiting com as políticas existentes em `Program.cs` (`AddRateLimiter`,
-  linhas 102–112), via `.RequireRateLimiting("<politica>")`: `leitura`,
-  `escrita`, `auth`, `pdf`, `midia`. `web` não é política de rate limit — é a
-  política de CORS (`AddCors`/`UseCors("web")`). Usar `web` em
+- Rate limiting com as políticas de `src/Fisga.Api/RateLimiting/PoliticasDeTaxa.cs`
+  (nomes, limites padrão por minuto, override por
+  `RateLimiting:<política>` e `JanelaEmSegundos`), via
+  `.RequireRateLimiting("<politica>")`: `leitura`, `escrita`, `auth`, `pdf`,
+  `midia`. O `Program.cs` só percorre `PoliticasDeTaxa.PadroesPorMinuto` para
+  registrar o limiter — a fonte dos números é a classe. `web` não é política de
+  rate limit — é a política de CORS (`AddCors`/`UseCors("web")`). Usar `web` em
   `RequireRateLimiting` não retorna 429: a política não existe no rate limiter e
   a requisição falha com 500.
 
@@ -77,7 +87,19 @@ gerado. Sem ela, `gerar-openapi.sh` falha com `Operação sem operationId`.
    `operationId` estável, no formato `verboSubstantivo`.
 2. Aplique `.WithTags(Tags.X)`, `.WithSummary` e `.WithDescription` no handler.
    Sem tag de domínio ou sem resumo de negócio, `ContratoTests` falha.
-3. Regenere e commite o contrato publicado:
+3. Declare as respostas: `.Produces<T>(status)` para o sucesso, `.ComErro(status)`
+   para erro com corpo e `.SemCorpo(status)` para `204`/`302`, `404` sem
+   resultado, `429` e para o `503` sem corpo de `/ready`. Os dois
+   `503 google_indisponivel` têm corpo `ErroResponse` e por isso usam
+   `.ComErro(503)`.
+   Upload usa `.Accepts<FormularioDeFoto>("multipart/form-data")`. O status
+   declarado precisa ser o que o handler devolve — `ContratoTests` compara a
+   tabela de `RespostasEsperadas` com o documento gerado.
+4. Registre a operação em `tests/Fisga.Api.Tests/RespostasEsperadas.cs` com os
+   status reais e, se a rota for pública, em `RotasAnonimasPorDecisao`
+   (`ContratoTests.cs`). Um `404` com corpo vazio (em vez de `ErroResponse`)
+   entra em `RespostasEsperadas.NotFoundSemCorpo`.
+5. Regenere e commite o contrato publicado:
 
 ```bash
 ./scripts/gerar-openapi.sh

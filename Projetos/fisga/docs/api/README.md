@@ -42,7 +42,16 @@ Commite o arquivo gerado no mesmo PR da mudança de contrato.
 - Metadados do contrato em `src/Fisga.Api/OpenApi/`: `operationId` congelado em
   `MapaDeOperacoes.cs`, tags em `Tags.cs` e `security`, `x-cache` e
   `x-rate-limit` derivados por `ContratoOperationTransformer.cs`.
-- DTOs de entrada e saída em `src/Fisga.Api/Contracts/`.
+- Respostas declaradas no handler com `Produces<T>` (sucesso) e
+  `ComErro`/`SemCorpo` (erro com corpo e sem corpo), e normalizadas por
+  `ContratoOperationTransformer.cs` — media types, headers
+  `Location`/`Retry-After` e descrição por status.
+- DTOs de entrada em `src/Fisga.Api/Contracts/`. A maioria dos schemas de
+  sucesso vem de `src/Fisga.Application` (`PescariaDetalhadaDto`, `LocalDto`,
+  `DiarioDto`, `CondicoesDto`, `ComparacaoDto`, `ResultadoNewsletter`,
+  `SugestaoDeEspecieResultado`, `ExportacaoDaConta`) e é publicada direto pelo
+  `Produces<T>`. Renomear um record de `Fisga.Application` é uma mudança
+  incompatível (breaking) no contrato público.
 - A contagem de paths e schemas muda a cada mudança de contrato e não é
   mantida à mão aqui: consulte o próprio `openapi.json`, que é a fonte da
   verdade.
@@ -53,14 +62,13 @@ Commite o arquivo gerado no mesmo PR da mudança de contrato.
   `if (app.Environment.IsDevelopment())`, então `/openapi/v1.json` responde
   apenas no ambiente local. Em produção o documento não é exposto; a fonte é o
   `openapi.json` versionado aqui.
-- **O contrato já expressa acesso, cache e rate limit; falta o resto.** Toda
-  operação declara `security` — vazio quando a rota é anônima **e** não usa
-  token administrativo — e `x-cache`; as
-  que têm política declaram também `x-rate-limit`. Ainda faltam os status reais,
-  o schema de erro, o schema de upload e `info`/`servers`: o
-  [inventário](inventario.md#lacunas-de-contrato) lista o que resta.
-- **O contrato não traz schemas de resposta.** Os endpoints devolvem
-  `Results.Ok(...)` sem metadados `Produces<T>`, então nenhuma operação declara
-  o corpo tipado da resposta. Quem gera cliente a partir de `openapi.json` vê os
-  corpos de entrada, mas não os de saída. Adicionar
-  `Produces<T>` aos endpoints é um follow-up.
+- **O contrato expressa respostas e erros; falta a identidade do documento.**
+  Cada operação declara o status real de sucesso com corpo tipado quando há
+  corpo, as respostas de erro com corpo apontam para o schema único
+  `ErroResponse` em `application/json` e `application/problem+json`; `404` sem
+  resultado, `429` e o `503` de `/ready` não têm corpo. Os dois uploads descrevem
+  `multipart/form-data`, o `429` traz `Retry-After` e `201`/`202` trazem
+  `Location`. Acesso (`security`), cache (`x-cache`) e rate limit
+  (`x-rate-limit`) também saem do código. Falta só `info`/`servers` (F1.7): o
+  documento não tem `contact`, `license`, descrição nem a lista fixa de
+  servidores.

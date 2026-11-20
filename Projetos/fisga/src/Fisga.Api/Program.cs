@@ -9,10 +9,12 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
 using Fisga.Api;
 using Fisga.Api.Caching;
+using Fisga.Api.Contracts;
 using Fisga.Api.Endpoints;
 using Fisga.Api.Middleware;
 using Fisga.Api.Observabilidade;
 using Fisga.Api.OpenApi;
+using Fisga.Api.RateLimiting;
 using Fisga.Application;
 using Fisga.Application.Identidade;
 using Fisga.Application.Observabilidade;
@@ -101,15 +103,14 @@ builder.Services.AddCors(opcoes =>
 
 builder.Services.AddRateLimiter(opcoes =>
 {
-    opcoes.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    RejeicaoDoRateLimiter.Configurar(opcoes);
     // Limites por minuto/IP. Os valores padrão são os de produção; ambientes de
     // teste podem elevá-los por configuração (RateLimiting__Auth=1000) sem
     // alterar o comportamento padrão.
-    AdicionarPolitica(opcoes, builder.Configuration, "leitura", 180);
-    AdicionarPolitica(opcoes, builder.Configuration, "escrita", 40);
-    AdicionarPolitica(opcoes, builder.Configuration, "auth", 8);
-    AdicionarPolitica(opcoes, builder.Configuration, "pdf", 30);
-    AdicionarPolitica(opcoes, builder.Configuration, "midia", 30);
+    foreach (var politica in PoliticasDeTaxa.PadroesPorMinuto.Keys)
+    {
+        AdicionarPolitica(opcoes, builder.Configuration, politica);
+    }
 });
 
 var app = builder.Build();
@@ -151,16 +152,19 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.MapGet("/health", () => Results.Ok(new { status = "ok", version = versao }))
+app.MapGet("/health", () => Results.Ok(new SaudeResponse("ok", versao)))
     .AllowAnonymous()
+    .Produces<SaudeResponse>(200)
     .WithTags(Tags.Sistema)
     .WithSummary("Verifica se a API está no ar")
     .WithDescription("Funciona sem sessão. Retorna 200 com o status e a versão publicada, sem consultar o banco.");
 app.MapGet("/ready", async (FisgaDbContext db, CancellationToken ct) =>
         await db.Database.CanConnectAsync(ct)
-            ? Results.Ok(new { status = "ready" })
+            ? Results.Ok(new ProntidaoResponse("ready"))
             : Results.StatusCode(StatusCodes.Status503ServiceUnavailable))
     .AllowAnonymous()
+    .Produces<ProntidaoResponse>(200)
+    .SemCorpo(503)
     .WithTags(Tags.Sistema)
     .WithSummary("Verifica se a API está pronta para atender")
     .WithDescription("Funciona sem sessão. Consulta o banco e retorna 200 quando a conexão funciona ou 503 quando não funciona.");
@@ -193,17 +197,16 @@ static double TaxaDeAmostragem(IWebHostEnvironment ambiente)
 static void AdicionarPolitica(
     Microsoft.AspNetCore.RateLimiting.RateLimiterOptions opcoes,
     IConfiguration configuration,
-    string nome,
-    int limitePadraoPorMinuto)
+    string nome)
 {
-    var limitePorMinuto = configuration.GetValue<int?>($"RateLimiting:{nome}") ?? limitePadraoPorMinuto;
+    var limitePorMinuto = PoliticasDeTaxa.LimiteDe(configuration, nome);
     opcoes.AddPolicy(nome, contexto =>
     {
         var chave = contexto.Connection.RemoteIpAddress?.ToString() ?? "anonimo";
         return RateLimitPartition.GetFixedWindowLimiter(chave, _ => new FixedWindowRateLimiterOptions
         {
             PermitLimit = limitePorMinuto,
-            Window = TimeSpan.FromMinutes(1),
+            Window = TimeSpan.FromSeconds(PoliticasDeTaxa.JanelaEmSegundos),
             QueueLimit = 0,
             AutoReplenishment = true
         });

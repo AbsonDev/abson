@@ -1,4 +1,5 @@
 using Fisga.Api.Contracts;
+using Fisga.Api.OpenApi;
 using Fisga.Application.Identidade;
 using Microsoft.AspNetCore.Authorization;
 
@@ -93,7 +94,7 @@ public sealed class ConsentimentoMiddleware(RequestDelegate next)
         context.Response.StatusCode = StatusCodes.Status403Forbidden;
         await context.Response.WriteAsJsonAsync(
             new ErroResponse(
-                "consentimento_pendente",
+                CodigosDeErro.ConsentimentoPendente,
                 "Aceite os termos e a privacidade vigentes para continuar."),
             options: null,
             contentType: "application/problem+json");

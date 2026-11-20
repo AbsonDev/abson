@@ -46,6 +46,7 @@ Conteúdo de produto (espécies, técnicas, locais) não fica aqui.
 - [Plano — Aviso de defeso por captura](superpowers/plans/2026-11-20-defeso-por-captura.md)
 - [Spec — Contrato verdadeiro da API](superpowers/specs/2026-11-20-f1-contrato-verdadeiro-design.md)
 - [Plano — A1 do contrato verdadeiro](superpowers/plans/2026-11-20-f1-a1-contrato-identidade.md)
+- [Plano — A2 do contrato verdadeiro](superpowers/plans/2026-11-20-f1-a2-respostas-reais.md)
 
 ## Referências
 

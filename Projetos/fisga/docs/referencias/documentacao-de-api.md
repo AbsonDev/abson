@@ -35,8 +35,8 @@ só porque têm escala que o Fisga não tem.
 4. **Ambiente explícito.** Asaas abre a documentação com a tabela sandbox ×
    produção. O leitor não descobre a URL base errada no primeiro `404`.
 5. **Recuperação, não só falha.** GitHub diz o que fazer com `Retry-After`,
-   com `x-ratelimit-reset` e quando parar de tentar. O Fisga hoje responde `429`
-   sem corpo e sem header — a F1.8 corrige ao menos o header.
+   com `x-ratelimit-reset` e quando parar de tentar. O Fisga responde `429`
+   sem corpo, com `Retry-After` em segundos (F1.8).
 6. **Depreciação visível onde a operação aparece.** Cloudflare marca
    `Deprecated` no item de navegação e na página. Não existe rota velha
    silenciosa.
@@ -71,7 +71,7 @@ só porque têm escala que o Fisga não tem.
 | Segurança por operação | `securityScheme` por operação no contrato e bloco "Acesso" em cada página | [F1.1](../api/backlog.md#f11--esquemas-de-segurança) |
 | Referência gerada do mesmo documento que gera cliente | Gerador `openapi.json` → páginas; sem renderizador de terceiros | [Arquitetura do portal](../api/portal.md) |
 | Sandbox explícito | Adiado para a F4.1, com aviso de que a v1 usa produção e credencial própria | [F4.1](../api/backlog.md#f41--sandbox) |
-| Rate limit com recuperação | `Retry-After` na F1.8; guia de erros explica a janela de 1 minuto | [F1.8](../api/backlog.md#f18--429-com-retry-after) |
+| Rate limit com recuperação | `Retry-After` em segundos desde a F1.8; guia de erros explica a janela de 1 minuto | [F1.8](../api/backlog.md#f18--429-com-retry-after) |
 | Depreciação visível | Janela de 90 dias e aviso na página afetada | [F4.3](../api/backlog.md#f43--política-de-versão-e-depreciação) |
 
 ## O que ainda falta pesquisar
