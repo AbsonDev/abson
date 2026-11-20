@@ -14,7 +14,8 @@ O contrato também não contava a história toda. O
 ausentes, formato de erro real (`{codigo, detalhe}`) em vez de RFC 9457, uploads
 multipart sem schema e rotas administrativas que respondem `404` de propósito.
 Segurança, tags, `operationId`, rate limit e cache foram resolvidos no A1
-(2026-11-20).
+(2026-11-20). Status reais, erro único, uploads multipart e `Retry-After` foram
+resolvidos no A2 (2026-11-20), restando `info`/`servers` para o A3.
 
 Publicar esse contrato cru produziria documentação que mente. Publicar
 documentação escrita à mão sem contrato produziria documentação que envelhece

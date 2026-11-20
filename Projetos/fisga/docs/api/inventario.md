@@ -177,7 +177,7 @@ por isso fora das linhas.
 | `POST /api/auth/confirmar-email` | P | auth | `200` `ConfirmarEmailResponse` | `400` `confirmacao_invalida`, `429` | |
 | `POST /api/auth/esqueci-senha` | P | auth | `202 Accepted` + `EsqueciSenhaResponse` | `400`, `429` | Resposta genérica anti-enumeração |
 | `POST /api/auth/redefinir-senha` | P | auth | `200` `RedefinirSenhaResponse` | `400` `link_invalido`/`senha_curta`/`senha_longa`, `429` | Revoga todas as sessões e rotaciona o security stamp |
-| `GET /api/auth/confirmar` | P | auth | `302` para o web | `429`, `500` | Link mágico; emite o cookie de sessão. Sucesso e erro redirecionam com `estado=<codigo>` |
+| `GET /api/auth/confirmar` | P | auth | `302` para o web | `429` | Link mágico; emite o cookie de sessão. Sucesso e erro redirecionam com `estado=<codigo>` |
 | `GET /api/auth/google/disponivel` | P | auth | `200` `GoogleDisponivelResponse` | `429` | |
 | `GET /api/auth/google/iniciar` | P | auth | `302` challenge Google | `503` `google_indisponivel`, `429` | |
 | `GET /api/auth/google/concluir` | P | auth | `302` para o web | `429` | Callback OAuth; sucesso e erro redirecionam com `estado=<codigo>`; primeiro acesso vai para `/boas-vindas` |

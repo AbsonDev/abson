@@ -64,6 +64,11 @@ aditivos de resposta.
   schema; o spec não mistura ProblemDetails do framework com `ErroResponse` sem
   dizer qual é qual; `429` documentado como corpo vazio com `Retry-After`.
 - **Estado:** concluída no A2 (2026-11-20) — esta PR fecha #65.
+- **Dívida conhecida:** `CodigosDeErro.Todos` é um change-detector
+  intencional — constante nova quebra o teste e força a decisão consciente. O
+  que ele não cobre é um literal `codigo` reintroduzido em handler; um guard de
+  varredura do código-fonte resolveria, mas foi rejeitado pela fragilidade de
+  caminho — fica como item de checklist de review.
 - **Est.:** 1 d · **Dep.:** F1.1
 
 ### F1.4 — Tags, `operationId` e descrições

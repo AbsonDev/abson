@@ -1448,6 +1448,42 @@ leitor não sabia se havia corpo. A descrição com corpo agora diz o que public
 "Serviço indisponível no momento. Corpo `ErroResponse` com o motivo." A sem
 corpo continua sendo a de `/ready`.
 
+#### Terceira rodada da revisão (PR-Agent, 2026-11-20)
+
+**O `500` do `/api/auth/confirmar` contradizia a regra da segunda rodada.** A
+regra recém-escrita dizia que invariante interna é o `500` genérico do
+middleware, mas a linha de confirmar continuava declarando `500` por causa de
+uma `InvalidOperationException` no handler — e a mesma construção existe em
+`/api/auth/registrar`, `/api/auth/entrar` e `/api/conta/senha`, que nunca
+declararam `500`. Quatro sítios, um declarado: era exceção sem critério. O
+`500` saiu do handler, da tabela (`[302, 429]`) e do inventário; o conjunto com
+`500` ficou só com as chamadas a provedor externo (`/api/condicoes`,
+`/api/condicoes/comparar`, `/api/especies/sugerir`, as duas rotas de
+newsletter).
+
+**O transformer sobrescrevia descrição explícita.** `NormalizarRespostas`
+trocava `Description` pelo texto do catálogo em todo erro com corpo e em todo
+status sem corpo. A metadata gera a reason phrase ("Bad Request", "OK") como
+descrição, então o comportamento normal era o desejado — mas um handler que
+escrevesse a própria descrição a perdia. Agora o catálogo só escreve quando a
+descrição é vazia ou igual à reason phrase do status; o espelho em JSON continua
+sendo adicionado sempre.
+
+**O teste de rate limit no host real era flaky.** O nono `POST` era o único
+aceito como rejeição, mas a partição (`RemoteIpAddress` nulo → "anonimo") e a
+janela fixa de 60 s são estado compartilhado: uma rotação de janela no meio do
+teste movia a rejeição. O laço agora envia até `3 * limite + 1` requisições e
+para no primeiro `429`, mantendo as asserções de `Retry-After` e corpo vazio; um
+limiter neutralizado continua falhando, porque 25 tentativas sem rejeição
+quebram o teste.
+
+**Contagens e guia sincronizados.** O total de testes passou a 404 (46 de
+domínio + 58 de aplicação + 300 de API) em `README.md`, `review.md`, `ci-cd.md`
+e `roadmap.md`; o guia de endpoint passou a apontar a fonte real das políticas
+(`RateLimiting/PoliticasDeTaxa.cs`), a origem dos DTOs de saída
+(`Fisga.Application`, publicados por `.Produces<T>`) e a diferença entre
+`.SemCorpo(503)` e `.ComErro(503)`.
+
 ---
 
 ## Verificação final do pacote
