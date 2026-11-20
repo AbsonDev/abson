@@ -19,7 +19,9 @@ public sealed class ContratoDocumentTransformer : IOpenApiDocumentTransformer
         document.Components ??= new OpenApiComponents();
         document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
 
-        document.Components.SecuritySchemes["cookieAuth"] = new OpenApiSecurityScheme
+        // Este transformer é o dono dos dois ids em components.securitySchemes;
+        // as operações só apontam para eles via Esquemas.
+        document.Components.SecuritySchemes[Esquemas.CookieAuth] = new OpenApiSecurityScheme
         {
             Type = SecuritySchemeType.ApiKey,
             In = ParameterLocation.Cookie,
@@ -27,7 +29,7 @@ public sealed class ContratoDocumentTransformer : IOpenApiDocumentTransformer
             Description = "Sessão do Fisga no cookie `fisga_auth` (`HttpOnly`, `SameSite=Lax`; `Secure` conforme configuração; validade deslizante de 30 dias)."
         };
 
-        document.Components.SecuritySchemes["adminToken"] = new OpenApiSecurityScheme
+        document.Components.SecuritySchemes[Esquemas.AdminToken] = new OpenApiSecurityScheme
         {
             Type = SecuritySchemeType.ApiKey,
             In = ParameterLocation.Header,
