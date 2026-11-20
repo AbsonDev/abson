@@ -27,7 +27,7 @@ public static class CondicoesEndpoints
                 if (lat is null || lon is null)
                 {
                     return Results.BadRequest(
-                        new ErroResponse("local_sem_coordenadas", "Informe a latitude e a longitude do local."));
+                        new ErroResponse(CodigosDeErro.LocalSemCoordenadas, "Informe a latitude e a longitude do local."));
                 }
 
                 var ambienteFinal = Enum.TryParse<AmbienteDePesca>(ambiente, true, out var valor)
@@ -50,6 +50,10 @@ public static class CondicoesEndpoints
 
                 return Results.Ok(condicoes);
             })
+            .Produces<CondicoesDto>(200)
+            .ComErro(400)
+            .SemCorpo(429)
+            .ComErro(500)
             .AllowAnonymous()
             .RequireRateLimiting("leitura")
             .WithMetadata(CachePolicy.Private(300, swr: 600))
@@ -74,7 +78,7 @@ public static class CondicoesEndpoints
                 if (lat is null || lon is null)
                 {
                     return Results.BadRequest(
-                        new ErroResponse("local_sem_coordenadas", "Informe a latitude e a longitude do local."));
+                        new ErroResponse(CodigosDeErro.LocalSemCoordenadas, "Informe a latitude e a longitude do local."));
                 }
 
                 var ambienteFinal = Enum.TryParse<AmbienteDePesca>(ambiente, true, out var valor)
@@ -105,6 +109,12 @@ public static class CondicoesEndpoints
                 var resultado = await comparacao.CompararAsync(usuarioId, lua, mare, clima, periodo, ct);
                 return Results.Ok(resultado);
             })
+            .Produces<ComparacaoDto>(200)
+            .ComErro(400)
+            .ComErro(401)
+            .ComErro(403)
+            .SemCorpo(429)
+            .ComErro(500)
             .RequireRateLimiting("leitura")
             .WithTags(Tags.Condicoes)
             .WithSummary("Compara as condições atuais com as pescarias registradas")
@@ -121,12 +131,16 @@ public static class CondicoesEndpoints
                     || lat is < -90 or > 90 || lon is < -180 or > 180)
                 {
                     return Results.BadRequest(
-                        new ErroResponse("coordenadas_invalidas", "Informe latitude e longitude válidas."));
+                        new ErroResponse(CodigosDeErro.CoordenadasInvalidas, "Informe latitude e longitude válidas."));
                 }
 
                 var resultado = await geocodificador.ReversoAsync(lat.Value, lon.Value, ct);
                 return resultado is null ? Results.NotFound() : Results.Ok(resultado);
             })
+            .Produces<ResultadoDeBusca>(200)
+            .ComErro(400)
+            .SemCorpo(404)
+            .SemCorpo(429)
             .AllowAnonymous()
             .RequireRateLimiting("leitura")
             .WithMetadata(CachePolicy.Private(86400))
@@ -142,6 +156,8 @@ public static class CondicoesEndpoints
                 var resultados = await geocodificador.BuscarAsync(q ?? string.Empty, ct);
                 return Results.Ok(resultados);
             })
+            .Produces<IReadOnlyList<ResultadoDeBusca>>(200)
+            .SemCorpo(429)
             .AllowAnonymous()
             .RequireRateLimiting("leitura")
             .WithMetadata(CachePolicy.Private(3600))
@@ -160,6 +176,10 @@ public static class CondicoesEndpoints
                 var lista = await servico.ListarAsync(usuarioId, ct);
                 return Results.Ok(lista);
             })
+            .Produces<IReadOnlyList<LocalDto>>(200)
+            .ComErro(401)
+            .ComErro(403)
+            .SemCorpo(429)
             .RequireRateLimiting("leitura")
             .WithSummary("Lista os locais salvos")
             .WithDescription("Exige sessão e retorna apenas os locais da conta, com o local padrão na frente.");
@@ -175,6 +195,11 @@ public static class CondicoesEndpoints
                 Metricas.LocalSalvo(entrada.Ambiente);
                 return Results.Created($"/api/locais/{local.Id}", local);
             })
+            .Produces<LocalDto>(201)
+            .ComErro(400)
+            .ComErro(401)
+            .ComErro(403)
+            .SemCorpo(429)
             .RequireRateLimiting("escrita")
             .WithSummary("Salva um local de pesca")
             .WithDescription("Exige sessão. O primeiro local salvo vira o padrão, e cada conta pode manter até cinco locais.");
@@ -190,6 +215,12 @@ public static class CondicoesEndpoints
                 var local = await servico.AtualizarAsync(id, entrada, usuarioId, ct);
                 return Results.Ok(local);
             })
+            .Produces<LocalDto>(200)
+            .ComErro(400)
+            .ComErro(401)
+            .ComErro(403)
+            .ComErro(404)
+            .SemCorpo(429)
             .RequireRateLimiting("escrita")
             .WithSummary("Atualiza um local de pesca")
             .WithDescription("Exige sessão e aceita apenas o dono do local. Retorna 404 quando o local não existe.");
@@ -204,6 +235,11 @@ public static class CondicoesEndpoints
                 var local = await servico.DefinirPadraoAsync(id, usuarioId, ct);
                 return Results.Ok(local);
             })
+            .Produces<LocalDto>(200)
+            .ComErro(401)
+            .ComErro(403)
+            .ComErro(404)
+            .SemCorpo(429)
             .RequireRateLimiting("escrita")
             .WithSummary("Define o local padrão")
             .WithDescription("Exige sessão e aceita apenas o dono do local. O local que era padrão deixa de ser.");
@@ -218,6 +254,11 @@ public static class CondicoesEndpoints
                 await servico.ExcluirAsync(id, usuarioId, ct);
                 return Results.NoContent();
             })
+            .SemCorpo(204)
+            .ComErro(401)
+            .ComErro(403)
+            .ComErro(404)
+            .SemCorpo(429)
             .RequireRateLimiting("escrita")
             .WithSummary("Exclui um local de pesca")
             .WithDescription("Exige sessão e aceita apenas o dono do local. Se o local excluído era o padrão, o mais recente assume o posto. Retorna 404 quando o recurso não existe.");

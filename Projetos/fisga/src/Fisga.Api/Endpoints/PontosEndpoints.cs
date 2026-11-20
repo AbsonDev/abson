@@ -19,6 +19,10 @@ public static class PontosEndpoints
                 var lista = await servico.ListarAsync(usuarioId, ct);
                 return Results.Ok(lista);
             })
+            .Produces<IReadOnlyList<PontoDto>>(200)
+            .ComErro(401)
+            .ComErro(403)
+            .SemCorpo(429)
             .RequireRateLimiting("leitura")
             .WithSummary("Lista os pontos privados")
             .WithDescription("Exige sessão e retorna apenas os pontos da conta, do mais recente para o mais antigo.");
@@ -33,6 +37,11 @@ public static class PontosEndpoints
                 var ponto = await servico.CriarAsync(entrada, usuarioId, ct);
                 return Results.Created($"/api/pontos/{ponto.Id}", ponto);
             })
+            .Produces<PontoDto>(201)
+            .ComErro(400)
+            .ComErro(401)
+            .ComErro(403)
+            .SemCorpo(429)
             .RequireRateLimiting("escrita")
             .WithSummary("Salva um ponto privado")
             .WithDescription("Exige sessão. Cada conta pode manter até duzentos pontos privados.");
@@ -48,6 +57,12 @@ public static class PontosEndpoints
                 var ponto = await servico.AtualizarAsync(id, entrada, usuarioId, ct);
                 return Results.Ok(ponto);
             })
+            .Produces<PontoDto>(200)
+            .ComErro(400)
+            .ComErro(401)
+            .ComErro(403)
+            .ComErro(404)
+            .SemCorpo(429)
             .RequireRateLimiting("escrita")
             .WithSummary("Atualiza um ponto privado")
             .WithDescription("Exige sessão e aceita apenas o dono do ponto. Retorna 404 quando o ponto não existe.");
@@ -62,6 +77,11 @@ public static class PontosEndpoints
                 await servico.ExcluirAsync(id, usuarioId, ct);
                 return Results.NoContent();
             })
+            .SemCorpo(204)
+            .ComErro(401)
+            .ComErro(403)
+            .ComErro(404)
+            .SemCorpo(429)
             .RequireRateLimiting("escrita")
             .WithSummary("Exclui um ponto privado")
             .WithDescription("Exige sessão e aceita apenas o dono do ponto. Retorna 204 quando o ponto é removido. Retorna 404 quando o recurso não existe.");
