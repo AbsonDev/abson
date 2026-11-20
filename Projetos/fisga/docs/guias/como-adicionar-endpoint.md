@@ -88,9 +88,10 @@ gerado. Sem ela, `gerar-openapi.sh` falha com `Operação sem operationId`.
 2. Aplique `.WithTags(Tags.X)`, `.WithSummary` e `.WithDescription` no handler.
    Sem tag de domínio ou sem resumo de negócio, `ContratoTests` falha.
 3. Declare as respostas: `.Produces<T>(status)` para o sucesso, `.ComErro(status)`
-   para erro com corpo e `.SemCorpo(status)` para `204`/`302`/`429` e para o
-   `503` sem corpo de `/ready`. Os dois `503 google_indisponivel` têm corpo
-   `ErroResponse` e por isso usam `.ComErro(503)`.
+   para erro com corpo e `.SemCorpo(status)` para `204`/`302`, `404` sem
+   resultado, `429` e para o `503` sem corpo de `/ready`. Os dois
+   `503 google_indisponivel` têm corpo `ErroResponse` e por isso usam
+   `.ComErro(503)`.
    Upload usa `.Accepts<FormularioDeFoto>("multipart/form-data")`. O status
    declarado precisa ser o que o handler devolve — `ContratoTests` compara a
    tabela de `RespostasEsperadas` com o documento gerado.

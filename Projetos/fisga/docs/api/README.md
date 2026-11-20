@@ -64,8 +64,9 @@ Commite o arquivo gerado no mesmo PR da mudança de contrato.
   `openapi.json` versionado aqui.
 - **O contrato expressa respostas e erros; falta a identidade do documento.**
   Cada operação declara o status real de sucesso com corpo tipado quando há
-  corpo, as respostas de erro apontam para o schema único `ErroResponse` em
-  `application/json` e `application/problem+json`, os dois uploads descrevem
+  corpo, as respostas de erro com corpo apontam para o schema único
+  `ErroResponse` em `application/json` e `application/problem+json`; `404` sem
+  resultado, `429` e o `503` de `/ready` não têm corpo. Os dois uploads descrevem
   `multipart/form-data`, o `429` traz `Retry-After` e `201`/`202` trazem
   `Location`. Acesso (`security`), cache (`x-cache`) e rate limit
   (`x-rate-limit`) também saem do código. Falta só `info`/`servers` (F1.7): o
