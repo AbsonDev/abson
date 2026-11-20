@@ -275,7 +275,7 @@ Confirmadas no `openapi.json` atual. Viram tickets da Fase 1.
 | 4 | Upload `multipart/form-data` sem schema | `/api/midia`, `/api/especies/sugerir` | Schema multipart com campo, tipos e tamanho |
 | 5 | Admin responde `404` em vez de `401/403` | `NewsletterEndpoints.TokenValido` | `description` já explica o `404` intencional; falta declarar `404` e `500` como respostas no spec |
 | 6 | Endpoints de auth com efeito colateral em `GET` e `302` | `/api/auth/confirmar`, `/api/auth/google/*` | `description` já descreve redirects, sessão criada e estados; falta declarar `302` e `503` como respostas no spec |
-| 7 | `info` incompleto e sem `servers` | `openapi.json` | `contact`, `license`, descrição e `servers` por ambiente |
+| 7 | `info` incompleto e sem `servers` | `openapi.json` | `contact`, `license`, descrição e `servers` fixo com produção e local, independente de ambiente |
 | 8 | `429` sai sem corpo e sem `Retry-After` | Configuração do rate limiter | Decidir se adiciona `Retry-After` e corpo de erro padronizado |
 | 9 | `GET /api/auth/me` é anônimo e devolve `200` | `AuthEndpoints.cs` | `description` já explica o `200` com `autenticado:false` e a operação declara `security: []`; falta declarar a resposta `200` no spec (A2) e registrar em "comportamentos que surpreendem" (A3) |
 

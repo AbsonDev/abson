@@ -97,9 +97,9 @@ aditivos de resposta.
 
 - **Issue:** [#68](https://github.com/AbsonDev/abson/issues/68)
 - **Escopo:** `info.contact`, `info.license` (proprietária), `info.description`
-  e `servers` por ambiente.
-- **Aceite:** spec válido no lint de OpenAPI, sem `servers` apontando para
-  ambiente morto.
+  e `servers` fixo com produção e local, independente de ambiente.
+- **Aceite:** spec válido no lint de OpenAPI; `servers` traz as duas entradas
+  fixas, sem URL de ambiente efêmero.
 - **Est.:** 0,5 d · **Dep.:** —
 
 ### F1.8 — `429` com `Retry-After`
