@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Fisga.Api.Caching;
+using Fisga.Api.RateLimiting;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.AspNetCore.RateLimiting;
@@ -18,22 +19,6 @@ namespace Fisga.Api.OpenApi;
 /// </summary>
 public sealed partial class ContratoOperationTransformer(IConfiguration configuration) : IOpenApiOperationTransformer
 {
-    // Mesmo limite padrão declarado em Program.cs para cada política. A
-    // configuração (RateLimiting:<política>) vence quando presente; a tabela é
-    // a rede de segurança para o contrato não publicar um número inventado.
-    private static readonly IReadOnlyDictionary<string, int> LimitesPadraoPorMinuto =
-        new Dictionary<string, int>(StringComparer.Ordinal)
-        {
-            ["leitura"] = 180,
-            ["escrita"] = 40,
-            ["auth"] = 8,
-            ["pdf"] = 30,
-            ["midia"] = 30
-        };
-
-    // Janela fixa de um minuto em Program.cs (FixedWindowRateLimiterOptions.Window).
-    private const int JanelaEmSegundos = 60;
-
     // Token da pescaria compartilhada: parâmetro de rota, não scheme. O nome é
     // único no contrato, então a regra não precisa de tabela de rotas.
     private const string ParametroShareToken = "shareToken";
@@ -111,17 +96,13 @@ public sealed partial class ContratoOperationTransformer(IConfiguration configur
             ?? throw new InvalidOperationException(
                 $"Política de rate limit sem nome: {identificacaoDaOperacao}");
 
-        var requests = configuration.GetValue<int?>($"RateLimiting:{nome}")
-            ?? (LimitesPadraoPorMinuto.TryGetValue(nome, out var padrao)
-                ? padrao
-                : throw new InvalidOperationException(
-                    $"Política sem limite conhecido para o contrato: {nome} ({identificacaoDaOperacao})"));
+        var requests = PoliticasDeTaxa.LimiteDe(configuration, nome);
 
         operation.Extensions["x-rate-limit"] = new JsonNodeExtension(new JsonObject
         {
             ["policy"] = nome,
             ["requests"] = requests,
-            ["windowSeconds"] = JanelaEmSegundos
+            ["windowSeconds"] = PoliticasDeTaxa.JanelaEmSegundos
         });
     }
 

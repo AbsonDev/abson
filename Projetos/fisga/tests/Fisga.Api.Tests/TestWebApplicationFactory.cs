@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -7,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using System.Threading.RateLimiting;
+using Fisga.Api.RateLimiting;
 using Fisga.Application.Identidade;
 using Fisga.Infrastructure.Persistence;
 
@@ -44,7 +44,7 @@ public sealed class TestWebApplicationFactory : WebApplicationFactory<Program>
             services.RemoveAll<IConfigureOptions<RateLimiterOptions>>();
             services.Configure<RateLimiterOptions>(options =>
             {
-                options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+                RejeicaoDoRateLimiter.Configurar(options);
                 options.AddPolicy<string>("leitura", _ => RateLimitPartition.GetNoLimiter(string.Empty));
                 options.AddPolicy<string>("escrita", _ => RateLimitPartition.GetNoLimiter(string.Empty));
                 options.AddPolicy<string>("auth", _ => RateLimitPartition.GetNoLimiter(string.Empty));

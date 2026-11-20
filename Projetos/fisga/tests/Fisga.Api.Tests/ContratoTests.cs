@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Fisga.Api.Caching;
 using Fisga.Api.OpenApi;
+using Fisga.Api.RateLimiting;
 
 namespace Fisga.Api.Tests;
 
@@ -17,16 +18,6 @@ namespace Fisga.Api.Tests;
 [Collection("api")]
 public sealed class ContratoTests
 {
-    private static readonly IReadOnlyDictionary<string, int> LimitesPadraoPorMinuto =
-        new Dictionary<string, int>(StringComparer.Ordinal)
-        {
-            ["leitura"] = 180,
-            ["escrita"] = 40,
-            ["auth"] = 8,
-            ["pdf"] = 30,
-            ["midia"] = 30
-        };
-
     // Operações sem política de rate limit nesta fase; o teste 4 exige que a
     // ausência seja explícita, não que o contrato invente um número.
     private static readonly HashSet<(string Metodo, string Rota)> SemRateLimit =
@@ -298,7 +289,7 @@ public sealed class ContratoTests
             var nomeDaPolitica = politica!.PolicyName;
             Assert.NotNull(nomeDaPolitica);
             Assert.True(
-                LimitesPadraoPorMinuto.TryGetValue(nomeDaPolitica, out var limitePadrao),
+                PoliticasDeTaxa.PadroesPorMinuto.TryGetValue(nomeDaPolitica, out var limitePadrao),
                 $"Política sem limite padrão conhecido: {nomeDaPolitica} ({metodo} {rota})");
 
             Assert.True(
@@ -308,7 +299,9 @@ public sealed class ContratoTests
 
             var esperado = configuracao.GetValue<int?>($"RateLimiting:{nomeDaPolitica}") ?? limitePadrao;
             Assert.Equal(esperado, rateLimit.GetProperty("requests").GetInt32());
-            Assert.Equal(60, rateLimit.GetProperty("windowSeconds").GetInt32());
+            Assert.Equal(
+                PoliticasDeTaxa.JanelaEmSegundos,
+                rateLimit.GetProperty("windowSeconds").GetInt32());
         }
 
         Assert.Equal(operacoes.Count - SemRateLimit.Count, comRateLimit);
