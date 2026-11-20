@@ -41,7 +41,7 @@ Português, sem barra final, com âncora estável por operação.
 | `/referencia/pontos` | Pontos privados | `openapi.json` |
 | `/referencia/trilhas` | Trilhas privadas | `openapi.json` |
 | `/referencia/midia` | Upload de foto | `openapi.json` |
-| `/referencia/visao` | Sugestão de espécie por foto | `openapi.json` |
+| `/referencia/especies` | Sugestão de espécie por foto | `openapi.json` |
 | `/referencia/newsletter` | Envio, preview e descadastro | `openapi.json` |
 | `/referencia/erros` | Catálogo de `codigo` | `docs/publico/referencia/erros.md` |
 | `/limites` | Rate limit, cache e CORS | `docs/publico/limites.md` |
