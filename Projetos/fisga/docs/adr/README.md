@@ -21,3 +21,4 @@ ganha linha nesta tabela.
 | [0014](0014-registro-anonimo.md) | Registro anônimo: capturar primeiro, conta depois | aceito |
 | [0015](0015-niveis-de-detalhe-do-local.md) | Cinco níveis de detalhe do local compartilhado | aceito |
 | [0016](0016-confirmacao-exif.md) | Confirmação explícita dos dados da foto no registro | aceito |
+| [0017](0017-portal-publico-da-api.md) | Portal público da API gerado a partir do contrato | aceito |

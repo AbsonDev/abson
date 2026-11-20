@@ -20,6 +20,10 @@ Conteúdo de produto (espécies, técnicas, locais) não fica aqui.
 ## API
 
 - [Contrato OpenAPI](api/README.md)
+- [Inventário da API](api/inventario.md)
+- [Política editorial da documentação](api/politica-editorial.md)
+- [Arquitetura do portal](api/portal.md)
+- [Backlog do programa de documentação](api/backlog.md)
 
 ## Decisões
 
@@ -41,6 +45,7 @@ Conteúdo de produto (espécies, técnicas, locais) não fica aqui.
 
 ## Referências
 
+- [Documentação de API (Stripe, GitHub, Cloudflare, Asaas)](referencias/documentacao-de-api.md)
 - [Fishing World Guide](referencias/fishing-world-guide.md)
 - [Tábua de Marés](referencias/tabuademares.md)
 

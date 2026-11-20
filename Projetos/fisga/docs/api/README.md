@@ -5,6 +5,24 @@
 repositório para que clientes, revisores e agentes leiam o mesmo documento.
 Não edite o JSON à mão: a próxima geração sobrescreve.
 
+## Documentação da API
+
+O programa de documentação pública tem quatro documentos de apoio, todos
+anteriores ao portal:
+
+- [Inventário](inventario.md) — uma linha por operação: acesso, rate limit,
+  cache, status real e erros, mais as 13 lacunas medidas no contrato.
+- [Política editorial](politica-editorial.md) — template obrigatório de página,
+  voz, exemplos e checklist de revisão.
+- [Arquitetura do portal](portal.md) — mapa de URL, gerador, build, hospedagem e
+  os dois jobs novos de CI/CD.
+- [Backlog](backlog.md) — fases F1 a F4 com escopo, aceite e estimativa.
+
+A decisão de publicar em `docs.fisga.abson.tech` está na
+[ADR 0017](../adr/0017-portal-publico-da-api.md). A referência pública é gerada
+deste `openapi.json`; por isso a fase F1 (correção das lacunas abaixo) vem antes
+da publicação.
+
 ## Regenerar
 
 Na raiz de `Projetos/fisga`:
