@@ -107,7 +107,8 @@ obrigatória.
 
 ## Erros: o que sempre dizer
 
-O corpo de erro real é `application/problem+json` com dois campos:
+O corpo de erro é `application/json` nos handlers e `application/problem+json`
+nos middlewares; os dois carregam o mesmo `{codigo, detalhe}`:
 
 ```json
 { "codigo": "pescaria_nao_encontrada", "detalhe": "Pescaria não encontrada." }
@@ -116,8 +117,8 @@ O corpo de erro real é `application/problem+json` com dois campos:
 Toda tabela de erro informa status, `codigo` e o que fazer. Casos que sempre
 precisam de parágrafo próprio, porque surpreendem:
 
-- **`429` sem corpo.** O rate limit responde vazio e sem `Retry-After`; o texto
-  diz o limite e a janela.
+- **`429` sem corpo, com `Retry-After`.** O rate limit responde vazio; o header
+  informa os segundos até a próxima janela; o texto diz o limite e a janela.
 - **`403 consentimento_pendente`.** Explica que o usuário precisa aceitar os
   termos e qual endpoint faz isso.
 - **`403 origem_invalida`.** Explica a checagem de `Origin` em mutações.

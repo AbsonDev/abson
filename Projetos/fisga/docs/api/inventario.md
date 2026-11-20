@@ -6,7 +6,8 @@ pode chamar, como autentica, qual limite e cache se aplicam, qual resposta de
 sucesso o código devolve de verdade e quais erros precisam ser documentados.
 
 **Estado:** Fase 0 concluída em 2026-11-20 · A1 (identidade e segurança do
-contrato) concluído em 2026-11-20 · **Contrato de referência:**
+contrato) concluído em 2026-11-20 · A2 (respostas reais) concluído em
+2026-11-20 · **Contrato de referência:**
 [`openapi.json`](openapi.json) (OpenAPI 3.1.1, 54 operações em 48 rotas).
 
 ## Como manter
@@ -14,11 +15,12 @@ contrato) concluído em 2026-11-20 · **Contrato de referência:**
 1. Mudou rota, acesso, status ou erro? Atualize a linha e o `openapi.json` no
    mesmo PR.
 2. O `openapi.json` é gerado por `scripts/gerar-openapi.sh`; este inventário é
-   escrito à mão porque cobre comportamento que o gerador ainda não expressa
-   (status reais de sucesso e semântica de erro). Acesso, rate limit e cache já
-   saem no contrato como `security`, `x-rate-limit` e `x-cache`.
-3. A coluna "Sucesso real" reflete o código, não o que o spec declara hoje. As
-   divergências estão na seção [Lacunas de contrato](#lacunas-de-contrato).
+   escrito à mão para dar a leitura por operação em uma tabela. Acesso, rate
+   limit, cache, status reais de sucesso e o schema de erro já saem no contrato
+   como `security`, `x-rate-limit`, `x-cache` e `responses`.
+3. A coluna "Sucesso real" reflete o código e é a mesma lista que o spec
+   declara. A única lacuna que resta está na seção
+   [Lacunas de contrato](#lacunas-de-contrato).
 
 ## Resumo por domínio
 
@@ -88,8 +90,8 @@ Janela fixa de 1 minuto por IP (`FixedWindowLimiter`), configurável por
 | `midia` | 30/min | Upload de foto e sugestão de espécie |
 
 `/health`, `/ready` e as duas rotas administrativas de newsletter não têm
-política de rate limit hoje. A rejeição é `429` **sem corpo** e sem
-`Retry-After`.
+política de rate limit hoje. A rejeição é `429` **sem corpo, com `Retry-After`**
+em segundos.
 
 ### Cache
 
@@ -112,7 +114,11 @@ Default-deny: sem metadado `CachePolicy`, a resposta sai com
 
 Exceções de domínio e de acesso são convertidas pelo
 [`ExceptionHandlingMiddleware`](../../src/Fisga.Api/Middleware/ExceptionHandlingMiddleware.cs)
-em `application/problem+json` com dois campos:
+em `application/problem+json`; os handlers devolvem o erro em
+`application/json` (o `503 google_indisponivel` de
+`/api/auth/google/iniciar` e `/api/auth/google/conectar` já sai em
+`application/problem+json`). Os dois media types carregam o mesmo corpo de dois
+campos:
 
 ```json
 { "codigo": "pescaria_nao_encontrada", "detalhe": "Pescaria não encontrada." }
@@ -142,7 +148,7 @@ consentimento pendente se aplica.
 | --- | --- | --- | --- | --- | --- |
 | `GET /health` | P | — | no-store | `200` `{status, version}` | `500` |
 | `GET /ready` | P | — | no-store | `200` `{status:"ready"}` | `503` (banco inacessível), `500` |
-| `GET /api/legal/versoes` | P | leitura | public 1 dia | `200` `VersoesLegaisResponse` | `500` |
+| `GET /api/legal/versoes` | P | leitura | public 1 dia | `200` `VersoesLegaisResponse` | `429` |
 
 `/health` é liveness (não toca o banco). `/ready` executa `CanConnectAsync` e
 responde `503` quando o banco não responde.
@@ -151,7 +157,7 @@ responde `503` quando o banco não responde.
 
 | Método e rota | Acesso | Rate limit | Cache | Sucesso real | Erros a documentar |
 | --- | --- | --- | --- | --- | --- |
-| `GET /api/catalogo` | P | leitura | public 1 dia | `200` `CatalogoDto` | `500` |
+| `GET /api/catalogo` | P | leitura | public 1 dia | `200` `CatalogoDto` | `429` |
 
 ### Autenticação & Sessão
 
@@ -163,12 +169,12 @@ responde `503` quando o banco não responde.
 | `POST /api/auth/confirmar-email` | P | auth | `200` `ConfirmarEmailResponse` | `400` `confirmacao_invalida`, `429` | |
 | `POST /api/auth/esqueci-senha` | P | auth | `202 Accepted` + `EsqueciSenhaResponse` | `400`, `429` | Resposta genérica anti-enumeração |
 | `POST /api/auth/redefinir-senha` | P | auth | `200` `RedefinirSenhaResponse` | `400` `link_invalido`/`senha_curta`/`senha_longa`, `429` | Revoga todas as sessões e rotaciona o security stamp |
-| `GET /api/auth/confirmar` | P | auth | `302` para o web | `400`, `302` com `estado=<codigo>` | Link mágico; emite o cookie de sessão |
+| `GET /api/auth/confirmar` | P | auth | `302` para o web | `429`, `500` | Link mágico; emite o cookie de sessão. Sucesso e erro redirecionam com `estado=<codigo>` |
 | `GET /api/auth/google/disponivel` | P | auth | `200` `GoogleDisponivelResponse` | `429` | |
 | `GET /api/auth/google/iniciar` | P | auth | `302` challenge Google | `503` `google_indisponivel`, `429` | |
-| `GET /api/auth/google/concluir` | P | auth | `302` para o web | `302` com `estado=<codigo>`, `429` | Callback OAuth; primeiro acesso vai para `/boas-vindas` |
-| `GET /api/auth/google/conectar` | S | auth | `302` challenge Google | `401`, `503` `google_indisponivel`, `429` | Inicia vínculo de Google à conta logada |
-| `GET /api/auth/google/conectar/concluir` | S (cookie de intenção) | auth | `302` para `/conta?estado=google_conectado` | `302` com `estado=<codigo>`, `429` | Sem sessão ou intenção inválida também redireciona |
+| `GET /api/auth/google/concluir` | P | auth | `302` para o web | `429` | Callback OAuth; sucesso e erro redirecionam com `estado=<codigo>`; primeiro acesso vai para `/boas-vindas` |
+| `GET /api/auth/google/conectar` | S | auth | `302` challenge Google | `401`, `403`, `503` `google_indisponivel`, `429` | Inicia vínculo de Google à conta logada; consentimento pendente bloqueia com `403` |
+| `GET /api/auth/google/conectar/concluir` | S (cookie de intenção) | auth | `302` para `/conta?estado=google_conectado` | `403`, `429` | Sem sessão ou intenção inválida também redireciona com `estado=<codigo>` |
 | `GET /api/auth/me` | P | leitura | `200` `MeResponse` | `429` | **Nunca responde 401**: sem sessão devolve `autenticado:false` |
 | `PATCH /api/auth/perfil` | S, consent. | escrita | `200` `UsuarioResponse` | `400`, `401`, `403`, `429` | |
 | `POST /api/auth/sair` | P | escrita | `204 No Content` | `429` | Idempotente: sem sessão também responde `204` |
@@ -189,9 +195,9 @@ responde `503` quando o banco não responde.
 | Método e rota | Acesso | Rate limit | Cache | Sucesso real | Erros a documentar | Notas |
 | --- | --- | --- | --- | --- | --- | --- |
 | `POST /api/pescarias` | S, consent. | escrita | no-store | `201 Created` + `PescariaSalvaResponse` | `400`, `401`, `403`, `429` | `Location` aponta para a pescaria criada |
-| `GET /api/pescarias/{shareToken}` | P/T | leitura | private 30 s | `200` `PescariaDto` | `404` `pescaria_nao_encontrada` | Visão pública; com sessão do dono inclui `podeEditar` |
-| `GET /api/pescarias/{shareToken}/permissao` | P/T | leitura | no-store | `200` `PermissaoResponse` | `404` `pescaria_nao_encontrada` | |
-| `GET /api/pescarias/{id}/editar` | S/D | leitura | no-store | `200` `PescariaDto` | `401`, `403`, `404` | |
+| `GET /api/pescarias/{shareToken}` | P/T | leitura | private 30 s | `200` `PescariaDto` | `404` `pescaria_nao_encontrada`, `429` | Visão pública; com sessão do dono inclui `podeEditar` |
+| `GET /api/pescarias/{shareToken}/permissao` | P/T | leitura | no-store | `200` `PermissaoResponse` | `404` `pescaria_nao_encontrada`, `429` | |
+| `GET /api/pescarias/{id}/editar` | S/D | leitura | no-store | `200` `PescariaDto` | `401`, `403`, `404`, `429` | |
 | `PUT /api/pescarias/{id}` | S/D, consent. | escrita | no-store | `200` `PescariaDto` | `400`, `401`, `403`, `404`, `429` | |
 | `GET /api/pescarias/{shareToken}/pdf` | P/T | pdf | private 5 min | `200` `application/pdf` | `404`, `429` | Resposta binária com nome de arquivo |
 
@@ -262,22 +268,14 @@ responde `503` quando o banco não responde.
 
 Confirmadas no `openapi.json` atual. Viram tickets da Fase 1.
 
-> **Resolvido no A1 (2026-11-20):** segurança, tags de domínio, `operationId`,
-> rate limit e cache já estão no [`openapi.json`](openapi.json), como
-> `components.securitySchemes` + `security` por operação, `x-rate-limit` e
-> `x-cache`. As linhas abaixo são o que resta no contrato.
+> **Resolvido no A2 (2026-11-20):** status reais (`201`/`202`/`204`/`302`/`413`/`503`),
+> schema único de erro (`ErroResponse`) nos dois media types, catálogo de `codigo`,
+> uploads `multipart/form-data` e `Retry-After` no `429` estão no
+> [`openapi.json`](openapi.json). Resta a identidade do documento (`info`/`servers`).
 
 | # | Lacuna | Evidência | Correção alvo |
 | --- | --- | --- | --- |
-| 1 | Spec declara apenas `200` em operações que devolvem `201`, `202` ou `204` | `POST /api/pescarias`, `/api/locais`, `/api/pontos`, `/api/trilhas` (201); `/api/auth/solicitar`, `/api/auth/esqueci-senha` (202); `DELETE`s, `sair`, `sair-de-todos`, consentimento e senha (204) | `Produces<T>` nos handlers e `ProducesProblem` nos erros |
-| 2 | Formato de erro real não é RFC 9457 | `ErroResponse` tem `{codigo, detalhe}` | Documentar o contrato real e decidir se migra para ProblemDetails |
-| 3 | Erros vêm de origens diferentes e nem todos têm corpo | Binding, middlewares, rate limiter e handlers | Catálogo de `codigo` + schema único de erro |
-| 4 | Upload `multipart/form-data` sem schema | `/api/midia`, `/api/especies/sugerir` | Schema multipart com campo, tipos e tamanho |
-| 5 | Admin responde `404` em vez de `401/403` | `NewsletterEndpoints.TokenValido` | `description` já explica o `404` intencional; falta declarar `404` e `500` como respostas no spec |
-| 6 | Endpoints de auth com efeito colateral em `GET` e `302` | `/api/auth/confirmar`, `/api/auth/google/*` | `description` já descreve redirects, sessão criada e estados; falta declarar `302` e `503` como respostas no spec |
-| 7 | `info` incompleto e sem `servers` | `openapi.json` | `contact`, `license`, descrição e `servers` fixo com produção e local, independente de ambiente |
-| 8 | `429` sai sem corpo e sem `Retry-After` | Configuração do rate limiter | Decidir se adiciona `Retry-After` e corpo de erro padronizado |
-| 9 | `GET /api/auth/me` é anônimo e devolve `200` | `AuthEndpoints.cs` | `description` já explica o `200` com `autenticado:false` e a operação declara `security: []`; falta declarar a resposta `200` no spec (A2) e registrar em "comportamentos que surpreendem" (A3) |
+| 1 | `info` incompleto e sem `servers` | `openapi.json` | `contact`, `license`, descrição e `servers` fixo com produção e local, independente de ambiente |
 
 ## Verificação em execução local
 
@@ -301,7 +299,7 @@ autenticadas foram conferidas no código e nos testes.
 | `GET /api/pescarias/inexistente` | `404` com `codigo` | ✅ `404` `{"codigo":"pescaria_nao_encontrada","detalhe":"Pescaria não encontrada."}` |
 | `POST /api/auth/sair` com `Origin` externa | `403` `origem_invalida` | ✅ `403` `{"codigo":"origem_invalida","detalhe":"Origem da requisição não permitida."}` |
 | `POST /api/auth/sair` sem `Origin` | `204` | ✅ `204 No Content` |
-| 10 × `POST /api/auth/solicitar` | 8 aceitos, depois `429` | ✅ oito `202`, depois `429` sem corpo e **sem `Retry-After`** |
+| 10 × `POST /api/auth/solicitar` | 8 aceitos, depois `429` | ✅ oito `202`, depois `429` sem corpo, com `Retry-After: 60` |
 | `GET /openapi/v1.json` em Development | `200` | ✅ `200` (rota existe só fora de produção) |
 
 > **Nota:** o horário do servidor e os provedores externos (maré, clima,
