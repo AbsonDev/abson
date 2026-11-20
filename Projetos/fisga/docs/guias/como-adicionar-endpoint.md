@@ -64,7 +64,14 @@ padrão de integração já usado na pasta (`TestWebApplicationFactory` e afins)
 
 ## 7. Contrato OpenAPI
 
-Regenere e commite o contrato publicado:
+Toda rota precisa de uma entrada no mapa congelado antes de o contrato ser
+gerado. Sem ela, `gerar-openapi.sh` falha com `Operação sem operationId`.
+
+1. Adicione a operação em `src/Fisga.Api/OpenApi/MapaDeOperacoes.cs` com um
+   `operationId` estável, no formato `verboSubstantivo`.
+2. Aplique `.WithTags(Tags.X)`, `.WithSummary` e `.WithDescription` no handler.
+   Sem tag de domínio ou sem resumo de negócio, `ContratoTests` falha.
+3. Regenere e commite o contrato publicado:
 
 ```bash
 ./scripts/gerar-openapi.sh

@@ -34,7 +34,7 @@ dos bugs conhecidos; a camada serve para o humano gastar atenção no que só hu
 
 | Camada | Ferramenta | Status | Bloqueia? | Custo |
 | --- | --- | --- | --- | --- |
-| CI | `gate` (build, format, 348 testes, `astro check`, Playwright, `docs`, contrato) | implementado | sim, único required check | R$ 0 |
+| CI | `gate` (build, format, 353 testes, `astro check`, Playwright, `docs`, contrato) | implementado | sim, único required check | R$ 0 |
 | Dependências | Dependabot | implementado | não (propõe PRs) | R$ 0 |
 | Supply chain | `dependency-review-action@v5` | implementado, advisory | sim, quando promovido | R$ 0 |
 | Segurança estática | CodeQL (`csharp`, `javascript-typescript`, `actions`) | implementado, advisory | sim, via regra `code_scanning` | R$ 0 (repo público) |
@@ -207,7 +207,7 @@ env:
   reasoning por mais de 10 minutos e estourar o timeout do LiteLLM. O próprio PR-Agent documenta
   esse comportamento e recomenda desligar o reasoning ou trocar de modelo.
 - **Guardrails:** `restricted_mode = true` (não empurra código), `response_language = pt-BR`,
-  `num_max_findings = 6`, `require_tests_review = false` (o gate já roda 348 testes).
+  `num_max_findings = 6`, `require_tests_review = false` (o gate já roda 353 testes).
 - **Comandos:** `/review`, `/describe`, `/ask`, `/improve`, com gate de `author_association` em
   `issue_comment`.
 - **Como ler:** comentário do bot com achados numerados. `/ask <pergunta>` responde no thread.

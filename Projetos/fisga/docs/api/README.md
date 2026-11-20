@@ -39,6 +39,9 @@ Commite o arquivo gerado no mesmo PR da mudança de contrato.
 
 - Rotas registradas em `src/Fisga.Api/Endpoints/` e os dois endpoints de saúde
   em `src/Fisga.Api/Program.cs`.
+- Metadados do contrato em `src/Fisga.Api/OpenApi/`: `operationId` congelado em
+  `MapaDeOperacoes.cs`, tags em `Tags.cs` e `security`, `x-cache` e
+  `x-rate-limit` derivados por `ContratoOperationTransformer.cs`.
 - DTOs de entrada e saída em `src/Fisga.Api/Contracts/`.
 - A contagem de paths e schemas muda a cada mudança de contrato e não é
   mantida à mão aqui: consulte o próprio `openapi.json`, que é a fonte da

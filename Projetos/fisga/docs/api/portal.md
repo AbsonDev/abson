@@ -67,13 +67,13 @@ O override é curto e obrigatório. Frontmatter:
 
 ```yaml
 ---
-operacao: post-pescarias        # tem que existir no contrato
+operacao: criarPescaria         # tem que existir no contrato
 acesso: sessao                  # publico | sessao | dono | admin | token
 consentimento: true
 limites: escrita                # politica de rate limit
 cache: no-store
 verificar: "GET /api/pescarias/{shareToken} devolve a pescaria criada."
-relacionados: [get-pescarias-sharetoken, put-pescarias-id]
+relacionados: [obterPescariaPorToken, atualizarPescaria]
 ---
 ```
 
