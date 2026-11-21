@@ -8,6 +8,10 @@ bin/
 obj/
 artifacts/
 
+# docs-site (gerado no build)
+Projetos/fisga/docs-site/src/data/
+Projetos/fisga/docs-site/src/styles/gerado/
+
 # env
 .env
 .env.*

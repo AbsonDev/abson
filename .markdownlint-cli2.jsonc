@@ -7,7 +7,8 @@
     "AGENTS.md",
     "Projetos/fisga/README.md",
     "Projetos/fisga/AGENTS.md",
-    "Projetos/fisga/docs/**/*.md"
+    "Projetos/fisga/docs/**/*.md",
+    "Projetos/fisga/docs-site/README.md"
   ],
   "ignores": [
     "Projetos/fisga/docs/superpowers/**"
@@ -15,5 +16,14 @@
   "config": {
     // Linha longa é estilo, não erro.
     "MD013": false
-  }
+  },
+  "overrides": [
+    {
+      // O frontmatter do override começa com `proposta`, que é o "título"
+      // semântico do arquivo; sem isso o MD041 acusa a primeira linha do corpo.
+      "filter": ["Projetos/fisga/docs/publico/operacoes/**/*.md"],
+      "config": { "MD041": { "front_matter_title": "^\\s*proposta\\s*[:=]" } },
+      "combine": "merge"
+    }
+  ]
 }
