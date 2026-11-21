@@ -23,7 +23,8 @@ contrato) concluído em 2026-11-20 · A2 (respostas reais) concluído em
    declara. Não há lacuna conhecida; a seção
    [Lacunas de contrato](#lacunas-de-contrato) fica como registro.
 4. Mexeu em rota? Rode `node scripts/verificar-rotas.mjs`; a guarda compara
-   contrato, `README.md` e este inventário e roda no job `docs`.
+   contrato, a tabela `## API` do `README.md` do projeto e este inventário, e
+   roda no job `docs`.
 
 ## Resumo por domínio
 

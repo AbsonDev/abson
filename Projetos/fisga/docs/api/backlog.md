@@ -145,8 +145,8 @@ resposta.
 - **Issue:** [#71](https://github.com/AbsonDev/abson/issues/71)
 - **Escopo:** script no job `docs` que extrai as rotas do `openapi.json`, do
   resumo do `README.md` e das linhas do inventário e falha listando a operação
-  divergente. Hoje os três coincidem; a comparação é manual e nada quebra quando
-  um endpoint novo entra só no código.
+  divergente. Antes do A3 os três coincidiam só por comparação manual: nada
+  quebrava quando um endpoint novo entrava apenas no código.
 - **Aceite:** rota adicionada, removida ou renomeada no spec quebra o job com a
   lista do que falta em cada documento.
 - **Estado:** concluída no A3 (2026-11-20) — esta PR fecha #68/#70/#71.

@@ -69,6 +69,6 @@ Commite o arquivo gerado no mesmo PR da mudança de contrato.
   mudar entre máquinas.
 - **Lint advisory.** O job `api` valida o documento com `@redocly/cli`
   (`--extends=minimal`) e o job `docs` compara contrato, `## API` do `README.md`
-  e inventário. Sobram 9 warnings advisory: 6 de operação que só responde `302`,
-  1 de `servers` apontando para `localhost`, 1 de caminho idêntico e 1 de
-  caminho ambíguo entre `{shareToken}` e `{id}`.
+  e inventário. Sobram 9 warnings advisory: 6 de operação de redirect, sem
+  resposta `2XX`, 1 de `servers` apontando para `localhost`, 1 de caminho
+  idêntico e 1 de caminho ambíguo entre `{shareToken}` e `{id}`.

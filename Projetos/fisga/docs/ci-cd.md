@@ -138,7 +138,7 @@ link externo que morre depois do merge não pode bloquear o deploy de código j�
   `Projetos/fisga/AGENTS.md` e `Projetos/fisga/docs/**/*.md`.
 
 O `gate` depende dele: link quebrado, Markdown inválido ou rota divergente bloqueia o merge. O job
-só roda em PR; no push da `main` ele é pulado de propósito.
+roda em PR e `workflow_dispatch`; no push da `main` ele é pulado de propósito.
 
 ### `gate`
 

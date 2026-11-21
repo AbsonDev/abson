@@ -239,7 +239,7 @@ dotnet build Fisga.slnx -c Release -warnaserror
 dotnet test Fisga.slnx -c Release --no-build
 ```
 
-Esperado: os dois testes novos verdes e os 404 anteriores também.
+Esperado: os dois testes novos verdes e os 408 anteriores também.
 
 - [ ] **Step 6: Regerar o artefato e conferir a identidade**
 
@@ -272,7 +272,7 @@ Em `.github/workflows/fisga-pipeline.yml`, entre `Contrato documentado está atu
 npx --yes @redocly/cli@2.82.0 lint docs/api/openapi.json --extends=minimal --format=summary
 ```
 
-Esperado: `valid` e exit 0. Warnings restantes depois desta task: 6 de `operation-2xx-response` (operações que só respondem `302`) e 2 de caminhos ambíguos entre `/api/pescarias/{shareToken}` e `/api/pescarias/{id}` — advisory, o job só falha com erro.
+Esperado: `valid` e exit 0. Warnings restantes depois desta task (9 no total): 6 de `operation-2xx-response` (operações de redirect, sem resposta `2XX`), 1 de `servers` apontando para `localhost`, 1 de caminho idêntico e 1 de caminho ambíguo entre `/api/pescarias/{shareToken}` e `/api/pescarias/{id}` — advisory, o job só falha com erro.
 
 - [ ] **Step 9: Commit**
 
@@ -762,7 +762,7 @@ git commit -m "test(fisga): guarda de rotas entre contrato, README e inventário
 
 - `## Limites conhecidos`: substituir o bullet "O contrato expressa respostas e erros; falta a identidade do documento" por dois bullets:
   - **Identidade fixa de propósito.** `info` (título, descrição, contato, licença) e `servers` (produção → `http://localhost:5184`) são escritos no transformer, não lidos do ambiente: o artefato commitado é regenerado no CI e comparado byte a byte.
-  - **Lint advisory.** O job `api` valida o documento com `@redocly/cli` (`--extends=minimal`) e o job `docs` compara contrato, `## API` do `README.md` e inventário. Sobram 9 warnings advisory: 6 de operação que só responde `302`, 1 de `servers` apontando para `localhost`, 1 de caminho idêntico e 1 de caminho ambíguo entre `{shareToken}` e `{id}`.
+  - **Lint advisory.** O job `api` valida o documento com `@redocly/cli` (`--extends=minimal`) e o job `docs` compara contrato, `## API` do `README.md` e inventário. Sobram 9 warnings advisory: 6 de operação de redirect, sem resposta `2XX`, 1 de `servers` apontando para `localhost`, 1 de caminho idêntico e 1 de caminho ambíguo entre `{shareToken}` e `{id}`.
 - Se o texto ainda disser que o portal "ainda não existe", conferir contra a F2 e não prometer o que não está no ar.
 
 - [ ] **Step 3: Backlog (`docs/api/backlog.md`)**
@@ -778,7 +778,7 @@ Marcar F1.7, F1.9 e F1.10 com `- **Estado:** concluída no A3 (2026-11-20) — e
 
 - Árvore do topo: `api` passa a "restore locked + format + build + **408** testes + contrato + lint OpenAPI"; `docs` passa a "markdownlint + guarda de rotas + links".
 - Seção `### api`: acrescentar `npx --yes @redocly/cli@2.82.0 lint docs/api/openapi.json --extends=minimal` (depois do `git diff --exit-code` do contrato) e atualizar a contagem de testes.
-- Seção `### docs`: listar, na ordem real, `actions/setup-node` (Node 24), `npx markdownlint-cli2@0.24.1`, `node Projetos/fisga/scripts/verificar-rotas.mjs`, `node --test Projetos/fisga/scripts/verificar-rotas.test.mjs` e `lychee`. Explicar em uma frase que a guarda falha listando a rota que falta no `README.md` ou no inventário, e que o job só roda em PR.
+- Seção `### docs`: listar, na ordem real, `actions/setup-node` (Node 24), `npx markdownlint-cli2@0.24.1`, `node Projetos/fisga/scripts/verificar-rotas.mjs`, `node --test Projetos/fisga/scripts/verificar-rotas.test.mjs` e `lychee`. Explicar em uma frase que a guarda falha listando a rota que falta no `README.md` ou no inventário, e que o job roda em PR e `workflow_dispatch`, não no push.
 
 - [ ] **Step 6: Contagens e estado**
 
