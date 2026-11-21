@@ -114,11 +114,14 @@ O resultado vai para `docs/api/openapi.json`. Detalhes em
 ## 8. Documentação
 
 - Agregado, invariante ou contexto novo: atualize [`docs/ddd.md`](../ddd.md).
-- Rota de produto (algo que o usuário usa): atualize na ordem e rode a guarda.
+- Toda rota nova entra no [`docs/api/inventario.md`](../api/inventario.md) e
+  na tabela `## API` do [`README.md`](../../README.md) — não só as de produto.
+  Atualize na ordem e rode a guarda.
   1. [`docs/api/inventario.md`](../api/inventario.md)
   2. tabela `## API` do [`README.md`](../../README.md)
   3. `node scripts/verificar-rotas.mjs`, a partir de `Projetos/fisga`
 
-  A guarda roda no job `docs` do CI e falha listando a rota que falta no
-  inventário e no README.
+  Use o path como está em `openapi.json`: `{id}`, sem `:guid` e sem query
+  string. A guarda roda no job `docs` do CI e falha listando a rota que falta
+  no inventário e no README.
 - Nada disso mudou? Só o contrato gerado já basta.

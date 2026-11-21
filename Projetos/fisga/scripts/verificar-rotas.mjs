@@ -2,7 +2,7 @@
 // Compara as rotas do contrato com o resumo do README e com o inventário.
 // O contrato é a fonte; README e inventário são texto mantido à mão e por isso
 // podem divergir sem ninguém notar. Roda no job `docs`.
-import { readFileSync, realpathSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const METODOS = ['get', 'post', 'put', 'patch', 'delete'];
@@ -56,15 +56,22 @@ export function divergencias(contrato, readme, inventario) {
   };
 }
 
-// Seções do Markdown vão da linha exatamente igual ao título até a próxima
-// linha de nível 2 (exclusive). Uma tabela fora da seção não conta.
+// Seções do Markdown vão da linha igual ao título (tolerando CRLF e espaço
+// irregular) até a próxima linha de nível 2 (exclusive). Uma tabela fora da
+// seção não conta.
 function linhasDaSecao(markdown, titulo) {
-  const linhas = markdown.split('\n');
-  const inicio = linhas.indexOf(titulo);
+  const linhas = markdown.split(/\r?\n/);
+  const nome = titulo.replace(/^##\s+/, '');
+  const cabecalho = new RegExp(`^##\\s+${escaparRegex(nome)}\\s*$`);
+  const inicio = linhas.findIndex((linha) => cabecalho.test(linha));
   if (inicio === -1) return [];
   const fim = linhas.findIndex(
     (linha, indice) => indice > inicio && linha.startsWith('## '));
   return linhas.slice(inicio + 1, fim === -1 ? linhas.length : fim);
+}
+
+function escaparRegex(texto) {
+  return texto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function lerDaRaiz(caminho) {
@@ -81,8 +88,8 @@ function executar() {
   // silêncio. Documento sem nenhuma rota lida é falha, não sincronia.
   const vazios = [
     [contrato, 'o contrato (docs/api/openapi.json)'],
-    [readme, 'o README.md'],
-    [inventario, 'o inventário (docs/api/inventario.md)']
+    [readme, 'o README.md (seção "## API")'],
+    [inventario, 'o inventário (docs/api/inventario.md, seção "## Domínios")']
   ].filter(([rotas]) => rotas.size === 0).map(([, nome]) => nome);
 
   if (vazios.length > 0) {
@@ -114,14 +121,17 @@ function executar() {
     `Rotas em sincronia: ${contrato.size} operações no contrato, no README e no inventário.`);
 }
 
-// Importado pelos testes, o módulo só exporta as funções puras.
+// Importado pelos testes, o módulo só exporta as funções puras. O teste de
+// subprocesso garante que esta detecção não regride para um no-op verde.
 function chamadoDiretamente() {
-  if (!process.argv[1]) return false;
+  const alvo = process.argv[1];
+  if (!alvo) return false;
   // `pathToFileURL` não resolve symlink (`/var` → `/private/var` no macOS):
   // comparar só a URL faria o CLI não rodar e a guarda passar em silêncio.
   return (
-    pathToFileURL(process.argv[1]).href === import.meta.url ||
-    realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))
+    pathToFileURL(alvo).href === import.meta.url ||
+    (existsSync(alvo) &&
+      realpathSync(alvo) === realpathSync(fileURLToPath(import.meta.url)))
   );
 }
 

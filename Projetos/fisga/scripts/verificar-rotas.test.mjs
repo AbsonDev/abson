@@ -1,11 +1,26 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import {
+  copyFileSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync
+} from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   extrairDoContrato,
   extrairDoReadme,
   extrairDoInventario,
   divergencias
 } from './verificar-rotas.mjs';
+
+const SCRIPT = fileURLToPath(new URL('./verificar-rotas.mjs', import.meta.url));
+const METODOS = ['get', 'post', 'put', 'patch', 'delete'];
 
 test('contrato publica metodo e rota de cada operacao', () => {
   const documento = {
@@ -37,6 +52,10 @@ test('README le a tabela do resumo, apara query e separa celula combinada', () =
   assert.deepEqual(
     [...extrairDoReadme(markdown)].sort(),
     ['GET /api/auth/confirmar', 'GET /health', 'GET /ready', 'POST /api/pescarias']);
+  // O mesmo documento com CRLF (Windows/editor antigo) não pode zerar a seção.
+  assert.deepEqual(
+    [...extrairDoReadme(markdown.replaceAll('\n', '\r\n'))].sort(),
+    ['GET /api/auth/confirmar', 'GET /health', 'GET /ready', 'POST /api/pescarias']);
 });
 
 test('inventario le as linhas de operacao da secao Dominios', () => {
@@ -65,4 +84,75 @@ test('divergencia lista o que falta em cada documento', () => {
     sobramNoReadme: ['GET /api/antigo'],
     sobramNoInventario: ['GET /api/antigo']
   });
+});
+
+test('extratores leem as 54 operacoes dos documentos reais', () => {
+  const ler = (caminho) => readFileSync(new URL(caminho, import.meta.url), 'utf8');
+  const contrato = extrairDoContrato(JSON.parse(ler('../docs/api/openapi.json')));
+  const readme = extrairDoReadme(ler('../README.md'));
+  const inventario = extrairDoInventario(ler('../docs/api/inventario.md'));
+
+  assert.equal(contrato.size, 54);
+  assert.deepEqual(divergencias(contrato, readme, inventario), {
+    faltamNoReadme: [],
+    faltamNoInventario: [],
+    sobramNoReadme: [],
+    sobramNoInventario: []
+  });
+});
+
+test('contrato so usa os cinco metodos comparados pela guarda', () => {
+  const contrato = JSON.parse(
+    readFileSync(new URL('../docs/api/openapi.json', import.meta.url), 'utf8'));
+  // Chaves legais de um Path Item que não são operação (OpenAPI 3.1).
+  const naoOperacao = new Set(['$ref', 'summary', 'description', 'servers', 'parameters']);
+  const metodos = new Set(
+    Object.values(contrato.paths)
+      .flatMap((caminho) => Object.keys(caminho))
+      .filter((chave) => !naoOperacao.has(chave)));
+
+  for (const metodo of metodos) {
+    assert.ok(
+      METODOS.includes(metodo),
+      `Método fora da guarda de rotas: ${metodo}. Acrescente em METODOS ou remova.`);
+  }
+});
+
+test('CLI roda de verdade e confirma os tres documentos', () => {
+  const saida = execFileSync(process.execPath, [SCRIPT], { encoding: 'utf8' });
+  assert.match(
+    saida,
+    /Rotas em sincronia: 54 operações no contrato, no README e no inventário\./);
+});
+
+test('CLI sai 1 quando o README nao tem a secao API', () => {
+  const tmp = mkdtempSync(path.join(os.tmpdir(), 'rotas-'));
+  try {
+    mkdirSync(path.join(tmp, 'scripts'));
+    mkdirSync(path.join(tmp, 'docs', 'api'), { recursive: true });
+    copyFileSync(SCRIPT, path.join(tmp, 'scripts', 'verificar-rotas.mjs'));
+    copyFileSync(
+      new URL('../docs/api/openapi.json', import.meta.url),
+      path.join(tmp, 'docs', 'api', 'openapi.json'));
+    copyFileSync(
+      new URL('../docs/api/inventario.md', import.meta.url),
+      path.join(tmp, 'docs', 'api', 'inventario.md'));
+    writeFileSync(
+      path.join(tmp, 'README.md'),
+      readFileSync(new URL('../README.md', import.meta.url), 'utf8')
+        .replace(/^## API$/m, '## Interface'));
+
+    assert.throws(
+      () => execFileSync(
+        process.execPath,
+        [path.join(tmp, 'scripts', 'verificar-rotas.mjs')],
+        { encoding: 'utf8', stdio: 'pipe' }),
+      (error) => {
+        assert.equal(error.status, 1);
+        assert.match(error.stderr, /Documento sem nenhuma rota lida: o README\.md/);
+        return true;
+      });
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
 });
