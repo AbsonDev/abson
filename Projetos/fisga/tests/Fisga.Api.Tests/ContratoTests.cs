@@ -167,6 +167,9 @@ public sealed class ContratoTests
         Assert.Contains("consentimento_pendente", descricao);
         Assert.Contains("origem_invalida", descricao);
         Assert.Contains("Retry-After", descricao);
+        // A lista de exceções do 403 é a parte que um leitor usa para saber onde
+        // continua funcionando com consentimento pendente; sem guarda, some sem aviso.
+        Assert.Contains("POST /api/conta/consentimento", descricao);
 
         Assert.Equal("Fisga", info.GetProperty("contact").GetProperty("name").GetString());
         Assert.Equal(
