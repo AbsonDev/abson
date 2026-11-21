@@ -5,8 +5,8 @@ Site estático em Astro que publica a documentação da API do Fisga em
 template editorial completo, com os domínios mais usados e o estado da API,
 entra na F2.2.
 
-As páginas de referência nascem de `docs/api/openapi.json` mais um arquivo
-Markdown por operação, em `docs/publico/operacoes/`. Nenhum dado de rota,
+As páginas de referência nascem de `../docs/api/openapi.json` mais um arquivo
+Markdown por operação, em `../docs/publico/operacoes/`. Nenhum dado de rota,
 status, `codigo` ou schema é escrito à mão aqui.
 
 ## Comandos
@@ -26,7 +26,7 @@ comandos `npm run gerar`, `test:unit` e `test:paginas` passam a valer quando o
 gerador e os testes entrarem, nas próximas etapas da F2.1.
 
 Os scripts `predev`, `prebuild`, `precheck` e `pretest:unit` rodam
-`npm run preparar`, que copia `design-system/fisga/tokens.css` para
+`npm run preparar`, que copia `../design-system/fisga/tokens.css` para
 `src/styles/gerado/tokens.css` (gitignorado). Editar um token no design system
 reflete no site no próximo comando, sem cópia manual.
 
@@ -36,7 +36,7 @@ JS puro transformaria todo `any` implícito em erro.
 
 ## Como adicionar uma operação
 
-1. Escreva o override em `docs/publico/operacoes/<operationId>.md`. O nome do
+1. Escreva o override em `../docs/publico/operacoes/<operationId>.md`. O nome do
    arquivo é o `operationId` do contrato; qualquer outro nome falha no build.
 2. Rode `npm run gerar` para validar e gerar `src/data/referencia.json`.
 3. Rode `npm run build` e `npm run test:paginas`.

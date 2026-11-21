@@ -10,6 +10,10 @@ interface Props {
 
 const { titulo, descricao, ativo, versao } = Astro.props;
 
+// O sufixo é marca, não texto do chamador: Task 6 passa `info.titulo`
+// ("API do Fisga") e repetir "· Fisga" produziria "API do Fisga · Fisga".
+const tituloDoDocumento = titulo.includes('Fisga') ? titulo : `${titulo} · Fisga`;
+
 // Com `build.format: 'file'` o pathname é o nome do arquivo emitido
 // (`/index.html`, `/referencia.html`, `/referencia/conta.html`). Normalizar
 // aqui evita publicar o canonical apontando para a variante `.html`.
@@ -25,7 +29,7 @@ const canonical = new URL(caminho, Astro.site).href;
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={descricao} />
-    <title>{titulo} · Fisga</title>
+    <title>{tituloDoDocumento}</title>
     <link rel="canonical" href={canonical} />
   </head>
   <body>
@@ -53,14 +57,16 @@ const canonical = new URL(caminho, Astro.site).href;
       </div>
     </header>
 
-    <main id="conteudo" class="container">
+    <main id="conteudo" class="container" tabindex="-1">
       <slot />
     </main>
 
     <footer class="site-footer">
       <div class="container">
         {versao && <p>Versão do contrato: <code>{versao}</code></p>}
-        <p><a href="https://api.fisga.abson.tech">API do Fisga</a></p>
+        <p>
+          <a href="https://api.fisga.abson.tech/health">Status da API</a>
+        </p>
       </div>
     </footer>
   </body>
