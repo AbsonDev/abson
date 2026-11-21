@@ -4,7 +4,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import {
   DOMINIOS,
@@ -14,8 +17,11 @@ import {
   derivarErros,
   gerarModelo,
   lerContrato,
+  lerOverrides,
   listarOperacoes,
-  slugDoDominio
+  montarCurl,
+  slugDoDominio,
+  validarOverride
 } from './gerar-referencia.mjs';
 
 const TAGS = ['Sistema', 'Catálogo', 'Autenticação', 'Conta', 'Pescarias', 'Diário',
@@ -164,7 +170,7 @@ const CONTRATO = {
 const OVERRIDES = new Map([
   ['obterSaude', { arquivo: 'obterSaude.md', frontmatter: { operacao: 'obterSaude', proposta: 'Diz se está no ar.', acesso: 'publico', verificar: 'Veja `status`.' }, corpo: '' }],
   ['excluirConta', { arquivo: 'excluirConta.md', frontmatter: { operacao: 'excluirConta', proposta: 'Exclui a conta.', acesso: 'sessao', verificar: 'Veja o `204`.', corpo: '{"confirmacao":"EXCLUIR"}', erros: [{ status: 400, codigos: ['confirmacao_invalida'], quando: 'A confirmação não é `EXCLUIR`.' }] }, corpo: '' }],
-  ['excluirLocal', { arquivo: 'excluirLocal.md', frontmatter: { operacao: 'excluirLocal', proposta: 'Exclui o local.', acesso: 'dono', verificar: 'Veja o `204`.', caminho: { id: '00000000-0000-4000-8000-000000000001' } }, corpo: '' }],
+  ['excluirLocal', { arquivo: 'excluirLocal.md', frontmatter: { operacao: 'excluirLocal', proposta: 'Exclui o local.', acesso: 'dono', verificar: 'Veja o `204`.', caminho: { id: '00000000-0000-4000-8000-000000000001' }, consulta: { motivo: 'Duplicado' } }, corpo: '' }],
   ['obterCondicoes', { arquivo: 'obterCondicoes.md', frontmatter: { operacao: 'obterCondicoes', proposta: 'Devolve clima e maré.', acesso: 'publico', verificar: 'Veja `tempo`.', consulta: { lat: -23.55, lon: -46.63 }, erros: [{ status: 400, codigos: ['local_sem_coordenadas'], quando: 'Faltam `lat`/`lon`.' }] }, corpo: '' }],
   ['enviarNewsletter', { arquivo: 'enviarNewsletter.md', frontmatter: { operacao: 'enviarNewsletter', proposta: 'Dispara o envio.', acesso: 'admin', verificar: 'Veja o total de enviados.' }, corpo: '' }],
   ['criarPescaria', { arquivo: 'criarPescaria.md', frontmatter: { operacao: 'criarPescaria', proposta: 'Cria a pescaria.', acesso: 'sessao', verificar: 'Veja o header `Location`.', corpo: '{"local":"Represa de Guarapiranga","ambiente":"Represa","data":"2026-11-21","periodo":"Manha"}', erros: [{ status: 400, codigos: ['data_invalida'], quando: 'A data é inválida.' }] }, corpo: '' }],
@@ -177,6 +183,38 @@ const OPERACOES_DA_FIXTURE = [
   'obterSaude', 'excluirConta', 'excluirLocal', 'obterCondicoes', 'enviarNewsletter',
   'criarPescaria', 'listarSessoes', 'buscarLocais', 'enviarMidia'
 ];
+
+const SERVIDOR = 'https://api.fisga.exemplo.tech';
+
+function operacaoDaFixture(operationId) {
+  return listarOperacoes(CONTRATO).find((item) => item.operationId === operationId);
+}
+
+function semChaves(frontmatter, ...chaves) {
+  const copia = structuredClone(frontmatter);
+  for (const chave of chaves) delete copia[chave];
+  return copia;
+}
+
+// Valida uma variação do override da fixture: `mudancas` entra por cima do
+// frontmatter original, `corpo` (quando informado) substitui o corpo do arquivo.
+function validarDaFixture(operationId, mudancas = {}, corpo) {
+  return validarFrontmatterDaFixture(operationId,
+    { ...structuredClone(OVERRIDES.get(operationId).frontmatter), ...mudancas }, corpo);
+}
+
+// Variante que troca o frontmatter inteiro, para testar chave ausente.
+function validarFrontmatterDaFixture(operationId, frontmatter, corpo) {
+  const base = OVERRIDES.get(operationId);
+  return validarOverride(
+    { arquivo: base.arquivo, frontmatter, corpo: corpo === undefined ? base.corpo : corpo },
+    operacaoDaFixture(operationId),
+    CONTRATO);
+}
+
+function overrideDaFixture(operationId) {
+  return OVERRIDES.get(operationId);
+}
 
 const SLUGS_NA_ORDEM_CANONICA = [
   'sistema', 'catalogo', 'autenticacao', 'conta', 'pescarias', 'diario',
@@ -275,7 +313,7 @@ test('autenticação vem de security', () => {
     assert.ok(erro instanceof ErroDeGeracao);
     assert.ok(erro.problemas.some(
       (problema) => problema.includes('obterSaude') && problema.includes('security não reconhecido')),
-    erro.problemas);
+    erro.problemas.join(' | '));
     return true;
   });
 });
@@ -424,7 +462,7 @@ test('tag fora de DOMINIOS falha', () => {
   const contrato = { ...CONTRATO, tags: [...CONTRATO.tags, { name: 'Inventada', description: '' }] };
   assert.throws(() => gerarModelo(contrato, OVERRIDES), (erro) => {
     assert.ok(erro instanceof ErroDeGeracao);
-    assert.ok(erro.problemas.some((problema) => problema.includes('Inventada')), erro.problemas);
+    assert.ok(erro.problemas.some((problema) => problema.includes('Inventada')), erro.problemas.join(' | '));
     return true;
   });
 });
@@ -433,7 +471,7 @@ test('domínio da ordem canônica sem tag no contrato falha', () => {
   const contrato = { ...CONTRATO, tags: CONTRATO.tags.filter((tag) => tag.name !== 'Conta') };
   assert.throws(() => gerarModelo(contrato, OVERRIDES), (erro) => {
     assert.ok(erro instanceof ErroDeGeracao);
-    assert.ok(erro.problemas.some((problema) => problema.includes('Conta')), erro.problemas);
+    assert.ok(erro.problemas.some((problema) => problema.includes('Conta')), erro.problemas.join(' | '));
     return true;
   });
 });
@@ -457,7 +495,105 @@ test('override de operação inexistente falha', () => {
   ]);
   assert.throws(() => gerarModelo(CONTRATO, overrides), (erro) => {
     assert.ok(erro instanceof ErroDeGeracao);
-    assert.ok(erro.problemas.some((problema) => problema.includes('naoExiste')), erro.problemas);
+    assert.ok(erro.problemas.some((problema) => problema.includes('naoExiste')), erro.problemas.join(' | '));
+    return true;
+  });
+});
+
+test('override entra no modelo com notas renderizadas e valores do exemplo', () => {
+  const overrides = new Map(OVERRIDES);
+  overrides.set('obterSaude', {
+    arquivo: 'obterSaude.md',
+    frontmatter: {
+      ...OVERRIDES.get('obterSaude').frontmatter,
+      relacionados: ['obterCondicoes', 'excluirLocal']
+    },
+    corpo: 'Uma nota com **ênfase**.'
+  });
+
+  const modelo = gerarModelo(CONTRATO, overrides);
+  const saude = modelo.operacoes.obterSaude;
+
+  assert.equal(saude.proposta, 'Diz se está no ar.');
+  assert.equal(saude.acesso, 'publico');
+  assert.equal(saude.acessoTexto, 'qualquer pessoa, sem autenticação');
+  assert.equal(saude.consentimentoTexto, null);
+  assert.equal(saude.verificar, 'Veja `status`.');
+  assert.equal(saude.notas, 'Uma nota com **ênfase**.');
+  assert.equal(saude.notasHtml, '<p>Uma nota com <strong>ênfase</strong>.</p>\n');
+  assert.deepEqual(saude.relacionados, [
+    { operationId: 'obterCondicoes', titulo: 'Condições', dominio: 'condicoes' },
+    { operationId: 'excluirLocal', titulo: 'Exclui o local', dominio: 'locais' }
+  ]);
+  assert.deepEqual(saude.exemplo,
+    ['curl -s', `"${SERVIDOR}/health"`]);
+
+  // R1: o corpo mora em `request`, não no nível da operação.
+  assert.deepEqual(saude.request, { corpoExemplo: null, arquivos: null });
+  assert.equal(saude.corpo, undefined);
+  assert.equal(saude.arquivos, undefined);
+
+  const conta = modelo.operacoes.excluirConta;
+  assert.equal(conta.acessoTexto, 'qualquer pessoa com sessão iniciada');
+  assert.ok(conta.consentimentoTexto.includes('consentimento_pendente'));
+  assert.deepEqual(conta.request, {
+    corpoExemplo: '{"confirmacao":"EXCLUIR"}',
+    arquivos: null
+  });
+  assert.ok(conta.exemplo.includes(`-d '{"confirmacao":"EXCLUIR"}'`), conta.exemplo);
+  assert.ok(conta.exemplo.includes('-b cookies.txt'), conta.exemplo);
+
+  const midia = modelo.operacoes.enviarMidia;
+  assert.deepEqual(midia.request, { corpoExemplo: null, arquivos: { arquivo: 'foto.jpg' } });
+  assert.ok(midia.exemplo.includes('-F "arquivo=@foto.jpg"'), midia.exemplo);
+
+  // `consentimentoTexto` é derivado do contrato, não do override.
+  assert.equal(midia.consentimento, false);
+  assert.equal(midia.consentimentoTexto, null);
+
+  // Parâmetros carregam o valor concreto do override.
+  assert.deepEqual(
+    modelo.operacoes.obterCondicoes.parametros.map((parametro) => parametro.valor),
+    [-23.55, -46.63]);
+  assert.deepEqual(
+    modelo.operacoes.excluirLocal.parametros.map((parametro) => parametro.valor),
+    ['00000000-0000-4000-8000-000000000001', 'Duplicado']);
+  assert.deepEqual(
+    modelo.operacoes.obterSaude.parametros, []);
+});
+
+test('erros do modelo somam derivados e override, ordenados por status', () => {
+  const modelo = gerarModelo(CONTRATO, OVERRIDES);
+  const conta = modelo.operacoes.excluirConta;
+
+  assert.deepEqual(conta.erros.map((erro) => erro.status), [400, 401, 403, 429]);
+  assert.deepEqual(conta.erros.map((erro) => erro.origem),
+    ['override', 'contrato', 'contrato', 'contrato']);
+  assert.deepEqual(conta.erros[0].codigos, ['confirmacao_invalida']);
+  // R7: o `quando` derivado é a `description` do contrato, verbatim.
+  assert.equal(conta.erros[1].quando, 'Sessão ausente (`nao_autenticado`).');
+  assert.equal(conta.erros[3].codigos, null);
+
+  // `enviarNewsletter`: o 404 e o 500 derivam, e o override não acrescenta nada.
+  const newsletter = modelo.operacoes.enviarNewsletter;
+  assert.deepEqual(newsletter.erros.map((erro) => erro.status), [404, 500]);
+  assert.ok(newsletter.erros.every((erro) => erro.origem === 'contrato'));
+});
+
+test('override inválido falha a geração com o arquivo e o campo', () => {
+  const overrides = new Map(OVERRIDES);
+  overrides.set('obterSaude', {
+    arquivo: 'obterSaude.md',
+    frontmatter: { ...OVERRIDES.get('obterSaude').frontmatter, resposta: 'x' },
+    corpo: ''
+  });
+
+  assert.throws(() => gerarModelo(CONTRATO, overrides), (erro) => {
+    assert.ok(erro instanceof ErroDeGeracao);
+    assert.ok(erro.problemas.some(
+      (problema) => problema.includes('obterSaude.md') &&
+        problema.includes('chave desconhecida: resposta')),
+    erro.problemas.join(' | '));
     return true;
   });
 });
@@ -487,6 +623,325 @@ test('importar o módulo não executa main', () => {
     ['--input-type=module', '-e', "await import('./scripts/gerar-referencia.mjs')"],
     { cwd: diretorio, encoding: 'utf8', stdio: 'pipe' });
   assert.equal(saida, '');
+});
+
+test('os overrides da fixture passam na validação', () => {
+  for (const operationId of OPERACOES_DA_FIXTURE) {
+    assert.deepEqual(validarDaFixture(operationId), [], operationId);
+  }
+});
+
+test('frontmatter com chave desconhecida falha', () => {
+  const problemas = validarDaFixture('obterSaude', { resposta: 'x' });
+  assert.ok(problemas.some((problema) => problema.includes('chave desconhecida: resposta')),
+    problemas.join(' | '));
+});
+
+test('corpo com heading falha', () => {
+  const problemas = validarDaFixture('obterSaude', {}, '# Título\n\nTexto.');
+  assert.ok(problemas.some((problema) => problema.includes('heading')), problemas.join(' | '));
+
+  // Heading dentro de bloco de código é conteúdo, não seção.
+  assert.deepEqual(
+    validarDaFixture('obterSaude', {}, 'Veja:\n\n```bash\n# comentário\n```'),
+    []);
+});
+
+test('status derivável no override falha', () => {
+  const problemas = validarDaFixture('excluirConta', {
+    erros: [
+      { status: 400, codigos: ['confirmacao_invalida'], quando: 'A confirmação não é `EXCLUIR`.' },
+      { status: 401, codigos: ['nao_autenticado'], quando: 'Sem sessão.' }
+    ]
+  });
+  assert.ok(problemas.some((problema) => problema.includes('linha derivável do contrato')),
+    problemas.join(' | '));
+});
+
+test('status >= 400 pendente sem linha falha', () => {
+  const problemas = validarFrontmatterDaFixture('excluirConta',
+    semChaves(OVERRIDES.get('excluirConta').frontmatter, 'erros'));
+  assert.ok(problemas.some((problema) => problema.includes('400')), problemas.join(' | '));
+});
+
+test('status que o contrato não declara falha', () => {
+  const problemas = validarDaFixture('excluirConta', {
+    erros: [
+      { status: 400, codigos: ['confirmacao_invalida'], quando: 'A confirmação não é `EXCLUIR`.' },
+      { status: 418, codigos: ['sou_um_bule'], quando: 'Sou um bule.' }
+    ]
+  });
+  assert.ok(problemas.some((problema) => problema.includes('418')), problemas.join(' | '));
+  assert.ok(problemas.some((problema) => problema.includes('status não declarado')), problemas.join(' | '));
+});
+
+test('dois erros com o mesmo status falham', () => {
+  const problemas = validarDaFixture('excluirConta', {
+    erros: [
+      { status: 400, codigos: ['confirmacao_invalida'], quando: 'A confirmação não é `EXCLUIR`.' },
+      { status: 400, codigos: ['confirmacao_invalida'], quando: 'Repetido.' }
+    ]
+  });
+  assert.ok(problemas.some((problema) => problema.includes('status repetido')),
+    problemas.join(' | '));
+});
+
+test('uma linha de erro aceita o atalho `codigo` e recusa `codigos` vazio', () => {
+  assert.deepEqual(validarDaFixture('excluirConta', {
+    erros: [{ status: 400, codigo: 'confirmacao_invalida', quando: 'A confirmação não é `EXCLUIR`.' }]
+  }), []);
+
+  const problemas = validarDaFixture('excluirConta', {
+    erros: [{ status: 400, codigos: [], quando: 'A confirmação não é `EXCLUIR`.' }]
+  });
+  assert.ok(problemas.some((problema) => problema.includes('codigos')), problemas.join(' | '));
+});
+
+test('JSON sem corpo falha e multipart sem arquivos falha', () => {
+  const semCorpo = validarFrontmatterDaFixture('excluirConta', semChaves(
+    OVERRIDES.get('excluirConta').frontmatter, 'corpo'));
+  const semArquivos = validarFrontmatterDaFixture('enviarMidia', semChaves(
+    OVERRIDES.get('enviarMidia').frontmatter, 'arquivos'));
+
+  assert.ok(semCorpo.some((problema) => problema.includes('corpo')), semCorpo.join(' | '));
+  assert.ok(semArquivos.some((problema) => problema.includes('arquivos')), semArquivos.join(' | '));
+  assert.notEqual(semCorpo.join(' '), semArquivos.join(' '));
+});
+
+test('EntradaDePescaria sem required aceita corpo parcial, mas o exemplo ainda precisa ser objeto válido', () => {
+  assert.deepEqual(validarDaFixture('criarPescaria', { corpo: '{"ambiente":"Represa"}' }), []);
+
+  const problemas = validarDaFixture('criarPescaria', { corpo: '[]' });
+  assert.ok(problemas.some((problema) => problema.includes('corpo precisa ser objeto')),
+    problemas.join(' | '));
+});
+
+test('consulta obrigatória de obterCondicoes é exigida pelo override, não pelo contrato', () => {
+  const problemas = validarFrontmatterDaFixture('obterCondicoes', semChaves(
+    OVERRIDES.get('obterCondicoes').frontmatter, 'consulta'));
+  assert.ok(problemas.some((problema) => problema.includes('consulta')), problemas.join(' | '));
+
+  // O contrato não marca `lat`/`lon` como obrigatórios; quem exige valor é o
+  // override, porque sem coordenada a resposta é `400`.
+  const parametros = listarOperacoes(lerContrato())
+    .find((item) => item.operationId === 'obterCondicoes').operacao.parameters;
+  for (const nome of ['lat', 'lon']) {
+    assert.notEqual(parametros.find((parametro) => parametro.name === nome).required, true, nome);
+  }
+});
+
+test('corpo presente sem requestBody falha', () => {
+  const problemas = validarDaFixture('obterSaude', { corpo: '{"x":1}' });
+  assert.ok(problemas.some((problema) => problema.includes('corpo')), problemas.join(' | '));
+});
+
+test('caminho obrigatório quando a rota tem path param', () => {
+  const semCaminho = validarFrontmatterDaFixture('excluirLocal', semChaves(
+    OVERRIDES.get('excluirLocal').frontmatter, 'caminho'));
+  assert.ok(semCaminho.some((problema) => problema.includes('caminho')), semCaminho.join(' | '));
+
+  const chaveErrada = validarDaFixture('excluirLocal', {
+    caminho: { outro: '00000000-0000-4000-8000-000000000001' }
+  });
+  assert.ok(chaveErrada.some((problema) => problema.includes('chave fora de parameters')),
+    chaveErrada.join(' | '));
+
+  const uuidInvalido = validarDaFixture('excluirLocal', { caminho: { id: '42' } });
+  assert.ok(uuidInvalido.some((problema) => problema.includes('UUID')), uuidInvalido.join(' | '));
+});
+
+test('consulta com chave fora de parameters falha', () => {
+  const problemas = validarDaFixture('buscarLocais', { consulta: { termo: 'Guarapiranga' } });
+  assert.ok(problemas.some((problema) => problema.includes('consulta')), problemas.join(' | '));
+  assert.ok(problemas.some((problema) => problema.includes('chave fora de parameters')),
+    problemas.join(' | '));
+});
+
+test('acesso incompatível com security falha', () => {
+  const sessaoEmRotaPublica = validarDaFixture('obterSaude', { acesso: 'sessao' });
+  assert.ok(sessaoEmRotaPublica.some((problema) => problema.includes('acesso')),
+    sessaoEmRotaPublica.join(' | '));
+
+  const publicoEmRotaDeSessao = validarDaFixture('listarSessoes', { acesso: 'publico' });
+  assert.ok(publicoEmRotaDeSessao.some((problema) => problema.includes('acesso')),
+    publicoEmRotaDeSessao.join(' | '));
+
+  const capacidadeSemToken = validarDaFixture('obterSaude', { acesso: 'capacidade' });
+  assert.ok(capacidadeSemToken.some((problema) =>
+    problema.includes('acesso') && problema.includes('token')), capacidadeSemToken.join(' | '));
+
+  const adminEmRotaDeSessao = validarDaFixture('excluirConta', { acesso: 'admin' });
+  assert.ok(adminEmRotaDeSessao.some((problema) => problema.includes('acesso')),
+    adminEmRotaDeSessao.join(' | '));
+});
+
+test('relacionado inexistente falha', () => {
+  const problemas = validarDaFixture('obterSaude', { relacionados: ['naoExiste'] });
+  assert.ok(problemas.some((problema) => problema.includes('naoExiste')), problemas.join(' | '));
+});
+
+test('operacao do frontmatter precisa ser a operação da página', () => {
+  const outroArquivo = validarDaFixture('obterSaude', { operacao: 'excluirConta' });
+  assert.ok(outroArquivo.some((problema) => problema.includes('operacao')), outroArquivo.join(' | '));
+
+  const outroContrato = validarDaFixture('obterSaude', { operacao: 'naoExiste' });
+  assert.ok(outroContrato.some((problema) => problema.includes('naoExiste')), outroContrato.join(' | '));
+});
+
+test('lerOverrides lê frontmatter e corpo, e ignora diretório ausente', () => {
+  assert.deepEqual(lerOverrides(new URL('./nao/existe/', import.meta.url)), []);
+  // Caminho em texto também é aceito, como em `lerContrato`.
+  assert.deepEqual(lerOverrides(join(tmpdir(), 'overrides-nao-existem')), []);
+
+  const diretorio = mkdtempSync(join(tmpdir(), 'overrides-'));
+  try {
+    writeFileSync(join(diretorio, 'obterSaude.md'), [
+      '---',
+      'operacao: obterSaude',
+      'proposta: Diz se está no ar.',
+      'acesso: publico',
+      'verificar: Veja `status`.',
+      '---',
+      '',
+      'Uma nota.',
+      ''
+    ].join('\n'));
+
+    const [entrada] = lerOverrides(pathToFileURL(`${diretorio}/`));
+    assert.equal(entrada.arquivo, 'obterSaude.md');
+    assert.equal(entrada.operacao, 'obterSaude');
+    assert.equal(entrada.frontmatter.acesso, 'publico');
+    assert.equal(entrada.corpo, 'Uma nota.');
+  } finally {
+    rmSync(diretorio, { recursive: true, force: true });
+  }
+});
+
+test('lerOverrides recusa arquivo sem frontmatter e nome fora de <operacao>.md', () => {
+  const diretorio = mkdtempSync(join(tmpdir(), 'overrides-'));
+  try {
+    const comFrontmatter = (operacao) => [
+      '---', `operacao: ${operacao}`, 'proposta: Diz.', 'acesso: publico',
+      'verificar: Veja.', '---', ''
+    ].join('\n');
+
+    writeFileSync(join(diretorio, 'semFrontmatter.md'), '# só corpo\n');
+    assert.throws(() => lerOverrides(pathToFileURL(`${diretorio}/`)), (erro) => {
+      assert.ok(erro instanceof ErroDeGeracao);
+      assert.ok(erro.problemas.some((problema) => problema.includes('frontmatter')),
+        erro.problemas.join(' | '));
+      return true;
+    });
+
+    rmSync(join(diretorio, 'semFrontmatter.md'));
+    writeFileSync(join(diretorio, 'yamlQuebrado.md'), '---\noperacao: [\n---\n');
+    assert.throws(() => lerOverrides(pathToFileURL(`${diretorio}/`)), (erro) => {
+      assert.ok(erro instanceof ErroDeGeracao);
+      assert.ok(erro.problemas.some((problema) => problema.includes('YAML inválido')),
+        erro.problemas.join(' | '));
+      return true;
+    });
+
+    rmSync(join(diretorio, 'yamlQuebrado.md'));
+    writeFileSync(join(diretorio, 'outroNome.md'), comFrontmatter('obterSaude'));
+    assert.throws(() => lerOverrides(pathToFileURL(`${diretorio}/`)), (erro) => {
+      assert.ok(erro instanceof ErroDeGeracao);
+      assert.ok(erro.problemas.some((problema) => problema.includes('nome do arquivo')),
+        erro.problemas.join(' | '));
+      return true;
+    });
+  } finally {
+    rmSync(diretorio, { recursive: true, force: true });
+  }
+});
+
+test('curl de sessão usa cookies.txt', () => {
+  const linhas = montarCurl(
+    operacaoDaFixture('listarSessoes'), overrideDaFixture('listarSessoes'), SERVIDOR);
+  const curl = linhas.join('\n');
+
+  assert.ok(curl.includes('-b cookies.txt'), linhas.join(' | '));
+  assert.equal(curl.includes('X-Admin-Token'), false, linhas.join(' | '));
+  assert.ok(linhas[0].startsWith('curl -s'), linhas.join(' | '));
+});
+
+test('curl administrativo usa X-Admin-Token', () => {
+  const linhas = montarCurl(
+    operacaoDaFixture('enviarNewsletter'), overrideDaFixture('enviarNewsletter'), SERVIDOR);
+
+  assert.ok(linhas.some((linha) => linha.includes('-H "X-Admin-Token: SEU_ADMIN_TOKEN"')),
+    linhas.join(' | '));
+  assert.equal(linhas.join('\n').includes('cookies.txt'), false, linhas.join(' | '));
+  assert.ok(linhas.some((linha) => linha.includes('-X POST')), linhas.join(' | '));
+});
+
+test('curl com path e query concretos', () => {
+  const condicoes = montarCurl(
+    operacaoDaFixture('obterCondicoes'), overrideDaFixture('obterCondicoes'), SERVIDOR);
+  assert.ok(condicoes.some((linha) =>
+    linha.includes(`?lat=-23.55&lon=-46.63`)), condicoes.join(' | '));
+  // A ordem é a de `parameters` e só entra chave declarada na consulta.
+  assert.equal(condicoes.join('\n').includes('nome='), false, condicoes.join(' | '));
+
+  const local = montarCurl(
+    operacaoDaFixture('excluirLocal'), overrideDaFixture('excluirLocal'), SERVIDOR);
+  assert.ok(local.some((linha) =>
+    linha.includes('/api/locais/00000000-0000-4000-8000-000000000001?motivo=Duplicado')),
+  local.join(' | '));
+  assert.ok(local.some((linha) => linha.includes('-X DELETE')), local.join(' | '));
+  // `204` pede os headers na resposta.
+  assert.ok(local[0].includes('-i'), local.join(' | '));
+});
+
+test('a origem da linha é decidida só pela description, não por content', () => {
+  const casos = [
+    { nomeiaCodigo: true, dizCorpoVazio: false, esperado: 'codigos' },
+    { nomeiaCodigo: true, dizCorpoVazio: true, esperado: 'codigos' },
+    { nomeiaCodigo: false, dizCorpoVazio: true, esperado: 'codigos-nulos' },
+    { nomeiaCodigo: false, dizCorpoVazio: false, esperado: 'pendente' }
+  ];
+  const conteudos = [undefined, {}, { 'application/json': {} }];
+
+  for (const caso of casos) {
+    for (const content of conteudos) {
+      const descricao = [
+        caso.nomeiaCodigo && 'Sessão ausente (`nao_autenticado`).',
+        caso.dizCorpoVazio && 'Corpo vazio.'
+      ].filter(Boolean).join(' ') || 'Recurso não encontrado.';
+      const resposta = content === undefined ? { description: descricao } : { description: descricao, content };
+      const erros = derivarErros({ responses: { '400': resposta } });
+
+      if (caso.esperado === 'pendente') {
+        assert.equal(erros.length, 0, JSON.stringify({ caso, content }));
+        continue;
+      }
+      assert.equal(erros.length, 1, JSON.stringify({ caso, content }));
+      assert.equal(erros[0].status, 400);
+      if (caso.esperado === 'codigos-nulos') assert.equal(erros[0].codigos, null);
+      else assert.deepEqual(erros[0].codigos, ['nao_autenticado']);
+    }
+  }
+
+  // No contrato real, os três 404 que dizem "Corpo vazio" derivam mesmo
+  // declarando `content`, e os 404 de recurso continuam pendentes.
+  const operacoes = new Map(listarOperacoes(lerContrato())
+    .map((item) => [item.operationId, item.operacao]));
+  for (const operationId of ['enviarNewsletter', 'previsualizarNewsletter', 'reverterCoordenadas']) {
+    assert.ok(derivarErros(operacoes.get(operationId)).some((erro) => erro.status === 404),
+      operationId);
+  }
+  assert.equal(derivarErros(operacoes.get('obterPescariaPorToken'))
+    .some((erro) => erro.status === 404), false);
+});
+
+test('3XX nunca entra em erros derivados', () => {
+  const erros = derivarErros({
+    responses: {
+      '302': { description: 'Redireciona para o app.', content: { 'text/html': {} } },
+      '429': { description: 'Corpo vazio.' }
+    }
+  });
+  assert.deepEqual(erros.map((erro) => erro.status), [429]);
 });
 
 test('auditar lista as pendências de erros da fixture', () => {
