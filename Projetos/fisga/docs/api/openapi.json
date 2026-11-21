@@ -1,9 +1,27 @@
 {
   "openapi": "3.1.1",
   "info": {
-    "title": "Fisga.Api | v1",
+    "title": "API do Fisga",
+    "description": "API do Fisga: o diário de pesca que registra capturas com identidade própria.\n\nAs operações são de leitura pública ou exigem sessão; `security` em cada\numa diz qual é o caso. A sessão é o cookie `fisga_auth`, com validade\ndeslizante de 30 dias.\n\n**Erros.** Respostas de erro com corpo usam `{codigo, detalhe}`; exceção\nnão tratada vira `500 erro_inesperado`. O `429` não tem corpo e traz o\nheader `Retry-After` em segundos.\n\n**Consentimento.** Usuário autenticado com Termos ou Privacidade\npendentes recebe `403` em qualquer rota, exceto `GET /api/auth/me`,\n`POST /api/auth/sair` e `POST /api/conta/consentimento`:\n\n```json\n{\"codigo\":\"consentimento_pendente\",\"detalhe\":\"Aceite os termos e a privacidade vigentes para continuar.\"}\n```\n\n**Origem.** Mutação (`POST`, `PUT`, `PATCH`, `DELETE`) com `Origin` de\noutro site recebe `403 origem_invalida`:\n\n```json\n{\"codigo\":\"origem_invalida\",\"detalhe\":\"Origem da requisição não permitida.\"}\n```\n\nAs duas rotas administrativas respondem `404` sem corpo a token inválido,\nde propósito: não revelam que o token existe.",
+    "contact": {
+      "name": "Fisga",
+      "url": "https://fisga.abson.tech"
+    },
+    "license": {
+      "name": "Proprietária"
+    },
     "version": "1.0.0"
   },
+  "servers": [
+    {
+      "url": "https://api.fisga.abson.tech",
+      "description": "Produção"
+    },
+    {
+      "url": "http://localhost:5080",
+      "description": "Local"
+    }
+  ],
   "paths": {
     "/health": {
       "get": {
@@ -6826,43 +6844,56 @@
   },
   "tags": [
     {
-      "name": "Sistema"
+      "name": "Sistema",
+      "description": "Saúde, prontidão e versões legais da API."
     },
     {
-      "name": "Autenticação"
+      "name": "Autenticação",
+      "description": "Link mágico, senha, Google, sessão e perfil."
     },
     {
-      "name": "Conta"
+      "name": "Conta",
+      "description": "Consentimento, senha, sessões, exportação e exclusão."
     },
     {
-      "name": "Newsletter"
+      "name": "Newsletter",
+      "description": "Envio e prévia do digest mensal (token administrativo)."
     },
     {
-      "name": "Catálogo"
+      "name": "Catálogo",
+      "description": "Espécies, iscas e opções de referência do app."
     },
     {
-      "name": "Diário"
+      "name": "Diário",
+      "description": "Diário, estatísticas e insights do pescador."
     },
     {
-      "name": "Mídia"
+      "name": "Mídia",
+      "description": "Upload de fotos com EXIF tratado no navegador."
     },
     {
-      "name": "Condições"
+      "name": "Condições",
+      "description": "Clima, maré aproximada e comparação com o histórico."
     },
     {
-      "name": "Locais"
+      "name": "Locais",
+      "description": "Locais salvos, busca e geocodificação reversa."
     },
     {
-      "name": "Espécies"
+      "name": "Espécies",
+      "description": "Sugestão de espécie a partir de uma foto."
     },
     {
-      "name": "Pescarias"
+      "name": "Pescarias",
+      "description": "Registro da pescaria, visão pública, edição e PDF."
     },
     {
-      "name": "Pontos"
+      "name": "Pontos",
+      "description": "Pontos privados do pescador."
     },
     {
-      "name": "Trilhas"
+      "name": "Trilhas",
+      "description": "Trilhas privadas do pescador."
     }
   ]
 }

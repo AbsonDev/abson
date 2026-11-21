@@ -155,6 +155,57 @@ public sealed class ContratoTests
     }
 
     [Fact]
+    public async Task DocumentoTemIdentidadePublica()
+    {
+        var raiz = (await LoadAsync()).RootElement;
+        var info = raiz.GetProperty("info");
+
+        Assert.Equal("API do Fisga", info.GetProperty("title").GetString());
+        Assert.False(string.IsNullOrWhiteSpace(info.GetProperty("version").GetString()));
+
+        var descricao = info.GetProperty("description").GetString() ?? string.Empty;
+        Assert.Contains("consentimento_pendente", descricao);
+        Assert.Contains("origem_invalida", descricao);
+        Assert.Contains("Retry-After", descricao);
+
+        Assert.Equal("Fisga", info.GetProperty("contact").GetProperty("name").GetString());
+        Assert.Equal(
+            "https://fisga.abson.tech",
+            info.GetProperty("contact").GetProperty("url").GetString());
+        Assert.Equal("Proprietária", info.GetProperty("license").GetProperty("name").GetString());
+        Assert.False(info.GetProperty("license").TryGetProperty("url", out _));
+
+        var servidores = raiz.GetProperty("servers").EnumerateArray().ToList();
+        Assert.Equal(2, servidores.Count);
+        Assert.Equal("https://api.fisga.abson.tech", servidores[0].GetProperty("url").GetString());
+        Assert.Equal("Produção", servidores[0].GetProperty("description").GetString());
+        Assert.Equal("http://localhost:5080", servidores[1].GetProperty("url").GetString());
+        Assert.Equal("Local", servidores[1].GetProperty("description").GetString());
+    }
+
+    [Fact]
+    public async Task TagsTemDescricao()
+    {
+        var raiz = (await LoadAsync()).RootElement;
+        var tags = raiz.GetProperty("tags").EnumerateArray().ToList();
+
+        Assert.Equal(Tags.Todas.Count, tags.Count);
+        Assert.Equal(
+            Tags.Todas.OrderBy(nome => nome, StringComparer.Ordinal),
+            tags.Select(tag => tag.GetProperty("name").GetString())
+                .OrderBy(nome => nome, StringComparer.Ordinal));
+
+        foreach (var tag in tags)
+        {
+            var nome = tag.GetProperty("name").GetString()!;
+            Assert.True(
+                tag.TryGetProperty("description", out var descricao),
+                $"Tag sem descrição: {nome}");
+            Assert.Equal(Tags.Descricoes[nome], descricao.GetString());
+        }
+    }
+
+    [Fact]
     public async Task TagsSaoDeDominio()
     {
         var documento = await LoadAsync();

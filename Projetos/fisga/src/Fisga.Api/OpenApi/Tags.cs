@@ -34,4 +34,22 @@ public static class Tags
         Conta,
         Newsletter
     ];
+
+    public static IReadOnlyDictionary<string, string> Descricoes { get; } =
+        new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            [Sistema] = "Saúde, prontidão e versões legais da API.",
+            [Catalogo] = "Espécies, iscas e opções de referência do app.",
+            [Pescarias] = "Registro da pescaria, visão pública, edição e PDF.",
+            [Locais] = "Locais salvos, busca e geocodificação reversa.",
+            [Pontos] = "Pontos privados do pescador.",
+            [Trilhas] = "Trilhas privadas do pescador.",
+            [Diario] = "Diário, estatísticas e insights do pescador.",
+            [Midia] = "Upload de fotos com EXIF tratado no navegador.",
+            [Especies] = "Sugestão de espécie a partir de uma foto.",
+            [Condicoes] = "Clima, maré aproximada e comparação com o histórico.",
+            [Autenticacao] = "Link mágico, senha, Google, sessão e perfil.",
+            [Conta] = "Consentimento, senha, sessões, exportação e exclusão.",
+            [Newsletter] = "Envio e prévia do digest mensal (token administrativo)."
+        };
 }
