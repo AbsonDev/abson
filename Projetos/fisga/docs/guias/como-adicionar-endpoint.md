@@ -98,7 +98,10 @@ gerado. Sem ela, `gerar-openapi.sh` falha com `Operação sem operationId`.
 4. Registre a operação em `tests/Fisga.Api.Tests/RespostasEsperadas.cs` com os
    status reais e, se a rota for pública, em `RotasAnonimasPorDecisao`
    (`ContratoTests.cs`). Um `404` com corpo vazio (em vez de `ErroResponse`)
-   entra em `RespostasEsperadas.NotFoundSemCorpo`.
+   entra em `RespostasEsperadas.NotFoundSemCorpo`. A mesma operação também
+   entra em [`docs/api/inventario.md`](../api/inventario.md) e na tabela
+   `## API` do [`README.md`](../../README.md): a guarda de rotas compara os
+   dois documentos com o contrato e falha se a rota faltar em algum.
 5. Regenere e commite o contrato publicado:
 
 ```bash
@@ -111,6 +114,11 @@ O resultado vai para `docs/api/openapi.json`. Detalhes em
 ## 8. Documentação
 
 - Agregado, invariante ou contexto novo: atualize [`docs/ddd.md`](../ddd.md).
-- Rota de produto (algo que o usuário usa): acrescente na seção `## API` do
-  [`README.md`](../../README.md).
+- Rota de produto (algo que o usuário usa): atualize na ordem e rode a guarda.
+  1. [`docs/api/inventario.md`](../api/inventario.md)
+  2. tabela `## API` do [`README.md`](../../README.md)
+  3. `node scripts/verificar-rotas.mjs`, a partir de `Projetos/fisga`
+
+  A guarda roda no job `docs` do CI e falha listando a rota que falta no
+  inventário e no README.
 - Nada disso mudou? Só o contrato gerado já basta.
