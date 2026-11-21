@@ -7,7 +7,8 @@ sucesso o código devolve de verdade e quais erros precisam ser documentados.
 
 **Estado:** Fase 0 concluída em 2026-11-20 · A1 (identidade e segurança do
 contrato) concluído em 2026-11-20 · A2 (respostas reais) concluído em
-2026-11-20 · **Contrato de referência:**
+2026-11-20 · A3 (identidade do documento e comportamentos) concluído em
+2026-11-20 — **F1 concluída** · **Contrato de referência:**
 [`openapi.json`](openapi.json) (OpenAPI 3.1.1, 54 operações em 48 rotas).
 
 ## Como manter
@@ -19,8 +20,10 @@ contrato) concluído em 2026-11-20 · A2 (respostas reais) concluído em
    limit, cache, status reais de sucesso e o schema de erro já saem no contrato
    como `security`, `x-rate-limit`, `x-cache` e `responses`.
 3. A coluna "Sucesso real" reflete o código e é a mesma lista que o spec
-   declara. A única lacuna que resta está na seção
-   [Lacunas de contrato](#lacunas-de-contrato).
+   declara. Não há lacuna conhecida; a seção
+   [Lacunas de contrato](#lacunas-de-contrato) fica como registro.
+4. Mexeu em rota? Rode `node scripts/verificar-rotas.mjs`; a guarda compara
+   contrato, `README.md` e este inventário e roda no job `docs`.
 
 ## Resumo por domínio
 
@@ -177,12 +180,12 @@ por isso fora das linhas.
 | `POST /api/auth/confirmar-email` | P | auth | `200` `ConfirmarEmailResponse` | `400` `confirmacao_invalida`, `429` | |
 | `POST /api/auth/esqueci-senha` | P | auth | `202 Accepted` + `EsqueciSenhaResponse` | `400`, `429` | Resposta genérica anti-enumeração |
 | `POST /api/auth/redefinir-senha` | P | auth | `200` `RedefinirSenhaResponse` | `400` `link_invalido`/`senha_curta`/`senha_longa`, `429` | Revoga todas as sessões e rotaciona o security stamp |
-| `GET /api/auth/confirmar` | P | auth | `302` para o web | `429` | Link mágico; emite o cookie de sessão. Sucesso e erro redirecionam com `estado=<codigo>` |
+| `GET /api/auth/confirmar` | P | auth | `302` para o web | `429` | Link mágico; emite o cookie de sessão. Primeiro acesso vai para `/boas-vindas?novo=1`; os seguintes, para `/entrar/confirmar?estado=ok`; erro de link, para `/entrar/confirmar?estado=<codigo>` |
 | `GET /api/auth/google/disponivel` | P | auth | `200` `GoogleDisponivelResponse` | `429` | |
 | `GET /api/auth/google/iniciar` | P | auth | `302` challenge Google | `503` `google_indisponivel`, `429` | |
-| `GET /api/auth/google/concluir` | P | auth | `302` para o web | `429` | Callback OAuth; sucesso e erro redirecionam com `estado=<codigo>`; primeiro acesso vai para `/boas-vindas` |
+| `GET /api/auth/google/concluir` | P | auth | `302` para o web | `429` | Callback OAuth. Primeiro acesso vai para `/boas-vindas?novo=1`; os seguintes, para `/entrar/confirmar?estado=ok`; falha, para `/entrar/confirmar?estado=<codigo>` |
 | `GET /api/auth/google/conectar` | S | auth | `302` challenge Google | `401`, `403`, `503` `google_indisponivel`, `429` | Inicia vínculo de Google à conta logada; consentimento pendente bloqueia com `403` |
-| `GET /api/auth/google/conectar/concluir` | S (cookie de intenção) | auth | `302` para `/conta?estado=google_conectado` | `403`, `429` | Sem sessão ou intenção inválida também redireciona com `estado=<codigo>` |
+| `GET /api/auth/google/conectar/concluir` | S (cookie de intenção) | auth | `302` para `/conta?estado=google_conectado` | `403`, `429` | Sem sessão também é `302`, para `/conta?estado=google_conexao_nao_autenticado`; falha vai para `/conta?estado=<codigo>` |
 | `GET /api/auth/me` | P | leitura | `200` `MeResponse` | `429` | **Nunca responde 401**: sem sessão devolve `autenticado:false` |
 | `PATCH /api/auth/perfil` | S, consent. | escrita | `200` `UsuarioResponse` | `400`, `401`, `403`, `429` | |
 | `POST /api/auth/sair` | P | escrita | `204 No Content` | `429` | Idempotente: sem sessão também responde `204` |
@@ -274,17 +277,9 @@ por isso fora das linhas.
 
 ## Lacunas de contrato
 
-Confirmada no `openapi.json` atual. Vira ticket da Fase 1.
-
-> **Resolvido no A2 (2026-11-20):** status reais (`201`/`202`/`204`/`302`/`503`),
-> schema único de erro (`ErroResponse`) nos dois media types, as descrições de
-> erro do catálogo, com `codigo` onde cabe, uploads `multipart/form-data` e
-> `Retry-After` no `429` estão no [`openapi.json`](openapi.json). Resta a
-> identidade do documento (`info`/`servers`).
-
-| # | Lacuna | Evidência | Correção alvo |
-| --- | --- | --- | --- |
-| 1 | `info` incompleto e sem `servers` | `openapi.json` | `contact`, `license`, descrição e `servers` fixo com produção e local, independente de ambiente |
+Nenhuma lacuna conhecida: `info`, `servers`, status reais, erros, uploads e
+`Retry-After` saem do contrato. Esta seção fica como registro de que não há
+pendência — a F1 fechou em 2026-11-20.
 
 ## Verificação em execução local
 

@@ -11,7 +11,7 @@ O programa de documentação pública tem quatro documentos de apoio, todos
 anteriores ao portal:
 
 - [Inventário](inventario.md) — uma linha por operação: acesso, rate limit,
-  cache, status real e erros, mais as lacunas do contrato.
+  cache, status real e erros.
 - [Política editorial](politica-editorial.md) — template obrigatório de página,
   voz, exemplos e checklist de revisão.
 - [Arquitetura do portal](portal.md) — mapa de URL, gerador, build, hospedagem e
@@ -20,9 +20,9 @@ anteriores ao portal:
 
 A decisão de publicar em `docs.fisga.abson.tech` está na
 [ADR 0017](../adr/0017-portal-publico-da-api.md). A referência pública é gerada
-deste `openapi.json`; por isso a fase F1 (correção das
-[lacunas do inventário](inventario.md#lacunas-de-contrato)) vem antes da
-publicação.
+deste `openapi.json`; a fase F1 ([lacunas do
+inventário](inventario.md#lacunas-de-contrato)) fechou em 2026-11-20 e antecede
+a publicação. O portal ainda não está no ar: é a fase F2.
 
 ## Regenerar
 
@@ -62,13 +62,13 @@ Commite o arquivo gerado no mesmo PR da mudança de contrato.
   `if (app.Environment.IsDevelopment())`, então `/openapi/v1.json` responde
   apenas no ambiente local. Em produção o documento não é exposto; a fonte é o
   `openapi.json` versionado aqui.
-- **O contrato expressa respostas e erros; falta a identidade do documento.**
-  Cada operação declara o status real de sucesso com corpo tipado quando há
-  corpo, as respostas de erro com corpo apontam para o schema único
-  `ErroResponse` em `application/json` e `application/problem+json`; `404` sem
-  resultado, `429` e o `503` de `/ready` não têm corpo. Os dois uploads descrevem
-  `multipart/form-data`, o `429` traz `Retry-After` e `201`/`202` trazem
-  `Location`. Acesso (`security`), cache (`x-cache`) e rate limit
-  (`x-rate-limit`) também saem do código. Falta só `info`/`servers` (F1.7): o
-  documento não tem `contact`, `license`, descrição nem a lista fixa de
-  servidores.
+- **Identidade fixa de propósito.** `info` (título, descrição, contato, licença)
+  e `servers` (produção e local `http://localhost:5184`, nessa ordem) são
+  escritos no transformer, não lidos do ambiente: o artefato commitado é
+  regenerado no CI e comparado byte a byte. Escolher por ambiente faria o JSON
+  mudar entre máquinas.
+- **Lint advisory.** O job `api` valida o documento com `@redocly/cli`
+  (`--extends=minimal`) e o job `docs` compara contrato, `## API` do `README.md`
+  e inventário. Sobram 9 warnings advisory: 6 de operação que só responde `302`,
+  1 de `servers` apontando para `localhost`, 1 de caminho idêntico e 1 de
+  caminho ambíguo entre `{shareToken}` e `{id}`.

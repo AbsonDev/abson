@@ -13,22 +13,23 @@ Contexto: [ADR 0017](../adr/0017-portal-publico-da-api.md),
 | Fase | Objetivo | Entrega | Estimativa |
 | --- | --- | --- | --- |
 | **F0** | Decidir e mapear | este pacote de documentos | concluída |
-| **F1** | Contrato que não mente | `openapi.json` completo e verificado | 4–5 d |
+| **F1** | Contrato que não mente | `openapi.json` completo e verificado | concluída (A1–A3) |
 | **F2** | Portal no ar | `docs.fisga.abson.tech` publicado com referência completa | 6–8 d |
 | **F3** | Console e qualidade | "Experimente" read-only, a11y e e2e | 3–4 d |
 | **F4** | Alcance | sandbox, console autenticado, SDK, política de versão | 5–8 d |
 
-F1 é bloqueio de F2: a referência é gerada do contrato, então publicar antes de
-corrigir significa publicar erro. F2 e F3 podem começar em paralelo depois que o
-gerador da F2.1 estiver de pé.
+F1 era bloqueio de F2: a referência é gerada do contrato, então publicar antes
+de corrigir significava publicar erro. Com a F1 fechada, F2 e F3 podem começar
+em paralelo depois que o gerador da F2.1 estiver de pé.
 
 ---
 
 ## F1 — Contrato verdadeiro
 
-Fecha as lacunas do [inventário](inventario.md#lacunas-de-contrato). Nenhuma
-mudança de comportamento da API; só metadata, anotações e dois ajustes
-aditivos de resposta.
+**Estado:** concluída em 2026-11-20 (A1, A2 e A3). Fechou as lacunas do
+[inventário](inventario.md#lacunas-de-contrato). Nenhuma mudança de
+comportamento da API; só metadata, anotações e dois ajustes aditivos de
+resposta.
 
 ### F1.1 — Esquemas de segurança
 
@@ -110,6 +111,7 @@ aditivos de resposta.
   e `servers` fixo com produção e local, independente de ambiente.
 - **Aceite:** spec válido no lint de OpenAPI; `servers` traz as duas entradas
   fixas, sem URL de ambiente efêmero.
+- **Estado:** concluída no A3 (2026-11-20) — esta PR fecha #68/#70/#71.
 - **Est.:** 0,5 d · **Dep.:** —
 
 ### F1.8 — `429` com `Retry-After`
@@ -135,6 +137,7 @@ aditivos de resposta.
   `/api/auth/me`, `403 consentimento_pendente`, `403 origem_invalida`.
 - **Aceite:** cada caso tem `description` e, quando aplicável, exemplo de
   resposta no spec.
+- **Estado:** concluída no A3 (2026-11-20) — esta PR fecha #68/#70/#71.
 - **Est.:** 0,5 d · **Dep.:** F1.4
 
 ### F1.10 — Impedir divergência entre spec, README e inventário
@@ -146,6 +149,7 @@ aditivos de resposta.
   um endpoint novo entra só no código.
 - **Aceite:** rota adicionada, removida ou renomeada no spec quebra o job com a
   lista do que falta em cada documento.
+- **Estado:** concluída no A3 (2026-11-20) — esta PR fecha #68/#70/#71.
 - **Est.:** 0,5 d · **Dep.:** F1.4
 
 ---

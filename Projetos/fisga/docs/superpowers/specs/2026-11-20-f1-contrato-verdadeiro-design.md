@@ -199,7 +199,7 @@ por `DecisaoDeCache` — a descrição do endpoint registra essa exceção.
   ```json
   [
     { "url": "https://api.fisga.abson.tech", "description": "Produção" },
-    { "url": "http://localhost:5080", "description": "Local" }
+    { "url": "http://localhost:5184", "description": "Local" }
   ]
   ```
 
@@ -208,8 +208,10 @@ por `DecisaoDeCache` — a descrição do endpoint registra essa exceção.
   carregar a URL local e o portal publicar um ambiente morto. Fixo, o JSON é
   estável nos dois sentidos.
 - Comportamentos que surpreendem: `404` proposital do admin, `GET` de auth com
-  `302`, `/me` com `200` e `autenticado:false`, `403 consentimento_pendente`,
-  `403 origem_invalida`.
+  `302`, `/me` com `200` e `autenticado:false`, `403 consentimento_pendente`
+  (em rota `/api` que exige sessão, exceto `GET /api/auth/me`,
+  `POST /api/auth/sair`, `POST /api/conta/consentimento` e as rotas públicas),
+  `403 origem_invalida` (mutação `/api` com `Origin` de outro site).
 - Script no job `docs` comparando rotas de `openapi.json`, do resumo do
   `README.md` e do inventário.
 - **Lint de OpenAPI no job `api`**, que é quem já vê mudança de contrato:

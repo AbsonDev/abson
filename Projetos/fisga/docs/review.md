@@ -34,7 +34,7 @@ dos bugs conhecidos; a camada serve para o humano gastar atenção no que só hu
 
 | Camada | Ferramenta | Status | Bloqueia? | Custo |
 | --- | --- | --- | --- | --- |
-| CI | `gate` (build, format, 404 testes, `astro check`, Playwright, `docs`, contrato) | implementado | sim, único required check | R$ 0 |
+| CI | `gate` (build, format, 408 testes, `astro check`, Playwright, `docs`, contrato) | implementado | sim, único required check | R$ 0 |
 | Dependências | Dependabot | implementado | não (propõe PRs) | R$ 0 |
 | Supply chain | `dependency-review-action@v5` | implementado, advisory | sim, quando promovido | R$ 0 |
 | Segurança estática | CodeQL (`csharp`, `javascript-typescript`, `actions`) | implementado, advisory | sim, via regra `code_scanning` | R$ 0 (repo público) |
@@ -67,10 +67,11 @@ merge em main
 
 Caminhos especiais:
 
-- **PR só de docs:** o `gate` roda (sem `paths:` no gatilho); o job `docs` roda markdownlint e
-  checagem de links, e o CodeQL roda. Se o CodeQL tivesse filtro de caminho no gatilho, o merge
-  travaria por "análise não executada" quando a regra `code_scanning` estivesse ativa. Ver
-  [CodeQL](#codeql). O `openapi.json` é a única exceção: conta como código e dispara o job `api`.
+- **PR só de docs:** o `gate` roda (sem `paths:` no gatilho); o job `docs` roda markdownlint, a
+  guarda de rotas e a checagem de links, e o CodeQL roda. Se o CodeQL tivesse filtro de caminho no
+  gatilho, o merge travaria por "análise não executada" quando a regra `code_scanning` estivesse
+  ativa. Ver [CodeQL](#codeql). O `openapi.json` é a única exceção: conta como código e dispara o
+  job `api`.
 - **PR de fork:** `pull_request` não recebe secrets e o `GITHUB_TOKEN` é read-only. As camadas que
   dependem de chave (PR-Agent, `fisga-docs-ai`, `/oc`) são puladas; CodeQL e `gate` rodam.
 - **PR de bot (Dependabot, Sentry):** as camadas automáticas ignoram bot pelo tipo do autor
@@ -103,10 +104,10 @@ estão em [github-workflow.md](./github-workflow.md); esta seção cobre só o j
 
 - **Quando roda:** todo PR e todo push em `main`.
 - **Onde:** `.github/workflows/fisga-pipeline.yml`.
-- **O que valida:** restore locked, `dotnet format --verify-no-changes`, build `-warnaserror`, 404
+- **O que valida:** restore locked, `dotnet format --verify-no-changes`, build `-warnaserror`, 408
   testes, `npm ci`, `astro check`, build, 165 Playwright mockados, build das imagens, job `docs`
-  (markdownlint + links, só em PR e `workflow_dispatch`, não no push) e regeneração/comparação de
-  `docs/api/openapi.json` no job `api`.
+  (markdownlint + guarda de rotas + links, só em PR e `workflow_dispatch`, não no push),
+  regeneração/comparação de `docs/api/openapi.json` e lint de OpenAPI no job `api`.
 - **Como ler:** o job `gate` agrega; um job `failure`/`cancelled` derruba o gate.
 - **Reexecutar:** push novo no PR, ou `gh run rerun <run-id> --repo AbsonDev/abson`.
 
@@ -207,7 +208,7 @@ env:
   reasoning por mais de 10 minutos e estourar o timeout do LiteLLM. O próprio PR-Agent documenta
   esse comportamento e recomenda desligar o reasoning ou trocar de modelo.
 - **Guardrails:** `restricted_mode = true` (não empurra código), `response_language = pt-BR`,
-  `num_max_findings = 6`, `require_tests_review = false` (o gate já roda 404 testes).
+  `num_max_findings = 6`, `require_tests_review = false` (o gate já roda 408 testes).
 - **Comandos:** `/review`, `/describe`, `/ask`, `/improve`, com gate de `author_association` em
   `issue_comment`.
 - **Como ler:** comentário do bot com achados numerados. `/ask <pergunta>` responde no thread.
@@ -255,7 +256,7 @@ env:
 
 | Sintoma | Ação |
 | --- | --- |
-| `gate` vermelho | rodar local: `dotnet format`, `dotnet build -warnaserror`, `dotnet test`, `npm run check`, `npm run build`, `npx --yes markdownlint-cli2@0.24.1`, `lychee --config .lychee.toml ...` e `./scripts/gerar-openapi.sh` + `git diff --exit-code -- docs/api/openapi.json` |
+| `gate` vermelho | rodar local: `dotnet format`, `dotnet build -warnaserror`, `dotnet test`, `npm run check`, `npm run build`, `npx --yes markdownlint-cli2@0.24.1`, `node scripts/verificar-rotas.mjs`, `node --test scripts/verificar-rotas.test.mjs`, `lychee --config .lychee.toml ...` e `./scripts/gerar-openapi.sh` + `git diff --exit-code -- docs/api/openapi.json` |
 | dependency-review vermelho | atualizar o pacote; se não houver versão corrigida, abrir issue e usar `allow-ghsas` com justificativa |
 | CodeQL vermelho | abrir o alerta, seguir o data flow; corrigir ou `dismiss` com motivo (`false positive`, `won't fix`, `used in tests`) |
 | CodeQL "analysis not found" no merge | confirmar que o workflow rodou no PR; não filtrar caminho no gatilho |
