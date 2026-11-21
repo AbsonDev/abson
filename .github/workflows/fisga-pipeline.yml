@@ -138,6 +138,15 @@ jobs:
             exit 1
           fi
 
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Lint do OpenAPI
+        run: >
+          npx --yes @redocly/cli@2.82.0 lint docs/api/openapi.json
+          --extends=minimal
+
       - name: Publicar OpenAPI
         uses: actions/upload-artifact@v7.0.2
         with:
@@ -198,8 +207,19 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
 
+      - name: Setup Node
+        uses: actions/setup-node@v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
       - name: Markdown
         run: npx --yes markdownlint-cli2@0.24.1
+
+      - name: Contrato, README e inventário em sincronia
+        run: node Projetos/fisga/scripts/verificar-rotas.mjs
+
+      - name: Testes da guarda de rotas
+        run: node --test Projetos/fisga/scripts/verificar-rotas.test.mjs
 
       - name: Links
         uses: lycheeverse/lychee-action@v2.9.0

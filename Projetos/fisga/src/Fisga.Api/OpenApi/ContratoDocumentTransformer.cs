@@ -16,6 +16,52 @@ public sealed class ContratoDocumentTransformer : IOpenApiDocumentTransformer
         OpenApiDocumentTransformerContext context,
         CancellationToken cancellationToken)
     {
+        document.Info ??= new OpenApiInfo();
+        document.Info.Title = "API do Fisga";
+        document.Info.Description = DescricaoDoDocumento;
+        document.Info.Contact = new OpenApiContact
+        {
+            Name = "Fisga",
+            Url = new Uri("https://fisga.abson.tech")
+        };
+        document.Info.License = new OpenApiLicense { Name = "Proprietária" };
+
+        // Fixo de propósito: o artefato é gerado em Development e comparado byte
+        // a byte no CI. Escolher por ambiente faria o JSON mudar entre máquinas
+        // e o portal publicar um endereço que não existe.
+        document.Servers =
+        [
+            new OpenApiServer
+            {
+                Url = "https://api.fisga.abson.tech",
+                Description = "Produção"
+            },
+            new OpenApiServer
+            {
+                Url = "http://localhost:5184",
+                Description = "Local"
+            }
+        ];
+
+        // document.Tags é ISet: a ordem vem do gerador e não é contrato.
+        foreach (var tag in document.Tags ?? new HashSet<OpenApiTag>())
+        {
+            // Name é anulável na Microsoft.OpenApi 2.13; separar os dois casos
+            // mantém o diagnóstico utilizável em -warnaserror.
+            if (tag.Name is null)
+            {
+                throw new InvalidOperationException("Tag sem nome no contrato OpenAPI.");
+            }
+
+            if (!Tags.Descricoes.TryGetValue(tag.Name, out var descricao))
+            {
+                throw new InvalidOperationException(
+                    $"Tag sem descrição em Tags.Descricoes: {tag.Name}");
+            }
+
+            tag.Description = descricao;
+        }
+
         document.Components ??= new OpenApiComponents();
         document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
 
@@ -39,4 +85,37 @@ public sealed class ContratoDocumentTransformer : IOpenApiDocumentTransformer
 
         return Task.CompletedTask;
     }
+
+    private static readonly string DescricaoDoDocumento = $$"""
+        API do Fisga: o diário de pesca que registra capturas com identidade própria.
+
+        As operações são de leitura pública, exigem sessão ou exigem token
+        administrativo; `security` em cada uma diz qual é o caso. A sessão é o
+        cookie `fisga_auth`, com validade deslizante de 30 dias.
+
+        **Erros.** Erro de negócio, sessão e middleware usam `{codigo, detalhe}`
+        (`ErroResponse`). Corpo de requisição que o framework não consegue ler é
+        recusado com `400` sem corpo, antes do handler; exceção não tratada vira
+        `500 erro_inesperado`. O `429` não tem corpo e traz o header
+        `Retry-After` em segundos.
+
+        **Consentimento.** Usuário autenticado com Termos ou Privacidade
+        pendentes recebe `403` em qualquer rota `/api` que exija sessão, exceto
+        `GET /api/auth/me`, `POST /api/auth/sair` e
+        `POST /api/conta/consentimento`; rotas públicas seguem livres:
+
+        ```json
+        {"codigo":"consentimento_pendente","detalhe":"{{DetalhesDeErro.ConsentimentoPendente}}"}
+        ```
+
+        **Origem.** Mutação (`POST`, `PUT`, `PATCH`, `DELETE`) com `Origin` de
+        outro site recebe `403 origem_invalida`; em leitura a checagem não atua:
+
+        ```json
+        {"codigo":"origem_invalida","detalhe":"{{DetalhesDeErro.OrigemInvalida}}"}
+        ```
+
+        As duas rotas administrativas respondem `404` sem corpo a token inválido,
+        de propósito: não revelam que o token existe.
+        """;
 }

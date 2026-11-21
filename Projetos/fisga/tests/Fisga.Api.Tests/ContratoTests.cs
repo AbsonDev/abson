@@ -155,6 +155,132 @@ public sealed class ContratoTests
     }
 
     [Fact]
+    public async Task DocumentoTemIdentidadePublica()
+    {
+        var raiz = (await LoadAsync()).RootElement;
+        var info = raiz.GetProperty("info");
+
+        Assert.Equal("API do Fisga", info.GetProperty("title").GetString());
+        Assert.False(string.IsNullOrWhiteSpace(info.GetProperty("version").GetString()));
+
+        var descricao = info.GetProperty("description").GetString() ?? string.Empty;
+        Assert.Contains("consentimento_pendente", descricao);
+        Assert.Contains("origem_invalida", descricao);
+        Assert.Contains("Retry-After", descricao);
+        // A lista de exceções do 403 é a parte que um leitor usa para saber onde
+        // continua funcionando com consentimento pendente; sem guarda, some sem aviso.
+        Assert.Contains("POST /api/conta/consentimento", descricao);
+        // O 400 tem duas formas (corpo de erro e corpo vazio do binding); a
+        // distinção só existe na prosa, então o texto é contrato, não enfeite.
+        Assert.Contains("`400` sem corpo", descricao);
+
+        Assert.Equal("Fisga", info.GetProperty("contact").GetProperty("name").GetString());
+        Assert.Equal(
+            "https://fisga.abson.tech",
+            info.GetProperty("contact").GetProperty("url").GetString());
+        Assert.Equal("Proprietária", info.GetProperty("license").GetProperty("name").GetString());
+        Assert.False(info.GetProperty("license").TryGetProperty("url", out _));
+        Assert.False(info.GetProperty("license").TryGetProperty("identifier", out _));
+        Assert.False(info.GetProperty("contact").TryGetProperty("email", out _));
+
+        var servidores = raiz.GetProperty("servers").EnumerateArray().ToList();
+        Assert.Equal(2, servidores.Count);
+        Assert.Equal("https://api.fisga.abson.tech", servidores[0].GetProperty("url").GetString());
+        Assert.Equal("Produção", servidores[0].GetProperty("description").GetString());
+        Assert.Equal("http://localhost:5184", servidores[1].GetProperty("url").GetString());
+        Assert.Equal("Local", servidores[1].GetProperty("description").GetString());
+    }
+
+    [Fact]
+    public async Task TagsTemDescricao()
+    {
+        var raiz = (await LoadAsync()).RootElement;
+        var tags = raiz.GetProperty("tags").EnumerateArray().ToList();
+
+        Assert.Equal(Tags.Todas.Count, tags.Count);
+        Assert.Equal(
+            Tags.Todas.OrderBy(nome => nome, StringComparer.Ordinal),
+            tags.Select(tag => tag.GetProperty("name").GetString())
+                .OrderBy(nome => nome, StringComparer.Ordinal));
+
+        foreach (var tag in tags)
+        {
+            var nome = tag.GetProperty("name").GetString()!;
+            Assert.True(
+                tag.TryGetProperty("description", out var descricao),
+                $"Tag sem descrição: {nome}");
+            Assert.Equal(Tags.Descricoes[nome], descricao.GetString());
+        }
+    }
+
+    [Fact]
+    public async Task ComportamentosQueSurpreendemEstaoDocumentados()
+    {
+        var documento = await LoadAsync();
+        var operacoes = Operacoes(documento);
+
+        string Descricao(string metodo, string rota)
+        {
+            var encontrada = operacoes.SingleOrDefault(
+                operacao => operacao.Metodo == metodo && operacao.Rota == rota);
+            Assert.True(
+                encontrada.Operacao.ValueKind != JsonValueKind.Undefined,
+                $"Operação ausente no contrato: {metodo} {rota}");
+
+            return encontrada.Operacao.GetProperty("description").GetString() ?? string.Empty;
+        }
+
+        // 1. 404 proposital das rotas administrativas.
+        foreach (var rota in new[] { "/api/newsletter/enviar", "/api/newsletter/preview" })
+        {
+            var metodo = rota.EndsWith("enviar", StringComparison.Ordinal) ? "POST" : "GET";
+            var descricao = Descricao(metodo, rota);
+            Assert.Contains("proposital", descricao, StringComparison.Ordinal);
+            Assert.Contains("404 sem corpo", descricao, StringComparison.Ordinal);
+        }
+
+        // 2. GET de auth com efeito colateral e os três destinos do 302.
+        foreach (var rota in new[] { "/api/auth/confirmar", "/api/auth/google/concluir" })
+        {
+            var descricao = Descricao("GET", rota);
+            Assert.Contains("efeito colateral", descricao, StringComparison.Ordinal);
+            Assert.Contains("/boas-vindas?novo=1", descricao, StringComparison.Ordinal);
+            Assert.Contains("estado=ok", descricao, StringComparison.Ordinal);
+            Assert.Contains("estado=<codigo>", descricao, StringComparison.Ordinal);
+        }
+
+        Assert.Contains(
+            "estado=google_conectado",
+            Descricao("GET", "/api/auth/google/conectar/concluir"),
+            StringComparison.Ordinal);
+
+        // 3. 200 com autenticado:false em /api/auth/me, como exemplo da resposta.
+        var me = operacoes.SingleOrDefault(operacao =>
+            operacao.Metodo == "GET" && operacao.Rota == "/api/auth/me");
+        Assert.True(
+            me.Operacao.ValueKind != JsonValueKind.Undefined,
+            "Operação ausente no contrato: GET /api/auth/me");
+
+        var exemplo = me.Operacao.GetProperty("responses").GetProperty("200")
+            .GetProperty("content").GetProperty("application/json")
+            .GetProperty("examples").GetProperty("semSessao")
+            .GetProperty("value");
+
+        Assert.False(exemplo.GetProperty("autenticado").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, exemplo.GetProperty("usuario").ValueKind);
+
+        // O exemplo tem que ter as mesmas chaves do schema publicado, senão vira
+        // documentação velha na primeira propriedade nova do MeResponse.
+        var propriedades = documento.RootElement
+            .GetProperty("components").GetProperty("schemas").GetProperty("MeResponse")
+            .GetProperty("properties").EnumerateObject().Select(propriedade => propriedade.Name)
+            .OrderBy(nome => nome, StringComparer.Ordinal);
+        var chavesDoExemplo = exemplo.EnumerateObject().Select(propriedade => propriedade.Name)
+            .OrderBy(nome => nome, StringComparer.Ordinal);
+        Assert.Equal(propriedades, chavesDoExemplo);
+    }
+
+    [Fact]
     public async Task TagsSaoDeDominio()
     {
         var documento = await LoadAsync();
@@ -531,7 +657,7 @@ public sealed class ContratoTests
                 }
 
                 if (!objeto.TryGetProperty("description", out var descricao)
-                    || descricao.GetString() != RespostasPadrao.DescricaoComErro(status))
+                    || descricao.GetString() != RespostasPadrao.DescricaoComErro(status, metodo))
                 {
                     violacoes.Add($"{metodo} {rota} {status}: descrição fora do catálogo");
                 }

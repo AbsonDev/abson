@@ -10,12 +10,14 @@ repositório: em produção, `/openapi/v1.json`, `/swagger` e `/scalar` responde
 `404`. Quem integra precisa ler o código-fonte.
 
 O contrato também não contava a história toda. O
-[inventário](../api/inventario.md) lista as lacunas do contrato: `201`/`202`/`204`
+[inventário](../api/inventario.md) listava as lacunas do contrato: `201`/`202`/`204`
 ausentes, formato de erro real (`{codigo, detalhe}`) em vez de RFC 9457, uploads
 multipart sem schema e rotas administrativas que respondem `404` de propósito.
 Segurança, tags, `operationId`, rate limit e cache foram resolvidos no A1
 (2026-11-20). Status reais, erro único, uploads multipart e `Retry-After` foram
-resolvidos no A2 (2026-11-20), restando `info`/`servers` para o A3.
+resolvidos no A2 (2026-11-20). `info`/`servers`, os comportamentos que
+surpreendem e a guarda de rotas fecharam no A3 (2026-11-20): a F1 está concluída
+e não há lacuna conhecida.
 
 Publicar esse contrato cru produziria documentação que mente. Publicar
 documentação escrita à mão sem contrato produziria documentação que envelhece
@@ -31,9 +33,9 @@ sobreviver ao CI que já existe (`gate` + `workflow_run`).
    em tempo de build a partir de `docs/api/openapi.json`; nenhuma operação
    documentada pode existir só na prosa. Prosa cobre propósito, acesso,
    autenticação, limites, erros e exemplos.
-3. **Corrigir o contrato é pré-requisito da publicação.** F1 fecha as lacunas do
-   contrato antes de o portal ir ao ar; o portal nasce com status reais e
-   schemas de erro.
+3. **Corrigir o contrato é pré-requisito da publicação.** F1 fechou as lacunas
+   do contrato (2026-11-20) antes de o portal ir ao ar; o portal nasce com status
+   reais e schemas de erro.
 4. **Leitura pública de tudo, execução restrita.** Todas as operações são
    documentadas, inclusive as administrativas. O console "Experimente" só
    executa `GET` públicos; escritas e rotas de sessão exigem credencial do
@@ -54,7 +56,7 @@ sobreviver ao CI que já existe (`gate` + `workflow_run`).
 | **A — rota `/docs` no app Astro do Fisga** | Amarra o ciclo de deploy da documentação ao do produto. Um typo em um guia exigiria deploy do app inteiro, e o portal herdaria SSR, Sentry e cookies do app. |
 | **C — plataforma hospedada (Mintlify, ReadMe, Bump.sh)** | Rápido no começo, mas preço por assento, lock-in de conteúdo, dependência de CDN de terceiros e pouca liberdade para a identidade do Fisga. Contraria a decisão de manter a documentação no repositório. |
 | **Embed de Scalar/Redoc em runtime** | Referência só existe com JavaScript, sem HTML indexável, sujeita a mudança de comportamento de CDN e a CSP mais frouxa. O visual também não conversa com o design system do Fisga. |
-| **Documentação manual em Markdown sem geração** | Divergiria do contrato no primeiro endpoint novo. Já acontece hoje: o resumo do README, o inventário e o spec só coincidem enquanto alguém compara à mão; nenhum job falha quando um endpoint novo entra só no código. |
+| **Documentação manual em Markdown sem geração** | Divergiria do contrato no primeiro endpoint novo. Era o que acontecia antes da F1: o resumo do README, o inventário e o spec só coincidiam enquanto alguém comparava à mão, e nenhum job falhava quando um endpoint novo entrava só no código. Desde o A3, `scripts/verificar-rotas.mjs` roda no job `docs` e falha listando a rota divergente. |
 | **Publicar o `openapi.json` cru em produção** | Não resolve nada do ponto de vista de quem integra: continua sendo leitura de máquina sobre um contrato ainda incompleto. |
 
 ## Consequências
@@ -63,7 +65,7 @@ sobreviver ao CI que já existe (`gate` + `workflow_run`).
   e a documentação divergem. Referência completa e indexável, em português, com
   a identidade do Fisga. Custo de hospedagem de site estático. Nenhum segredo
   novo no runtime: o portal não fala com o banco.
-- **Negativas.** F1 vira bloqueio real de cronograma — não dá para "publicar
+- **Negativas.** F1 virou bloqueio real de cronograma — não dava para "publicar
   logo e corrigir depois". Exige um terceiro app e um terceiro webhook no
   Coolify, e um job `docs-site` no pipeline que precisa entrar na lista de
   dependências do `gate`.
@@ -74,10 +76,19 @@ sobreviver ao CI que já existe (`gate` + `workflow_run`).
   (c) Portal e app podem divergir de identidade visual — mitigado pelo
   `DESIGN.md` versionado em `design-system/`.
 - **Invariantes preservados.** O contrato continua gerado por
-  `scripts/gerar-openapi.sh` e comparado no job `docs`; o portal **consome** esse
-  arquivo, não o reescreve. Nenhuma operação muda de status, corpo ou media
-  type nesta fase; o único acréscimo é o header `Retry-After` no `429` (A2),
-  aditivo para quem já consome a API.
+  `scripts/gerar-openapi.sh`, regenerado e comparado byte a byte no job **`api`**;
+  a guarda que compara contrato, `## API` do `README.md` e inventário roda no job
+  `docs`. O portal **consome** o `openapi.json`, não o reescreve. Nenhuma
+  operação muda de status, corpo ou media type nesta fase; os acréscimos são
+  aditivos para quem já consome a API: o header `Retry-After` no `429` (A2) e o
+  `examples.semSessao` no `200` de `GET /api/auth/me` (A3).
+- **F1 fechada (2026-11-20).** `info` (título, descrição, contato e licença) e
+  `servers` são fixos no transformer, com produção e local na mesma ordem, para o
+  artefato não depender do ambiente que o gerou. O lint de OpenAPI
+  (`@redocly/cli`, `--extends=minimal`) roda no job `api` e o documento está
+  `valid`, com 9 warnings advisory. Os comportamentos que surpreendem (redirects
+  de auth, `404` proposital das rotas administrativas, `200` sem sessão no `/me`)
+  estão descritos no contrato. O inventário não tem lacuna conhecida.
 
 ## Desdobramentos
 

@@ -17,9 +17,9 @@ convenções de branch, labels, campos do quadro e checklist de merge, está em
 PR
 └── fisga-pipeline
     ├── changes   (separa mudança de código de mudança de documentação)
-    ├── api       (restore locked + format + build + 404 testes)
+    ├── api       (restore locked + format + build + 410 testes + contrato + lint OpenAPI)
     ├── web       (npm ci + astro check + build + 165 Playwright mockados)
-    ├── docs      (markdownlint + links, em PR de código ou de documentação)
+    ├── docs      (markdownlint + guarda de rotas + links, em PR de código ou de documentação)
     ├── docker    (build das imagens sem push, em PR e workflow_dispatch)
     └── gate      (check obrigatório)
 
@@ -94,11 +94,13 @@ O filtro separa código de documentação:
 - `dotnet restore Fisga.slnx --locked-mode`
 - `dotnet format Fisga.slnx --verify-no-changes --no-restore`
 - `dotnet build Fisga.slnx -c Release --no-restore -warnaserror`
-- `dotnet test Fisga.slnx -c Release --no-build` (404 testes)
+- `dotnet test Fisga.slnx -c Release --no-build` (410 testes)
 - `./scripts/gerar-openapi.sh` (regenera `docs/api/openapi.json` com SQLite temporário, ambiente
   Development e Sentry desligado)
 - `git diff --exit-code -- docs/api/openapi.json` (contrato desatualizado falha o job com a instrução
   de rodar o script e commitar)
+- `npx --yes @redocly/cli@2.82.0 lint docs/api/openapi.json --extends=minimal` (estrutura e
+  referências; os warnings são advisory e o job só falha com erro)
 
 Os resultados TRX são enviados como artifact `fisga-test-results` (retenção de 7 dias).
 `docs/api/openapi.json` também é publicado como artifact `fisga-openapi` (retenção de 30 dias). O job
@@ -126,11 +128,17 @@ aparecer como `ARG`/`ENV` no Dockerfile.
 Roda em PR de código **e** em PR só de documentação (`documentacao=true`), mas não no `push`:
 link externo que morre depois do merge não pode bloquear o deploy de código já mergeado.
 
+- `actions/setup-node` (Node 24, o mesmo `NODE_VERSION` dos outros jobs).
 - `npx --yes markdownlint-cli2@0.24.1` (config em `.markdownlint-cli2.jsonc`).
+- `node Projetos/fisga/scripts/verificar-rotas.mjs` (contrato, `## API` do `README.md` e
+  inventário em sincronia; falha listando a rota que falta em cada documento).
+- `node --test Projetos/fisga/scripts/verificar-rotas.test.mjs` (testes da guarda, incluindo o
+  subprocesso do CLI).
 - `lycheeverse/lychee-action` com `.lychee.toml` em `AGENTS.md`, `Projetos/fisga/README.md`,
   `Projetos/fisga/AGENTS.md` e `Projetos/fisga/docs/**/*.md`.
 
-O `gate` depende dele: link quebrado ou Markdown inválido bloqueia o merge.
+O `gate` depende dele: link quebrado, Markdown inválido ou rota divergente bloqueia o merge. O job
+roda em PR e `workflow_dispatch`; no push da `main` ele é pulado de propósito.
 
 ### `gate`
 

@@ -73,8 +73,10 @@ Resumo do que está em [`docs/ci-cd.md`](docs/ci-cd.md) (o runbook é a fonte):
 - Commitar segredo (`.env`, token, DSN, chave, senha).
 - Usar `pull_request_target` em workflow.
 - Documentar endpoint à mão em vez de regenerar o contrato: o
-  `docs/api/openapi.json` é a fonte da verdade. A tabela `## API` do
-  `README.md` é resumo de produto e continua sendo atualizada à mão.
+  `docs/api/openapi.json` é a fonte da verdade. A tabela `## API` do `README.md`
+  e o inventário listam **todas** as operações, e `scripts/verificar-rotas.mjs`
+  guarda os três no job `docs` — rota nova entra no contrato, no `## API` e no
+  inventário no mesmo PR.
 - Mergear com thread de review aberta.
 
 ## Antes de abrir PR

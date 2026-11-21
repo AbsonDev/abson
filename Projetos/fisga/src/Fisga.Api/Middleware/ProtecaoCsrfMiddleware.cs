@@ -15,7 +15,7 @@ public sealed class ProtecaoCsrfMiddleware(RequestDelegate next, IConfiguration 
     public async Task InvokeAsync(HttpContext context)
     {
         if (context.Request.Path.StartsWithSegments("/api")
-            && EhMutacao(context.Request.Method))
+            && MetodosHttp.EhMutacao(context.Request.Method))
         {
             var origem = context.Request.Headers.Origin.ToString();
             if (!string.IsNullOrWhiteSpace(origem)
@@ -24,17 +24,11 @@ public sealed class ProtecaoCsrfMiddleware(RequestDelegate next, IConfiguration 
                 context.Response.StatusCode = StatusCodes.Status403Forbidden;
                 context.Response.ContentType = "application/problem+json";
                 await context.Response.WriteAsJsonAsync(
-                    new ErroResponse(CodigosDeErro.OrigemInvalida, "Origem da requisição não permitida."));
+                    new ErroResponse(CodigosDeErro.OrigemInvalida, DetalhesDeErro.OrigemInvalida));
                 return;
             }
         }
 
         await next(context);
     }
-
-    private static bool EhMutacao(string metodo) =>
-        HttpMethods.IsPost(metodo)
-        || HttpMethods.IsPut(metodo)
-        || HttpMethods.IsPatch(metodo)
-        || HttpMethods.IsDelete(metodo);
 }

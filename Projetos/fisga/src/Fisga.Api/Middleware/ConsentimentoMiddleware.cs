@@ -95,7 +95,7 @@ public sealed class ConsentimentoMiddleware(RequestDelegate next)
         await context.Response.WriteAsJsonAsync(
             new ErroResponse(
                 CodigosDeErro.ConsentimentoPendente,
-                "Aceite os termos e a privacidade vigentes para continuar."),
+                DetalhesDeErro.ConsentimentoPendente),
             options: null,
             contentType: "application/problem+json");
     }

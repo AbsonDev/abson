@@ -47,6 +47,7 @@ Conteúdo de produto (espécies, técnicas, locais) não fica aqui.
 - [Spec — Contrato verdadeiro da API](superpowers/specs/2026-11-20-f1-contrato-verdadeiro-design.md)
 - [Plano — A1 do contrato verdadeiro](superpowers/plans/2026-11-20-f1-a1-contrato-identidade.md)
 - [Plano — A2 do contrato verdadeiro](superpowers/plans/2026-11-20-f1-a2-respostas-reais.md)
+- [Plano — A3 do contrato verdadeiro](superpowers/plans/2026-11-20-f1-a3-documento-e-guardas.md)
 
 ## Referências
 

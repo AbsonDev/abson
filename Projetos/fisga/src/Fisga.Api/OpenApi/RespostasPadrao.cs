@@ -18,15 +18,22 @@ public static class RespostasPadrao
     /// <c>application/problem+json</c>; qualquer outro status é falha de
     /// configuração do contrato e estoura na geração do documento.
     /// </summary>
+    /// <param name="status">Status HTTP da resposta de erro.</param>
+    /// <param name="metodo">
+    /// Método da operação. O <c>403</c> só cita <c>origem_invalida</c> em
+    /// mutação, porque a checagem de <c>Origin</c> do CSRF não atua em leitura.
+    /// </param>
     /// <exception cref="InvalidOperationException">Status sem descrição de erro com corpo.</exception>
-    public static string DescricaoComErro(int status) => status switch
+    public static string DescricaoComErro(int status, string metodo) => status switch
     {
         StatusCodes.Status400BadRequest =>
-            "Requisição inválida. Regra de negócio devolve `codigo` e `detalhe`; corpo JSON malformado devolve ProblemDetails do framework.",
+            "Requisição inválida. Regra de negócio devolve `codigo` e `detalhe`; corpo ilegível é recusado antes do handler, com `400` sem corpo.",
         StatusCodes.Status401Unauthorized =>
             $"Sessão ausente, expirada ou revogada (`codigo`: `{CodigosDeErro.NaoAutenticado}`).",
-        StatusCodes.Status403Forbidden =>
+        StatusCodes.Status403Forbidden when MetodosHttp.EhMutacao(metodo) =>
             $"Sem permissão (`{CodigosDeErro.AcessoNegado}`), consentimento pendente (`{CodigosDeErro.ConsentimentoPendente}`) ou origem não permitida (`{CodigosDeErro.OrigemInvalida}`).",
+        StatusCodes.Status403Forbidden =>
+            $"Sem permissão (`{CodigosDeErro.AcessoNegado}`) ou consentimento pendente (`{CodigosDeErro.ConsentimentoPendente}`).",
         StatusCodes.Status404NotFound => "Recurso não encontrado.",
         StatusCodes.Status500InternalServerError =>
             $"Erro inesperado (`codigo`: `{CodigosDeErro.ErroInesperado}`). Tente novamente em instantes.",

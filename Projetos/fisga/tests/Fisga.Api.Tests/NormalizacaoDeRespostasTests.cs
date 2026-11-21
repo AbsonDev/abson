@@ -28,7 +28,7 @@ public sealed class NormalizacaoDeRespostasTests
             }
         };
 
-        ContratoOperationTransformer.NormalizarRespostas(Operacao("400", resposta));
+        ContratoOperationTransformer.NormalizarRespostas(Operacao("400", resposta), "GET", "/api/teste");
 
         Assert.True(resposta.Content!.ContainsKey(RespostasPadrao.TipoProblema));
         Assert.True(resposta.Content.ContainsKey(RespostasPadrao.TipoJson));
@@ -37,7 +37,7 @@ public sealed class NormalizacaoDeRespostasTests
         Assert.NotSame(mediaTypeOriginal, espelho);
         Assert.Same(schemaDoErro, espelho.Schema);
         Assert.Same(schemaDoErro, resposta.Content[RespostasPadrao.TipoProblema].Schema);
-        Assert.Equal(RespostasPadrao.DescricaoComErro(400), resposta.Description);
+        Assert.Equal(RespostasPadrao.DescricaoComErro(400, "GET"), resposta.Description);
     }
 
     [Fact]
@@ -45,7 +45,7 @@ public sealed class NormalizacaoDeRespostasTests
     {
         var resposta = new OpenApiResponse();
 
-        ContratoOperationTransformer.NormalizarRespostas(Operacao("201", resposta));
+        ContratoOperationTransformer.NormalizarRespostas(Operacao("201", resposta), "GET", "/api/teste");
 
         var header = Assert.Contains("Location", resposta.Headers!);
         Assert.Equal(JsonSchemaType.String, header.Schema!.Type);
@@ -58,7 +58,7 @@ public sealed class NormalizacaoDeRespostasTests
     {
         var resposta = new OpenApiResponse();
 
-        ContratoOperationTransformer.NormalizarRespostas(Operacao("429", resposta));
+        ContratoOperationTransformer.NormalizarRespostas(Operacao("429", resposta), "GET", "/api/teste");
 
         var header = Assert.Contains("Retry-After", resposta.Headers!);
         Assert.Equal(RejeicaoDoRateLimiter.DescricaoDoHeader, header.Description);
@@ -73,7 +73,7 @@ public sealed class NormalizacaoDeRespostasTests
     {
         var resposta = new OpenApiResponse();
 
-        ContratoOperationTransformer.NormalizarRespostas(Operacao("204", resposta));
+        ContratoOperationTransformer.NormalizarRespostas(Operacao("204", resposta), "GET", "/api/teste");
 
         Assert.Equal(RespostasPadrao.DescricaoSemSchema(204), resposta.Description);
         Assert.Null(resposta.Headers);
@@ -95,7 +95,7 @@ public sealed class NormalizacaoDeRespostasTests
             }
         };
 
-        ContratoOperationTransformer.NormalizarRespostas(Operacao("400", resposta));
+        ContratoOperationTransformer.NormalizarRespostas(Operacao("400", resposta), "GET", "/api/teste");
 
         Assert.Equal("detalhe de negócio", resposta.Description);
         Assert.True(resposta.Content!.ContainsKey(RespostasPadrao.TipoJson));
@@ -106,7 +106,7 @@ public sealed class NormalizacaoDeRespostasTests
     {
         var resposta = new OpenApiResponse { Description = "sem corpo por decisão" };
 
-        ContratoOperationTransformer.NormalizarRespostas(Operacao("204", resposta));
+        ContratoOperationTransformer.NormalizarRespostas(Operacao("204", resposta), "GET", "/api/teste");
 
         Assert.Equal("sem corpo por decisão", resposta.Description);
         Assert.Null(resposta.Headers);
@@ -127,7 +127,7 @@ public sealed class NormalizacaoDeRespostasTests
             }
         };
 
-        ContratoOperationTransformer.NormalizarRespostas(Operacao("200", resposta));
+        ContratoOperationTransformer.NormalizarRespostas(Operacao("200", resposta), "GET", "/api/teste");
 
         Assert.Equal("descrição gerada pelo framework", resposta.Description);
         Assert.Null(resposta.Headers);
@@ -152,12 +152,55 @@ public sealed class NormalizacaoDeRespostasTests
             }
         };
 
-        ContratoOperationTransformer.NormalizarRespostas(Operacao("200", resposta));
+        ContratoOperationTransformer.NormalizarRespostas(Operacao("200", resposta), "GET", "/api/teste");
 
         var pdf = Assert.Contains(RespostasPadrao.TipoPdf, resposta.Content!);
         Assert.Equal(JsonSchemaType.String, pdf.Schema!.Type);
         Assert.Equal("binary", pdf.Schema.Format);
         Assert.Equal("OK", resposta.Description);
+    }
+
+    [Fact]
+    public void ExemploDoMeVaiParaOMediaTypeJson()
+    {
+        var resposta = new OpenApiResponse
+        {
+            Description = "OK",
+            Content = new Dictionary<string, OpenApiMediaType>
+            {
+                [RespostasPadrao.TipoJson] = new() { Schema = new OpenApiSchema() }
+            }
+        };
+
+        ContratoOperationTransformer.NormalizarRespostas(
+            Operacao("200", resposta), "GET", "/api/auth/me");
+
+        var exemplo = Assert.Contains("semSessao", resposta.Content![RespostasPadrao.TipoJson].Examples!);
+        Assert.False(exemplo.Value!["autenticado"]!.GetValue<bool>());
+    }
+
+    [Theory]
+    [InlineData("POST", true)]
+    [InlineData("GET", false)]
+    public void DescricaoDo403SoCitaOrigemEmMutacao(string metodo, bool citaOrigem)
+    {
+        var resposta = new OpenApiResponse
+        {
+            Description = ReasonPhrases.GetReasonPhrase(403),
+            Content = new Dictionary<string, OpenApiMediaType>
+            {
+                [RespostasPadrao.TipoProblema] = new OpenApiMediaType { Schema = new OpenApiSchema() }
+            }
+        };
+
+        ContratoOperationTransformer.NormalizarRespostas(
+            Operacao("403", resposta), metodo, "/api/teste");
+
+        // A checagem de Origin do CSRF só atua em mutação; anunciar
+        // origem_invalida em leitura mandaria o leitor tratar um erro impossível.
+        Assert.Equal(
+            citaOrigem,
+            resposta.Description!.Contains("origem_invalida", StringComparison.Ordinal));
     }
 
     private static OpenApiOperation Operacao(string status, OpenApiResponse resposta) =>

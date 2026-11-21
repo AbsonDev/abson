@@ -1,7 +1,7 @@
 # Fisga — F1: contrato verdadeiro (design de execução)
 
 **Data:** 20/11/2026
-**Status:** em aprovação
+**Status:** aprovado para implementação
 **Issues:** #62–#71 (fase F1 do programa #58)
 **Escopo:** tornar o `docs/api/openapi.json` suficiente para documentar a API sem
 ler o código. Nenhuma mudança de comportamento, exceto o `Retry-After` do `429`
@@ -172,19 +172,26 @@ por `DecisaoDeCache` — a descrição do endpoint registra essa exceção.
 - `Produces<T>(201/202/204)` nos handlers que devolvem algo diferente de `200`.
   Os quatro `POST` de criação já mandam `Location`; o contrato passa a declarar.
 - **Cada status declara a forma real, sem normalizar comportamento.** O contrato
-  tem três formas de erro e diz qual é qual:
-  - `ErroResponse` (`codigo`, `detalhe`) nos erros de negócio dos handlers;
-  - `ProblemDetails` no `400` de binding do framework (`AddProblemDetails` já
-    está ligado em `Program.cs`), com `description` explicando que validação de
-    corpo cai aqui e não em `ErroResponse`;
+  tem duas formas de erro e diz qual é qual:
+  - `ErroResponse` (`codigo`, `detalhe`) nos erros de negócio dos handlers e nos
+    middlewares;
   - **corpo vazio** onde hoje é vazio: `503` de `/ready`, `404` de
     `/api/locais/reverso` sem resultado, `404` proposital das duas rotas
-    administrativas, `413` do Kestrel em upload e `429` do rate limiter. O
-    status aparece sem `content`, com `description` dizendo por quê.
+    administrativas, `400` de corpo de requisição ilegível (recusado pelo
+    framework antes do handler) e `429` do rate limiter. O status aparece sem
+    `content`, com `description` dizendo por quê.
 
-  Isso é o que a F1.3 pede: "o spec não mistura ProblemDetails do framework com
-  `ErroResponse` sem dizer qual é qual". Migrar tudo para um schema só seria
-  mudança de comportamento e está fora de escopo.
+  Isso é o que a F1.3 pede: o spec não mistura formatos de erro sem dizer qual é
+  qual. Migrar tudo para um schema só seria mudança de comportamento e está fora
+  de escopo.
+
+  > **Correção medida na implementação (21/11/2026).** A primeira versão dizia
+  > que o `400` de binding devolvia `ProblemDetails` e que o Kestrel devolvia
+  > `413` em upload grande. Medição no Kestrel real (Produção) mostrou outra
+  > coisa: corpo ilegível é recusado com `400` **sem corpo**, antes do handler, e
+  > o `413` chega como `500 erro_inesperado`. O contrato publica o comportamento
+  > real; `AddProblemDetails` continua ligado no pipeline, mas não é o formato de
+  > nenhuma resposta publicada.
 - `ProducesProblem` por status, apontando para o schema correto de cada um.
 - `Retry-After` em segundos na rejeição do limiter.
 - Multipart em `/api/midia` e `/api/especies/sugerir`: campo `arquivo`, tipos
@@ -199,7 +206,7 @@ por `DecisaoDeCache` — a descrição do endpoint registra essa exceção.
   ```json
   [
     { "url": "https://api.fisga.abson.tech", "description": "Produção" },
-    { "url": "http://localhost:5080", "description": "Local" }
+    { "url": "http://localhost:5184", "description": "Local" }
   ]
   ```
 
@@ -208,8 +215,10 @@ por `DecisaoDeCache` — a descrição do endpoint registra essa exceção.
   carregar a URL local e o portal publicar um ambiente morto. Fixo, o JSON é
   estável nos dois sentidos.
 - Comportamentos que surpreendem: `404` proposital do admin, `GET` de auth com
-  `302`, `/me` com `200` e `autenticado:false`, `403 consentimento_pendente`,
-  `403 origem_invalida`.
+  `302`, `/me` com `200` e `autenticado:false`, `403 consentimento_pendente`
+  (em rota `/api` que exige sessão, exceto `GET /api/auth/me`,
+  `POST /api/auth/sair`, `POST /api/conta/consentimento` e as rotas públicas),
+  `403 origem_invalida` (mutação `/api` com `Origin` de outro site).
 - Script no job `docs` comparando rotas de `openapi.json`, do resumo do
   `README.md` e do inventário.
 - **Lint de OpenAPI no job `api`**, que é quem já vê mudança de contrato:
@@ -254,9 +263,10 @@ pacote remove sua linha sem editar quatro arquivos por número.
    presente nas 54 operações.
 5. Contagem de operações do spec igual à do inventário (54).
 6. A2: os quatro `POST` de criação declaram `201` com `Location`; `429`, `503`
-   de `/ready`, `404` de `/locais/reverso`, `404` do admin e `413` de upload
-   declarados sem corpo; `400` de binding aponta para `ProblemDetails`; os
-   demais erros apontam para `ErroResponse`.
+   de `/ready`, `404` de `/locais/reverso`, `404` do admin e `400` de corpo
+   ilegível declarados sem corpo; os demais erros apontam para `ErroResponse`
+   (conferido no Kestrel real: o binding recusa antes do handler, com `400` sem
+   corpo, e o `413` do Kestrel chega como `500 erro_inesperado`).
 7. A3: `info`, `servers` (produção e local) e os cinco comportamentos
    surpreendentes presentes; `@redocly/cli lint --extends=minimal` verde no job
    `api`.
@@ -269,9 +279,9 @@ Seis pontos que a primeira versão deixava em aberto; todos resolvidos sem mudar
 o escopo:
 
 1. **Formas de erro.** O contrato declara a forma real por status:
-   `ErroResponse`, `ProblemDetails` (binding) ou corpo vazio (503 de `/ready`,
-   404 de `/locais/reverso`, 404 do admin, 413 de upload, 429). Normalizar
-   tudo seria mudança de comportamento.
+   `ErroResponse` ou corpo vazio (503 de `/ready`, 404 de `/locais/reverso`,
+   404 do admin, 400 de corpo ilegível, 429). Normalizar tudo seria mudança de
+   comportamento; o `413` não existe no comportamento real e ficou fora.
 2. **Rate limit ausente no admin.** As duas rotas de newsletter não ganham
    política nesta fase; o contrato registra a ausência e o teste compara o mapa
    completo. Adicionar limite lá é decisão separada.
