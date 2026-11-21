@@ -183,11 +183,17 @@ public sealed partial class ContratoOperationTransformer(IConfiguration configur
                 && concreta.Content.TryGetValue(RespostasPadrao.TipoJson, out var tipoJson))
             {
                 tipoJson.Examples ??= new Dictionary<string, IOpenApiExample>();
-                tipoJson.Examples[exemplo.Nome] = new OpenApiExample
+                var publicado = tipoJson.Examples.TryAdd(exemplo.Nome, new OpenApiExample
                 {
                     Summary = exemplo.Resumo,
                     Value = JsonNode.Parse(exemplo.Json)
-                };
+                });
+
+                if (!publicado)
+                {
+                    throw new InvalidOperationException(
+                        $"Exemplo duplicado no contrato: {metodo} {rota} {status} ({exemplo.Nome})");
+                }
             }
         }
     }

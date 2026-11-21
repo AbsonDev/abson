@@ -794,7 +794,7 @@
           "Autenticação"
         ],
         "summary": "Conclui o vínculo com a conta Google",
-        "description": "Exige sessão. Cria apenas o vínculo, sem trocar de usuário, e responde 302 sem corpo: sucesso vai para `/conta?estado=google_conectado`; falha, para `/conta?estado=<codigo>`.",
+        "description": "Exige sessão no cookie; sem sessão o redirect também é 302, para `/conta?estado=google_conexao_nao_autenticado`. Cria apenas o vínculo, sem trocar de usuário, e responde 302 sem corpo: sucesso vai para `/conta?estado=google_conectado`; falha, para `/conta?estado=<codigo>`.",
         "operationId": "concluirConexaoGoogle",
         "responses": {
           "302": {

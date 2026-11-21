@@ -647,7 +647,7 @@ public static class AuthEndpoints
             .RequireRateLimiting("auth")
             .WithTags(Tags.Autenticacao)
             .WithSummary("Conclui o vínculo com a conta Google")
-            .WithDescription("Exige sessão. Cria apenas o vínculo, sem trocar de usuário, e responde 302 sem corpo: sucesso vai para `/conta?estado=google_conectado`; falha, para `/conta?estado=<codigo>`.");
+            .WithDescription("Exige sessão no cookie; sem sessão o redirect também é 302, para `/conta?estado=google_conexao_nao_autenticado`. Cria apenas o vínculo, sem trocar de usuário, e responde 302 sem corpo: sucesso vai para `/conta?estado=google_conectado`; falha, para `/conta?estado=<codigo>`.");
 
         app.MapGet("/api/auth/me", async (
                 HttpContext http,

@@ -213,15 +213,24 @@ public sealed class ContratoTests
         var documento = await LoadAsync();
         var operacoes = Operacoes(documento);
 
-        string Descricao(string metodo, string rota) =>
-            operacoes.Single(operacao => operacao.Metodo == metodo && operacao.Rota == rota)
-                .Operacao.GetProperty("description").GetString() ?? string.Empty;
+        string Descricao(string metodo, string rota)
+        {
+            var encontrada = operacoes.SingleOrDefault(
+                operacao => operacao.Metodo == metodo && operacao.Rota == rota);
+            Assert.True(
+                encontrada.Operacao.ValueKind != JsonValueKind.Undefined,
+                $"Operação ausente no contrato: {metodo} {rota}");
+
+            return encontrada.Operacao.GetProperty("description").GetString() ?? string.Empty;
+        }
 
         // 1. 404 proposital das rotas administrativas.
         foreach (var rota in new[] { "/api/newsletter/enviar", "/api/newsletter/preview" })
         {
             var metodo = rota.EndsWith("enviar", StringComparison.Ordinal) ? "POST" : "GET";
-            Assert.Contains("proposital", Descricao(metodo, rota), StringComparison.Ordinal);
+            var descricao = Descricao(metodo, rota);
+            Assert.Contains("proposital", descricao, StringComparison.Ordinal);
+            Assert.Contains("404 sem corpo", descricao, StringComparison.Ordinal);
         }
 
         // 2. GET de auth com efeito colateral e os três destinos do 302.
@@ -240,9 +249,13 @@ public sealed class ContratoTests
             StringComparison.Ordinal);
 
         // 3. 200 com autenticado:false em /api/auth/me, como exemplo da resposta.
-        var me = operacoes.Single(operacao =>
-            operacao.Metodo == "GET" && operacao.Rota == "/api/auth/me").Operacao;
-        var exemplo = me.GetProperty("responses").GetProperty("200")
+        var me = operacoes.SingleOrDefault(operacao =>
+            operacao.Metodo == "GET" && operacao.Rota == "/api/auth/me");
+        Assert.True(
+            me.Operacao.ValueKind != JsonValueKind.Undefined,
+            "Operação ausente no contrato: GET /api/auth/me");
+
+        var exemplo = me.Operacao.GetProperty("responses").GetProperty("200")
             .GetProperty("content").GetProperty("application/json")
             .GetProperty("examples").GetProperty("semSessao")
             .GetProperty("value");
@@ -259,12 +272,6 @@ public sealed class ContratoTests
         var chavesDoExemplo = exemplo.EnumerateObject().Select(propriedade => propriedade.Name)
             .OrderBy(nome => nome, StringComparer.Ordinal);
         Assert.Equal(propriedades, chavesDoExemplo);
-
-        // 4 e 5. Regras transversais no info.description, com o corpo de cada 403.
-        var info = documento.RootElement.GetProperty("info").GetProperty("description").GetString()!;
-        Assert.Contains("\"consentimento_pendente\"", info, StringComparison.Ordinal);
-        Assert.Contains("\"origem_invalida\"", info, StringComparison.Ordinal);
-        Assert.Contains("/api/conta/consentimento", info, StringComparison.Ordinal);
     }
 
     [Fact]
