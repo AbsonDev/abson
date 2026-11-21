@@ -544,7 +544,7 @@
           "Autenticação"
         ],
         "summary": "Confirma o link de acesso e abre a sessão",
-        "description": "Funciona sem sessão. Para navegação do navegador, redireciona 302 para o web com a sessão criada ou para a tela de erro com o código do estado.",
+        "description": "Funciona sem sessão e tem efeito colateral: consome o token, cria a sessão e responde 302, sem corpo. Primeiro acesso redireciona para `/boas-vindas?novo=1`; os seguintes, para `/entrar/confirmar?estado=ok`; erro de link, para `/entrar/confirmar?estado=<codigo>`. Não use como link idempotente.",
         "operationId": "confirmarLink",
         "parameters": [
           {
@@ -628,7 +628,7 @@
           "Autenticação"
         ],
         "summary": "Inicia o login com Google",
-        "description": "Funciona sem sessão. Para navegação do navegador, redireciona 302 ao Google e retorna 503 quando as credenciais não estão configuradas.",
+        "description": "Funciona sem sessão. Redireciona 302 ao Google e responde 503 quando as credenciais não estão configuradas.",
         "operationId": "iniciarLoginGoogle",
         "responses": {
           "302": {
@@ -677,7 +677,7 @@
           "Autenticação"
         ],
         "summary": "Conclui o login com Google",
-        "description": "Funciona sem sessão. É o retorno do Google: cria a sessão e redireciona 302 para o web; sem a sessão externa válida, redireciona para a tela de erro.",
+        "description": "Funciona sem sessão e tem efeito colateral: é o retorno do Google, cria a sessão e responde 302, sem corpo. Primeiro acesso redireciona para `/boas-vindas?novo=1`; os seguintes, para `/entrar/confirmar?estado=ok`; falha, para `/entrar/confirmar?estado=<codigo>`.",
         "operationId": "concluirLoginGoogle",
         "responses": {
           "302": {
@@ -794,7 +794,7 @@
           "Autenticação"
         ],
         "summary": "Conclui o vínculo com a conta Google",
-        "description": "Exige sessão. Cria apenas o vínculo, sem trocar de usuário; sem sessão ou com intenção inválida, redireciona 302 para a página da conta com o estado do erro.",
+        "description": "Exige sessão. Cria apenas o vínculo, sem trocar de usuário, e responde 302 sem corpo: sucesso vai para `/conta?estado=google_conectado`; falha, para `/conta?estado=<codigo>`.",
         "operationId": "concluirConexaoGoogle",
         "responses": {
           "302": {
@@ -856,6 +856,18 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MeResponse"
+                },
+                "examples": {
+                  "semSessao": {
+                    "summary": "Sem sessão: 200 com autenticado false, não erro.",
+                    "value": {
+                      "autenticado": false,
+                      "usuario": null,
+                      "consentimentoPendente": false,
+                      "googleConectado": false,
+                      "temSenha": false
+                    }
+                  }
                 }
               }
             }
@@ -1507,7 +1519,7 @@
           "Newsletter"
         ],
         "summary": "Envia a newsletter do mês aos assinantes",
-        "description": "Exige o header X-Admin-Token; token inválido ou vazio retorna 404 sem corpo. Aceita o mês de referência e o modo de simulação, que percorre o envio sem disparar e-mails, e retorna 200 com o resultado.",
+        "description": "Exige o header X-Admin-Token; token inválido ou vazio retorna 404 sem corpo, o que é proposital: a resposta não revela que o token existe. Aceita o mês de referência e o modo de simulação, que percorre o envio sem disparar e-mails, e retorna 200 com o resultado.",
         "operationId": "enviarNewsletter",
         "responses": {
           "200": {
@@ -1553,7 +1565,7 @@
           "Newsletter"
         ],
         "summary": "Pré-visualiza a newsletter do mês",
-        "description": "Exige o header X-Admin-Token; token inválido ou vazio retorna 404 sem corpo. O e-mail é obrigatório e a sua ausência retorna 404 sem corpo; o mês é opcional e, quando omitido, usa o mês atual. Retorna 200 com o HTML da mensagem, ou 404 sem corpo quando não há mensagem para o e-mail.",
+        "description": "Exige o header X-Admin-Token; token inválido ou vazio retorna 404 sem corpo, o que é proposital: a resposta não revela que o token existe. O e-mail é obrigatório e a sua ausência retorna 404 sem corpo; o mês é opcional e, quando omitido, usa o mês atual. Retorna 200 com o HTML da mensagem, ou 404 sem corpo quando não há mensagem para o e-mail.",
         "operationId": "previsualizarNewsletter",
         "parameters": [
           {

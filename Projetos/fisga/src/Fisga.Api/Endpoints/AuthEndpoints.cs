@@ -393,7 +393,7 @@ public static class AuthEndpoints
             .RequireRateLimiting("auth")
             .WithTags(Tags.Autenticacao)
             .WithSummary("Confirma o link de acesso e abre a sessão")
-            .WithDescription("Funciona sem sessão. Para navegação do navegador, redireciona 302 para o web com a sessão criada ou para a tela de erro com o código do estado.");
+            .WithDescription("Funciona sem sessão e tem efeito colateral: consome o token, cria a sessão e responde 302, sem corpo. Primeiro acesso redireciona para `/boas-vindas?novo=1`; os seguintes, para `/entrar/confirmar?estado=ok`; erro de link, para `/entrar/confirmar?estado=<codigo>`. Não use como link idempotente.");
 
         app.MapGet("/api/auth/google/disponivel", (IConfiguration configuration) =>
                 Results.Ok(new GoogleDisponivelResponse(GoogleConfigurado(configuration))))
@@ -435,7 +435,7 @@ public static class AuthEndpoints
             .RequireRateLimiting("auth")
             .WithTags(Tags.Autenticacao)
             .WithSummary("Inicia o login com Google")
-            .WithDescription("Funciona sem sessão. Para navegação do navegador, redireciona 302 ao Google e retorna 503 quando as credenciais não estão configuradas.");
+            .WithDescription("Funciona sem sessão. Redireciona 302 ao Google e responde 503 quando as credenciais não estão configuradas.");
 
         app.MapGet("/api/auth/google/concluir", async (
                 HttpContext http,
@@ -510,7 +510,7 @@ public static class AuthEndpoints
             .RequireRateLimiting("auth")
             .WithTags(Tags.Autenticacao)
             .WithSummary("Conclui o login com Google")
-            .WithDescription("Funciona sem sessão. É o retorno do Google: cria a sessão e redireciona 302 para o web; sem a sessão externa válida, redireciona para a tela de erro.");
+            .WithDescription("Funciona sem sessão e tem efeito colateral: é o retorno do Google, cria a sessão e responde 302, sem corpo. Primeiro acesso redireciona para `/boas-vindas?novo=1`; os seguintes, para `/entrar/confirmar?estado=ok`; falha, para `/entrar/confirmar?estado=<codigo>`.");
 
         // Conectar Google em /conta: fluxo SEPARADO do login da Task 8. A conta
         // é a da sessão atual — nunca trocamos de usuário, nunca emitimos cookie.
@@ -647,7 +647,7 @@ public static class AuthEndpoints
             .RequireRateLimiting("auth")
             .WithTags(Tags.Autenticacao)
             .WithSummary("Conclui o vínculo com a conta Google")
-            .WithDescription("Exige sessão. Cria apenas o vínculo, sem trocar de usuário; sem sessão ou com intenção inválida, redireciona 302 para a página da conta com o estado do erro.");
+            .WithDescription("Exige sessão. Cria apenas o vínculo, sem trocar de usuário, e responde 302 sem corpo: sucesso vai para `/conta?estado=google_conectado`; falha, para `/conta?estado=<codigo>`.");
 
         app.MapGet("/api/auth/me", async (
                 HttpContext http,

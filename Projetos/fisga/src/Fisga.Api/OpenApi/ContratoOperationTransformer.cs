@@ -48,7 +48,7 @@ public sealed partial class ContratoOperationTransformer(IConfiguration configur
 
         EscreverExtensoes(operation, context, $"{metodo} {rota}");
 
-        NormalizarRespostas(operation);
+        NormalizarRespostas(operation, metodo, rota);
 
         return Task.CompletedTask;
     }
@@ -113,7 +113,7 @@ public sealed partial class ContratoOperationTransformer(IConfiguration configur
     // Respostas são geradas pela metadata Produces<T>; aqui elas ganham o que a
     // metadata não expressa: o espelho do schema de erro em application/json,
     // descrição por status e os headers Location/Retry-After.
-    internal static void NormalizarRespostas(OpenApiOperation operation)
+    internal static void NormalizarRespostas(OpenApiOperation operation, string metodo, string rota)
     {
         if (operation.Responses is null)
         {
@@ -176,6 +176,18 @@ public sealed partial class ContratoOperationTransformer(IConfiguration configur
                      && DescricaoVaziaOuPadrao(concreta, status))
             {
                 concreta.Description = descricao;
+            }
+
+            if (concreta.Content is not null
+                && ExemplosDeResposta.Para(metodo, rota, status) is { } exemplo
+                && concreta.Content.TryGetValue(RespostasPadrao.TipoJson, out var tipoJson))
+            {
+                tipoJson.Examples ??= new Dictionary<string, IOpenApiExample>();
+                tipoJson.Examples[exemplo.Nome] = new OpenApiExample
+                {
+                    Summary = exemplo.Resumo,
+                    Value = JsonNode.Parse(exemplo.Json)
+                };
             }
         }
     }

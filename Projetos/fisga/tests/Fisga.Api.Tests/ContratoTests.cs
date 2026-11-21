@@ -208,6 +208,66 @@ public sealed class ContratoTests
     }
 
     [Fact]
+    public async Task ComportamentosQueSurpreendemEstaoDocumentados()
+    {
+        var documento = await LoadAsync();
+        var operacoes = Operacoes(documento);
+
+        string Descricao(string metodo, string rota) =>
+            operacoes.Single(operacao => operacao.Metodo == metodo && operacao.Rota == rota)
+                .Operacao.GetProperty("description").GetString() ?? string.Empty;
+
+        // 1. 404 proposital das rotas administrativas.
+        foreach (var rota in new[] { "/api/newsletter/enviar", "/api/newsletter/preview" })
+        {
+            var metodo = rota.EndsWith("enviar", StringComparison.Ordinal) ? "POST" : "GET";
+            Assert.Contains("proposital", Descricao(metodo, rota), StringComparison.Ordinal);
+        }
+
+        // 2. GET de auth com efeito colateral e os três destinos do 302.
+        foreach (var rota in new[] { "/api/auth/confirmar", "/api/auth/google/concluir" })
+        {
+            var descricao = Descricao("GET", rota);
+            Assert.Contains("efeito colateral", descricao, StringComparison.Ordinal);
+            Assert.Contains("/boas-vindas?novo=1", descricao, StringComparison.Ordinal);
+            Assert.Contains("estado=ok", descricao, StringComparison.Ordinal);
+            Assert.Contains("estado=<codigo>", descricao, StringComparison.Ordinal);
+        }
+
+        Assert.Contains(
+            "estado=google_conectado",
+            Descricao("GET", "/api/auth/google/conectar/concluir"),
+            StringComparison.Ordinal);
+
+        // 3. 200 com autenticado:false em /api/auth/me, como exemplo da resposta.
+        var me = operacoes.Single(operacao =>
+            operacao.Metodo == "GET" && operacao.Rota == "/api/auth/me").Operacao;
+        var exemplo = me.GetProperty("responses").GetProperty("200")
+            .GetProperty("content").GetProperty("application/json")
+            .GetProperty("examples").GetProperty("semSessao")
+            .GetProperty("value");
+
+        Assert.False(exemplo.GetProperty("autenticado").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, exemplo.GetProperty("usuario").ValueKind);
+
+        // O exemplo tem que ter as mesmas chaves do schema publicado, senão vira
+        // documentação velha na primeira propriedade nova do MeResponse.
+        var propriedades = documento.RootElement
+            .GetProperty("components").GetProperty("schemas").GetProperty("MeResponse")
+            .GetProperty("properties").EnumerateObject().Select(propriedade => propriedade.Name)
+            .OrderBy(nome => nome, StringComparer.Ordinal);
+        var chavesDoExemplo = exemplo.EnumerateObject().Select(propriedade => propriedade.Name)
+            .OrderBy(nome => nome, StringComparer.Ordinal);
+        Assert.Equal(propriedades, chavesDoExemplo);
+
+        // 4 e 5. Regras transversais no info.description, com o corpo de cada 403.
+        var info = documento.RootElement.GetProperty("info").GetProperty("description").GetString()!;
+        Assert.Contains("\"consentimento_pendente\"", info, StringComparison.Ordinal);
+        Assert.Contains("\"origem_invalida\"", info, StringComparison.Ordinal);
+        Assert.Contains("/api/conta/consentimento", info, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task TagsSaoDeDominio()
     {
         var documento = await LoadAsync();
