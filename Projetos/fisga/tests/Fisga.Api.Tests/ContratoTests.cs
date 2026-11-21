@@ -170,6 +170,9 @@ public sealed class ContratoTests
         // A lista de exceções do 403 é a parte que um leitor usa para saber onde
         // continua funcionando com consentimento pendente; sem guarda, some sem aviso.
         Assert.Contains("POST /api/conta/consentimento", descricao);
+        // O 400 tem duas formas (corpo de erro e corpo vazio do binding); a
+        // distinção só existe na prosa, então o texto é contrato, não enfeite.
+        Assert.Contains("`400` sem corpo", descricao);
 
         Assert.Equal("Fisga", info.GetProperty("contact").GetProperty("name").GetString());
         Assert.Equal(
