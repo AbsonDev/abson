@@ -500,6 +500,14 @@ test('override de operação inexistente falha', () => {
   });
 });
 
+test('override sem corpo deixa notasHtml vazio', () => {
+  const modelo = gerarModelo(CONTRATO, OVERRIDES);
+  const saude = modelo.operacoes.obterSaude;
+
+  assert.equal(saude.notas, '');
+  assert.equal(saude.notasHtml, '');
+});
+
 test('override entra no modelo com notas renderizadas e valores do exemplo', () => {
   const overrides = new Map(OVERRIDES);
   overrides.set('obterSaude', {
@@ -560,6 +568,22 @@ test('override entra no modelo com notas renderizadas e valores do exemplo', () 
     ['00000000-0000-4000-8000-000000000001', 'Duplicado']);
   assert.deepEqual(
     modelo.operacoes.obterSaude.parametros, []);
+});
+
+test('erros do modelo com codigos vazio explicito viram null', () => {
+  const overrides = new Map(OVERRIDES);
+  overrides.set('excluirConta', {
+    ...OVERRIDES.get('excluirConta'),
+    frontmatter: {
+      ...OVERRIDES.get('excluirConta').frontmatter,
+      erros: [{ status: 400, codigos: [], quando: 'O corpo é recusado antes do handler.' }]
+    }
+  });
+
+  const conta = gerarModelo(CONTRATO, overrides).operacoes.excluirConta;
+  assert.equal(conta.erros[0].status, 400);
+  // R27: a página renderiza `—`; `[]` não pode vazar para o JSON.
+  assert.equal(conta.erros[0].codigos, null);
 });
 
 test('erros do modelo somam derivados e override, ordenados por status', () => {
@@ -637,14 +661,32 @@ test('frontmatter com chave desconhecida falha', () => {
     problemas.join(' | '));
 });
 
-test('corpo com heading falha', () => {
+test('corpo com heading falha, inclusive indentado', () => {
   const problemas = validarDaFixture('obterSaude', {}, '# Título\n\nTexto.');
   assert.ok(problemas.some((problema) => problema.includes('heading')), problemas.join(' | '));
+
+  // `marked` aceita até três espaços antes do `#` e ainda renderiza `<h1>`.
+  const indentado = validarDaFixture('obterSaude', {}, '   # Título\n\nTexto.');
+  assert.ok(indentado.some((problema) => problema.includes('heading')),
+    indentado.join(' | '));
+
+  // HTML cru também vira heading na renderização.
+  const html = validarDaFixture('obterSaude', {}, '   <h1>Título</h1>\n\nTexto.');
+  assert.ok(html.some((problema) => problema.includes('heading')), html.join(' | '));
 
   // Heading dentro de bloco de código é conteúdo, não seção.
   assert.deepEqual(
     validarDaFixture('obterSaude', {}, 'Veja:\n\n```bash\n# comentário\n```'),
     []);
+});
+
+test('corpo com <script> falha (R28)', () => {
+  const problemas = validarDaFixture('obterSaude', {}, 'Texto <SCRIPT src="x.js"></SCRIPT>');
+  assert.ok(problemas.some((problema) => problema.includes('<script')),
+    problemas.join(' | '));
+
+  // HTML inofensivo continua livre.
+  assert.deepEqual(validarDaFixture('obterSaude', {}, 'Texto <strong>forte</strong>.'), []);
 });
 
 test('status derivável no override falha', () => {
@@ -686,15 +728,91 @@ test('dois erros com o mesmo status falham', () => {
     problemas.join(' | '));
 });
 
-test('uma linha de erro aceita o atalho `codigo` e recusa `codigos` vazio', () => {
+test('R27: codigos vazio explícito vale, mas ausente ou contraditório falha', () => {
+  // `[]` é a decisão explícita de "este status não tem código nomeado" — é o
+  // caso de `entrarComSenha`/`esquecerSenha`, cujo 400 nunca nomeia código.
+  assert.deepEqual(validarDaFixture('excluirConta', {
+    erros: [{ status: 400, codigos: [], quando: 'A confirmação não é `EXCLUIR`.' }]
+  }), []);
+
+  // Sem `codigos` nem `codigo` o autor não decidiu nada: continua problema.
+  const ausente = validarDaFixture('excluirConta', {
+    erros: [{ status: 400, quando: 'A confirmação não é `EXCLUIR`.' }]
+  });
+  assert.ok(ausente.some((problema) => problema.includes('codigos precisa ser lista')),
+    ausente.join(' | '));
+
+  const contradicao = validarDaFixture('excluirConta', {
+    erros: [{
+      status: 400,
+      codigos: [],
+      codigo: 'confirmacao_invalida',
+      quando: 'A confirmação não é `EXCLUIR`.'
+    }]
+  });
+  assert.ok(contradicao.some((problema) => problema.includes('contradiz')),
+    contradicao.join(' | '));
+
+  // O atalho `codigo` continua valendo e `codigo` vazio continua recusado.
   assert.deepEqual(validarDaFixture('excluirConta', {
     erros: [{ status: 400, codigo: 'confirmacao_invalida', quando: 'A confirmação não é `EXCLUIR`.' }]
   }), []);
-
-  const problemas = validarDaFixture('excluirConta', {
-    erros: [{ status: 400, codigos: [], quando: 'A confirmação não é `EXCLUIR`.' }]
+  const vazio = validarDaFixture('excluirConta', {
+    erros: [{ status: 400, codigo: '', quando: 'A confirmação não é `EXCLUIR`.' }]
   });
-  assert.ok(problemas.some((problema) => problema.includes('codigos')), problemas.join(' | '));
+  assert.ok(vazio.some((problema) => problema.includes('codigos precisa ser lista')),
+    vazio.join(' | '));
+
+  // `codigos: []` não absolve um `codigo` vazio declarado ao lado.
+  const ambos = validarDaFixture('excluirConta', {
+    erros: [{ status: 400, codigos: [], codigo: '', quando: 'A confirmação não é `EXCLUIR`.' }]
+  });
+  assert.ok(ambos.some((problema) => problema.includes('codigo precisa ser string')),
+    ambos.join(' | '));
+});
+
+test('as duas operações sem código nomeado aceitam codigos vazio no contrato real', () => {
+  const contrato = lerContrato();
+  const itens = new Map(listarOperacoes(contrato).map((item) => [item.operationId, item]));
+  const casos = [
+    ['entrarComSenha', '{"email":"pescador@exemplo.tech","senha":"senha-de-exemplo"}'],
+    ['esquecerSenha', '{"email":"pescador@exemplo.tech"}']
+  ];
+
+  for (const [operationId, corpo] of casos) {
+    const problemas = validarOverride({
+      arquivo: `${operationId}.md`,
+      corpo: '',
+      frontmatter: {
+        operacao: operationId,
+        proposta: 'Diz o que faz.',
+        acesso: 'publico',
+        verificar: 'Veja o status.',
+        corpo,
+        erros: [{ status: 400, codigos: [], quando: 'Recusado antes do handler, sem corpo.' }]
+      }
+    }, itens.get(operationId), contrato);
+    assert.deepEqual(problemas, [], operationId);
+  }
+});
+
+test('arquivos com campo fora do schema ou faltando required falha', () => {
+  const foraDoSchema = validarDaFixture('enviarMidia', {
+    arquivos: { arquivo: 'foto.jpg', extra: 'outra.jpg' }
+  });
+  assert.ok(foraDoSchema.some((problema) => problema.includes('campo fora do schema: extra')),
+    foraDoSchema.join(' | '));
+
+  const faltando = validarDaFixture('enviarMidia', { arquivos: { outro: 'foto.jpg' } });
+  assert.ok(faltando.some((problema) => problema.includes('falta o campo arquivo')),
+    faltando.join(' | '));
+});
+
+test('acesso com chave de protótipo recebe a mensagem de enum', () => {
+  const problemas = validarDaFixture('obterSaude', { acesso: 'toString' });
+  assert.deepEqual(problemas, [
+    'obterSaude.md: acesso: precisa ser um de publico, capacidade, sessao, dono, admin'
+  ]);
 });
 
 test('JSON sem corpo falha e multipart sem arquivos falha', () => {
@@ -748,6 +866,38 @@ test('caminho obrigatório quando a rota tem path param', () => {
 
   const uuidInvalido = validarDaFixture('excluirLocal', { caminho: { id: '42' } });
   assert.ok(uuidInvalido.some((problema) => problema.includes('UUID')), uuidInvalido.join(' | '));
+});
+
+test('caminho presente em rota sem path param falha uma vez só', () => {
+  const problemas = validarDaFixture('obterSaude', {
+    caminho: { id: '00000000-0000-4000-8000-000000000001' }
+  });
+  const doCaminho = problemas.filter((problema) => problema.includes('caminho:'));
+  assert.deepEqual(doCaminho, [
+    'obterSaude.md: caminho: proibido porque a rota não tem parâmetro de caminho'
+  ], problemas.join(' | '));
+});
+
+test('caminho e consulta nulos geram uma mensagem por chave', () => {
+  for (const [operationId, campo] of [
+    ['excluirLocal', 'caminho'],
+    ['obterCondicoes', 'consulta']
+  ]) {
+    const problemas = validarDaFixture(operationId, { [campo]: null });
+    const doCampo = problemas.filter((problema) => problema.includes(`${campo}:`));
+    assert.equal(doCampo.length, 1, problemas.join(' | '));
+    assert.ok(doCampo[0].includes('precisa ser objeto'), problemas.join(' | '));
+  }
+});
+
+test('valor nulo ou vazio em caminho e consulta falha', () => {
+  const nulo = validarDaFixture('excluirLocal', { caminho: { id: null } });
+  assert.ok(nulo.some((problema) => problema.includes('caminho: id:')),
+    nulo.join(' | '));
+
+  const vazio = validarDaFixture('buscarLocais', { consulta: { q: '' } });
+  assert.ok(vazio.some((problema) => problema.includes('consulta: q:')),
+    vazio.join(' | '));
 });
 
 test('consulta com chave fora de parameters falha', () => {
@@ -891,6 +1041,22 @@ test('curl com path e query concretos', () => {
   assert.ok(local.some((linha) => linha.includes('-X DELETE')), local.join(' | '));
   // `204` pede os headers na resposta.
   assert.ok(local[0].includes('-i'), local.join(' | '));
+});
+
+test('curl escapa aspas simples do corpo para o shell', () => {
+  // `Praia d'água` existe no domínio: sem `'\''` o shell cortaria a string no
+  // apóstrofo e o `-d` receberia JSON inválido.
+  const override = {
+    ...overrideDaFixture('excluirConta'),
+    frontmatter: {
+      ...overrideDaFixture('excluirConta').frontmatter,
+      corpo: `{"confirmacao":"Praia d'água"}`
+    }
+  };
+  const linhas = montarCurl(operacaoDaFixture('excluirConta'), override, SERVIDOR);
+  const linha = linhas.find((candidata) => candidata.startsWith('-d '));
+
+  assert.equal(linha, `-d '{"confirmacao":"Praia d'\\''água"}'`);
 });
 
 test('a origem da linha é decidida só pela description, não por content', () => {

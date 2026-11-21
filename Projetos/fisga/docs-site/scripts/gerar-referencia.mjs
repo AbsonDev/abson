@@ -279,7 +279,8 @@ function lerFrontmatter(texto) {
 }
 
 // Um heading no corpo brigaria com as seções fixas da página; linha `#` dentro
-// de bloco de código é conteúdo.
+// de bloco de código é conteúdo. `marked` aceita até três espaços de recuo e
+// renderiza `<h1>` também para HTML cru, então as duas formas entram na regra.
 function temHeading(corpo) {
   let dentroDeBloco = false;
   for (const linha of corpo.split('\n')) {
@@ -287,7 +288,10 @@ function temHeading(corpo) {
       dentroDeBloco = !dentroDeBloco;
       continue;
     }
-    if (!dentroDeBloco && linha.startsWith('#')) return true;
+    const inicio = linha.trimStart();
+    if (!dentroDeBloco && (inicio.startsWith('#') || /^<h[1-6][\s>]/i.test(inicio))) {
+      return true;
+    }
   }
   return false;
 }
@@ -297,7 +301,8 @@ function parametrosDe(operacao, local) {
 }
 
 function listaDeCodigos(valor) {
-  if (Array.isArray(valor)) return valor;
+  // R27: `codigos: []` explícito vira `null` no modelo — a página renderiza `—`.
+  if (Array.isArray(valor)) return valor.length > 0 ? valor : null;
   if (typeof valor === 'string' && valor.trim().length > 0) return [valor];
   return null;
 }
@@ -309,6 +314,9 @@ function problemasDeCaminhoEConsulta(entrada, operacao) {
   const consultas = parametrosDe(operacao, 'query');
   const frontmatter = entrada.frontmatter;
 
+  // Um problema de forma por chave: sem o curto-circuito, `null` também acusava
+  // "proibido"/"obrigatório" e o autor lia a mesma causa duas vezes.
+  const invalidos = new Set();
   for (const [campo, parametros, local] of [
     ['caminho', caminhos, 'path'],
     ['consulta', consultas, 'query']
@@ -317,42 +325,53 @@ function problemasDeCaminhoEConsulta(entrada, operacao) {
     if (valor === undefined) continue;
     if (valor === null || typeof valor !== 'object' || Array.isArray(valor)) {
       problemas.push(`${campo}: precisa ser objeto de valores concretos`);
+      invalidos.add(campo);
       continue;
     }
     const nomes = new Set(parametros.map((parametro) => parametro.name));
-    for (const chave of Object.keys(valor)) {
+    // Rota sem parâmetro nesse local: o `{campo}` inteiro já é recusado como
+    // proibido abaixo, então uma mensagem por chave só repetiria a causa.
+    for (const chave of parametros.length === 0 ? [] : Object.keys(valor)) {
       if (!nomes.has(chave)) {
         problemas.push(`${campo}: chave fora de parameters: "${chave}" não é ${local}`);
       }
-    }
-  }
-
-  // Toda chave `caminho` exigida pela rota precisa de valor: sem ele a rota do
-  // exemplo fica com `{param}` cru.
-  const caminho = frontmatter.caminho;
-  if (caminhos.length > 0 && (caminho === null || typeof caminho !== 'object' ||
-    Array.isArray(caminho))) {
-    problemas.push('caminho: obrigatório porque a rota tem parâmetro de caminho');
-  }
-  if (caminho && typeof caminho === 'object' && !Array.isArray(caminho)) {
-    for (const parametro of caminhos) {
-      if (parametro.required === true && !(parametro.name in caminho)) {
-        problemas.push(`caminho: falta o parâmetro ${parametro.name}`);
+      // `null` e string vazia viram `/null` e `?q=` na URL do exemplo.
+      const item = valor[chave];
+      if (item === null || (typeof item === 'string' && item.trim().length === 0)) {
+        problemas.push(`${campo}: ${chave}: precisa de valor concreto (null ou vazio não ` +
+          'forma URL)');
       }
     }
   }
-  if (caminhos.length === 0 && caminho !== undefined) {
-    problemas.push('caminho: proibido porque a rota não tem parâmetro de caminho');
+
+  const caminho = frontmatter.caminho;
+  if (!invalidos.has('caminho')) {
+    // Toda chave `caminho` exigida pela rota precisa de valor: sem ele a rota do
+    // exemplo fica com `{param}` cru.
+    if (caminhos.length > 0 && caminho === undefined) {
+      problemas.push('caminho: obrigatório porque a rota tem parâmetro de caminho');
+    }
+    if (caminho && typeof caminho === 'object' && !Array.isArray(caminho)) {
+      for (const parametro of caminhos) {
+        if (parametro.required === true && !(parametro.name in caminho)) {
+          problemas.push(`caminho: falta o parâmetro ${parametro.name}`);
+        }
+      }
+    }
+    if (caminhos.length === 0 && caminho !== undefined) {
+      problemas.push('caminho: proibido porque a rota não tem parâmetro de caminho');
+    }
   }
 
   // UUID de exemplo precisa ser versão 4: é o que o contrato publica nos 8
-  // parâmetros `format: uuid`.
+  // parâmetros `format: uuid`. Valor nulo/vazio já foi acusado acima.
   for (const [campo, parametros] of [['caminho', caminhos], ['consulta', consultas]]) {
     const valores = frontmatter[campo];
     if (!valores || typeof valores !== 'object' || Array.isArray(valores)) continue;
     for (const parametro of parametros) {
       const valor = valores[parametro.name];
-      if (valor === undefined) continue;
+      if (valor === undefined || valor === null) continue;
+      if (typeof valor === 'string' && valor.trim().length === 0) continue;
       if (parametro.schema?.format === 'uuid' && !UUID_DE_EXEMPLO.test(String(valor))) {
         problemas.push(`${campo}: ${parametro.name}: precisa ser um UUID versão 4 ` +
           `(${JSON.stringify(valor)} não é)`);
@@ -361,14 +380,16 @@ function problemasDeCaminhoEConsulta(entrada, operacao) {
   }
 
   const consulta = frontmatter.consulta;
-  if (consultas.length === 0 && consulta !== undefined) {
-    problemas.push('consulta: proibida porque a rota não tem parâmetro de query');
-  } else if (consultas.length > 0) {
-    const vazia = consulta === null || consulta === undefined ||
-      (typeof consulta === 'object' && !Array.isArray(consulta) &&
-        Object.keys(consulta).length === 0);
-    if (vazia) {
-      problemas.push('consulta: obrigatória porque a rota declara parâmetro de query');
+  if (!invalidos.has('consulta')) {
+    if (consultas.length === 0 && consulta !== undefined) {
+      problemas.push('consulta: proibida porque a rota não tem parâmetro de query');
+    } else if (consultas.length > 0) {
+      const vazia = consulta === undefined ||
+        (typeof consulta === 'object' && !Array.isArray(consulta) &&
+          Object.keys(consulta).length === 0);
+      if (vazia) {
+        problemas.push('consulta: obrigatória porque a rota declara parâmetro de query');
+      }
     }
   }
 
@@ -472,13 +493,28 @@ function problemasDeErros(entrada, operacao) {
         'o override só escreve o que a description não nomeia');
     }
 
-    const codigos = Array.isArray(erro.codigos)
-      ? erro.codigos
-      : (typeof erro.codigo === 'string' ? [erro.codigo] : null);
-    if (!codigos || codigos.length === 0 ||
-      codigos.some((codigo) => typeof codigo !== 'string' || codigo.trim().length === 0)) {
+    // R27: `codigos` presente é a decisão do autor. `[]` declara "este status
+    // não nomeia código" (é o caso do 400 de `entrarComSenha`/`esquecerSenha`);
+    // ausente, só `codigo` vale; vazio e sem nada é omissão.
+    const codigos = erro.codigos;
+    const codigo = erro.codigo;
+    const codigoValido = typeof codigo === 'string' && codigo.trim().length > 0;
+    if (codigos !== undefined && !Array.isArray(codigos)) {
+      problemas.push(`erros: status ${status}: codigos precisa ser lista de strings`);
+    } else if (Array.isArray(codigos)) {
+      if (codigos.length === 0 && codigoValido) {
+        problemas.push(`erros: status ${status}: \`codigos: []\` contradiz ` +
+          `\`codigo: ${codigo}\` — escolha um`);
+      } else if (codigos.length === 0 && 'codigo' in erro && !codigoValido) {
+        problemas.push(`erros: status ${status}: codigo precisa ser string não vazia`);
+      } else if (codigos.some((nome) =>
+        typeof nome !== 'string' || nome.trim().length === 0)) {
+        problemas.push(`erros: status ${status}: codigos precisa ser lista não vazia ` +
+          'de strings (ou o atalho `codigo` com uma string; `[]` declara status sem código)');
+      }
+    } else if (!codigoValido) {
       problemas.push(`erros: status ${status}: codigos precisa ser lista não vazia ` +
-        'de strings (ou o atalho `codigo` com uma string)');
+        'de strings (ou o atalho `codigo` com uma string; `[]` declara status sem código)');
     }
     if (typeof erro.quando !== 'string' || erro.quando.trim().length === 0) {
       problemas.push(`erros: status ${status}: quando precisa dizer quando acontece`);
@@ -527,7 +563,7 @@ export function validarOverride(entrada, operacao, contrato) {
 
   const acesso = frontmatter.acesso;
   if (typeof acesso === 'string' && acesso.length > 0) {
-    if (!(acesso in ACESSO_TEXTO)) {
+    if (!Object.hasOwn(ACESSO_TEXTO, acesso)) {
       problemas.push(campo(
         `acesso: precisa ser um de ${Object.keys(ACESSO_TEXTO).join(', ')}`));
     } else {
@@ -575,8 +611,15 @@ export function validarOverride(entrada, operacao, contrato) {
     }
   }
 
-  if (typeof entrada.corpo === 'string' && temHeading(entrada.corpo)) {
-    problemas.push(campo('corpo: heading não é permitido — as seções são fixas pela página'));
+  if (typeof entrada.corpo === 'string') {
+    if (temHeading(entrada.corpo)) {
+      problemas.push(campo('corpo: heading não é permitido — as seções são fixas pela página'));
+    }
+    // R28: `marked` preserva HTML, e o site renderiza `notasHtml` como HTML.
+    // Nenhuma seção do portal precisa de script no corpo.
+    if (/<script/i.test(entrada.corpo)) {
+      problemas.push(campo('corpo: <script> não é permitido — notas são conteúdo, não página'));
+    }
   }
 
   return problemas;
@@ -629,7 +672,7 @@ export function montarCurl(operacao, override, servidor) {
 
   if (typeof frontmatter.corpo === 'string') {
     linhas.push('-H "Content-Type: application/json"');
-    linhas.push(`-d '${frontmatter.corpo}'`);
+    linhas.push(`-d '${frontmatter.corpo.replaceAll("'", "'\\''")}'`);
   }
   for (const [campoDoArquivo, arquivo] of Object.entries(frontmatter.arquivos ?? {})) {
     linhas.push(`-F "${campoDoArquivo}=@${arquivo}"`);
