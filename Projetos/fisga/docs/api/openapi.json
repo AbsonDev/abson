@@ -2,7 +2,7 @@
   "openapi": "3.1.1",
   "info": {
     "title": "API do Fisga",
-    "description": "API do Fisga: o diário de pesca que registra capturas com identidade própria.\n\nAs operações são de leitura pública ou exigem sessão; `security` em cada\numa diz qual é o caso. A sessão é o cookie `fisga_auth`, com validade\ndeslizante de 30 dias.\n\n**Erros.** Respostas de erro com corpo usam `{codigo, detalhe}`; exceção\nnão tratada vira `500 erro_inesperado`. O `429` não tem corpo e traz o\nheader `Retry-After` em segundos.\n\n**Consentimento.** Usuário autenticado com Termos ou Privacidade\npendentes recebe `403` em qualquer rota, exceto `GET /api/auth/me`,\n`POST /api/auth/sair` e `POST /api/conta/consentimento`:\n\n```json\n{\"codigo\":\"consentimento_pendente\",\"detalhe\":\"Aceite os termos e a privacidade vigentes para continuar.\"}\n```\n\n**Origem.** Mutação (`POST`, `PUT`, `PATCH`, `DELETE`) com `Origin` de\noutro site recebe `403 origem_invalida`:\n\n```json\n{\"codigo\":\"origem_invalida\",\"detalhe\":\"Origem da requisição não permitida.\"}\n```\n\nAs duas rotas administrativas respondem `404` sem corpo a token inválido,\nde propósito: não revelam que o token existe.",
+    "description": "API do Fisga: o diário de pesca que registra capturas com identidade própria.\n\nAs operações são de leitura pública, exigem sessão ou exigem token\nadministrativo; `security` em cada uma diz qual é o caso. A sessão é o\ncookie `fisga_auth`, com validade deslizante de 30 dias.\n\n**Erros.** Respostas de erro com corpo usam `{codigo, detalhe}`; exceção\nnão tratada vira `500 erro_inesperado`. O `429` não tem corpo e traz o\nheader `Retry-After` em segundos.\n\n**Consentimento.** Usuário autenticado com Termos ou Privacidade\npendentes recebe `403` em qualquer rota `/api` que exija sessão, exceto\n`GET /api/auth/me`, `POST /api/auth/sair` e\n`POST /api/conta/consentimento`; rotas públicas seguem livres:\n\n```json\n{\"codigo\":\"consentimento_pendente\",\"detalhe\":\"Aceite os termos e a privacidade vigentes para continuar.\"}\n```\n\n**Origem.** Mutação (`POST`, `PUT`, `PATCH`, `DELETE`) com `Origin` de\noutro site recebe `403 origem_invalida`:\n\n```json\n{\"codigo\":\"origem_invalida\",\"detalhe\":\"Origem da requisição não permitida.\"}\n```\n\nAs duas rotas administrativas respondem `404` sem corpo a token inválido,\nde propósito: não revelam que o token existe.",
     "contact": {
       "name": "Fisga",
       "url": "https://fisga.abson.tech"
@@ -18,7 +18,7 @@
       "description": "Produção"
     },
     {
-      "url": "http://localhost:5080",
+      "url": "http://localhost:5184",
       "description": "Local"
     }
   ],

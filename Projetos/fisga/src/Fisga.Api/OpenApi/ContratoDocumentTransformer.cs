@@ -38,7 +38,7 @@ public sealed class ContratoDocumentTransformer : IOpenApiDocumentTransformer
             },
             new OpenApiServer
             {
-                Url = "http://localhost:5080",
+                Url = "http://localhost:5184",
                 Description = "Local"
             }
         ];
@@ -46,10 +46,14 @@ public sealed class ContratoDocumentTransformer : IOpenApiDocumentTransformer
         // document.Tags é ISet: a ordem vem do gerador e não é contrato.
         foreach (var tag in document.Tags ?? new HashSet<OpenApiTag>())
         {
-            // Name é anulável na Microsoft.OpenApi 2.13; tag sem nome também
-            // não tem descrição possível.
-            if (tag.Name is null
-                || !Tags.Descricoes.TryGetValue(tag.Name, out var descricao))
+            // Name é anulável na Microsoft.OpenApi 2.13; separar os dois casos
+            // mantém o diagnóstico utilizável em -warnaserror.
+            if (tag.Name is null)
+            {
+                throw new InvalidOperationException("Tag sem nome no contrato OpenAPI.");
+            }
+
+            if (!Tags.Descricoes.TryGetValue(tag.Name, out var descricao))
             {
                 throw new InvalidOperationException(
                     $"Tag sem descrição em Tags.Descricoes: {tag.Name}");
@@ -85,17 +89,18 @@ public sealed class ContratoDocumentTransformer : IOpenApiDocumentTransformer
     private const string DescricaoDoDocumento = """
         API do Fisga: o diário de pesca que registra capturas com identidade própria.
 
-        As operações são de leitura pública ou exigem sessão; `security` em cada
-        uma diz qual é o caso. A sessão é o cookie `fisga_auth`, com validade
-        deslizante de 30 dias.
+        As operações são de leitura pública, exigem sessão ou exigem token
+        administrativo; `security` em cada uma diz qual é o caso. A sessão é o
+        cookie `fisga_auth`, com validade deslizante de 30 dias.
 
         **Erros.** Respostas de erro com corpo usam `{codigo, detalhe}`; exceção
         não tratada vira `500 erro_inesperado`. O `429` não tem corpo e traz o
         header `Retry-After` em segundos.
 
         **Consentimento.** Usuário autenticado com Termos ou Privacidade
-        pendentes recebe `403` em qualquer rota, exceto `GET /api/auth/me`,
-        `POST /api/auth/sair` e `POST /api/conta/consentimento`:
+        pendentes recebe `403` em qualquer rota `/api` que exija sessão, exceto
+        `GET /api/auth/me`, `POST /api/auth/sair` e
+        `POST /api/conta/consentimento`; rotas públicas seguem livres:
 
         ```json
         {"codigo":"consentimento_pendente","detalhe":"Aceite os termos e a privacidade vigentes para continuar."}

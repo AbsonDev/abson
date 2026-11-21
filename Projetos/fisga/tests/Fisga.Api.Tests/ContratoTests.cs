@@ -174,12 +174,14 @@ public sealed class ContratoTests
             info.GetProperty("contact").GetProperty("url").GetString());
         Assert.Equal("Proprietária", info.GetProperty("license").GetProperty("name").GetString());
         Assert.False(info.GetProperty("license").TryGetProperty("url", out _));
+        Assert.False(info.GetProperty("license").TryGetProperty("identifier", out _));
+        Assert.False(info.GetProperty("contact").TryGetProperty("email", out _));
 
         var servidores = raiz.GetProperty("servers").EnumerateArray().ToList();
         Assert.Equal(2, servidores.Count);
         Assert.Equal("https://api.fisga.abson.tech", servidores[0].GetProperty("url").GetString());
         Assert.Equal("Produção", servidores[0].GetProperty("description").GetString());
-        Assert.Equal("http://localhost:5080", servidores[1].GetProperty("url").GetString());
+        Assert.Equal("http://localhost:5184", servidores[1].GetProperty("url").GetString());
         Assert.Equal("Local", servidores[1].GetProperty("description").GetString());
     }
 
