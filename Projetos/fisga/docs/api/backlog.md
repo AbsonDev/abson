@@ -62,8 +62,9 @@ resposta.
   schema `ProblemDetails` do framework, não o corpo real) e catálogo de `codigo`
   em um único lugar do código.
 - **Aceite:** todos os erros de handler e middleware apontam para o mesmo
-  schema; o spec não mistura ProblemDetails do framework com `ErroResponse` sem
-  dizer qual é qual; `429` documentado como corpo vazio com `Retry-After`.
+  schema; o spec diz qual status tem corpo, qual é vazio e qual é recusado antes
+  do handler, sem misturar formatos em silêncio; `429` documentado como corpo
+  vazio com `Retry-After`.
 - **Estado:** concluída no A2 (2026-11-20) — esta PR fecha #65.
 - **Dívida conhecida:** `CodigosDeErro.Todos` é um change-detector
   intencional — constante nova quebra o teste e força a decisão consciente. O

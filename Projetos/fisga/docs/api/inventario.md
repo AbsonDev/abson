@@ -138,7 +138,21 @@ campos:
 | `Origin` não permitida | 403 | `origem_invalida` |
 | Exceção não tratada | 500 | `erro_inesperado` |
 | Rate limit | 429 | — (corpo vazio) |
-| Falha de binding do Minimal API | 400 | ProblemDetails padrão do ASP.NET Core |
+| Falha de binding do Minimal API | 400 | — (corpo vazio, antes do handler) |
+
+**Corpo de requisição ilegível.** Medido no Kestrel real em 21/11/2026, com
+`ASPNETCORE_ENVIRONMENT=Production`: JSON malformado, corpo vazio e query com
+tipo errado devolvem `400` **sem corpo**, recusados pelo framework antes do
+handler. Em Development o `RouteHandlerOptions.ThrowOnBadRequest` padrão é
+`true`, então a mesma requisição lança `BadHttpRequestException` e o
+`ExceptionHandlingMiddleware` responde `500 erro_inesperado`. O contrato
+documenta o comportamento de produção; a divergência de Development é
+diagnóstico, não contrato.
+
+Como o `400` tem duas formas — corpo `ErroResponse` na regra de negócio e corpo
+vazio no corpo ilegível —, o schema publicado cobre o caso com corpo e a
+descrição do status diz qual é o outro. O OpenAPI não expressa "mesmo status,
+com ou sem corpo" na mesma resposta; a prosa é a parte que fecha a lacuna.
 
 **Corpo acima de 30 MB:** o limite do Kestrel interrompe a leitura do
 formulário e o `ExceptionHandlingMiddleware` responde o `500` genérico

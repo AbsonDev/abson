@@ -62,7 +62,7 @@
   - Testes `DocumentoTemIdentidadePublica` e `TagsTemDescricao` em `ContratoTests`.
 - Consumes: `Tags.Todas` (já existe).
 
-- [ ] **Step 1: Escrever os testes que falham**
+- [x] **Step 1: Escrever os testes que falham**
 
 Em `ContratoTests.cs`, depois de `ResumosSaoDeNegocio`:
 
@@ -122,7 +122,7 @@ public async Task TagsTemDescricao()
 }
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 ```bash
 export PATH="$HOME/.dotnet:$PATH"
@@ -131,7 +131,7 @@ dotnet test Fisga.slnx -c Release --filter "FullyQualifiedName~DocumentoTemIdent
 
 Esperado: falha em `DocumentoTemIdentidadePublica` (título é `Fisga.Api | v1`, `description`/`contact`/`license`/`servers` ausentes) e em `TagsTemDescricao` (sem `description`).
 
-- [ ] **Step 3: Implementar as descrições das tags em `Tags.cs`**
+- [x] **Step 3: Implementar as descrições das tags em `Tags.cs`**
 
 Adicionar ao fim da classe (as 13 entradas, uma por constante — o dicionário é a fonte da descrição e o teste exige exatamente as chaves de `Todas`):
 
@@ -155,7 +155,7 @@ Adicionar ao fim da classe (as 13 entradas, uma por constante — o dicionário 
         };
 ```
 
-- [ ] **Step 4: Implementar a identidade no `ContratoDocumentTransformer`**
+- [x] **Step 4: Implementar a identidade no `ContratoDocumentTransformer`**
 
 No início de `TransformAsync`, antes dos schemes:
 
@@ -232,16 +232,16 @@ E a constante, no fim da classe:
         """;
 ```
 
-- [ ] **Step 5: Rodar os testes e ver passar**
+- [x] **Step 5: Rodar os testes e ver passar**
 
 ```bash
 dotnet build Fisga.slnx -c Release -warnaserror
 dotnet test Fisga.slnx -c Release --no-build
 ```
 
-Esperado: os dois testes novos verdes e os 408 anteriores também.
+Esperado: os dois testes novos verdes e os 410 anteriores também.
 
-- [ ] **Step 6: Regerar o artefato e conferir a identidade**
+- [x] **Step 6: Regerar o artefato e conferir a identidade**
 
 ```bash
 ./scripts/gerar-openapi.sh
@@ -251,7 +251,7 @@ python3 -c "import json;d=json.load(open('docs/api/openapi.json'));print(d['info
 
 Esperado: `info` com título, descrição, contato e licença; `servers` com as duas entradas na ordem produção → local.
 
-- [ ] **Step 7: Ligar o lint no job `api`**
+- [x] **Step 7: Ligar o lint no job `api`**
 
 Em `.github/workflows/fisga-pipeline.yml`, entre `Contrato documentado está atualizado` e `Publicar OpenAPI`:
 
@@ -266,7 +266,7 @@ Em `.github/workflows/fisga-pipeline.yml`, entre `Contrato documentado está atu
           --extends=minimal
 ```
 
-- [ ] **Step 8: Rodar o lint e conferir o resultado esperado**
+- [x] **Step 8: Rodar o lint e conferir o resultado esperado**
 
 ```bash
 npx --yes @redocly/cli@2.82.0 lint docs/api/openapi.json --extends=minimal --format=summary
@@ -274,7 +274,7 @@ npx --yes @redocly/cli@2.82.0 lint docs/api/openapi.json --extends=minimal --for
 
 Esperado: `valid` e exit 0. Warnings restantes depois desta task (9 no total): 6 de `operation-2xx-response` (operações de redirect, sem resposta `2XX`), 1 de `servers` apontando para `localhost`, 1 de caminho idêntico e 1 de caminho ambíguo entre `/api/pescarias/{shareToken}` e `/api/pescarias/{id}` — advisory, o job só falha com erro.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add src/Fisga.Api/OpenApi/Tags.cs src/Fisga.Api/OpenApi/ContratoDocumentTransformer.cs tests/Fisga.Api.Tests/ContratoTests.cs docs/api/openapi.json ../../.github/workflows/fisga-pipeline.yml
@@ -300,7 +300,7 @@ git commit -m "docs(fisga): identidade do documento no contrato e lint no job ap
   - `ContratoOperationTransformer.NormalizarRespostas(OpenApiOperation operation, string metodo, string rota)` (assinatura nova; a antiga de dois parâmetros deixa de existir).
 - Consumes: `NormalizarRespostas` é chamado com `metodo`/`rota` já normalizados pelo `TransformAsync`.
 
-- [ ] **Step 1: Escrever o teste que falha**
+- [x] **Step 1: Escrever o teste que falha**
 
 Em `ContratoTests.cs`:
 
@@ -374,7 +374,7 @@ private static JsonElement Operacao(JsonDocument documento, string metodo, strin
 }
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 ```bash
 dotnet test Fisga.slnx -c Release --filter "FullyQualifiedName~ComportamentosQueSurpreendemEstaoDocumentados"
@@ -382,7 +382,7 @@ dotnet test Fisga.slnx -c Release --filter "FullyQualifiedName~ComportamentosQue
 
 Esperado: falha em `proposital` (texto ainda não existe).
 
-- [ ] **Step 3: Reescrever as descrições de auth**
+- [x] **Step 3: Reescrever as descrições de auth**
 
 Em `AuthEndpoints.cs`, substituir as quatro chamadas `WithDescription` por:
 
@@ -397,7 +397,7 @@ Em `AuthEndpoints.cs`, substituir as quatro chamadas `WithDescription` por:
 
 Manter `GET /api/auth/me` como está — a descrição já diz `autenticado falso`; o exemplo entra no passo 4.
 
-- [ ] **Step 4: Criar `ExemplosDeResposta.cs`**
+- [x] **Step 4: Criar `ExemplosDeResposta.cs`**
 
 ```csharp
 namespace Fisga.Api.OpenApi;
@@ -425,7 +425,7 @@ public static class ExemplosDeResposta
 }
 ```
 
-- [ ] **Step 5: Aplicar o exemplo no transformer**
+- [x] **Step 5: Aplicar o exemplo no transformer**
 
 Trocar a assinatura e a chamada:
 
@@ -461,7 +461,7 @@ E, no fim de cada iteração do `foreach` (depois do bloco de descrição):
 
 (`JsonNode` já está importado em `ContratoOperationTransformer.cs`.)
 
-- [ ] **Step 6: Atualizar os testes do transformer**
+- [x] **Step 6: Atualizar os testes do transformer**
 
 Em `NormalizacaoDeRespostasTests.cs`, as oito chamadas `NormalizarRespostas(Operacao(...))` passam a receber a rota neutra do arquivo: `ContratoOperationTransformer.NormalizarRespostas(Operacao("400", resposta), "GET", "/api/teste")`. Acrescentar o fato, usando o helper `Operacao` que já existe:
 
@@ -486,14 +486,14 @@ public void ExemploDoMeVaiParaOMediaTypeJson()
 }
 ```
 
-- [ ] **Step 7: Rodar os testes e ver passar**
+- [x] **Step 7: Rodar os testes e ver passar**
 
 ```bash
 dotnet build Fisga.slnx -c Release -warnaserror
 dotnet test Fisga.slnx -c Release --no-build
 ```
 
-- [ ] **Step 8: Regerar e conferir o exemplo no artefato**
+- [x] **Step 8: Regerar e conferir o exemplo no artefato**
 
 ```bash
 ./scripts/gerar-openapi.sh
@@ -503,7 +503,7 @@ d=json.load(open('docs/api/openapi.json'))
 print(json.dumps(d['paths']['/api/auth/me']['get']['responses']['200']['content']['application/json']['examples'],ensure_ascii=False,indent=1))"
 ```
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add src/Fisga.Api/Endpoints/AuthEndpoints.cs src/Fisga.Api/Endpoints/NewsletterEndpoints.cs src/Fisga.Api/OpenApi/ExemplosDeResposta.cs src/Fisga.Api/OpenApi/ContratoOperationTransformer.cs tests/Fisga.Api.Tests/ContratoTests.cs tests/Fisga.Api.Tests/NormalizacaoDeRespostasTests.cs docs/api/openapi.json
@@ -529,7 +529,7 @@ git commit -m "docs(fisga): documenta os comportamentos que surpreendem no contr
   - CLI sem argumentos: lê `docs/api/openapi.json`, `README.md` e `docs/api/inventario.md` a partir da raiz do projeto resolvida por `import.meta.url`; exit 1 listando as divergências, exit 0 com `Rotas em sincronia: N operações no contrato, no README e no inventário.`
 - Consumes: nada.
 
-- [ ] **Step 1: Escrever o teste que falha**
+- [x] **Step 1: Escrever o teste que falha**
 
 `scripts/verificar-rotas.test.mjs`:
 
@@ -604,7 +604,7 @@ test('divergencia lista o que falta em cada documento', () => {
 });
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 ```bash
 node --test scripts/verificar-rotas.test.mjs
@@ -612,7 +612,7 @@ node --test scripts/verificar-rotas.test.mjs
 
 Esperado: `ERR_MODULE_NOT_FOUND`.
 
-- [ ] **Step 3: Implementar `scripts/verificar-rotas.mjs`**
+- [x] **Step 3: Implementar `scripts/verificar-rotas.mjs`**
 
 Estrutura (funções puras exportadas + CLI no fim):
 
@@ -684,16 +684,18 @@ const raiz = fileURLToPath(new URL('..', import.meta.url));
 
 CLI executado só quando `process.argv[1]` é o próprio módulo (`pathToFileURL(process.argv[1]).href === import.meta.url`).
 
-- [ ] **Step 4: Rodar o teste e o script**
+- [x] **Step 4: Rodar o teste e o script**
 
 ```bash
 node --test scripts/verificar-rotas.test.mjs
 node scripts/verificar-rotas.mjs
 ```
 
-Esperado: 4 testes verdes; script imprime `Rotas em sincronia: 54 operações no contrato, no README e no inventário.` e exit 0.
+Esperado: os testes da guarda verdes; script imprime `Rotas em sincronia: 54 operações no contrato, no README e no inventário.` e exit 0.
 
-- [ ] **Step 5: Ligar no job `docs`**
+> Ao fim do pacote são 10 testes: os 4 desta task, 2 da Task 4 (caminhos reais e métodos do contrato) e 4 de subprocesso/CLI que fecham os casos de falta, sobra, seção ausente e documento sem rota lida.
+
+- [x] **Step 5: Ligar no job `docs`**
 
 Em `.github/workflows/fisga-pipeline.yml`, no job `docs`: o `Setup Node` entra imediatamente depois do `actions/checkout` (antes do `Markdown`, que também usa `npx`); a guarda e os testes dela entram entre `Markdown` e `Links`.
 
@@ -712,14 +714,14 @@ Em `.github/workflows/fisga-pipeline.yml`, no job `docs`: o `Setup Node` entra i
         run: node --test Projetos/fisga/scripts/verificar-rotas.test.mjs
 ```
 
-- [ ] **Step 6: Documentar no guia de endpoint**
+- [x] **Step 6: Documentar no guia de endpoint**
 
 Em `docs/guias/como-adicionar-endpoint.md`:
 
 - No §7, item 4 (registrar a operação nos testes), acrescente uma frase final apontando que a mesma operação precisa entrar no `docs/api/inventario.md` e na tabela `## API` do `README.md`, ambos guardados pelo script.
 - No §8 (`Documentação`), troque o bullet do README por uma lista curta com a ordem: `docs/api/inventario.md` → tabela `## API` do `README.md` → `node scripts/verificar-rotas.mjs`, explicando que a guarda roda no job `docs` e falha listando a rota que falta em cada documento.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add scripts/verificar-rotas.mjs scripts/verificar-rotas.test.mjs ../../.github/workflows/fisga-pipeline.yml docs/guias/como-adicionar-endpoint.md
@@ -747,7 +749,7 @@ git commit -m "test(fisga): guarda de rotas entre contrato, README e inventário
 - Consumes: identidade (Task 1), comportamentos (Task 2), guarda e lint (Tasks 1 e 3).
 - Produces: documentação coerente com o artefato; nenhuma interface de código.
 
-- [ ] **Step 1: Inventário (`docs/api/inventario.md`)**
+- [x] **Step 1: Inventário (`docs/api/inventario.md`)**
 
 - Cabeçalho `**Estado:**`: acrescentar o A3 (`info`/`servers` e comportamentos) e registrar a **F1 concluída** em 2026-11-20, mantendo o link para `../api/openapi.json` e a contagem de 54 operações em 48 rotas.
 - `## Lacunas de contrato`: apagar a tabela e a nota "Resolvido no A2", substituindo por uma frase: "Nenhuma lacuna conhecida: `info`, `servers`, status reais, erros, uploads e `Retry-After` saem do contrato." Deixar claro que a seção fica como registro de que não há pendência.
@@ -758,46 +760,46 @@ git commit -m "test(fisga): guarda de rotas entre contrato, README e inventário
 - `## Como manter`: acrescentar o item 4 — "Mexeu em rota? Rode `node scripts/verificar-rotas.mjs`; a guarda compara contrato, `README.md` e este inventário e roda no job `docs`."
 - `## Verificação em execução local`: **não** reescrever a tabela datada; ela é registro de 2026-11-20.
 
-- [ ] **Step 2: README do contrato (`docs/api/README.md`)**
+- [x] **Step 2: README do contrato (`docs/api/README.md`)**
 
 - `## Limites conhecidos`: substituir o bullet "O contrato expressa respostas e erros; falta a identidade do documento" por dois bullets:
   - **Identidade fixa de propósito.** `info` (título, descrição, contato, licença) e `servers` (produção → `http://localhost:5184`) são escritos no transformer, não lidos do ambiente: o artefato commitado é regenerado no CI e comparado byte a byte.
   - **Lint advisory.** O job `api` valida o documento com `@redocly/cli` (`--extends=minimal`) e o job `docs` compara contrato, `## API` do `README.md` e inventário. Sobram 9 warnings advisory: 6 de operação de redirect, sem resposta `2XX`, 1 de `servers` apontando para `localhost`, 1 de caminho idêntico e 1 de caminho ambíguo entre `{shareToken}` e `{id}`.
 - Se o texto ainda disser que o portal "ainda não existe", conferir contra a F2 e não prometer o que não está no ar.
 
-- [ ] **Step 3: Backlog (`docs/api/backlog.md`)**
+- [x] **Step 3: Backlog (`docs/api/backlog.md`)**
 
 Marcar F1.7, F1.9 e F1.10 com `- **Estado:** concluída no A3 (2026-11-20) — esta PR fecha #68/#70/#71.`, no mesmo formato de F1.8. Se a seção da fase tiver um parágrafo de estado, atualizar para "F1 concluída".
 
-- [ ] **Step 4: ADR 0017**
+- [x] **Step 4: ADR 0017**
 
 - Na consequência sobre o contrato, registrar que a F1 fechou: `info`/`servers` fixos, lint no job `api` e guarda de rotas no job `docs`.
 - Corrigir o drift: o ADR diz que o contrato é "comparado no job `docs`"; a regeneração/comparação é do job **`api`**. A guarda de rotas é que vive no `docs`.
 
-- [ ] **Step 5: `docs/ci-cd.md`**
+- [x] **Step 5: `docs/ci-cd.md`**
 
-- Árvore do topo: `api` passa a "restore locked + format + build + **408** testes + contrato + lint OpenAPI"; `docs` passa a "markdownlint + guarda de rotas + links".
+- Árvore do topo: `api` passa a "restore locked + format + build + **410** testes + contrato + lint OpenAPI"; `docs` passa a "markdownlint + guarda de rotas + links".
 - Seção `### api`: acrescentar `npx --yes @redocly/cli@2.82.0 lint docs/api/openapi.json --extends=minimal` (depois do `git diff --exit-code` do contrato) e atualizar a contagem de testes.
 - Seção `### docs`: listar, na ordem real, `actions/setup-node` (Node 24), `npx markdownlint-cli2@0.24.1`, `node Projetos/fisga/scripts/verificar-rotas.mjs`, `node --test Projetos/fisga/scripts/verificar-rotas.test.mjs` e `lychee`. Explicar em uma frase que a guarda falha listando a rota que falta no `README.md` ou no inventário, e que o job roda em PR e `workflow_dispatch`, não no push.
 
-- [ ] **Step 6: Contagens e estado**
+- [x] **Step 6: Contagens e estado**
 
-Medir com `dotnet test Fisga.slnx -c Release --no-build` e somar as três dlls (esperado **408**). Atualizar:
-- `README.md`: "Atualmente: **408 testes de backend** (46 de domínio + 58 de aplicação + 304 de API)" e o bullet do job `api` (acrescentar o lint de OpenAPI).
+Medir com `dotnet test Fisga.slnx -c Release --no-build` e somar as três dlls (esperado **410**). Atualizar:
+- `README.md`: "Atualmente: **410 testes de backend** (46 de domínio + 58 de aplicação + 306 de API)" e o bullet do job `api` (acrescentar o lint de OpenAPI).
 - `docs/review.md`: a linha do `gate` (total de testes) e a menção ao total no
   `require_tests_review`.
 - `docs/roadmap.md`: o total de testes do `gate` e a frase sobre validação do contrato no job `api`/guarda no `docs`.
 - **Não** tocar em `docs/ux-audit.md` (snapshot datado).
 
-- [ ] **Step 7: `AGENTS.md` do Fisga**
+- [x] **Step 7: `AGENTS.md` do Fisga**
 
 A seção "Nunca" diz que "a tabela `## API` do `README.md` é resumo de produto e continua sendo atualizada à mão". A guarda agora exige **toda** operação nos dois documentos. Reescrever para: o contrato é a fonte; a tabela `## API` e o inventário listam **todas** as operações e são guardados por `scripts/verificar-rotas.mjs` no job `docs`.
 
-- [ ] **Step 8: `docs/INDEX.md`**
+- [x] **Step 8: `docs/INDEX.md`**
 
 Indexar este plano em `docs/superpowers/plans/`, no mesmo formato dos planos do A1/A2.
 
-- [ ] **Step 9: Verificação final**
+- [x] **Step 9: Verificação final**
 
 ```bash
 export PATH="$HOME/.dotnet:$PATH"
@@ -811,10 +813,10 @@ npx --yes @redocly/cli@2.82.0 lint docs/api/openapi.json --extends=minimal
 git grep -nE "404\s+testes" -- . ':!docs/ux-audit.md' || true
 ```
 
-Esperado: markdownlint 0, build 0 avisos, 408 testes verdes, guarda em sincronia, lint válido,
+Esperado: markdownlint 0, build 0 avisos, 410 testes verdes, guarda em sincronia, lint válido,
 artefato idempotente, nenhuma menção ao total antigo de testes fora do snapshot.
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add docs README.md AGENTS.md

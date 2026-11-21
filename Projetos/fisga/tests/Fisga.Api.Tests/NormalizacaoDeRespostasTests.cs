@@ -37,7 +37,7 @@ public sealed class NormalizacaoDeRespostasTests
         Assert.NotSame(mediaTypeOriginal, espelho);
         Assert.Same(schemaDoErro, espelho.Schema);
         Assert.Same(schemaDoErro, resposta.Content[RespostasPadrao.TipoProblema].Schema);
-        Assert.Equal(RespostasPadrao.DescricaoComErro(400), resposta.Description);
+        Assert.Equal(RespostasPadrao.DescricaoComErro(400, "GET"), resposta.Description);
     }
 
     [Fact]
@@ -177,6 +177,30 @@ public sealed class NormalizacaoDeRespostasTests
 
         var exemplo = Assert.Contains("semSessao", resposta.Content![RespostasPadrao.TipoJson].Examples!);
         Assert.False(exemplo.Value!["autenticado"]!.GetValue<bool>());
+    }
+
+    [Theory]
+    [InlineData("POST", true)]
+    [InlineData("GET", false)]
+    public void DescricaoDo403SoCitaOrigemEmMutacao(string metodo, bool citaOrigem)
+    {
+        var resposta = new OpenApiResponse
+        {
+            Description = ReasonPhrases.GetReasonPhrase(403),
+            Content = new Dictionary<string, OpenApiMediaType>
+            {
+                [RespostasPadrao.TipoProblema] = new OpenApiMediaType { Schema = new OpenApiSchema() }
+            }
+        };
+
+        ContratoOperationTransformer.NormalizarRespostas(
+            Operacao("403", resposta), metodo, "/api/teste");
+
+        // A checagem de Origin do CSRF só atua em mutação; anunciar
+        // origem_invalida em leitura mandaria o leitor tratar um erro impossível.
+        Assert.Equal(
+            citaOrigem,
+            resposta.Description!.Contains("origem_invalida", StringComparison.Ordinal));
     }
 
     private static OpenApiOperation Operacao(string status, OpenApiResponse resposta) =>

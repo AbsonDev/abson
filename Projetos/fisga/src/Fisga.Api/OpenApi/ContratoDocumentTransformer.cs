@@ -86,16 +86,18 @@ public sealed class ContratoDocumentTransformer : IOpenApiDocumentTransformer
         return Task.CompletedTask;
     }
 
-    private const string DescricaoDoDocumento = """
+    private static readonly string DescricaoDoDocumento = $$"""
         API do Fisga: o diário de pesca que registra capturas com identidade própria.
 
         As operações são de leitura pública, exigem sessão ou exigem token
         administrativo; `security` em cada uma diz qual é o caso. A sessão é o
         cookie `fisga_auth`, com validade deslizante de 30 dias.
 
-        **Erros.** Respostas de erro com corpo usam `{codigo, detalhe}`; exceção
-        não tratada vira `500 erro_inesperado`. O `429` não tem corpo e traz o
-        header `Retry-After` em segundos.
+        **Erros.** Erro de negócio, sessão e middleware usam `{codigo, detalhe}`
+        (`ErroResponse`). Corpo de requisição que o framework não consegue ler é
+        recusado com `400` sem corpo, antes do handler; exceção não tratada vira
+        `500 erro_inesperado`. O `429` não tem corpo e traz o header
+        `Retry-After` em segundos.
 
         **Consentimento.** Usuário autenticado com Termos ou Privacidade
         pendentes recebe `403` em qualquer rota `/api` que exija sessão, exceto
@@ -103,14 +105,14 @@ public sealed class ContratoDocumentTransformer : IOpenApiDocumentTransformer
         `POST /api/conta/consentimento`; rotas públicas seguem livres:
 
         ```json
-        {"codigo":"consentimento_pendente","detalhe":"Aceite os termos e a privacidade vigentes para continuar."}
+        {"codigo":"consentimento_pendente","detalhe":"{{DetalhesDeErro.ConsentimentoPendente}}"}
         ```
 
         **Origem.** Mutação (`POST`, `PUT`, `PATCH`, `DELETE`) com `Origin` de
-        outro site recebe `403 origem_invalida`:
+        outro site recebe `403 origem_invalida`; em leitura a checagem não atua:
 
         ```json
-        {"codigo":"origem_invalida","detalhe":"Origem da requisição não permitida."}
+        {"codigo":"origem_invalida","detalhe":"{{DetalhesDeErro.OrigemInvalida}}"}
         ```
 
         As duas rotas administrativas respondem `404` sem corpo a token inválido,

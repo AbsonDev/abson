@@ -654,7 +654,7 @@ public sealed class ContratoTests
                 }
 
                 if (!objeto.TryGetProperty("description", out var descricao)
-                    || descricao.GetString() != RespostasPadrao.DescricaoComErro(status))
+                    || descricao.GetString() != RespostasPadrao.DescricaoComErro(status, metodo))
                 {
                     violacoes.Add($"{metodo} {rota} {status}: descrição fora do catálogo");
                 }

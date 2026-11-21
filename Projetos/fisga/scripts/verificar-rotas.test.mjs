@@ -122,9 +122,12 @@ test('contrato so usa os cinco metodos comparados pela guarda', () => {
 
 test('CLI roda de verdade e confirma os tres documentos', () => {
   const saida = execFileSync(process.execPath, [SCRIPT], { encoding: 'utf8' });
+  // A contagem exata é invariante do contrato, coberta por ContratoTests; aqui
+  // o alvo é o CLI rodar e não divergir. Um \d+ evita que rota nova quebre este
+  // teste com mensagem enganosa.
   assert.match(
     saida,
-    /Rotas em sincronia: 54 operações no contrato, no README e no inventário\./);
+    /Rotas em sincronia: \d+ operações no contrato, no README e no inventário\./);
 });
 
 function prepararProjeto(transformarReadme = (markdown) => markdown) {
@@ -178,6 +181,24 @@ test('CLI sai 1 e aponta a rota que falta quando o README diverge', () => {
         assert.equal(error.status, 1);
         assert.match(error.stderr, /Faltam no README\.md:/);
         assert.match(error.stderr, /POST \/api\/especies\/sugerir/);
+        return true;
+      });
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('CLI sai 1 e aponta a rota que sobra quando o README inventa', () => {
+  const tmp = prepararProjeto((markdown) => markdown.replace(
+    /^## API$/m,
+    '## API\n\n| `GET` | `/api/rota-fantasma` | Público | Não existe |'));
+  try {
+    assert.throws(
+      () => rodarCli(tmp),
+      (error) => {
+        assert.equal(error.status, 1);
+        assert.match(error.stderr, /Sobram no README\.md \(não estão no contrato\):/);
+        assert.match(error.stderr, /GET \/api\/rota-fantasma/);
         return true;
       });
   } finally {

@@ -169,7 +169,7 @@ public sealed partial class ContratoOperationTransformer(IConfiguration configur
                 // deliberada. Só nesse caso o catálogo escreve por cima.
                 if (DescricaoVaziaOuPadrao(concreta, status))
                 {
-                    concreta.Description = RespostasPadrao.DescricaoComErro(status);
+                    concreta.Description = RespostasPadrao.DescricaoComErro(status, metodo);
                 }
             }
             else if (RespostasPadrao.DescricaoSemSchema(status) is { } descricao

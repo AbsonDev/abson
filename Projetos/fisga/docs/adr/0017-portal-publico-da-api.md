@@ -79,8 +79,9 @@ sobreviver ao CI que já existe (`gate` + `workflow_run`).
   `scripts/gerar-openapi.sh`, regenerado e comparado byte a byte no job **`api`**;
   a guarda que compara contrato, `## API` do `README.md` e inventário roda no job
   `docs`. O portal **consome** o `openapi.json`, não o reescreve. Nenhuma
-  operação muda de status, corpo ou media type nesta fase; o único acréscimo é o
-  header `Retry-After` no `429` (A2), aditivo para quem já consome a API.
+  operação muda de status, corpo ou media type nesta fase; os acréscimos são
+  aditivos para quem já consome a API: o header `Retry-After` no `429` (A2) e o
+  `examples.semSessao` no `200` de `GET /api/auth/me` (A3).
 - **F1 fechada (2026-11-20).** `info` (título, descrição, contato e licença) e
   `servers` são fixos no transformer, com produção e local na mesma ordem, para o
   artefato não depender do ambiente que o gerou. O lint de OpenAPI
