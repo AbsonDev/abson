@@ -749,7 +749,7 @@ git commit -m "test(fisga): guarda de rotas entre contrato, README e inventário
 
 - [ ] **Step 1: Inventário (`docs/api/inventario.md`)**
 
-- Cabeçalho `**Estado:**`: acrescentar o A3 (`info`/`servers` e comportamentos) e registrar a **F1 concluída** em 2026-11-20, mantendo o link do [`openapi.json`](openapi.json) e a contagem de 54 operações em 48 rotas.
+- Cabeçalho `**Estado:**`: acrescentar o A3 (`info`/`servers` e comportamentos) e registrar a **F1 concluída** em 2026-11-20, mantendo o link para `../api/openapi.json` e a contagem de 54 operações em 48 rotas.
 - `## Lacunas de contrato`: apagar a tabela e a nota "Resolvido no A2", substituindo por uma frase: "Nenhuma lacuna conhecida: `info`, `servers`, status reais, erros, uploads e `Retry-After` saem do contrato." Deixar claro que a seção fica como registro de que não há pendência.
 - Linhas de redirect em `### Autenticação & Sessão` (o drift que o `docs-ai` apontou):
   - `GET /api/auth/confirmar`: trocar "Sucesso e erro redirecionam com `estado=<codigo>`" por "Primeiro acesso vai para `/boas-vindas?novo=1`; os seguintes, para `/entrar/confirmar?estado=ok`; erro de link, para `/entrar/confirmar?estado=<codigo>`".
