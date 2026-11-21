@@ -86,13 +86,15 @@ test('divergencia lista o que falta em cada documento', () => {
   });
 });
 
-test('extratores leem as 54 operacoes dos documentos reais', () => {
+test('extratores leem as mesmas operacoes nos tres documentos reais', () => {
   const ler = (caminho) => readFileSync(new URL(caminho, import.meta.url), 'utf8');
   const contrato = extrairDoContrato(JSON.parse(ler('../docs/api/openapi.json')));
   const readme = extrairDoReadme(ler('../README.md'));
   const inventario = extrairDoInventario(ler('../docs/api/inventario.md'));
 
-  assert.equal(contrato.size, 54);
+  assert.ok(contrato.size > 0, 'o contrato não pode ficar vazio');
+  assert.equal(readme.size, contrato.size);
+  assert.equal(inventario.size, contrato.size);
   assert.deepEqual(divergencias(contrato, readme, inventario), {
     faltamNoReadme: [],
     faltamNoInventario: [],
@@ -125,31 +127,57 @@ test('CLI roda de verdade e confirma os tres documentos', () => {
     /Rotas em sincronia: 54 operações no contrato, no README e no inventário\./);
 });
 
-test('CLI sai 1 quando o README nao tem a secao API', () => {
+function prepararProjeto(transformarReadme = (markdown) => markdown) {
   const tmp = mkdtempSync(path.join(os.tmpdir(), 'rotas-'));
-  try {
-    mkdirSync(path.join(tmp, 'scripts'));
-    mkdirSync(path.join(tmp, 'docs', 'api'), { recursive: true });
-    copyFileSync(SCRIPT, path.join(tmp, 'scripts', 'verificar-rotas.mjs'));
-    copyFileSync(
-      new URL('../docs/api/openapi.json', import.meta.url),
-      path.join(tmp, 'docs', 'api', 'openapi.json'));
-    copyFileSync(
-      new URL('../docs/api/inventario.md', import.meta.url),
-      path.join(tmp, 'docs', 'api', 'inventario.md'));
-    writeFileSync(
-      path.join(tmp, 'README.md'),
-      readFileSync(new URL('../README.md', import.meta.url), 'utf8')
-        .replace(/^## API$/m, '## Interface'));
+  mkdirSync(path.join(tmp, 'scripts'));
+  mkdirSync(path.join(tmp, 'docs', 'api'), { recursive: true });
+  copyFileSync(SCRIPT, path.join(tmp, 'scripts', 'verificar-rotas.mjs'));
+  copyFileSync(
+    new URL('../docs/api/openapi.json', import.meta.url),
+    path.join(tmp, 'docs', 'api', 'openapi.json'));
+  copyFileSync(
+    new URL('../docs/api/inventario.md', import.meta.url),
+    path.join(tmp, 'docs', 'api', 'inventario.md'));
+  writeFileSync(
+    path.join(tmp, 'README.md'),
+    transformarReadme(readFileSync(new URL('../README.md', import.meta.url), 'utf8')));
+  return tmp;
+}
 
+function rodarCli(tmp) {
+  return execFileSync(
+    process.execPath,
+    [path.join(tmp, 'scripts', 'verificar-rotas.mjs')],
+    { encoding: 'utf8', stdio: 'pipe' });
+}
+
+test('CLI sai 1 quando o README nao tem a secao API', () => {
+  const tmp = prepararProjeto((markdown) => markdown.replace(/^## API$/m, '## Interface'));
+  try {
     assert.throws(
-      () => execFileSync(
-        process.execPath,
-        [path.join(tmp, 'scripts', 'verificar-rotas.mjs')],
-        { encoding: 'utf8', stdio: 'pipe' }),
+      () => rodarCli(tmp),
       (error) => {
         assert.equal(error.status, 1);
         assert.match(error.stderr, /Documento sem nenhuma rota lida: o README\.md/);
+        return true;
+      });
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('CLI sai 1 e aponta a rota que falta quando o README diverge', () => {
+  const tmp = prepararProjeto((markdown) => markdown
+    .split(/\r?\n/)
+    .filter((linha) => !linha.includes('`/api/especies/sugerir`'))
+    .join('\n'));
+  try {
+    assert.throws(
+      () => rodarCli(tmp),
+      (error) => {
+        assert.equal(error.status, 1);
+        assert.match(error.stderr, /Faltam no README\.md:/);
+        assert.match(error.stderr, /POST \/api\/especies\/sugerir/);
         return true;
       });
   } finally {
