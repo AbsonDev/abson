@@ -692,6 +692,8 @@ const VALOR_DE_FORMATO = Object.freeze({
 const NOTA_DE_NULO = 'este campo pode ser null';
 const NOTA_DE_LISTA = 'a lista vem vazia quando não há itens';
 const NOTA_DE_CICLO = 'ciclo no schema';
+const NOTA_DE_FORMA =
+  'os valores são exemplos de forma; a API preenche os campos na resposta';
 
 function tiposDe(schema) {
   return Array.isArray(schema?.type) ? schema.type : [schema?.type];
@@ -718,8 +720,11 @@ function valorDeEnum(valores) {
 // Esqueleto determinístico do schema: mostra a forma, nunca dado plausível.
 // A ordem das decisões é a do brief — `$ref`, `oneOf`, `type` composto, `enum`,
 // `format`, `type` —, e `example`/`examples` só entram em `montarRespostas`.
+// O teto de profundidade é 8 (a tabela achata com teto 6, R22; o esqueleto JSON
+// pode ir mais fundo para ilustrar a forma completa sem poluir tabela plana).
 export function sintetizar(schema, contrato) {
   const notas = [];
+  let temPlaceholder = false;
 
   function passo(atual, profundidade, vistos) {
     if (profundidade > 8) return {};
@@ -752,7 +757,10 @@ export function sintetizar(schema, contrato) {
       if (restantes.length === 1) {
         return passo({ ...resolvido, type: restantes[0] }, profundidade, proximos);
       }
-      if (restantes.includes('string')) return 0;
+      if (restantes.includes('string')) {
+        temPlaceholder = true;
+        return 0;
+      }
     }
 
     if (Array.isArray(resolvido.enum)) return valorDeEnum(resolvido.enum);
@@ -764,8 +772,14 @@ export function sintetizar(schema, contrato) {
       }
     }
 
-    if (resolvido.type === 'string') return '';
-    if (resolvido.type === 'integer' || resolvido.type === 'number') return 0;
+    if (resolvido.type === 'string') {
+      temPlaceholder = true;
+      return '';
+    }
+    if (resolvido.type === 'integer' || resolvido.type === 'number') {
+      temPlaceholder = true;
+      return 0;
+    }
     if (resolvido.type === 'boolean') return false;
     if (resolvido.type === 'array') {
       notas.push(NOTA_DE_LISTA);
@@ -788,7 +802,12 @@ export function sintetizar(schema, contrato) {
   }
 
   const valor = passo(schema, 0, new Set());
-  return { valor, notas: semRepetir(notas) };
+  const resultado = { valor, notas: semRepetir(notas) };
+  Object.defineProperty(resultado, 'temPlaceholder', {
+    value: temPlaceholder,
+    enumerable: false
+  });
+  return resultado;
 }
 
 // Uma resposta por status, em ordem numérica, com o corpo já resolvido. O
@@ -827,6 +846,11 @@ export function montarRespostas(operacao, contrato) {
         // regra de `application/pdf` acima).
         notas.push(`a resposta é ${mediaType}; o portal não mostra o arquivo`);
       } else {
+        // R51: corpo sintetizado com placeholder (string vazia ou 0) ganha a
+        // nota explicativa, tanto para sucesso quanto para erro.
+        if (sintetizado.temPlaceholder) {
+          notas.push(NOTA_DE_FORMA);
+        }
         corpo = JSON.stringify(sintetizado.valor, null, 2);
       }
     }
@@ -860,10 +884,11 @@ export function montarRespostas(operacao, contrato) {
 
 // R9: objeto puro não vira linha, só desce. R12: array de primitivo emite uma
 // linha só (`campo[]`); array de objeto emite `campo` + `campo[]` e desce nos
-// `items`. Array anulável (`type: ['null', 'array']`) fecha em `campo` sem
-// descer: o valor pode ser `null`, e os itens não descrevem o que existe.
-// R13: `obrigatorio` sai do `required` do pai, carregado ao descer. R22: o teto
-// de profundidade é `> 6` — o contrato atinge 6 em `exportarConta`.
+// `items`. R48: composto anulável (`oneOf` com `null`, `type: ['null', ...]`)
+// emite a linha — que carrega a nulidade — **e** desce; a informação do miolo
+// existe no contrato e é o que o leitor precisa. R13: `obrigatorio` sai do
+// `required` do pai, carregado ao descer. R22: o teto de profundidade é `> 6`
+// — o contrato atinge 6 em `exportarConta`.
 export function montarTabelaDeSchema(schema, contrato) {
   const linhas = [];
 
@@ -882,14 +907,15 @@ export function montarTabelaDeSchema(schema, contrato) {
       const temNulo = ehAnulavel(resolvido, contrato);
       const ramo = resolvido.oneOf.find((candidato) =>
         !tiposDe(resolverRef(candidato, contrato)).includes('null'));
-      // `oneOf` com `null` é null OU o outro ramo: a linha carrega a nulidade,
-      // que é a informação que justifica existir; descer no objeto repetiria o
-      // pai sem ela e quebraria a contagem medida (MeResponse → 5 linhas).
       if (temNulo) {
-        if (!caminho) return;
-        const alvo = ramo ? resolverRef(ramo, contrato) : {};
-        const tipoDoRamo = tiposDe(alvo).find((candidato) => candidato !== 'null');
-        linha(caminho, tipoDoRamo ?? 'object', obrigatorio, true);
+        // A linha do composto diz que o campo pode ser `null`; descer no ramo
+        // nomeia o miolo (`usuario.nome`, `mare.eventos[]`). R48.
+        if (caminho) {
+          const alvo = ramo ? resolverRef(ramo, contrato) : {};
+          const tipoDoRamo = tiposDe(alvo).find((candidato) => candidato !== 'null');
+          linha(caminho, tipoDoRamo ?? 'object', obrigatorio, true);
+        }
+        if (ramo) descer(ramo, caminho, profundidade, obrigatorio, proximos);
         return;
       }
       if (ramo) descer(ramo, caminho, profundidade, obrigatorio, proximos);
@@ -903,18 +929,17 @@ export function montarTabelaDeSchema(schema, contrato) {
         if (resolvido.items) descer(resolvido.items, '', profundidade, obrigatorio, proximos);
         return;
       }
-      if (anulavel) {
-        linha(caminho, 'array', obrigatorio, true);
-        return;
-      }
+      // R48: array anulável segue o mesmo caminho do não anulável — a linha
+      // com `anulavel: true` e a descida nos `items`. R49: `campo[]` herda a
+      // nulidade do pai.
       const item = resolverRef(resolvido.items, contrato);
       const itemEhObjeto = Boolean(item?.properties) || item?.type === 'object';
       if (!itemEhObjeto) {
-        linha(`${caminho}[]`, 'array', obrigatorio, false);
+        linha(`${caminho}[]`, 'array', obrigatorio, anulavel);
         return;
       }
-      linha(caminho, 'array', obrigatorio, false);
-      linha(`${caminho}[]`, 'object', obrigatorio, false);
+      linha(caminho, 'array', obrigatorio, anulavel);
+      linha(`${caminho}[]`, 'object', obrigatorio, anulavel);
       descer(resolvido.items, `${caminho}[]`, profundidade + 1, false, proximos);
       return;
     }
@@ -932,9 +957,10 @@ export function montarTabelaDeSchema(schema, contrato) {
       return;
     }
 
-    // Escalar (ou enum, que é escalar com lista): é aqui que a linha nasce.
-    // `binary` é `string` no contrato e a tabela descreve a forma, não o valor:
-    // o campo aparece (quem esconde o arquivo é o esqueleto, não a tabela).
+    // Escalar, enum ou objeto sem properties (ex.: additionalProperties): é
+    // aqui que a linha nasce. `binary` é `string` no contrato e a tabela
+    // descreve a forma, não o valor: o campo aparece (quem esconde o arquivo
+    // é o esqueleto, não a tabela).
     if (!caminho) return;
     if (Array.isArray(resolvido.enum)) {
       linha(caminho, 'enum', obrigatorio, ehAnulavel(resolvido, contrato), [...resolvido.enum]);

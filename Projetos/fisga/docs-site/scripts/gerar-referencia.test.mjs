@@ -1287,6 +1287,21 @@ test('example do media type vence o sintetizador', () => {
   }, null, 2));
   assert.equal(sucesso, ok);
   assert.equal(sucesso.desfecho, true);
+  // R51: `obterSessao` 200 tem exemplo do contrato — não ganha a nota de
+  // placeholder que os corpos sintetizados recebem.
+  assert.equal(ok.notas.some((nota) => nota.includes('exemplos de forma')), false);
+});
+
+test('corpo sintetizado com placeholder ganha nota explicativa', () => {
+  // R51: os corpos sintetizados (como o 400 de entrarComSenha, que tem strings
+  // vazias em codigo/detalhe) ganham a nota que explica a forma vazia.
+  const { respostas } = respostasDa('entrarComSenha');
+  const r400 = respostas.find((resposta) => resposta.status === '400');
+  assert.ok(r400, '400 deve existir em entrarComSenha');
+  const notaEsperada =
+    'os valores são exemplos de forma; a API preenche os campos na resposta';
+  assert.ok(r400.notas.includes(notaEsperada),
+    `notas do 400: ${JSON.stringify(r400.notas)}`);
 });
 
 test('204, text/html e application/pdf ficam sem bloco', () => {
@@ -1340,8 +1355,8 @@ test('tabela de schema achata objeto e array', () => {
     { $ref: '#/components/schemas/PescariaDetalhadaDto' }, contratoDaArvore());
   const caminhos = linhas.map((linha) => linha.caminho);
 
-  // R12: 32 linhas, sem repetir `capturas[].fotos[]`.
-  assert.equal(linhas.length, 32);
+  // R48: 42 linhas (o composto anulável desce), sem repetir `capturas[].fotos[]`.
+  assert.equal(linhas.length, 42);
   assert.equal(new Set(caminhos).size, linhas.length);
   assert.ok(caminhos.includes('entrada.local'), caminhos.join(' | '));
   assert.ok(caminhos.includes('capturas[].especie'), caminhos.join(' | '));
@@ -1354,23 +1369,45 @@ test('tabela de schema achata objeto e array', () => {
 test('tabela marca obrigatoriedade e anulabilidade', () => {
   const me = montarTabelaDeSchema(
     { $ref: '#/components/schemas/MeResponse' }, contratoDaArvore());
-  assert.equal(me.length, 5);
+  // R48: o composto anulável emite a linha e desce — 5 vira 12.
+  assert.equal(me.length, 12);
   const usuario = me.find((linha) => linha.caminho === 'usuario');
   assert.equal(usuario.obrigatorio, true);
   assert.equal(usuario.anulavel, true);
+  assert.ok(me.some((linha) => linha.caminho === 'usuario.nomeExibicao'),
+    me.map((linha) => linha.caminho).join(' | '));
 
   const entrada = montarTabelaDeSchema(
     { $ref: '#/components/schemas/EntradaDePescaria' }, contratoDaArvore());
-  assert.equal(entrada.length, 15);
+  assert.equal(entrada.length, 25);
   const local = entrada.find((linha) => linha.caminho === 'local');
   assert.equal(local.obrigatorio, false);
   assert.equal(local.anulavel, true);
   assert.equal(local.tipo, 'string');
+  // R48: array anulável também desce — `capturas[]` e o miolo.
+  const caminhosDaEntrada = entrada.map((linha) => linha.caminho);
+  assert.ok(caminhosDaEntrada.includes('capturas[].especie'), caminhosDaEntrada.join(' | '));
+  assert.ok(caminhosDaEntrada.includes('capturas[].fotos[]'), caminhosDaEntrada.join(' | '));
+  // R49: `campo[]` de primitivo herda a nulidade do pai.
+  const fotos = entrada.find((linha) => linha.caminho === 'capturas[].fotos[]');
+  assert.equal(fotos.anulavel, true);
 
   // Enum carrega os valores para a tabela renderizar a lista.
   const ambiente = entrada.find((linha) => linha.caminho === 'ambiente');
   assert.equal(ambiente.tipo, 'enum');
   assert.deepEqual(ambiente.valores, ['Rio', 'Mar', 'Lagoa', 'Represa', 'PesquePague', 'Outro']);
+});
+
+test('tabela de regressão desce até a folha mais funda', () => {
+  // R48: contagens medidas com walker de referência independente, para que uma
+  // poda futura do walker não passe silenciosa.
+  assert.equal(montarTabelaDeSchema(
+    { $ref: '#/components/schemas/CondicoesDto' }, contratoDaArvore()).length, 86);
+  const conta = montarTabelaDeSchema(
+    { $ref: '#/components/schemas/ExportacaoDaConta' }, contratoDaArvore());
+  assert.equal(conta.length, 51);
+  const caminhos = conta.map((linha) => linha.caminho);
+  assert.ok(caminhos.includes('pescarias[].capturas[].fotos[]'), caminhos.join(' | '));
 });
 
 test('ciclo de $ref para em vez de girar', () => {
