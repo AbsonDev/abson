@@ -663,8 +663,9 @@ export function montarCurl(operacao, override, servidor) {
   const temLocation = Object.entries(respostas).some(([, resposta]) =>
     Boolean(resposta?.headers?.Location));
   const tem204 = Object.keys(respostas).includes('204');
+  const temRedirect = Object.keys(respostas).some((status) => status.startsWith('3'));
 
-  const linhas = [temLocation || tem204 ? 'curl -s -i' : 'curl -s'];
+  const linhas = [temLocation || tem204 || temRedirect ? 'curl -s -i' : 'curl -s'];
   if (operacao.metodo !== 'GET') linhas.push(`-X ${operacao.metodo}`);
   linhas.push(`"${montarUrl(operacao, frontmatter, servidor)}"`);
 

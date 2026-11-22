@@ -5,7 +5,7 @@
   "scripts": {
     "tokens": "node scripts/copiar-tokens.mjs",
     "gerar": "node scripts/gerar-referencia.mjs",
-    "preparar": "npm run tokens",
+    "preparar": "npm run tokens && npm run gerar",
     "predev": "npm run preparar",
     "dev": "astro dev",
     "prebuild": "npm run preparar",

@@ -1458,3 +1458,89 @@ test('operação do modelo carrega respostas, desfecho e corpoTabela', () => {
   assert.equal(saude.sucesso.status, '200');
   assert.equal(saude.request.corpoTabela, null);
 });
+
+// --- Contrato e overrides reais -------------------------------------------
+// Estes casos não usam a fixture: eles falham quando um override é copiado de
+// outra operação ou quando o contrato muda debaixo do portal.
+
+function modeloReal() {
+  const overrides = new Map(lerOverrides().map((override) => [override.operacao, override]));
+  return gerarModelo(lerContrato(), overrides);
+}
+
+test('os 54 overrides reais produzem um modelo sem pendências', () => {
+  const modelo = modeloReal();
+  assert.deepEqual(modelo.contagem, { operacoes: 54, dominios: 13, paginas: 69 });
+});
+
+test('confirmarLink real não tem 302 em erros', () => {
+  const modelo = modeloReal();
+  const op = modelo.operacoes.confirmarLink;
+  assert.equal(op.erros.some((erro) => erro.status === 302), false);
+  assert.equal(op.sucesso.status, '302');
+  assert.ok(op.exemplo[0].startsWith('curl -s -i'));
+});
+
+test('acesso do override é compatível com security nas 54', () => {
+  const contrato = lerContrato();
+  const overrides = lerOverrides();
+  assert.equal(overrides.length, 54);
+  const operacoesPorId = new Map(listarOperacoes(contrato).map((item) => [item.operationId, item]));
+  const contagemPorAcesso = { publico: 0, capacidade: 0, sessao: 0, admin: 0, dono: 0 };
+  for (const override of overrides) {
+    const operacao = operacoesPorId.get(override.operacao);
+    assert.ok(operacao, `operação inexistente: ${override.operacao}`);
+    const problemas = validarOverride(override, operacao, contrato);
+    assert.deepEqual(problemas, [], `problemas em ${override.operacao}: ${problemas.join(', ')}`);
+    contagemPorAcesso[override.frontmatter.acesso] = (contagemPorAcesso[override.frontmatter.acesso] ?? 0) + 1;
+  }
+  assert.deepEqual(contagemPorAcesso, {
+    publico: 18,
+    capacidade: 5,
+    sessao: 20,
+    admin: 2,
+    dono: 9
+  });
+});
+
+test('nenhum curl real sai com undefined', () => {
+  const modelo = modeloReal();
+  const operacoes = Object.values(modelo.operacoes);
+  assert.equal(operacoes.length, 54);
+  let sessaoCount = 0;
+  let adminCount = 0;
+  let nenhumaCount = 0;
+  let redirectCount = 0;
+
+  for (const op of operacoes) {
+    assert.ok(Array.isArray(op.exemplo) && op.exemplo.length >= 2, `${op.operationId} exemplo curto`);
+    for (const linha of op.exemplo) {
+      assert.equal(linha.includes('undefined'), false, `${op.operationId} tem undefined`);
+      assert.equal(linha.includes('NaN'), false, `${op.operationId} tem NaN`);
+      assert.equal(linha.includes('[object'), false, `${op.operationId} tem [object`);
+    }
+
+    if (op.autenticacao === 'sessao') {
+      sessaoCount++;
+      assert.ok(op.exemplo.some((l) => l.includes('-b cookies.txt')), `${op.operationId} deve ter -b cookies.txt`);
+    } else if (op.autenticacao === 'admin') {
+      adminCount++;
+      assert.ok(op.exemplo.some((l) => l.includes('X-Admin-Token')), `${op.operationId} deve ter X-Admin-Token`);
+    } else {
+      nenhumaCount++;
+      assert.equal(op.exemplo.some((l) => l.includes('-b cookies.txt')), false, `${op.operationId} não deve ter -b cookies.txt`);
+      assert.equal(op.exemplo.some((l) => l.includes('X-Admin-Token')), false, `${op.operationId} não deve ter X-Admin-Token`);
+    }
+
+    const eh3XX = op.respostas.some((r) => r.status.startsWith('3'));
+    if (eh3XX) {
+      redirectCount++;
+      assert.ok(op.exemplo[0].startsWith('curl -s -i'), `${op.operationId} 3XX deve iniciar com curl -s -i`);
+    }
+  }
+
+  assert.equal(sessaoCount, 29);
+  assert.equal(adminCount, 2);
+  assert.equal(nenhumaCount, 23);
+  assert.equal(redirectCount, 6);
+});
