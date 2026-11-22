@@ -1,0 +1,87 @@
+---
+import '../styles/portal.css';
+
+interface Props {
+  titulo: string;
+  descricao: string;
+  ativo?: string;
+  versao?: string;
+}
+
+const { titulo, descricao, ativo, versao } = Astro.props;
+
+// O sufixo é marca, não texto do chamador: Task 6 passa `info.titulo`
+// ("API do Fisga") e repetir "· Fisga" produziria "API do Fisga · Fisga".
+const tituloDoDocumento = titulo.includes('Fisga') ? titulo : `${titulo} · Fisga`;
+
+// Com `build.format: 'file'` o pathname é o nome do arquivo emitido
+// (`/index.html`, `/referencia.html`, `/referencia/conta.html`). Normalizar
+// aqui evita publicar o canonical apontando para a variante `.html`.
+const caminho = Astro.url.pathname
+  .replace(/\/index\.html$/, '/')
+  .replace(/\.html$/, '');
+const canonical = new URL(caminho, Astro.site).href;
+
+// `aria-current="page"` é para o link que aponta para a página atual. Numa
+// página de domínio, "Referência" é a seção que contém a página, não a própria
+// página: o valor `true` anuncia o item atual do conjunto sem mentir, e deixa
+// um único `page` na página — o link do domínio, marcado pelo `Nav`.
+const referenciaEhAncestral = caminho.startsWith('/referencia/');
+---
+
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={descricao} />
+    <title>{tituloDoDocumento}</title>
+    <link rel="canonical" href={canonical} />
+  </head>
+  <body>
+    <a class="skip-link" href="#conteudo">Ir para o conteúdo</a>
+
+    <header class="site-header">
+      <div class="container">
+        {/* A marca carrega o nome e o contexto; o quadrado com "F" é
+            decoração e fica fora da árvore de acessibilidade. */}
+        <a class="marca" href="/" aria-label="Fisga — Documentação da API, página inicial">
+          <span class="marca-selo" aria-hidden="true">F</span>
+          <span class="marca-texto">Fisga <small>Documentação da API</small></span>
+        </a>
+        <nav aria-label="Principal">
+          <ul class="nav-principal" role="list">
+            <li>
+              {/* `inicio` marca a home; `referencia` marca o índice e as páginas
+                  de domínio/operação, que passam `ativo` para o Base. */}
+              <a href="/" aria-current={ativo === 'inicio' ? 'page' : undefined}>Visão geral</a>
+            </li>
+            <li>
+              <a
+                href="/referencia"
+                aria-current={
+                  ativo === 'referencia' ? (referenciaEhAncestral ? 'true' : 'page') : undefined
+                }
+              >
+                Referência
+              </a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </header>
+
+    <main id="conteudo" class="container" tabindex="-1">
+      <slot />
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        {versao && <p>Versão do contrato: <code>{versao}</code></p>}
+        <p>
+          <a href="https://api.fisga.abson.tech/health">Status da API</a>
+        </p>
+      </div>
+    </footer>
+  </body>
+</html>

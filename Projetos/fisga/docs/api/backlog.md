@@ -167,6 +167,7 @@ resposta.
 - **Aceite:** `astro build` gera as 54 páginas de operação a partir do spec;
   build falha quando falta override ou quando um status do spec não está
   documentado.
+- **Estado:** concluída na issue [#73](https://github.com/AbsonDev/abson/issues/73) (2026-11-22).
 - **Est.:** 2 d · **Dep.:** F1.4
 
 ### F2.2 — Conteúdo de prosa
@@ -190,8 +191,10 @@ resposta.
 ### F2.4 — CI do portal
 
 - **Issue:** [#76](https://github.com/AbsonDev/abson/issues/76)
-- **Escopo:** output `portal` no job `changes`, job `docs-site` no
-  `fisga-pipeline.yml`, `gate` dependendo dele.
+- **Escopo:** refinamento do job `docs-site`: adicionar `astro check`, `lychee` no
+  `dist/`, orçamento de tempo formal (≤ 6 min) e publicação do output para
+  deploy. (O output `portal` em `changes`, o job inicial `docs-site` e a
+  dependência do `gate` foram adiantados na F2.1 para proteger a entrega).
 - **Aceite:** PR que muda só documentação roda `docs-site` e não roda `api`;
   falha no gerador bloqueia merge; tempo do job ≤ 6 min.
 - **Est.:** 1 d · **Dep.:** F2.1

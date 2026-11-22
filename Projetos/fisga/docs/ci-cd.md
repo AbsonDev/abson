@@ -16,10 +16,11 @@ convenções de branch, labels, campos do quadro e checklist de merge, está em
 ```text
 PR
 └── fisga-pipeline
-    ├── changes   (separa mudança de código de mudança de documentação)
+    ├── changes   (separa mudança de código, documentação e portal)
     ├── api       (restore locked + format + build + 410 testes + contrato + lint OpenAPI)
     ├── web       (npm ci + astro check + build + 165 Playwright mockados)
     ├── docs      (markdownlint + guarda de rotas + links, em PR de código ou de documentação)
+    ├── docs-site (npm ci + test:unit + build das 69 páginas + test:paginas, quando toca portal)
     ├── docker    (build das imagens sem push, em PR e workflow_dispatch)
     └── gate      (check obrigatório)
 
@@ -69,21 +70,24 @@ Consequências do desenho atual:
 ### `changes`
 
 Roda em todo PR e push para `main`, sem `paths:` no gatilho. O job usa `git diff` para decidir se o
-Fisga mudou e expõe dois outputs: `needs.changes.outputs.fisga` (código) e
-`needs.changes.outputs.documentacao` (só documentação).
+Fisga mudou e expõe três outputs: `needs.changes.outputs.fisga` (código),
+`needs.changes.outputs.documentacao` (só documentação) e `needs.changes.outputs.portal` (portal e referência).
 
 - PR: diff entre `base.sha` e `head.sha`.
 - Push: diff entre `github.event.before` e `github.sha`, com fallback para o commit raiz quando o
   `before` não existe (branch nova ou force push).
-- `workflow_dispatch`: assume `fisga=true` e `documentacao=true`.
+- `workflow_dispatch`: assume `fisga=true`, `documentacao=true` e `portal=true`.
 
 O filtro separa código de documentação:
 
-- **Código** (`fisga=true`): qualquer caminho em `Projetos/fisga/` **exceto** `docs/**`,
+- **Código** (`fisga=true`): qualquer caminho em `Projetos/fisga/` **exceto** `docs/**`, `docs-site/**`,
   `README.md` e `AGENTS.md`, mais o próprio `fisga-pipeline.yml`.
-- **Documentação** (`documentacao=true`): `Projetos/fisga/docs/**`, `Projetos/fisga/README.md`,
-  `Projetos/fisga/AGENTS.md`, `AGENTS.md` da raiz, `.github/copilot-instructions.md`,
-  `.github/PULL_REQUEST_TEMPLATE.md`, `.markdownlint-cli2.jsonc` e `.lychee.toml`.
+- **Documentação** (`documentacao=true`): `Projetos/fisga/docs/**`, `Projetos/fisga/docs-site/**/*.md`,
+  `Projetos/fisga/README.md`, `Projetos/fisga/AGENTS.md`, `AGENTS.md` da raiz,
+  `.github/copilot-instructions.md`, `.github/PULL_REQUEST_TEMPLATE.md`, `.markdownlint-cli2.jsonc` e
+  `.lychee.toml`.
+- **Portal** (`portal=true`): qualquer alteração em `Projetos/fisga/docs-site/`,
+  `Projetos/fisga/docs/publico/` ou `Projetos/fisga/docs/api/openapi.json`.
 - **Exceção deliberada:** `Projetos/fisga/docs/api/openapi.json` (o contrato gerado) conta como
   **código**, não como documentação. O contrato é gerado; editar `openapi.json` à mão precisa passar
   pelo job `api`, que regenera e compara. Os demais arquivos de `docs/api/` — como
@@ -140,6 +144,17 @@ link externo que morre depois do merge não pode bloquear o deploy de código j�
 O `gate` depende dele: link quebrado, Markdown inválido ou rota divergente bloqueia o merge. O job
 roda em PR e `workflow_dispatch`; no push da `main` ele é pulado de propósito.
 
+### `docs-site`
+
+Roda em PR e `workflow_dispatch` quando `portal == 'true'`:
+
+- `npm ci` em `Projetos/fisga/docs-site`.
+- `npm run test:unit` (suíte unitária do gerador `gerar-referencia.test.mjs`, 76 testes).
+- `npm run build` (gera os tokens, o `src/data/referencia.json` e as 69 páginas estáticas em `dist/`).
+- `npm run test:paginas` (verificação pós-build `verificar-paginas.test.mjs` cobrindo todas as 69 páginas).
+
+O `gate` depende dele: falha no gerador ou página ausente bloqueia o merge.
+
 ### `gate`
 
 Sempre roda (`if: always()`) e falha se qualquer job necessário falhar ou for cancelado. É o único
@@ -171,10 +186,11 @@ contrato gerado não deploya — nada muda em produção, e o job `api` do CI j�
 
 ### Documentação não deploya
 
-O filtro de código exclui `Projetos/fisga/docs/**`, `README.md` e `AGENTS.md`.
-Um merge só de documentação roda o job `docs` no PR e **não** dispara deploy.
+O filtro de código exclui `Projetos/fisga/docs/**`, `docs-site/**`, `README.md` e `AGENTS.md`.
+Um merge só de documentação roda o job `docs` e/ou `docs-site` no PR e **não** dispara deploy.
 Mudou código, configuração ou container? Deploy normal. O job de deploy continua
-sendo o mesmo `workflow_run`, sem `paths:`.
+sendo o mesmo `workflow_run`, sem `paths:`. O deploy do portal de documentação
+(`docs.fisga.abson.tech`) entra na F2.5.
 
 O deploy não usa `inputs`, `github.ref` nem `github.event_name` no `if`:
 

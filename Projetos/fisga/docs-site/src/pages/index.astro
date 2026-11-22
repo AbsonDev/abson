@@ -1,0 +1,72 @@
+---
+import { marked } from 'marked';
+import Base from '../components/Base.astro';
+import referencia from '../data/referencia.json';
+
+const { info, contagem } = referencia;
+
+// `info.descricao` é markdown com vários parágrafos, negrito e blocos JSON. A
+// home usa só o primeiro parágrafo, renderizado como inline, para abrir a
+// página sem despejar o documento inteiro nem mostrar markdown cru.
+const primeiroParagrafo = info.descricao.split(/\n\s*\n/)[0]?.trim() ?? info.descricao.trim();
+
+// O primeiro parágrafo começa com o próprio título ("API do Fisga: o diário…").
+// Logo abaixo do `<h1>`, repetir o nome é ruído; o texto restante é mantido
+// palavra por palavra.
+const semTitulo = primeiroParagrafo.startsWith(`${info.titulo}:`)
+  ? primeiroParagrafo.slice(info.titulo.length + 1).trim()
+  : primeiroParagrafo;
+const textoDoLead = semTitulo.charAt(0).toUpperCase() + semTitulo.slice(1);
+
+const lead = await marked.parseInline(textoDoLead);
+
+// A meta description não aceita markdown: o mesmo parágrafo, sem os marcadores.
+const descricaoDaPagina = textoDoLead.replace(/\*\*|`/g, '');
+---
+
+<Base
+  titulo={info.titulo}
+  descricao={descricaoDaPagina}
+  ativo="inicio"
+  versao={info.versao}
+>
+  <article class="home">
+    <header class="home-cabecalho">
+      <p class="rotulo">Documentação da API</p>
+      <h1>{info.titulo}</h1>
+      <p class="lead" set:html={lead} />
+      <p class="linha-versao">
+        Versão do contrato: <code>{info.versao}</code>
+      </p>
+    </header>
+
+    <div class="grade-caminhos">
+      <div class="cartao-caminho">
+        <span class="rotulo">Referência</span>
+        <h2>As operações da API</h2>
+        <p>
+          {contagem.dominios} domínios e {contagem.operacoes} operações derivadas do contrato
+          OpenAPI, com método, rota e quem pode chamar cada uma.
+        </p>
+        <a class="cartao-acao" href="/referencia">Ver a referência</a>
+      </div>
+
+      {/* O guia rápido é F2.2: o cartão anuncia o que vem sem prometer link. */}
+      <div class="cartao-caminho cartao-caminho--inativo">
+        <span class="rotulo">Guia rápido</span>
+        <h2>A primeira chamada</h2>
+        <p>
+          Três passos para a primeira chamada autenticada: entrar, guardar o cookie e ler o
+          próprio diário.
+        </p>
+        <span class="chip">Em breve</span>
+      </div>
+    </div>
+
+    <p class="faixa-privacidade">
+      <span class="faixa-marcador" aria-hidden="true">●</span>
+      <span><strong>Leitura pública.</strong> Escrita exige sua conta.</span>
+      <a href="/referencia/autenticacao/entrarComSenha">Ver como entrar com senha</a>
+    </p>
+  </article>
+</Base>

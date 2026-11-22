@@ -30,19 +30,19 @@ contrato) concluído em 2026-11-20 · A2 (respostas reais) concluído em
 
 | Domínio | Operações | Público (inclui token) | Sessão/dono | Admin/token |
 | --- | --- | --- | --- | --- |
-| Sistema & Legal | 3 | 3 | — | — |
+| Sistema | 3 | 3 | — | — |
 | Catálogo | 1 | 1 | — | — |
-| Autenticação & Sessão | 16 | 12 | 4 | — |
-| Conta & Consentimento | 5 | — | 5 | — |
-| Pescarias & Compartilhamento | 6 | 3 | 3 | — |
+| Autenticação | 16 | 12 | 4 | — |
+| Conta | 5 | — | 5 | — |
+| Pescarias | 6 | 3 | 3 | — |
 | Diário | 1 | — | 1 | — |
 | Condições | 2 | 1 | 1 | — |
 | Locais | 7 | 2 | 5 | — |
 | Pontos | 4 | — | 4 | — |
 | Trilhas | 4 | — | 4 | — |
 | Mídia | 1 | — | 1 | — |
-| Visão/Espécies | 1 | — | 1 | — |
-| Newsletter/Admin | 3 | 1 | — | 2 |
+| Espécies | 1 | — | 1 | — |
+| Newsletter | 3 | 1 | — | 2 |
 | **Total** | **54** | **23** | **29** | **2** |
 
 Métodos: 27 `GET`, 18 `POST`, 4 `PUT`, 4 `DELETE`, 1 `PATCH`. "Público" inclui
@@ -165,7 +165,7 @@ Legenda de acesso: **P** público · **S** sessão · **D** dono · **A** admin 
 **T** token assinado/`shareToken`. "Consent." indica que o bloqueio de
 consentimento pendente se aplica.
 
-### Sistema & Legal
+### Sistema
 
 | Método e rota | Acesso | Rate limit | Cache | Sucesso real | Erros a documentar |
 | --- | --- | --- | --- | --- | --- |
@@ -185,7 +185,7 @@ por isso fora das linhas.
 | --- | --- | --- | --- | --- | --- |
 | `GET /api/catalogo` | P | leitura | public 1 dia | `200` `CatalogoDto` | `429` |
 
-### Autenticação & Sessão
+### Autenticação
 
 | Método e rota | Acesso | Rate limit | Sucesso real | Erros a documentar | Notas |
 | --- | --- | --- | --- | --- | --- |
@@ -206,7 +206,7 @@ por isso fora das linhas.
 | `POST /api/auth/sair` | P | escrita | `204 No Content` | `429` | Idempotente: sem sessão também responde `204` |
 | `POST /api/auth/sair-de-todos` | S, consent. | escrita | `204 No Content` | `401`, `403`, `429` | Revoga sessões e rotaciona o security stamp |
 
-### Conta & Consentimento
+### Conta
 
 | Método e rota | Acesso | Rate limit | Sucesso real | Erros a documentar | Notas |
 | --- | --- | --- | --- | --- | --- |
@@ -216,7 +216,7 @@ por isso fora das linhas.
 | `GET /api/conta/exportar` | S, consent. | leitura | `200` `application/json` com `Content-Disposition` | `401`, `403`, `429` | Download `fisga-conta-AAAAAMDD.json` |
 | `DELETE /api/conta` | S, consent. | escrita | `204 No Content` | `400`, `401`, `403`, `429` | Corpo exige confirmação; encerra a sessão |
 
-### Pescarias & Compartilhamento
+### Pescarias
 
 | Método e rota | Acesso | Rate limit | Cache | Sucesso real | Erros a documentar | Notas |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -276,13 +276,13 @@ por isso fora das linhas.
 | --- | --- | --- | --- | --- | --- |
 | `POST /api/midia` | S, consent. | midia | `200` `MidiaResponse` | `400` `midia_sem_formulario`/`midia_vazia`/`midia_grande`/`midia_tipo_invalido`, `401`, `403`, `429` | `multipart/form-data`, campo `arquivo`; JPG, PNG ou WebP até 5 MB |
 
-### Visão/Espécies
+### Espécies
 
 | Método e rota | Acesso | Rate limit | Sucesso real | Erros a documentar | Notas |
 | --- | --- | --- | --- | --- | --- |
 | `POST /api/especies/sugerir` | S, consent. | midia | `200` resultado do reconhecedor | `400` `sugestao_sem_formulario`/`sugestao_sem_foto`/`sugestao_foto_grande`/`sugestao_tipo_invalido`, `401`, `403`, `429`, `500` | `multipart/form-data`, campo `arquivo`; até 5 MB |
 
-### Newsletter/Admin
+### Newsletter
 
 | Método e rota | Acesso | Rate limit | Sucesso real | Erros a documentar | Notas |
 | --- | --- | --- | --- | --- | --- |
@@ -292,9 +292,10 @@ por isso fora das linhas.
 
 ## Lacunas de contrato
 
-Nenhuma lacuna conhecida: `info`, `servers`, status reais, erros, uploads e
-`Retry-After` saem do contrato. Esta seção fica como registro de que não há
-pendência — a F1 fechou em 2026-11-20.
+Única lacuna conhecida: `POST /api/newsletter/enviar` lê `mes` e `dryRun` da
+query sem `parameters` no contrato OpenAPI. O portal de documentação não inventa
+parâmetros não declarados; a correção pertence aos metadados da API (Fisga.Api),
+fora do escopo da F2.1.
 
 ## Verificação em execução local
 

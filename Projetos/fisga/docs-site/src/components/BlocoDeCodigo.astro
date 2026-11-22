@@ -1,0 +1,65 @@
+---
+/**
+ * Bloco de código com rótulo, linguagem e botão copiar opcional.
+ *
+ * Ruling R44: une `linhas` com `' \\\n'` quando `linguagem === 'bash'`,
+ * ou `'\n'` para as demais linguagens.
+ * O botão copiar dispara evento delegado em `document` via script processado
+ * pelo Astro (nunca `is:inline`).
+ */
+interface Props {
+  rotulo: string;
+  linguagem: string;
+  linhas: string[] | string;
+  copiavel?: boolean;
+}
+
+const { rotulo, linguagem, linhas, copiavel = false } = Astro.props;
+
+const separador = linguagem === 'bash' ? ' \\\n' : '\n';
+const codigo = Array.isArray(linhas) ? linhas.join(separador) : linhas;
+---
+
+<figure class="bloco-codigo">
+  <figcaption class="bloco-codigo-cabecalho">
+    <span class="bloco-codigo-rotulo">{rotulo}</span>
+    {
+      copiavel && (
+        <button
+          type="button"
+          class="botao-copiar"
+          data-copiar
+          aria-label={`Copiar código de ${rotulo}`}
+        >
+          Copiar
+        </button>
+      )
+    }
+  </figcaption>
+  <pre><code class={`language-${linguagem}`}>{codigo}</code></pre>
+</figure>
+
+<script>
+  document.addEventListener('click', async (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const botao = target.closest('[data-copiar]');
+    if (!(botao instanceof HTMLElement)) return;
+
+    const figure = botao.closest('.bloco-codigo');
+    const codigoEl = figure?.querySelector('code');
+    if (!codigoEl) return;
+
+    const texto = codigoEl.textContent || '';
+    try {
+      await navigator.clipboard.writeText(texto);
+      const textoOriginal = botao.textContent;
+      botao.textContent = 'Copiado!';
+      setTimeout(() => {
+        botao.textContent = textoOriginal;
+      }, 2000);
+    } catch {
+      // Em falha, não faz nada (o texto continua selecionável)
+    }
+  });
+</script>

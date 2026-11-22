@@ -1,0 +1,76 @@
+---
+/**
+ * Tabela de schema (usada para corpo da requisição).
+ *
+ * Colunas: Campo, Tipo, Obrigatório, Aceita null.
+ * Ruling R50: quando tipo === 'enum' e valores está presente, exibe "enum"
+ * seguido dos valores em <code> separados por vírgula.
+ * Nota exibida uma vez se houver campo obrigatório e anulável.
+ */
+interface LinhaSchema {
+  caminho: string;
+  tipo: string;
+  obrigatorio: boolean;
+  anulavel: boolean;
+  valores?: string[] | null;
+}
+
+interface Props {
+  linhas: LinhaSchema[];
+  titulo?: string;
+}
+
+const { linhas, titulo } = Astro.props;
+
+const temObrigatorioAnulavel = linhas.some((l) => l.obrigatorio && l.anulavel);
+---
+
+<div class="tabela-schema-bloco">
+  {titulo && <h3 class="tabela-schema-titulo">{titulo}</h3>}
+  <div class="table-wrap">
+    <table class="tabela-schema">
+      <thead>
+        <tr>
+          <th scope="col">Campo</th>
+          <th scope="col">Tipo</th>
+          <th scope="col">Obrigatório</th>
+          <th scope="col">Aceita null</th>
+        </tr>
+      </thead>
+      <tbody>
+        {
+          linhas.map((linha) => (
+            <tr>
+              <td>
+                <code>{linha.caminho}</code>
+              </td>
+              <td>
+                {linha.tipo === 'enum' && linha.valores && linha.valores.length > 0 ? (
+                  <>
+                    enum{' '}
+                    {linha.valores.map((v, i) => (
+                      <>
+                        <code>{v}</code>{i < linha.valores!.length - 1 ? ', ' : ''}
+                      </>
+                    ))}
+                  </>
+                ) : (
+                  linha.tipo
+                )}
+              </td>
+              <td>{linha.obrigatorio ? 'sim' : 'não'}</td>
+              <td>{linha.anulavel ? 'sim' : 'não'}</td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+  {
+    temObrigatorioAnulavel && (
+      <p class="nota-schema">
+        Campos marcados como obrigatórios podem vir <code>null</code>; o exemplo mostra a forma.
+      </p>
+    )
+  }
+</div>

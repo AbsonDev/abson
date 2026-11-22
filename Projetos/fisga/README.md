@@ -575,6 +575,10 @@ Runbook completo, configuração do Coolify e rollback: [docs/ci-cd.md](docs/ci-
 Cada pescaria tem `shareToken` público. O diário é acessado pela conta; não existe token anônimo no
 navegador. Sessões e links mágicos são armazenados apenas como hash SHA-256.
 
+Para a referência interativa completa da API gerada a partir do contrato OpenAPI, consulte o
+portal de documentação em [`docs-site`](docs-site/README.md) e a
+[documentação do portal](docs/api/portal.md).
+
 ---
 
 ## Privacidade e segurança

@@ -1,0 +1,970 @@
+@import './gerado/tokens.css';
+@import './fontes.css';
+
+/* Base do portal: papel quente, tinta petróleo, Fraunces no título e Inter no
+ * corpo. Todo valor de cor, tipografia e espaçamento vem de tokens.css; o que
+ * não existe lá é derivado com color-mix() sobre um token. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+  font-optical-sizing: auto;
+  -webkit-text-size-adjust: 100%;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0 0 var(--space-3);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-optical-sizing: auto;
+  letter-spacing: var(--tracking-display);
+  line-height: var(--leading-tight);
+}
+
+h1 {
+  font-size: var(--text-2xl);
+  font-weight: 500;
+}
+
+h2 {
+  font-size: var(--text-xl);
+}
+
+h3 {
+  font-size: var(--text-lg);
+}
+
+p {
+  margin: 0 0 var(--space-3);
+}
+
+a {
+  color: var(--accent);
+}
+
+a:hover {
+  color: var(--accent-hover);
+}
+
+/* O anel é reforço, não substituto: `outline` sobrevive ao modo de cores
+ * forçadas, e `--accent` passa de 8:1 sobre o papel, muito acima do 3:1
+ * exigido para indicador de foco. A largura fica no `medium` padrão (3px)
+ * para não introduzir medida literal; o afastamento usa o ritmo de espaço. */
+:focus-visible {
+  border-radius: var(--radius-sm);
+  outline: solid var(--accent);
+  outline-offset: var(--space-1);
+  box-shadow: var(--focus-ring);
+}
+
+/* Estrutura */
+
+.container {
+  width: 100%;
+  max-width: var(--container-max);
+  margin-inline: auto;
+  padding-inline: var(--container-gutter-phone);
+}
+
+/* Escondido por inteiro: `translateY(-100%)` acompanha a altura real da caixa,
+ * ao contrário de um `top` negativo fixo, que deixa uma faixa visível em
+ * repouso. */
+.skip-link {
+  position: absolute;
+  inset-inline-start: var(--space-4);
+  top: 0;
+  z-index: 10;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--accent-on);
+  font-weight: 600;
+  text-decoration: none;
+  transform: translateY(calc(-100% - var(--space-2)));
+}
+
+/* `a:hover` (0,1,1) venceria `.skip-link` (0,1,0) e pintaria o rótulo em
+ * `--accent-hover` sobre `--accent`, que é ilegível; esta regra (0,2,0) mantém
+ * o texto em `--accent-on`. */
+.skip-link:hover {
+  color: var(--accent-on);
+}
+
+.skip-link:focus {
+  transform: translateY(var(--space-2));
+}
+
+.site-header {
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.site-header .container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--space-12);
+}
+
+.marca {
+  display: inline-flex;
+  gap: var(--space-3);
+  align-items: center;
+  min-height: var(--space-12);
+  color: var(--fg);
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  letter-spacing: var(--tracking-display);
+  text-decoration: none;
+}
+
+/* Quadrado da marca: 32px (--space-8) em vez de um tamanho avulso. A letra é
+ * decoração — o nome acessível do link vem do `aria-label` do Base. */
+.marca-selo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--space-8);
+  block-size: var(--space-8);
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--accent-on);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  font-weight: 600;
+}
+
+.marca-texto {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: baseline;
+}
+
+.marca small {
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  letter-spacing: normal;
+}
+
+.nav-principal {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nav-principal a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--space-12);
+  padding-inline: var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--fg);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.nav-principal a:hover {
+  background: var(--surface-warm);
+  color: var(--fg);
+}
+
+/* `page` é a própria página; `true` é a seção que a contém (páginas de
+ * domínio). Os dois estados recebem o mesmo tratamento visual: cor + sublinhado,
+ * nunca só cor. */
+.nav-principal a[aria-current='page'],
+.nav-principal a[aria-current='true'] {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+main {
+  display: block;
+  padding-block: var(--space-8) var(--space-12);
+}
+
+.site-footer {
+  margin-top: var(--section-y-phone);
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.site-footer .container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+  padding-block: var(--space-6);
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
+.site-footer p {
+  margin: 0;
+}
+
+.site-footer a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--space-12);
+}
+
+/* Referência: navegação lateral + artigo. A proporção 1:3 evita largura
+ * literal e colapsa em uma coluna no mobile. */
+
+.grade-referencia {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 3fr);
+  gap: var(--space-8);
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .grade-referencia {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-6);
+  }
+}
+
+/* Conteúdo: rótulos, selos e parágrafos de abertura. */
+
+/* Rótulo de seção. O texto é 11,5 px, então o piso AA é 4,5:1; `--muted` puro
+ * sobre `--bg` dá 4,52:1, sem folga. A mistura com `--fg` mantém a hierarquia
+ * discreta com contraste medido de 5,76:1 no papel e 6,22:1 na superfície. */
+.rotulo {
+  margin: 0 0 var(--space-2);
+  color: color-mix(in srgb, var(--muted) 78%, var(--fg));
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.lead {
+  max-inline-size: calc(var(--container-max) / 2);
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-lg);
+}
+
+.cabecalho-pagina {
+  margin-block-end: var(--space-8);
+}
+
+.home-cabecalho {
+  margin-block-end: 0;
+}
+
+/* Selos de método e de status. Duas paletas, uma por leitura × escrita:
+ * `--accent`/`--accent-on` (8,86:1) e `--surface-warm`/`--fg` (12,39:1). O
+ * status é número neutro, nunca verde de sucesso nem vermelho de erro. */
+.selo-grupo {
+  display: inline-flex;
+  flex: none;
+  gap: var(--space-1);
+  align-items: center;
+}
+
+.selo {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--surface-warm);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* Borda de 1px por `box-shadow` no selo de escrita: o selo de leitura não tem
+ * borda, e assim as duas paletas ficam com a mesma altura. */
+.selo-post,
+.selo-put,
+.selo-patch,
+.selo-delete,
+.selo-status {
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.selo-get {
+  background: var(--accent);
+  color: var(--accent-on);
+}
+
+.selo-status {
+  color: var(--fg);
+}
+
+/* Navegação de domínios: coluna fixa no desktop, faixa rolável abaixo de
+ * 900px. O `overflow-x` fica no `nav` para a rolagem acontecer dentro da
+ * faixa, nunca no `body`. */
+.nav-dominios {
+  align-self: stretch;
+}
+
+.nav-dominios-painel {
+  position: sticky;
+  top: var(--space-4);
+  /* 13 domínios passam de 700px de altura. Numa janela baixa, um sticky mais
+   * alto que a viewport deixa os últimos links inalcançáveis; a coluna rola
+   * dentro de si em vez de sumir. */
+  max-block-size: calc(100dvh - var(--space-8));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.nav-dominios-rotulo {
+  margin-block-end: var(--space-3);
+}
+
+.nav-dominios-lista {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nav-dominios-lista a {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--space-12);
+  padding-inline: var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--fg);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.nav-dominios-lista a:hover {
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+  color: var(--accent);
+}
+
+/* Estado ativo nunca só por cor: `aria-current` + `--accent` + a barra de
+ * 2px na base (R32). */
+.nav-dominios-lista a[aria-current='page'] {
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+  box-shadow: inset 0 -2px 0 var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* A barra do item ativo usa `box-shadow`, que venceria o anel de foco global
+ * por especificidade. Aqui os dois convivem: a barra e o anel. */
+.nav-dominios-lista a[aria-current='page']:focus-visible {
+  box-shadow: inset 0 -2px 0 var(--accent), var(--focus-ring);
+}
+
+.nav-count {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  font-weight: 400;
+}
+
+.nav-dominios-lista a:hover .nav-count,
+.nav-dominios-lista a[aria-current='page'] .nav-count {
+  color: var(--accent);
+}
+
+@media (max-width: 900px) {
+  .nav-dominios {
+    align-self: auto;
+  }
+
+  .nav-dominios-painel {
+    position: static;
+    max-block-size: none;
+    overflow-y: visible;
+    padding: var(--space-2) var(--space-3) 0;
+    border-radius: var(--radius-sm);
+  }
+
+  .nav-dominios-rotulo {
+    margin-block-end: var(--space-1);
+  }
+
+  .nav-dominios nav {
+    overflow-x: auto;
+  }
+
+  .nav-dominios-lista {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: var(--space-1);
+    width: max-content;
+    min-width: 100%;
+  }
+
+  .nav-dominios-lista a {
+    min-height: var(--space-12);
+    padding-inline: var(--space-3);
+    white-space: nowrap;
+  }
+}
+
+/* Home: dois caminhos e a faixa de privacidade. */
+
+.home {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.home-cabecalho {
+  margin-block-end: 0;
+}
+
+.linha-versao {
+  margin: 0;
+  color: color-mix(in srgb, var(--muted) 78%, var(--fg));
+  font-size: var(--text-sm);
+}
+
+.grade-caminhos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, calc(var(--container-max) / 2.6)), 1fr));
+  gap: var(--space-6);
+}
+
+.cartao-caminho {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.cartao-caminho h2,
+.cartao-dominio h2 {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+
+.cartao-caminho p,
+.cartao-dominio p {
+  margin: 0;
+}
+
+.cartao-caminho--inativo {
+  border-style: dashed;
+}
+
+.cartao-acao {
+  display: inline-flex;
+  align-items: center;
+  margin-block-start: var(--space-2);
+  min-height: var(--space-12);
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: var(--space-1);
+}
+
+a.cartao-acao:hover {
+  color: var(--accent-hover);
+}
+
+.faixa-privacidade {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  margin: 0;
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-size: var(--text-sm);
+}
+
+.faixa-privacidade a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--space-12);
+}
+
+.faixa-marcador {
+  color: var(--accent);
+  font-size: var(--text-xs);
+}
+
+/* Índice da referência: cartões de domínio. */
+
+.grade-dominios {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, calc(var(--container-max) / 3.4)), 1fr));
+  gap: var(--space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cartao-dominio {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.cartao-dominio .rotulo {
+  margin: 0;
+}
+
+.cartao-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: baseline;
+  color: color-mix(in srgb, var(--muted) 78%, var(--fg));
+  font-size: var(--text-sm);
+}
+
+.cartao-dominio .cartao-acao {
+  margin-block-start: auto;
+  padding-block-start: var(--space-3);
+}
+
+/* Página de domínio: uma linha por operação, sem cabeçalho repetido. */
+
+.lista-operacoes {
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--border);
+  list-style: none;
+}
+
+.linha-operacao {
+  display: grid;
+  grid-template-columns: calc(var(--space-12) + var(--space-4)) minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: baseline;
+  padding-block: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.linha-operacao-corpo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  align-items: flex-start;
+}
+
+.cartao-meta a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--space-12);
+}
+
+.linha-operacao-corpo > a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--space-12);
+  font-weight: 500;
+}
+
+.linha-operacao-corpo code {
+  max-inline-size: 100%;
+  color: color-mix(in srgb, var(--muted) 78%, var(--fg));
+  /* Rota longa não empurra a página no mobile: a quebra acontece no código,
+   * não no `body`. */
+  overflow-wrap: anywhere;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-warm);
+  color: var(--fg);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+code,
+pre {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+pre {
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  overflow-x: auto;
+}
+
+:not(pre) > code {
+  padding: 0 var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--fg);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+thead {
+  background: var(--surface-warm);
+}
+
+th,
+td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  text-align: start;
+  vertical-align: top;
+}
+
+/* `--muted` sobre `--surface-warm` dá 4,12:1 em texto de 11,5 px, abaixo do
+ * piso AA de 4,5:1; `--fg` sobre o mesmo fundo dá 12,4:1. */
+th {
+  color: var(--fg);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+/* Tabelas e blocos de conteúdo */
+
+.table-wrap {
+  overflow-x: auto;
+  margin-block-end: var(--space-6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.table-wrap table {
+  margin: 0;
+}
+
+/* Página de operação em 3 colunas */
+
+.grade-operacao {
+  display: grid;
+  grid-template-columns: minmax(0, 220px) minmax(0, 1fr) minmax(0, 180px);
+  gap: var(--space-8);
+  align-items: start;
+}
+
+.grade-operacao article {
+  min-width: 0;
+}
+
+.grade-operacao article section {
+  margin-block-end: var(--space-8);
+  padding-block-end: var(--space-6);
+  border-bottom: 1px solid var(--border);
+}
+
+.grade-operacao article section:last-child {
+  border-bottom: none;
+}
+
+.operacao-meta-topo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  margin-block-end: var(--space-3);
+}
+
+.operacao-meta-topo code {
+  color: color-mix(in srgb, var(--muted) 78%, var(--fg));
+  overflow-wrap: anywhere;
+}
+
+/* Bloco de código */
+
+.bloco-codigo {
+  margin: 0 0 var(--space-6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.bloco-codigo-cabecalho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-4);
+  background: var(--surface-warm);
+  border-bottom: 1px solid var(--border);
+}
+
+.bloco-codigo-rotulo {
+  color: color-mix(in srgb, var(--muted) 78%, var(--fg));
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.botao-copiar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--space-12);
+  padding-inline: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--accent);
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.botao-copiar:hover {
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+  color: var(--accent-hover);
+}
+
+.bloco-codigo pre {
+  margin: 0;
+  padding: var(--space-4);
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  overflow-x: auto;
+}
+
+/* Pré-requisito de sessão */
+
+.pre-requisito {
+  margin-block-end: var(--space-6);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.pre-requisito h2 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-base);
+  font-weight: 600;
+}
+
+.pre-requisito p {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.pre-requisito a {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Tabela de erros */
+
+.coluna-status {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.coluna-codigo {
+  vertical-align: top;
+}
+
+.codigos-lista {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  align-items: flex-start;
+}
+
+.origem {
+  display: inline-block;
+  margin-top: var(--space-1);
+  padding: 1px var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-warm);
+  color: color-mix(in srgb, var(--muted) 78%, var(--fg));
+  font-size: var(--text-xs);
+  font-weight: 500;
+}
+
+/* Tabela de schema */
+
+.tabela-schema-titulo {
+  margin-block: var(--space-4) var(--space-2);
+  font-size: var(--text-base);
+}
+
+.nota-schema {
+  margin-block-start: calc(var(--space-2) * -1);
+  margin-block-end: var(--space-4);
+  color: color-mix(in srgb, var(--muted) 78%, var(--fg));
+  font-size: var(--text-sm);
+}
+
+/* Respostas, notas e avisos */
+
+.cabecalho-resposta {
+  margin-block-end: var(--space-4);
+  font-size: var(--text-sm);
+}
+
+.notas-resposta {
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+  color: color-mix(in srgb, var(--muted) 78%, var(--fg));
+}
+
+.notas-resposta li {
+  margin-block-end: var(--space-1);
+}
+
+.linha-base {
+  margin-block-end: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.aviso-mutacao {
+  margin-block-end: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--fg);
+}
+
+/* Relacionados */
+
+.lista-relacionados {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.lista-relacionados a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--space-12);
+  font-weight: 500;
+}
+
+/* Navegação de seções ("Nesta página") */
+
+.nav-secoes {
+  align-self: stretch;
+}
+
+.nav-secoes-painel {
+  position: sticky;
+  top: var(--space-4);
+  max-block-size: calc(100dvh - var(--space-8));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.nav-secoes-rotulo {
+  margin-block-end: var(--space-3);
+}
+
+.nav-secoes-lista {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nav-secoes-lista a {
+  display: flex;
+  align-items: center;
+  min-height: var(--space-12);
+  padding-inline: var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--fg);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.nav-secoes-lista a:hover {
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+  color: var(--accent);
+}
+
+@media (max-width: 900px) {
+  .grade-operacao {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-6);
+  }
+
+  .nav-secoes {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

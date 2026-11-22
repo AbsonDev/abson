@@ -1,0 +1,26 @@
+---
+/**
+ * Selo de método e, opcionalmente, de status.
+ *
+ * O método é texto sempre visível: `GET` lê, os demais escrevem. As duas
+ * paletas vêm dos tokens medidos — `--accent`/`--accent-on` (8,86:1) para
+ * leitura e `--surface-warm`/`--fg` (12,39:1) para escrita. O status é dado,
+ * não julgamento: número neutro, sem verde nem vermelho.
+ */
+interface Props {
+  metodo: string;
+  status?: string;
+}
+
+const { metodo, status } = Astro.props;
+
+// Uma classe por método, como o brief pede; todas compartilham as duas
+// paletas. O fallback neutro de `.selo` cobre um método que o contrato venha a
+// declarar antes de o CSS ganhar a regra dele.
+const classeDoMetodo = `selo-${metodo.toLowerCase().replace(/[^a-z]/g, '')}`;
+---
+
+<span class="selo-grupo">
+  <span class={`selo ${classeDoMetodo}`}>{metodo.toUpperCase()}</span>
+  {status && <span class="selo selo-status">{status}</span>}
+</span>

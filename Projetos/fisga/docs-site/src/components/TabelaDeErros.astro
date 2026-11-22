@@ -1,0 +1,71 @@
+---
+/**
+ * Tabela de erros de uma operação.
+ *
+ * Colunas: Status, Código, Quando acontece.
+ * O status é texto neutro. Múltiplos códigos aparecem em linhas separadas.
+ * Erros com origem === 'override' recebem a marcação "documentado".
+ */
+interface Erro {
+  status: number;
+  codigos: string[] | null;
+  quando: string;
+  origem?: string;
+}
+
+interface Props {
+  erros: Erro[];
+}
+
+const { erros } = Astro.props;
+
+function formatarInlineCode(texto: string): string {
+  if (!texto) return '';
+  const escapado = texto
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  return escapado.replace(/`([^`]+)`/g, '<code>$1</code>');
+}
+---
+
+<div class="table-wrap">
+  <table class="tabela-erros">
+    <thead>
+      <tr>
+        <th scope="col">Status</th>
+        <th scope="col">Código</th>
+        <th scope="col">Quando acontece</th>
+      </tr>
+    </thead>
+    <tbody>
+      {
+        erros.map((erro) => (
+          <tr>
+            <td class="coluna-status">{erro.status}</td>
+            <td class="coluna-codigo">
+              {erro.codigos && erro.codigos.length > 0 ? (
+                <div class="codigos-lista">
+                  {erro.codigos.map((cod) => (
+                    <code>{cod}</code>
+                  ))}
+                </div>
+              ) : (
+                <span>—</span>
+              )}
+              {erro.origem === 'override' && (
+                <span
+                  class="origem"
+                  title="O contrato não declara este código; a informação vem da página da operação."
+                >
+                  documentado
+                </span>
+              )}
+            </td>
+            <td><Fragment set:html={formatarInlineCode(erro.quando)} /></td>
+          </tr>
+        ))
+      }
+    </tbody>
+  </table>
+</div>
