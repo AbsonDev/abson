@@ -1,0 +1,25 @@
+---
+/**
+ * Aviso de pré-requisito de sessão.
+ *
+ * Aparece antes do bloco de exemplo quando a operação exige sessão (cookieAuth).
+ */
+interface Props {
+  operacaoDeEntrada: {
+    href: string;
+    titulo: string;
+  };
+}
+
+const { operacaoDeEntrada } = Astro.props;
+---
+
+<aside class="pre-requisito" aria-labelledby="pre-req">
+  <h2 id="pre-req">Antes de chamar</h2>
+  <p>
+    Estes exemplos usam o cookie <code>fisga_auth</code> salvo em
+    <code>cookies.txt</code>. Se você ainda não tem, faça
+    <a href={operacaoDeEntrada.href} title={operacaoDeEntrada.titulo}><code>POST /api/auth/entrar</code></a>
+    com <code>curl -c cookies.txt</code> antes de rodar o exemplo abaixo.
+  </p>
+</aside>

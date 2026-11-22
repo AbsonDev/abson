@@ -1,0 +1,511 @@
+---
+import Base from '../../../components/Base.astro';
+import Nav from '../../../components/Nav.astro';
+import SeloDeStatus from '../../../components/SeloDeStatus.astro';
+import BlocoDeCodigo from '../../../components/BlocoDeCodigo.astro';
+import PreRequisitoDeSessao from '../../../components/PreRequisitoDeSessao.astro';
+import TabelaDeErros from '../../../components/TabelaDeErros.astro';
+import TabelaDeSchema from '../../../components/TabelaDeSchema.astro';
+import referencia from '../../../data/referencia.json';
+
+interface Dominio {
+  slug: string;
+  tag: string;
+  titulo: string;
+  descricao: string;
+  total: number;
+  operacoes: string[];
+}
+
+interface Operacao {
+  operationId: string;
+  metodo: string;
+  rota: string;
+  tag: string;
+  dominio: string;
+  summary: string;
+  descricao: string;
+  proposta: string;
+  acesso: string;
+  acessoTexto: string;
+  autenticacao: string;
+  autenticacaoTexto: string;
+  consentimento: boolean;
+  consentimentoTexto: string | null;
+  limites: {
+    policy: string;
+    requests: number;
+    windowSeconds: number;
+  } | null;
+  xCache: string | null;
+  parametros: Array<{
+    nome: string;
+    local: string;
+    tipo: string;
+    obrigatorio: boolean;
+    valor: string | null;
+  }>;
+  erros: Array<{
+    status: number;
+    codigos: string[] | null;
+    quando: string;
+    origem?: string;
+  }>;
+  exemplo: string[];
+  verificar: string;
+  notas: string[];
+  notasHtml: string;
+  relacionados: Array<{
+    operationId: string;
+    titulo: string;
+    dominio: string;
+  }>;
+  respostas: any[];
+  sucesso: {
+    status: string;
+    descricao: string;
+    desfecho: boolean;
+    mediaTypes: string[];
+    corpo: string | null;
+    notas: string[];
+    location?: boolean;
+  };
+  request?: {
+    corpoTabela: any[] | null;
+    corpoExemplo: string | null;
+    arquivos: Record<string, string> | null;
+  };
+}
+
+interface Props {
+  dominio: Dominio;
+  operacao: Operacao;
+}
+
+export function getStaticPaths() {
+  const { dominios, operacoes } = referencia as unknown as {
+    dominios: Dominio[];
+    operacoes: Record<string, Operacao>;
+  };
+
+  const paths = [];
+  for (const dominio of dominios) {
+    for (const id of dominio.operacoes) {
+      const operacao = operacoes[id];
+      if (operacao) {
+        paths.push({
+          params: { dominio: dominio.slug, operacao: operacao.operationId },
+          props: { dominio, operacao },
+        });
+      }
+    }
+  }
+
+  return paths;
+}
+
+const { dominio, operacao } = Astro.props as Props;
+
+function formatarInlineCode(texto: string): string {
+  if (!texto) return '';
+  const escapado = texto
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  return escapado.replace(/`([^`]+)`/g, '<code>$1</code>');
+}
+
+const temParametros = operacao.parametros && operacao.parametros.length > 0;
+const temCorpo =
+  operacao.request?.corpoTabela && operacao.request.corpoTabela.length > 0;
+const temArquivos =
+  operacao.request?.arquivos &&
+  Object.keys(operacao.request.arquivos).length > 0;
+
+const isHtmlOrPdf = operacao.sucesso.mediaTypes?.some(
+  (m) => m === 'text/html' || m === 'application/pdf'
+);
+const is204 = operacao.sucesso.status === '204';
+
+const errosSem302 = (operacao.erros || []).filter((e) => e.status !== 302);
+
+const servidores = referencia.info.servidores as
+  | Array<{ url: string; descricao: string }>
+  | undefined;
+const servidorLocal = servidores && servidores[1];
+
+const temRelacionados =
+  operacao.relacionados && operacao.relacionados.length > 0;
+
+const secoes = [
+  { id: 'proposito', titulo: 'Propósito' },
+  { id: 'acesso', titulo: 'Acesso' },
+  { id: 'limites', titulo: 'Limites' },
+  { id: 'requisicao', titulo: 'Requisição' },
+  { id: 'resposta', titulo: 'Resposta' },
+  { id: 'erros', titulo: 'Erros' },
+  { id: 'exemplo', titulo: 'Exemplo' },
+  { id: 'como-verificar', titulo: 'Como verificar' },
+  { id: 'comportamento-e-efeitos', titulo: 'Comportamento e efeitos' },
+  ...(temRelacionados ? [{ id: 'relacionados', titulo: 'Relacionados' }] : []),
+];
+
+const cacheFormatado = operacao.xCache
+  ? operacao.xCache.replace(/\bpublic\b/g, 'publico')
+  : 'sem cabeçalho de cache';
+
+const descricaoDaPagina = `${operacao.summary}: ${operacao.proposta}`;
+---
+
+<Base
+  titulo={`${operacao.summary} · ${dominio.titulo} · Referência da API`}
+  descricao={descricaoDaPagina}
+  ativo="referencia"
+  versao={referencia.info.versao}
+>
+  <div class="grade-operacao">
+    <Nav dominios={referencia.dominios} ativo={dominio.slug} />
+
+    <article>
+      {/* 1. SeloDeStatus + <h1> + linha metodo rota */}
+      <header class="cabecalho-pagina cabecalho-operacao">
+        <div class="operacao-meta-topo">
+          <SeloDeStatus metodo={operacao.metodo} />
+          <code>{operacao.metodo} {operacao.rota}</code>
+        </div>
+        <h1 id={operacao.operationId}>{operacao.summary}</h1>
+      </header>
+
+      {/* 2. Propósito */}
+      <section id="proposito" aria-labelledby="tit-proposito">
+        <h2 id="tit-proposito">Propósito</h2>
+        <p>{operacao.proposta}</p>
+      </section>
+
+      {/* 3. Acesso */}
+      <section id="acesso" aria-labelledby="tit-acesso">
+        <h2 id="tit-acesso">Acesso</h2>
+        <p>
+          Autenticação: <Fragment
+            set:html={formatarInlineCode(operacao.autenticacaoTexto)}
+          />
+        </p>
+        <p>
+          Quem pode chamar: <Fragment
+            set:html={formatarInlineCode(operacao.acessoTexto)}
+          />
+        </p>
+        {
+          operacao.consentimento && operacao.consentimentoTexto && (
+            <p>
+              <Fragment
+                set:html={formatarInlineCode(operacao.consentimentoTexto)}
+              />
+            </p>
+          )
+        }
+      </section>
+
+      {/* 4. Limites */}
+      <section id="limites" aria-labelledby="tit-limites">
+        <h2 id="tit-limites">Limites</h2>
+        {
+          operacao.limites ? (
+            <p>
+              Rate limit: {operacao.limites.requests} requisições a cada{' '}
+              {operacao.limites.windowSeconds} segundos (política{' '}
+              <code>{operacao.limites.policy}</code>).
+            </p>
+          ) : (
+            <p>Rate limit: sem política de rate limit declarada.</p>
+          )
+        }
+        <p>
+          Cache: <code>{cacheFormatado}</code>
+        </p>
+      </section>
+
+      {/* 5. Requisição */}
+      <section id="requisicao" aria-labelledby="tit-requisicao">
+        <h2 id="tit-requisicao">Requisição</h2>
+        {
+          !temParametros && !temCorpo && !temArquivos ? (
+            <p>Sem parâmetros, corpo ou arquivos.</p>
+          ) : (
+            <>
+              {temParametros && (
+                <div class="table-wrap">
+                  <table class="tabela-parametros">
+                    <thead>
+                      <tr>
+                        <th scope="col">Nome</th>
+                        <th scope="col">Local</th>
+                        <th scope="col">Tipo</th>
+                        <th scope="col">Obrigatório</th>
+                        <th scope="col">Exemplo</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {operacao.parametros.map((param) => (
+                        <tr>
+                          <td>
+                            <code>{param.nome}</code>
+                          </td>
+                          <td>{param.local}</td>
+                          <td>{param.tipo}</td>
+                          <td>{param.obrigatorio ? 'sim' : 'não'}</td>
+                          <td>
+                            {param.valor ? (
+                              <code>{param.valor}</code>
+                            ) : (
+                              <span>—</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {temCorpo && operacao.request?.corpoTabela && (
+                <div class="requisicao-corpo">
+                  <TabelaDeSchema
+                    linhas={operacao.request.corpoTabela}
+                    titulo="Corpo da requisição"
+                  />
+                  {operacao.request.corpoExemplo && (
+                    <BlocoDeCodigo
+                      rotulo="JSON"
+                      linguagem="json"
+                      linhas={operacao.request.corpoExemplo.split('\n')}
+                      copiavel={true}
+                    />
+                  )}
+                </div>
+              )}
+              {temArquivos && operacao.request?.arquivos && (
+                <div class="table-wrap">
+                  <table class="tabela-arquivos">
+                    <thead>
+                      <tr>
+                        <th scope="col">Campo</th>
+                        <th scope="col">Arquivo do exemplo</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(operacao.request.arquivos).map(
+                        ([campo, arquivo]) => (
+                          <tr>
+                            <td>
+                              <code>{campo}</code>
+                            </td>
+                            <td>
+                              <code>{arquivo}</code>
+                            </td>
+                          </tr>
+                        )
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )
+        }
+      </section>
+
+      {/* 6. Sucesso / Desfecho */}
+      <section id="resposta" aria-labelledby="tit-resposta">
+        <h2 id="tit-resposta">Resposta</h2>
+        {
+          operacao.sucesso.status === '302' ? (
+            <>
+              <p>
+                Desfecho: <code>302</code> — {operacao.sucesso.descricao}
+              </p>
+              {operacao.sucesso.notas && operacao.sucesso.notas.length > 0 && (
+                <ul class="notas-resposta" role="list">
+                  {operacao.sucesso.notas.map((nota) => (
+                    <li>{nota}</li>
+                  ))}
+                </ul>
+              )}
+            </>
+          ) : (
+            <>
+              <p>
+                Status: <code>{operacao.sucesso.status}</code> —{' '}
+                {operacao.sucesso.descricao}
+              </p>
+              {operacao.sucesso.location === true && (
+                <p class="cabecalho-resposta">
+                  Header <code>Location</code>: o endereço do recurso criado ou do
+                  redirecionamento.
+                </p>
+              )}
+              {isHtmlOrPdf ? (
+                <>
+                  <p>
+                    Tipo de mídia: <code>{operacao.sucesso.mediaTypes.join(', ')}</code>
+                  </p>
+                  {operacao.sucesso.notas &&
+                    operacao.sucesso.notas.length > 0 && (
+                      <ul class="notas-resposta" role="list">
+                        {operacao.sucesso.notas.map((nota) => (
+                          <li>{nota}</li>
+                        ))}
+                      </ul>
+                    )}
+                </>
+              ) : is204 ? (
+                <>
+                  {operacao.sucesso.notas &&
+                    operacao.sucesso.notas.length > 0 && (
+                      <ul class="notas-resposta" role="list">
+                        {operacao.sucesso.notas.map((nota) => (
+                          <li>{nota}</li>
+                        ))}
+                      </ul>
+                    )}
+                </>
+              ) : (
+                <>
+                  {operacao.sucesso.corpo && (
+                    <BlocoDeCodigo
+                      rotulo="Exemplo derivado do schema — mostra a forma, não dados reais."
+                      linguagem="json"
+                      linhas={operacao.sucesso.corpo.split('\n')}
+                      copiavel={true}
+                    />
+                  )}
+                  {operacao.sucesso.notas &&
+                    operacao.sucesso.notas.length > 0 && (
+                      <ul class="notas-resposta" role="list">
+                        {operacao.sucesso.notas.map((nota) => (
+                          <li>{nota}</li>
+                        ))}
+                      </ul>
+                    )}
+                </>
+              )}
+            </>
+          )
+        }
+      </section>
+
+      {/* 7. Erros */}
+      <section id="erros" aria-labelledby="tit-erros">
+        <h2 id="tit-erros">Erros</h2>
+        {
+          errosSem302.length > 0 ? (
+            <TabelaDeErros erros={errosSem302} />
+          ) : (
+            <p>Sem erro declarado no contrato.</p>
+          )
+        }
+      </section>
+
+      {/* 8. Exemplo executável */}
+      <section id="exemplo" aria-labelledby="tit-exemplo">
+        <h2 id="tit-exemplo">Exemplo</h2>
+        {
+          operacao.autenticacao === 'sessao' && (
+            <PreRequisitoDeSessao
+              operacaoDeEntrada={{
+                href: '/referencia/autenticacao/entrarComSenha',
+                titulo: 'Entra com e-mail e senha',
+              }}
+            />
+          )
+        }
+        <p class="linha-base">
+          Base: <code>{referencia.info.servidor}</code> (Produção).
+          {
+            servidorLocal && (
+              <>
+                {' '}
+                Para rodar local, troque por <code>{servidorLocal.url}</code> (Local).
+              </>
+            )
+          }
+        </p>
+        {
+          operacao.metodo !== 'GET' && (
+            <p class="aviso-mutacao">
+              Estes exemplos apontam para produção e alteram dados reais da conta.
+              Rode contra a API local se estiver testando.
+            </p>
+          )
+        }
+        <BlocoDeCodigo
+          rotulo="curl"
+          linguagem="bash"
+          linhas={operacao.exemplo}
+          copiavel={true}
+        />
+      </section>
+
+      {/* 9. Como verificar */}
+      <section id="como-verificar" aria-labelledby="tit-como-verificar">
+        <h2 id="tit-como-verificar">Como verificar</h2>
+        <p set:html={formatarInlineCode(operacao.verificar)} />
+      </section>
+
+      {/* 10. Comportamento e efeitos */}
+      <section
+        id="comportamento-e-efeitos"
+        aria-labelledby="tit-comportamento"
+      >
+        <h2 id="tit-comportamento">Comportamento e efeitos</h2>
+        {
+          operacao.descricao
+            .split(/\n\n+/)
+            .map((p) => p.trim())
+            .filter(Boolean)
+            .map((p) => <p set:html={formatarInlineCode(p)} />)
+        }
+        {
+          operacao.notasHtml && (
+            <div class="notas-adicionais" set:html={operacao.notasHtml} />
+          )
+        }
+      </section>
+
+      {/* 11. Relacionados */}
+      {
+        temRelacionados && (
+          <section id="relacionados" aria-labelledby="tit-relacionados">
+            <h2 id="tit-relacionados">Relacionados</h2>
+            <ul class="lista-relacionados" role="list">
+              {operacao.relacionados.map((rel) => (
+                <li>
+                  <a href={`/referencia/${rel.dominio}/${rel.operationId}`}>
+                    {rel.titulo}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )
+      }
+    </article>
+
+    {/* Navegação de seções à direita */}
+    <aside class="nav-secoes">
+      <div class="nav-secoes-painel">
+        <p class="rotulo nav-secoes-rotulo">Nesta página</p>
+        <nav aria-label="Nesta página">
+          <ul class="nav-secoes-lista" role="list">
+            {
+              secoes.map((s) => (
+                <li>
+                  <a href={`#${s.id}`}>{s.titulo}</a>
+                </li>
+              ))
+            }
+          </ul>
+        </nav>
+      </div>
+    </aside>
+  </div>
+</Base>
