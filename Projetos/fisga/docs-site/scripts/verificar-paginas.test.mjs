@@ -42,13 +42,19 @@ function listarHtmls(dir, base = '') {
   return htmls;
 }
 
+const MAPA_ENTIDADES_HTML = Object.freeze({
+  '&quot;': '"',
+  '&#39;': "'",
+  '&lt;': '<',
+  '&gt;': '>',
+  '&amp;': '&'
+});
+
 function unescapeHtml(s) {
-  return s
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>');
+  return s.replace(
+    /&(?:quot|#39|lt|gt|amp);/g,
+    (entidade) => MAPA_ENTIDADES_HTML[entidade]
+  );
 }
 
 const htmlsGerados = listarHtmls(DIR_DIST);
