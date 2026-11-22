@@ -21,6 +21,12 @@ const caminho = Astro.url.pathname
   .replace(/\/index\.html$/, '/')
   .replace(/\.html$/, '');
 const canonical = new URL(caminho, Astro.site).href;
+
+// `aria-current="page"` é para o link que aponta para a página atual. Numa
+// página de domínio, "Referência" é a seção que contém a página, não a própria
+// página: o valor `true` anuncia o item atual do conjunto sem mentir, e deixa
+// um único `page` na página — o link do domínio, marcado pelo `Nav`.
+const referenciaEhAncestral = caminho.startsWith('/referencia/');
 ---
 
 <!doctype html>
@@ -37,18 +43,26 @@ const canonical = new URL(caminho, Astro.site).href;
 
     <header class="site-header">
       <div class="container">
-        <a class="marca" href="/">
-          Fisga <small>Documentação da API</small>
+        {/* A marca carrega o nome e o contexto; o quadrado com "F" é
+            decoração e fica fora da árvore de acessibilidade. */}
+        <a class="marca" href="/" aria-label="Fisga — Documentação da API, página inicial">
+          <span class="marca-selo" aria-hidden="true">F</span>
+          <span class="marca-texto">Fisga <small>Documentação da API</small></span>
         </a>
         <nav aria-label="Principal">
-          <ul class="nav-principal">
+          <ul class="nav-principal" role="list">
             <li>
               {/* `inicio` marca a home; `referencia` marca o índice e as páginas
                   de domínio/operação, que passam `ativo` para o Base. */}
               <a href="/" aria-current={ativo === 'inicio' ? 'page' : undefined}>Visão geral</a>
             </li>
             <li>
-              <a href="/referencia" aria-current={ativo === 'referencia' ? 'page' : undefined}>
+              <a
+                href="/referencia"
+                aria-current={
+                  ativo === 'referencia' ? (referenciaEhAncestral ? 'true' : 'page') : undefined
+                }
+              >
                 Referência
               </a>
             </li>

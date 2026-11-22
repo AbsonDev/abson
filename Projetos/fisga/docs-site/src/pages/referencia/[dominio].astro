@@ -1,0 +1,95 @@
+---
+import Base from '../../components/Base.astro';
+import Nav from '../../components/Nav.astro';
+import SeloDeStatus from '../../components/SeloDeStatus.astro';
+import referencia from '../../data/referencia.json';
+
+interface OperacaoDoDominio {
+  operationId: string;
+  metodo: string;
+  rota: string;
+  summary: string;
+  acesso: string;
+}
+
+interface Dominio {
+  slug: string;
+  tag: string;
+  titulo: string;
+  descricao: string;
+  total: number;
+  operacoes: string[];
+}
+
+interface Props {
+  dominio: Dominio;
+}
+
+export function getStaticPaths() {
+  const { dominios } = referencia as { dominios: Dominio[] };
+
+  return dominios.map((dominio) => ({
+    params: { dominio: dominio.slug },
+    props: { dominio },
+  }));
+}
+
+const { dominio } = Astro.props as Props;
+
+const operacoes = referencia.operacoes as Record<string, OperacaoDoDominio | undefined>;
+
+// A ordem é a de `dominio.operacoes`, que o gerador emitiu na ordem de `paths`
+// do contrato, filtrada pela tag — nunca a ordem de um `Object.keys` local.
+const lista = dominio.operacoes
+  .map((id) => operacoes[id])
+  .filter((operacao): operacao is OperacaoDoDominio => operacao !== undefined);
+
+const publicas = lista.filter((operacao) => operacao.acesso === 'publico').length;
+const rotuloDeAcesso =
+  publicas === 0 ? 'Nenhuma pública' : `${publicas} de ${dominio.total} públicas`;
+
+// Concordância do número ao lado de "operações": o domínio Mídia tem 1.
+const contagemDeOperacoes = `${dominio.total} ${dominio.total === 1 ? 'operação' : 'operações'}`;
+
+const descricaoDaPagina = `${dominio.descricao} ${contagemDeOperacoes} do domínio ${dominio.titulo} da API do Fisga.`;
+---
+
+<Base
+  titulo={`${dominio.titulo} · Referência da API`}
+  descricao={descricaoDaPagina}
+  ativo="referencia"
+  versao={referencia.info.versao}
+>
+  <div class="grade-referencia">
+    <Nav dominios={referencia.dominios} ativo={dominio.slug} />
+
+    <article>
+      <header class="cabecalho-pagina">
+        <p class="rotulo">{rotuloDeAcesso}</p>
+        <h1>{dominio.titulo}</h1>
+        <p class="lead">{dominio.descricao}</p>
+        <p class="cartao-meta">
+          <span>{contagemDeOperacoes}</span>
+          <span aria-hidden="true">·</span>
+          <a href="/referencia">Todos os domínios</a>
+        </p>
+      </header>
+
+      <ul class="lista-operacoes" role="list">
+        {
+          lista.map((operacao) => (
+            <li class="linha-operacao">
+              <SeloDeStatus metodo={operacao.metodo} />
+              <div class="linha-operacao-corpo">
+                <a href={`/referencia/${dominio.slug}/${operacao.operationId}`}>
+                  {operacao.summary}
+                </a>
+                <code>{operacao.rota}</code>
+              </div>
+            </li>
+          ))
+        }
+      </ul>
+    </article>
+  </div>
+</Base>

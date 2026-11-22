@@ -1,0 +1,59 @@
+---
+import Base from '../components/Base.astro';
+import referencia from '../data/referencia.json';
+
+const { info, contagem, dominios, operacoes } = referencia;
+
+const operacoesPorId = new Map(Object.entries(operacoes));
+
+// R40: o acesso do domínio é derivado, nunca escrito à mão. Um domínio com
+// zero operações públicas diz "Nenhuma pública" em vez de "0 de N públicas".
+function contarPublicas(ids: string[]): number {
+  return ids.filter((id) => operacoesPorId.get(id)?.acesso === 'publico').length;
+}
+
+function rotuloDeAcesso(publicas: number, total: number): string {
+  return publicas === 0 ? 'Nenhuma pública' : `${publicas} de ${total} públicas`;
+}
+
+const descricaoDaPagina = `Índice da referência da API do Fisga por domínio: ${contagem.dominios} domínios e ${contagem.operacoes} operações derivadas do contrato OpenAPI.`;
+
+// "1 operação" e "3 operações": a contagem vem do modelo e não pode sair
+// concordando errado no singular.
+const emOperacoes = (total: number) => `${total} ${total === 1 ? 'operação' : 'operações'}`;
+---
+
+<Base
+  titulo="Referência da API"
+  descricao={descricaoDaPagina}
+  ativo="referencia"
+  versao={info.versao}
+>
+  <header class="cabecalho-pagina">
+    <p class="rotulo">Índice por domínio</p>
+    <h1>Referência da API</h1>
+    <p class="lead">
+      As {contagem.operacoes} operações do contrato, agrupadas em {contagem.dominios} domínios.
+      Cada domínio mostra o método, a rota e quem pode chamar cada operação.
+    </p>
+  </header>
+
+  <ul class="grade-dominios" role="list">
+    {
+      dominios.map((dominio) => {
+        const publicas = contarPublicas(dominio.operacoes);
+        return (
+          <li class="cartao-dominio">
+            <p class="rotulo">{rotuloDeAcesso(publicas, dominio.total)}</p>
+            <h2>{dominio.titulo}</h2>
+            <p>{dominio.descricao}</p>
+            <p class="cartao-meta">{emOperacoes(dominio.total)}</p>
+            <a class="cartao-acao" href={`/referencia/${dominio.slug}`}>
+              Ver operações de {dominio.titulo}
+            </a>
+          </li>
+        );
+      })
+    }
+  </ul>
+</Base>

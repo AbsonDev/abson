@@ -1,0 +1,48 @@
+---
+/**
+ * Navegação entre os domínios da referência.
+ *
+ * No desktop é uma coluna dentro de `.grade-referencia`; abaixo de 900px vira
+ * uma faixa horizontal. O `overflow-x: auto` fica no `nav`, não no `body`: a
+ * faixa rola dentro de si e não empurra a página. Os alvos têm
+ * `min-height: var(--space-12)`.
+ *
+ * O invólucro existe para o `position: sticky` funcionar em grid: o item da
+ * grade estica (`align-self: stretch`) e o conteúdo interno gruda no topo.
+ */
+interface DominioDaNav {
+  slug: string;
+  titulo: string;
+  total: number;
+}
+
+interface Props {
+  dominios: DominioDaNav[];
+  ativo?: string;
+}
+
+const { dominios, ativo } = Astro.props;
+---
+
+<div class="nav-dominios">
+  <div class="nav-dominios-painel">
+    <p class="rotulo nav-dominios-rotulo">Domínios</p>
+    <nav aria-label="Domínios da referência">
+      <ul class="nav-dominios-lista" role="list">
+        {
+          dominios.map((dominio) => (
+            <li>
+              <a
+                href={`/referencia/${dominio.slug}`}
+                aria-current={ativo === dominio.slug ? 'page' : undefined}
+              >
+                <span>{dominio.titulo}</span>
+                <span class="nav-count">{dominio.total}</span>
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+  </div>
+</div>
