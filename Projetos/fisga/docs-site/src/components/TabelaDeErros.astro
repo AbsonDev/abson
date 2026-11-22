@@ -18,6 +18,15 @@ interface Props {
 }
 
 const { erros } = Astro.props;
+
+function formatarInlineCode(texto: string): string {
+  if (!texto) return '';
+  const escapado = texto
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  return escapado.replace(/`([^`]+)`/g, '<code>$1</code>');
+}
 ---
 
 <div class="table-wrap">
@@ -53,7 +62,7 @@ const { erros } = Astro.props;
                 </span>
               )}
             </td>
-            <td>{erro.quando}</td>
+            <td><Fragment set:html={formatarInlineCode(erro.quando)} /></td>
           </tr>
         ))
       }
