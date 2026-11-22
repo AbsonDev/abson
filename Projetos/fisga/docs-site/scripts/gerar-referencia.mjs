@@ -675,7 +675,7 @@ export function montarCurl(operacao, override, servidor) {
 
   if (typeof frontmatter.corpo === 'string') {
     linhas.push('-H "Content-Type: application/json"');
-    linhas.push(`-d '${frontmatter.corpo.replaceAll("'", "'\\''")}'`);
+    linhas.push(`-d '${frontmatter.corpo.trim().replaceAll("'", "'\\''")}'`);
   }
   for (const [campoDoArquivo, arquivo] of Object.entries(frontmatter.arquivos ?? {})) {
     linhas.push(`-F "${campoDoArquivo}=@${arquivo}"`);
