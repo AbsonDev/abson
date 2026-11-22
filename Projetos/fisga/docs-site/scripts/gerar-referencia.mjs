@@ -175,9 +175,11 @@ export function auditar(contrato) {
   return { derivados, pendencias };
 }
 
-// O `requestBody` declara o schema por `$ref` em `components.schemas`. Segue a
-// cadeia (com guarda de ciclo) só para ler `required` e as propriedades.
-function schemaDoCorpo(schema, contrato) {
+// Segue `$ref` de `#/components/schemas/<Nome>` até o schema final. O `Set` de
+// nomes é a guarda de ciclo: contrato futuro que volte ao mesmo nome para em
+// `{}` em vez de girar. Hoje os 77 schemas do contrato não se alcançam. Serve
+// tanto à tabela e ao esqueleto quanto à validação do `requestBody`.
+export function resolverRef(schema, contrato) {
   let atual = schema;
   const vistos = new Set();
   while (atual && typeof atual === 'object' && atual.$ref) {
@@ -422,7 +424,7 @@ function problemasDeCorpoEArquivos(entrada, operacao, contrato) {
           problemas.push('corpo: o corpo precisa ser objeto JSON; lista ou null não ' +
             'é um exemplo válido');
         } else {
-          const schema = schemaDoCorpo(conteudo['application/json'].schema, contrato);
+          const schema = resolverRef(conteudo['application/json'].schema, contrato);
           const faltando = (schema.required ?? []).filter((chave) => !(chave in valor));
           if (faltando.length > 0) {
             problemas.push(`corpo: faltam propriedades obrigatórias: ${faltando.join(', ')}`);
@@ -441,7 +443,7 @@ function problemasDeCorpoEArquivos(entrada, operacao, contrato) {
       Object.keys(arquivos).length === 0) {
       problemas.push('arquivos: precisa ser objeto não vazio de campo para nome de arquivo');
     } else {
-      const schema = schemaDoCorpo(conteudo['multipart/form-data'].schema, contrato);
+      const schema = resolverRef(conteudo['multipart/form-data'].schema, contrato);
       const campos = new Set(Object.keys(schema.properties ?? {}));
       for (const [campo, nome] of Object.entries(arquivos)) {
         if (!campos.has(campo)) problemas.push(`arquivos: campo fora do schema: ${campo}`);
@@ -680,6 +682,280 @@ export function montarCurl(operacao, override, servidor) {
   return linhas;
 }
 
+const VALOR_DE_FORMATO = Object.freeze({
+  uuid: '00000000-0000-4000-8000-000000000000',
+  date: '2026-11-21',
+  'date-time': '2026-11-21T09:00:00Z',
+  uri: 'https://fisga.abson.tech/exemplo'
+});
+
+const NOTA_DE_NULO = 'este campo pode ser null';
+const NOTA_DE_LISTA = 'a lista vem vazia quando não há itens';
+const NOTA_DE_CICLO = 'ciclo no schema';
+
+function tiposDe(schema) {
+  return Array.isArray(schema?.type) ? schema.type : [schema?.type];
+}
+
+function ehAnulavel(schema, contrato) {
+  if (!schema || typeof schema !== 'object') return false;
+  if (tiposDe(schema).includes('null')) return true;
+  return (schema.oneOf ?? []).some((ramo) =>
+    tiposDe(resolverRef(ramo, contrato)).includes('null'));
+}
+
+function semRepetir(notas) {
+  return [...new Set(notas)];
+}
+
+// Sentinela de enum: o valor que só existe para dizer "não informado". A
+// escolha é o primeiro valor real; se todos forem sentinela, o primeiro do
+// contrato (melhor o valor declarado do que um inventado).
+function valorDeEnum(valores) {
+  return valores.find((valor) => !String(valor).startsWith('Nao')) ?? valores[0];
+}
+
+// Esqueleto determinístico do schema: mostra a forma, nunca dado plausível.
+// A ordem das decisões é a do brief — `$ref`, `oneOf`, `type` composto, `enum`,
+// `format`, `type` —, e `example`/`examples` só entram em `montarRespostas`.
+export function sintetizar(schema, contrato) {
+  const notas = [];
+
+  function passo(atual, profundidade, vistos) {
+    if (profundidade > 8) return {};
+    // R23: a guarda de ciclo é defesa contra contrato futuro. O `Set` carrega
+    // o nome do `$ref` já resolvido no caminho; voltar a ele para.
+    const nomeDoRef = atual?.$ref ? String(atual.$ref) : null;
+    if (nomeDoRef && vistos.has(nomeDoRef)) {
+      notas.push(NOTA_DE_CICLO);
+      return {};
+    }
+    const proximos = nomeDoRef ? new Set([...vistos, nomeDoRef]) : vistos;
+    const resolvido = resolverRef(atual, contrato);
+    if (!resolvido || typeof resolvido !== 'object') return {};
+
+    if (resolvido.oneOf) {
+      const ramos = resolvido.oneOf.filter((ramo) =>
+        !tiposDe(resolverRef(ramo, contrato)).includes('null'));
+      const temNulo = ramos.length !== resolvido.oneOf.length;
+      if (temNulo) notas.push(NOTA_DE_NULO);
+      if (ramos.length === 0) return null;
+      return passo(ramos[0], profundidade, proximos);
+    }
+
+    // `type` composto: `null` sai com nota; um tipo só desce com ele mesmo;
+    // mais de um é a forma serializada de um número (`["number","string"]`,
+    // `["integer","string"]`) — o valor real é `0`, não `'0'`.
+    if (Array.isArray(resolvido.type)) {
+      const restantes = resolvido.type.filter((tipo) => tipo !== 'null');
+      if (restantes.length !== resolvido.type.length) notas.push(NOTA_DE_NULO);
+      if (restantes.length === 1) {
+        return passo({ ...resolvido, type: restantes[0] }, profundidade, proximos);
+      }
+      if (restantes.includes('string')) return 0;
+    }
+
+    if (Array.isArray(resolvido.enum)) return valorDeEnum(resolvido.enum);
+
+    if (typeof resolvido.format === 'string') {
+      if (resolvido.format === 'binary') return undefined;
+      if (Object.hasOwn(VALOR_DE_FORMATO, resolvido.format)) {
+        return VALOR_DE_FORMATO[resolvido.format];
+      }
+    }
+
+    if (resolvido.type === 'string') return '';
+    if (resolvido.type === 'integer' || resolvido.type === 'number') return 0;
+    if (resolvido.type === 'boolean') return false;
+    if (resolvido.type === 'array') {
+      notas.push(NOTA_DE_LISTA);
+      return [];
+    }
+    if (resolvido.type === 'object' || resolvido.properties) {
+      return objeto(resolvido, profundidade, proximos);
+    }
+    return {};
+  }
+
+  function objeto(resolvido, profundidade, vistos) {
+    const valor = {};
+    for (const [chave, filho] of Object.entries(resolvido.properties ?? {})) {
+      const sintetizado = passo(filho, profundidade + 1, vistos);
+      // `binary` não aparece: a chave é omitida do exemplo.
+      if (sintetizado !== undefined) valor[chave] = sintetizado;
+    }
+    return valor;
+  }
+
+  const valor = passo(schema, 0, new Set());
+  return { valor, notas: semRepetir(notas) };
+}
+
+// Uma resposta por status, em ordem numérica, com o corpo já resolvido. O
+// `sucesso` é o primeiro `2XX`/`3XX` da lista (mesmo objeto, não cópia) e o
+// `>= 400` alimenta `errosDerivados` — a mesma regra do Task 2.
+export function montarRespostas(operacao, contrato) {
+  function respostaDeStatus(numero, resposta) {
+    const status = String(numero);
+    const conteudo = resposta?.content ?? {};
+    const mediaTypes = Object.keys(conteudo);
+    const notas = [];
+    const primeiro = Object.entries(conteudo)[0];
+    const mediaType = primeiro?.[0] ?? null;
+    const schema = primeiro?.[1]?.schema ?? null;
+    const exemplo = primeiro?.[1]?.examples
+      ? Object.values(primeiro[1].examples)[0]?.value
+      : primeiro?.[1]?.example;
+    const exemploDoContrato = exemplo !== undefined;
+
+    let corpo = null;
+    if (Object.keys(conteudo).length === 0 || status === '204') {
+      notas.push('resposta sem corpo');
+    } else if (mediaType === 'text/html') {
+      notas.push('a resposta é text/html; o portal não mostra o documento');
+    } else if (mediaType === 'application/pdf') {
+      notas.push('a resposta é application/pdf; o portal não mostra o arquivo');
+    } else if (exemploDoContrato) {
+      // R24: o exemplo do contrato vence; o sintetizador nem roda.
+      corpo = JSON.stringify(exemplo, null, 2);
+    } else if (schema) {
+      const sintetizado = sintetizar(schema, contrato);
+      notas.push(...sintetizado.notas);
+      if (sintetizado.valor === undefined) {
+        // R25: `format: 'binary'` na raiz também não vira bloco — o media type
+        // nomeia o que a resposta é (hoje só o PDF chega aqui, e ele já parou na
+        // regra de `application/pdf` acima).
+        notas.push(`a resposta é ${mediaType}; o portal não mostra o arquivo`);
+      } else {
+        corpo = JSON.stringify(sintetizado.valor, null, 2);
+      }
+    }
+
+    return {
+      status,
+      descricao: (resposta?.description ?? '').trim(),
+      // R26: `2XX`/`3XX` é desfecho; `>= 400` é erro e alimenta a tabela.
+      desfecho: numero >= 200 && numero < 400,
+      mediaTypes,
+      corpo,
+      notas: semRepetir(notas),
+      location: (status === '201' || status === '202') &&
+        Boolean(resposta?.headers?.Location)
+    };
+  }
+
+  const respostas = Object.entries(operacao?.responses ?? {})
+    .map(([status, resposta]) => [Number(status), resposta])
+    .filter(([status]) => Number.isInteger(status))
+    .sort(([a], [b]) => a - b)
+    .map(([numero, resposta]) => respostaDeStatus(numero, resposta));
+
+  // `sucesso` é o próprio item da lista (mesma referência), não uma cópia: a
+  // página não tem como divergir entre `sucesso` e `respostas`. Nenhuma das 54
+  // operações tem dois `2XX`/`3XX`, então o primeiro por ordem numérica é
+  // também o único; se o contrato mudar, o primeiro continua sendo a resposta.
+  const sucesso = respostas.find((resposta) => resposta.desfecho) ?? null;
+  return { respostas, sucesso, errosDerivados: derivarErros(operacao) };
+}
+
+// R9: objeto puro não vira linha, só desce. R12: array de primitivo emite uma
+// linha só (`campo[]`); array de objeto emite `campo` + `campo[]` e desce nos
+// `items`. Array anulável (`type: ['null', 'array']`) fecha em `campo` sem
+// descer: o valor pode ser `null`, e os itens não descrevem o que existe.
+// R13: `obrigatorio` sai do `required` do pai, carregado ao descer. R22: o teto
+// de profundidade é `> 6` — o contrato atinge 6 em `exportarConta`.
+export function montarTabelaDeSchema(schema, contrato) {
+  const linhas = [];
+
+  function linha(caminho, tipo, obrigatorio, anulavel, valores = null) {
+    linhas.push({ caminho, tipo, obrigatorio, anulavel, valores });
+  }
+
+  function descer(atual, caminho, profundidade, obrigatorio, vistos) {
+    if (profundidade > 6) return;
+    if (atual?.$ref && vistos.has(atual.$ref)) return;
+    const proximos = atual?.$ref ? new Set([...vistos, atual.$ref]) : vistos;
+    const resolvido = resolverRef(atual, contrato);
+    if (!resolvido || typeof resolvido !== 'object') return;
+
+    if (Array.isArray(resolvido.oneOf)) {
+      const temNulo = ehAnulavel(resolvido, contrato);
+      const ramo = resolvido.oneOf.find((candidato) =>
+        !tiposDe(resolverRef(candidato, contrato)).includes('null'));
+      // `oneOf` com `null` é null OU o outro ramo: a linha carrega a nulidade,
+      // que é a informação que justifica existir; descer no objeto repetiria o
+      // pai sem ela e quebraria a contagem medida (MeResponse → 5 linhas).
+      if (temNulo) {
+        if (!caminho) return;
+        const alvo = ramo ? resolverRef(ramo, contrato) : {};
+        const tipoDoRamo = tiposDe(alvo).find((candidato) => candidato !== 'null');
+        linha(caminho, tipoDoRamo ?? 'object', obrigatorio, true);
+        return;
+      }
+      if (ramo) descer(ramo, caminho, profundidade, obrigatorio, proximos);
+      return;
+    }
+
+    const tipos = tiposDe(resolvido);
+    if (tipos.includes('array')) {
+      const anulavel = tipos.includes('null');
+      if (!caminho) {
+        if (resolvido.items) descer(resolvido.items, '', profundidade, obrigatorio, proximos);
+        return;
+      }
+      if (anulavel) {
+        linha(caminho, 'array', obrigatorio, true);
+        return;
+      }
+      const item = resolverRef(resolvido.items, contrato);
+      const itemEhObjeto = Boolean(item?.properties) || item?.type === 'object';
+      if (!itemEhObjeto) {
+        linha(`${caminho}[]`, 'array', obrigatorio, false);
+        return;
+      }
+      linha(caminho, 'array', obrigatorio, false);
+      linha(`${caminho}[]`, 'object', obrigatorio, false);
+      descer(resolvido.items, `${caminho}[]`, profundidade + 1, false, proximos);
+      return;
+    }
+
+    if (resolvido.properties) {
+      const exigidos = new Set(resolvido.required ?? []);
+      for (const [chave, filho] of Object.entries(resolvido.properties)) {
+        descer(
+          filho,
+          caminho ? `${caminho}.${chave}` : chave,
+          profundidade + 1,
+          exigidos.has(chave),
+          proximos);
+      }
+      return;
+    }
+
+    // Escalar (ou enum, que é escalar com lista): é aqui que a linha nasce.
+    // `binary` é `string` no contrato e a tabela descreve a forma, não o valor:
+    // o campo aparece (quem esconde o arquivo é o esqueleto, não a tabela).
+    if (!caminho) return;
+    if (Array.isArray(resolvido.enum)) {
+      linha(caminho, 'enum', obrigatorio, ehAnulavel(resolvido, contrato), [...resolvido.enum]);
+      return;
+    }
+    const tipo = tipos.find((candidato) => candidato !== 'null') ?? 'object';
+    linha(caminho, tipo, obrigatorio, ehAnulavel(resolvido, contrato));
+  }
+
+  descer(schema, '', 0, false, new Set());
+  return linhas;
+}
+
+// Tabela do corpo JSON do requestBody; `null` quando não há corpo JSON (é o
+// caso de multipart, onde o dono do exemplo é `arquivos`).
+function tabelaDoRequest(operacao, contrato) {
+  const conteudo = operacao.requestBody?.content ?? {};
+  const schema = conteudo['application/json']?.schema;
+  return schema ? montarTabelaDeSchema(schema, contrato) : null;
+}
+
 function validarTags(contrato) {
   const problemas = [];
   const tagsDoContrato = new Map();
@@ -753,6 +1029,7 @@ function derivarOperacao({ operationId, metodo, rota, tag, operacao }, dominio, 
   const servidor = contrato.servers?.[0]?.url ?? '';
   const caminho = frontmatter.caminho ?? {};
   const consulta = frontmatter.consulta ?? {};
+  const { respostas, sucesso } = montarRespostas(operacao, contrato);
   return {
     problemas: [],
     operacao: {
@@ -794,8 +1071,13 @@ function derivarOperacao({ operationId, metodo, rota, tag, operacao }, dominio, 
         ? marked.parse(override.corpo)
         : '',
       relacionados: relacionadasDoOverride(frontmatter, contrato),
-      // R1: o request é o único dono do corpo; o Task 4 acrescenta `corpoTabela`.
+      // O contrato responde e o override só exemplifica: a página mostra o
+      // esqueleto derivado do schema, rotulado, e os erros derivados.
+      respostas,
+      sucesso,
+      // R1: o request é o único dono do corpo.
       request: {
+        corpoTabela: tabelaDoRequest(operacao, contrato),
         corpoExemplo: typeof frontmatter.corpo === 'string' ? frontmatter.corpo : null,
         arquivos: frontmatter.arquivos ?? null
       }

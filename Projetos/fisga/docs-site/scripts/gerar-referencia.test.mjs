@@ -20,6 +20,10 @@ import {
   lerOverrides,
   listarOperacoes,
   montarCurl,
+  montarRespostas,
+  montarTabelaDeSchema,
+  resolverRef,
+  sintetizar,
   slugDoDominio,
   validarOverride
 } from './gerar-referencia.mjs';
@@ -156,7 +160,20 @@ const CONTRATO = {
       },
       AmbienteDePesca: { type: 'string', enum: ['Rio', 'Mar', 'Lagoa', 'Represa'] },
       PeriodoDoDia: { type: 'string', enum: ['Madrugada', 'Manha', 'Tarde', 'Noite'] },
-      FormularioDeFoto: { type: 'object', required: ['arquivo'], properties: { arquivo: { type: 'string', format: 'binary' } } }
+      FormularioDeFoto: { type: 'object', required: ['arquivo'], properties: { arquivo: { type: 'string', format: 'binary' } } },
+      UsuarioResponse: {
+        type: 'object',
+        required: ['id', 'email', 'nome', 'nomeExibicao', 'aceitaNovidades', 'criadoEm', 'ultimoAcessoEm'],
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          email: { type: 'string' },
+          nome: { type: ['null', 'string'] },
+          nomeExibicao: { type: 'string' },
+          aceitaNovidades: { type: 'boolean' },
+          criadoEm: { type: 'string', format: 'date-time' },
+          ultimoAcessoEm: { type: ['null', 'string'], format: 'date-time' }
+        }
+      }
     },
     securitySchemes: {
       cookieAuth: { type: 'apiKey', in: 'cookie', name: 'fisga_auth' },
@@ -537,7 +554,7 @@ test('override entra no modelo com notas renderizadas e valores do exemplo', () 
     ['curl -s', `"${SERVIDOR}/health"`]);
 
   // R1: o corpo mora em `request`, não no nível da operação.
-  assert.deepEqual(saude.request, { corpoExemplo: null, arquivos: null });
+  assert.deepEqual(saude.request, { corpoTabela: null, corpoExemplo: null, arquivos: null });
   assert.equal(saude.corpo, undefined);
   assert.equal(saude.arquivos, undefined);
 
@@ -545,6 +562,13 @@ test('override entra no modelo com notas renderizadas e valores do exemplo', () 
   assert.equal(conta.acessoTexto, 'qualquer pessoa com sessão iniciada');
   assert.ok(conta.consentimentoTexto.includes('consentimento_pendente'));
   assert.deepEqual(conta.request, {
+    corpoTabela: [{
+      caminho: 'confirmacao',
+      tipo: 'string',
+      obrigatorio: true,
+      anulavel: true,
+      valores: null
+    }],
     corpoExemplo: '{"confirmacao":"EXCLUIR"}',
     arquivos: null
   });
@@ -552,7 +576,11 @@ test('override entra no modelo com notas renderizadas e valores do exemplo', () 
   assert.ok(conta.exemplo.includes('-b cookies.txt'), conta.exemplo);
 
   const midia = modelo.operacoes.enviarMidia;
-  assert.deepEqual(midia.request, { corpoExemplo: null, arquivos: { arquivo: 'foto.jpg' } });
+  assert.deepEqual(midia.request, {
+    corpoTabela: null,
+    corpoExemplo: null,
+    arquivos: { arquivo: 'foto.jpg' }
+  });
   assert.ok(midia.exemplo.includes('-F "arquivo=@foto.jpg"'), midia.exemplo);
 
   // `consentimentoTexto` é derivado do contrato, não do override.
@@ -1120,4 +1148,276 @@ test('auditar lista as pendências de erros da fixture', () => {
     { operationId: 'enviarMidia', status: 400 }
   ]);
   assert.equal(auditar(CONTRATO).derivados, 6);
+});
+
+// --- Task 4: sintetizador de resposta e tabela de schema -------------------
+
+let contratoReal;
+let operacoesReais;
+
+// `montarRespostas` e os casos de schema real leem o contrato da árvore direto:
+// o override não é insumo de nenhum deles, então `gerarModelo` não entra aqui.
+function contratoDaArvore() {
+  contratoReal ??= lerContrato();
+  return contratoReal;
+}
+
+function operacaoReal(operationId) {
+  operacoesReais ??= new Map(
+    listarOperacoes(contratoDaArvore()).map((item) => [item.operationId, item.operacao]));
+  const operacao = operacoesReais.get(operationId);
+  assert.ok(operacao, `operação ausente no contrato: ${operationId}`);
+  return operacao;
+}
+
+function respostasDa(operationId) {
+  return montarRespostas(operacaoReal(operationId), contratoDaArvore());
+}
+
+function sintetizarDaFixture(schema) {
+  return sintetizar(schema, CONTRATO);
+}
+
+test('uuid, date, date-time e uri têm valores fixos', () => {
+  const casos = {
+    uuid: '00000000-0000-4000-8000-000000000000',
+    date: '2026-11-21',
+    'date-time': '2026-11-21T09:00:00Z',
+    uri: 'https://fisga.abson.tech/exemplo'
+  };
+  for (const [format, esperado] of Object.entries(casos)) {
+    assert.deepEqual(sintetizarDaFixture({ type: 'string', format }),
+      { valor: esperado, notas: [] }, format);
+  }
+});
+
+test('tipo composto numérico vira número', () => {
+  assert.equal(sintetizarDaFixture({ type: ['number', 'string'], format: 'double' }).valor, 0);
+  assert.equal(sintetizarDaFixture({ type: ['integer', 'string'] }).valor, 0);
+  // A ordem do array não muda a escolha: o número vence a string.
+  assert.equal(sintetizarDaFixture({ type: ['string', 'number'] }).valor, 0);
+});
+
+test('enum escolhe o primeiro valor fora da sentinela', () => {
+  assert.equal(sintetizarDaFixture(
+    { type: 'string', enum: ['NaoInformada', 'Clara'] }).valor, 'Clara');
+  assert.equal(sintetizarDaFixture(
+    { type: 'string', enum: ['NaoSeAplica', 'Vazante'] }).valor, 'Vazante');
+  // Todos com sentinela: melhor o primeiro do contrato do que inventar valor.
+  assert.equal(sintetizarDaFixture(
+    { type: 'string', enum: ['NaoInformada'] }).valor, 'NaoInformada');
+});
+
+test('oneOf anulável vira o esqueleto do tipo com nota', () => {
+  const { valor, notas } = sintetizarDaFixture({
+    oneOf: [{ type: 'null' }, { $ref: '#/components/schemas/UsuarioResponse' }]
+  });
+
+  assert.deepEqual(Object.keys(valor), [
+    'id', 'email', 'nome', 'nomeExibicao', 'aceitaNovidades', 'criadoEm', 'ultimoAcessoEm'
+  ]);
+  assert.equal(valor.id, '00000000-0000-4000-8000-000000000000');
+  assert.equal(valor.nome, '');
+  assert.deepEqual(notas, ['este campo pode ser null']);
+});
+
+test('required anulável mostra o esqueleto, nunca null', () => {
+  const { valor, notas } = sintetizarDaFixture({ type: ['null', 'string'] });
+
+  assert.equal(valor, '');
+  assert.notEqual(valor, null);
+  assert.deepEqual(notas, ['este campo pode ser null']);
+});
+
+test('objeto inclui todas as propriedades na ordem do schema', () => {
+  const { valor } = sintetizarDaFixture({
+    type: 'object',
+    required: ['zebra'],
+    properties: {
+      zebra: { type: 'boolean' },
+      alfa: { type: 'string' },
+      meio: { type: 'integer' }
+    }
+  });
+
+  assert.deepEqual(Object.keys(valor), ['zebra', 'alfa', 'meio']);
+  assert.deepEqual(valor, { zebra: false, alfa: '', meio: 0 });
+});
+
+test('array vira lista vazia com nota', () => {
+  const { valor, notas } = sintetizarDaFixture({
+    type: 'array',
+    items: { $ref: '#/components/schemas/Condicoes' }
+  });
+
+  assert.deepEqual(valor, []);
+  assert.ok(notas.some((nota) => nota.includes('lista')), notas.join(' | '));
+});
+
+test('binary não aparece', () => {
+  const { valor } = sintetizarDaFixture({
+    type: 'object',
+    required: ['arquivo'],
+    properties: {
+      arquivo: { type: 'string', format: 'binary' },
+      nome: { type: 'string' }
+    }
+  });
+
+  assert.deepEqual(Object.keys(valor), ['nome']);
+  assert.deepEqual(JSON.parse(JSON.stringify(valor)), { nome: '' });
+  // Na raiz, `binary` não vira corpo: quem chama decide não mostrar bloco.
+  assert.equal(sintetizarDaFixture({ type: 'string', format: 'binary' }).valor, undefined);
+});
+
+test('example do media type vence o sintetizador', () => {
+  // R24: `examples.semSessao.value` existe só em `obterSessao` 200.
+  const { respostas, sucesso } = respostasDa('obterSessao');
+  const ok = respostas.find((resposta) => resposta.status === '200');
+  const exemplo = operacaoReal('obterSessao').responses['200']
+    .content['application/json'].examples.semSessao.value;
+
+  assert.equal(ok.corpo, JSON.stringify(exemplo, null, 2));
+  assert.equal(ok.corpo, JSON.stringify({
+    autenticado: false,
+    usuario: null,
+    consentimentoPendente: false,
+    googleConectado: false,
+    temSenha: false
+  }, null, 2));
+  assert.equal(sucesso, ok);
+  assert.equal(sucesso.desfecho, true);
+});
+
+test('204, text/html e application/pdf ficam sem bloco', () => {
+  const saida = respostasDa('sair').respostas.find((resposta) => resposta.status === '204');
+  assert.equal(saida.corpo, null);
+  assert.ok(saida.notas.some((nota) => nota.includes('sem corpo')), saida.notas.join(' | '));
+
+  // R25: `text/html` é um caso; `application/pdf` é o outro.
+  const html = respostasDa('previsualizarNewsletter').sucesso;
+  assert.equal(html.status, '200');
+  assert.deepEqual(html.mediaTypes, ['text/html']);
+  assert.equal(html.corpo, null);
+  assert.ok(html.notas.some((nota) => nota.includes('text/html')), html.notas.join(' | '));
+
+  const pdf = respostasDa('exportarPescariaPdf').sucesso;
+  assert.deepEqual(pdf.mediaTypes, ['application/pdf']);
+  assert.equal(pdf.corpo, null);
+  assert.ok(pdf.notas.some((nota) => nota.includes('application/pdf')), pdf.notas.join(' | '));
+});
+
+test('201 com Location marca o header na linha de status', () => {
+  const { respostas, sucesso } = respostasDa('criarPescaria');
+
+  assert.equal(respostas[0].status, '201');
+  assert.equal(respostas[0].location, true);
+  assert.equal(sucesso, respostas[0]);
+  assert.equal(sucesso.desfecho, true);
+  // O corpo do `201` é o esqueleto de `PescariaSalvaResponse`.
+  assert.ok(sucesso.corpo.includes('"shareToken"'), sucesso.corpo);
+
+  // `202` com `Location` também marca; `esquecerSenha` é o caso real.
+  const link = respostasDa('esquecerSenha').sucesso;
+  assert.equal(link.status, '202');
+  assert.equal(link.location, true);
+});
+
+test('302 sem 2XX é desfecho e não entra em erros', () => {
+  const { respostas, sucesso, errosDerivados } = respostasDa('confirmarLink');
+
+  assert.equal(sucesso.status, '302');
+  assert.equal(sucesso.desfecho, true);
+  assert.equal(sucesso.corpo, null);
+  assert.deepEqual(respostas.map((resposta) => resposta.status), ['302', '429']);
+  assert.deepEqual(errosDerivados.map((erro) => erro.status), [429]);
+  // R26: `erros` do modelo usa a mesma derivação — `302` nunca entra.
+  assert.equal(errosDerivados.some((erro) => erro.status === 302), false);
+});
+
+test('tabela de schema achata objeto e array', () => {
+  const linhas = montarTabelaDeSchema(
+    { $ref: '#/components/schemas/PescariaDetalhadaDto' }, contratoDaArvore());
+  const caminhos = linhas.map((linha) => linha.caminho);
+
+  // R12: 32 linhas, sem repetir `capturas[].fotos[]`.
+  assert.equal(linhas.length, 32);
+  assert.equal(new Set(caminhos).size, linhas.length);
+  assert.ok(caminhos.includes('entrada.local'), caminhos.join(' | '));
+  assert.ok(caminhos.includes('capturas[].especie'), caminhos.join(' | '));
+  // R9: objeto puro não vira linha; só as propriedades dele.
+  assert.equal(caminhos.includes('entrada'), false);
+  assert.equal(linhas.some((linha) => linha.caminho === 'entrada' && linha.tipo === 'object'), false);
+  assert.equal(caminhos.filter((caminho) => caminho === 'capturas[].fotos[]').length, 1);
+});
+
+test('tabela marca obrigatoriedade e anulabilidade', () => {
+  const me = montarTabelaDeSchema(
+    { $ref: '#/components/schemas/MeResponse' }, contratoDaArvore());
+  assert.equal(me.length, 5);
+  const usuario = me.find((linha) => linha.caminho === 'usuario');
+  assert.equal(usuario.obrigatorio, true);
+  assert.equal(usuario.anulavel, true);
+
+  const entrada = montarTabelaDeSchema(
+    { $ref: '#/components/schemas/EntradaDePescaria' }, contratoDaArvore());
+  assert.equal(entrada.length, 15);
+  const local = entrada.find((linha) => linha.caminho === 'local');
+  assert.equal(local.obrigatorio, false);
+  assert.equal(local.anulavel, true);
+  assert.equal(local.tipo, 'string');
+
+  // Enum carrega os valores para a tabela renderizar a lista.
+  const ambiente = entrada.find((linha) => linha.caminho === 'ambiente');
+  assert.equal(ambiente.tipo, 'enum');
+  assert.deepEqual(ambiente.valores, ['Rio', 'Mar', 'Lagoa', 'Represa', 'PesquePague', 'Outro']);
+});
+
+test('ciclo de $ref para em vez de girar', () => {
+  const contrato = structuredClone(CONTRATO);
+  contrato.components.schemas.CicloA = {
+    type: 'object',
+    properties: { nome: { type: 'string' }, b: { $ref: '#/components/schemas/CicloB' } }
+  };
+  contrato.components.schemas.CicloB = {
+    type: 'object',
+    properties: { a: { $ref: '#/components/schemas/CicloA' } }
+  };
+  // Cadeia só de `$ref` (A → B → A): é o caso que a guarda de `resolverRef`
+  // fecha em `{}`; sem ela o laço não terminaria.
+  contrato.components.schemas.RefeDeA = { $ref: '#/components/schemas/RefeDeB' };
+  contrato.components.schemas.RefeDeB = { $ref: '#/components/schemas/RefeDeA' };
+
+  // R23: o contrato real não tem ciclo; a guarda é defesa e é testada aqui.
+  assert.deepEqual(resolverRef({ $ref: '#/components/schemas/CicloA' }, contrato).properties.b,
+    { $ref: '#/components/schemas/CicloB' });
+  assert.deepEqual(resolverRef({ $ref: '#/components/schemas/RefeDeA' }, contrato), {});
+  const linhas = montarTabelaDeSchema(
+    { $ref: '#/components/schemas/CicloA' }, contrato);
+  assert.deepEqual(linhas.map((linha) => linha.caminho), ['nome']);
+
+  // No sintetizador, o ciclo vira objeto vazio em vez de recursão infinita, e
+  // o fato fica registrado numa nota.
+  const { valor, notas } = sintetizar({ $ref: '#/components/schemas/CicloA' }, contrato);
+  assert.deepEqual(valor, { nome: '', b: { a: {} } });
+  assert.deepEqual(notas, ['ciclo no schema']);
+});
+
+test('operação do modelo carrega respostas, desfecho e corpoTabela', () => {
+  const modelo = gerarModelo(CONTRATO, OVERRIDES);
+  const pescaria = modelo.operacoes.criarPescaria;
+
+  assert.deepEqual(pescaria.respostas.map((resposta) => resposta.status), ['201', '400']);
+  assert.equal(pescaria.sucesso, pescaria.respostas[0]);
+  assert.equal(pescaria.sucesso.desfecho, true);
+  assert.equal(pescaria.respostas[1].desfecho, false);
+  // `request.corpoTabela` é o schema do `requestBody` JSON da fixture.
+  assert.deepEqual(pescaria.request.corpoTabela.map((linha) => linha.caminho),
+    ['local', 'ambiente', 'data', 'periodo']);
+  assert.deepEqual(pescaria.request.corpoTabela.map((linha) => linha.tipo),
+    ['string', 'enum', 'string', 'enum']);
+
+  const saude = modelo.operacoes.obterSaude;
+  assert.equal(saude.sucesso.status, '200');
+  assert.equal(saude.request.corpoTabela, null);
 });
