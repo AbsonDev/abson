@@ -86,7 +86,10 @@ o que muda para quem integra e o que fazer.
   a legibilidade importa. Um `--cookie cookies.txt` só depois de um passo que
   grava o cookie.
 - Exemplo de resposta **completo** para o caso principal; truncado com
-  `"..."` só quando a lista é genuinamente longa, e o texto avisa.
+  `"..."` só quando a lista é genuinamente longa, e o texto avisa. Na F2.1, o
+  "exemplo de resposta completo" é o esqueleto derivado do schema rotulado com
+  aviso de que mostra a forma e não dados reais; o exemplo com dados reais entra
+  na F2.2.
 - Código em blocos com a linguagem declarada (`bash`, `json`, `http`).
 - Números e datas do exemplo são plausíveis, não aleatórios:
   `-23.55, -46.63` é São Paulo; `2026-11-20` é data de exemplo futura à escrita.

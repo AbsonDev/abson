@@ -48,11 +48,12 @@ Resumo do que está em [`docs/ci-cd.md`](docs/ci-cd.md) (o runbook é a fonte):
   `main` é exatamente `gate`; o CI não usa `paths:` para nunca deixar o check
   "Expected".
 - **Documentação não builda nem deploya.** O filtro de código ignora
-  `Projetos/fisga/docs/**`, `README.md` e `AGENTS.md`; PR só de docs não roda
-  nenhum job de build; só `docs` (além de `changes` e `gate`) e o merge não
-  dispara deploy. No CI, `Projetos/fisga/docs/api/openapi.json` é a exceção:
-  conta como código e o job `api` regenera e compara. No deploy, ele continua
-  sob `docs/**` e não dispara os jobs de deploy.
+  `Projetos/fisga/docs/**`, `docs-site/**`, `README.md` e `AGENTS.md`; PR só de docs não roda
+  nenhum job de build da API/web; roda o job `docs` e, quando toca `docs-site/**`,
+  `docs/publico/**` ou `docs/api/openapi.json`, roda o job `docs-site` (gerador e verificação pós-build).
+  No CI, `Projetos/fisga/docs/api/openapi.json` também conta como código para o job `api`.
+  No deploy, documentação continua sob `docs/**` e `docs-site/**` e não dispara os jobs de deploy
+  (o deploy do portal estático é escopo da F2.5).
 - **Runtime da API é `aspnet:10.0`.** O TFM é `net10.0`; imagem base de major
   diferente não sobe.
 - **`SENTRY_AUTH_TOKEN` só entra por BuildKit secret** (`sentry_auth_token`).

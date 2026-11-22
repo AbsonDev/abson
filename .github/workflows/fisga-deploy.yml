@@ -43,7 +43,7 @@ jobs:
           FILES="$(git diff --name-only "$BASE" "$HEAD")"
           CODIGO="$(printf '%s\n' "$FILES" \
             | grep -E '^Projetos/fisga/' \
-            | grep -vE '^Projetos/fisga/(docs/|README\.md$|AGENTS\.md$)' || true)"
+            | grep -vE '^Projetos/fisga/(docs/|docs-site/|README\.md$|AGENTS\.md$)' || true)"
           WORKFLOWS="$(printf '%s\n' "$FILES" \
             | grep -E '^\.github/workflows/fisga-(pipeline|deploy)\.yml$' || true)"
           if [ -n "$CODIGO" ] || [ -n "$WORKFLOWS" ]; then

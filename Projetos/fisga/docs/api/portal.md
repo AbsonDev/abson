@@ -50,10 +50,9 @@ Português, sem barra final, com âncora estável por operação.
 | `/privacidade` | O que é público, o que é do dono | `docs/publico/privacidade.md` |
 | `/status` | Última versão publicada e data | `openapi.json` + build |
 
-Operação individual: `/referencia/<dominio>#<operationId>`. Âncora por
-`operationId`, não por posição, para link externo não quebrar quando a ordem
-muda. O `operationId` é congelado no contrato; renomear rota exige atualizar o
-mapa versionado.
+Operação individual: `/referencia/<dominio>/<operationId>`. Cada operação tem
+página própria com URL estável pelo `operationId`. O `operationId` é congelado no
+contrato; renomear rota exige atualizar o mapa versionado.
 
 ## Três camadas de conteúdo
 
@@ -67,47 +66,49 @@ O override é curto e obrigatório. Frontmatter:
 
 ```yaml
 ---
-operacao: criarPescaria         # tem que existir no contrato
-acesso: sessao                  # publico | sessao | dono | admin | token
-consentimento: true
-limites: escrita                # politica de rate limit
-cache: no-store
-verificar: "GET /api/pescarias/{shareToken} devolve a pescaria criada."
+operacao: criarPescaria
+proposta: Registra uma nova pescaria e gera o shareToken para compartilhamento.
+acesso: sessao                  # publico | capacidade | sessao | dono | admin
+caminho: {}
+consulta: {}
+corpo: |
+  {"local":"Represa Billings","ambiente":"Represa","data":"2026-11-21","periodo":"Manha"}
+arquivos: {}                    # para multipart/form-data
+verificar: "O corpo traz a pescaria criada com id e shareToken gerados."
 relacionados: [obterPescariaPorToken, atualizarPescaria]
+erros:
+  - status: 400
+    codigos: [dados_invalidos]
+    quando: O corpo não pôde ser validado como JSON ou falta campo obrigatório.
 ---
 ```
 
-Corpo: propósito em 1–3 frases, notas de comportamento e a tabela de erros.
-
-Erros no corpo, em tabela obrigatória:
-
-```markdown
-| Status | codigo | Quando acontece |
-| --- | --- | --- |
-| 400 | `dados_invalidos` | ... |
-```
+Corpo: parágrafos curtos com notas de comportamento e efeitos colaterais.
 
 ## Pipeline de build
 
 ```text
 openapi.json ──┐
-               ├─► gerar-referencia.mjs ─► content collection ─► astro build ─► dist/ + pagefind
+               ├─► gerar-referencia.mjs ─► src/data/referencia.json ─► astro build ─► dist/
 docs/publico ──┘            │
                             └─ falha o build se:
                                • operação do contrato sem override
-                               • override sem operação no contrato
-                               • status declarado no spec sem linha de erro
-                               • erro documentado que o spec não declara
-                               • schema de request sem exemplo
+                               • override de operação inexistente
+                               • override sem required do frontmatter ou com chave desconhecida
+                               • status declarado sem cobertura (par pendente)
+                               • erro documentado que o contrato não declara
+                               • corpo ou arquivo inválido (JSON sem corpo, multipart sem arquivos, fora do schema)
+                               • caminho ou consulta ausente para parâmetros do contrato, ou chaves desconhecidas
 ```
 
 Regras do gerador:
 
-- Lê o spec e **não** o reescreve. Saída vai para `docs-site/src/content/gerado/`,
+- Lê o spec e **não** o reescreve. Saída vai para `docs-site/src/data/referencia.json`,
   que é ignorado pelo git.
-- Nome de arquivo e âncora vêm do mapa de `operationId` versionado.
+- Scripts do portal rodam como módulos Vite com `assetsInlineLimit: 0` (`is:inline` é proibido).
 - Ordena domínios e operações por uma lista canônica, não pela ordem do spec.
 - Falha com o nome da operação e o campo faltando; nunca gera página incompleta.
+- `try_files` no Nginx/Caddy para roteamento de arquivos estáticos sem `.html` é pendência da F2.5.
 
 Checagens extras no job: `astro check`, `lychee` no `dist/` (link interno
 quebrado é erro de build), e um teste que abre cada página gerada e confirma

@@ -24,6 +24,7 @@ Conteúdo de produto (espécies, técnicas, locais) não fica aqui.
 - [Política editorial da documentação](api/politica-editorial.md)
 - [Arquitetura do portal](api/portal.md)
 - [Backlog do programa de documentação](api/backlog.md)
+- [Portal da documentação (`docs-site`)](../docs-site/README.md)
 
 ## Decisões
 
@@ -48,6 +49,8 @@ Conteúdo de produto (espécies, técnicas, locais) não fica aqui.
 - [Plano — A1 do contrato verdadeiro](superpowers/plans/2026-11-20-f1-a1-contrato-identidade.md)
 - [Plano — A2 do contrato verdadeiro](superpowers/plans/2026-11-20-f1-a2-respostas-reais.md)
 - [Plano — A3 do contrato verdadeiro](superpowers/plans/2026-11-20-f1-a3-documento-e-guardas.md)
+- [Spec — F2.1 Esqueleto e referência](superpowers/specs/2026-11-21-f2-1-esqueleto-e-referencia-design.md)
+- [Plano — F2.1 Esqueleto e referência](superpowers/plans/2026-11-21-f2-1-esqueleto-e-referencia.md)
 
 ## Referências
 
