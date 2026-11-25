@@ -57,7 +57,7 @@ jobs:
       COMMENT_BODY: ${{ github.event.comment.body }}
     steps:
       - name: Setup Python
-        uses: actions/setup-python@v6.3.0
+        uses: actions/setup-python@v7.1.0
         with:
           python-version: '3.13'
 
